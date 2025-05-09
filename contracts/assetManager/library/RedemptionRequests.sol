@@ -252,6 +252,8 @@ library RedemptionRequests {
         require(!valid, "address valid");
         // release agent collateral
         Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
+        // burn the executor fee
+        Redemptions.payOrBurnExecutorFee(request);
         // emit event
         uint256 valueUBA = Conversion.convertAmgToUBA(request.valueAMG);
         emit IAssetManagerEvents.RedemptionRejected(request.agentVault, request.redeemer,
