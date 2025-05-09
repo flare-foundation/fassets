@@ -102,7 +102,7 @@ export class FuzzingAgent extends FuzzingActor {
         if (!coinFlip(0.8)) return;
         this.runner.startThread(async (scope) => {
             const agent = this.agent;   // save in case it is destroyed and re-created
-            const cheatOnPayment = coinFlip(0.2);
+            const cheatOnPayment = !request.feeUBA.eqn(0) && coinFlip(0.2);
             const takeFee = cheatOnPayment ? request.feeUBA.muln(2) : request.feeUBA;   // cheat by taking more fee (so the payment should be considered failed)
             const paymentAmount = request.valueUBA.sub(takeFee);
             // const amountToMyself = randomBN(takeFee.add(this.freeUnderlyingBalance(agent)));  // abuse redemption to pay something to the owner via multi-transaction
@@ -113,6 +113,7 @@ export class FuzzingAgent extends FuzzingActor {
                 request.paymentReference);
             const transaction = await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
             assert.isTrue(transaction == null || transaction.hash === txHash);
+            this.comment(`Confirming payment cheatOnPayment=${cheatOnPayment}, transaction.status=${transaction?.status}`);
             if (!cheatOnPayment && transaction && transaction.status !== TX_FAILED) {
                 await agent.confirmActiveRedemptionPayment(request, txHash)
                     .catch(e => scope.exitOnExpectedError(e, ['Missing event RedemptionPerformed']));
@@ -277,6 +278,16 @@ export class FuzzingAgent extends FuzzingActor {
         if (agentState.status !== AgentStatus.FULL_LIQUIDATION) return;
         if (agentState.mintedUBA.gt(BN_ZERO) || agentState.reservedUBA.gt(BN_ZERO) || agentState.redeemingUBA.gt(BN_ZERO)) return;
         this.runner.startThread((scope) => this.destroyAndReenter(scope));
+    }
+
+    async transferToCoreVault(scope: EventScope) {
+        const agentState = this.agentState(this.agent);
+        const mintedLots = agentState.mintedUBA.div(this.context.lotSize());
+        const transferLots = randomBN(mintedLots.divn(2), mintedLots.addn(1));
+        if (transferLots.eqn(0)) return;
+        const transferAmount = transferLots.mul(this.context.lotSize());
+        await this.agent.startTransferToCoreVault(transferAmount)
+            .catch(e => scope.exitOnExpectedError(e, ["invalid agent status", "transfer already active", "too little minting left after transfer"]));
     }
 
     destroying: Set<Agent> = new Set();

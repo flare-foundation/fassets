@@ -12,11 +12,11 @@ import { CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionPaym
 import { Approximation, assertApproximateMatch } from "../../utils/approximation";
 import { AgentCollateral } from "../../utils/fasset/AgentCollateral";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
+import { deterministicTimeIncrease } from "../../utils/test-helpers";
 import { createTestAgentSettings } from "../../utils/test-settings";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
-import { deterministicTimeIncrease } from "../../utils/test-helpers";
 
 const AgentVault = artifacts.require('AgentVault');
 const CollateralPool = artifacts.require('CollateralPool');
@@ -172,6 +172,7 @@ export class Agent extends AssetContextClient {
     async depositCollateralLotsAndMakeAvailable(lots: BNish, multiplier: number = 1) {
         const requiredCollateral = await this.requiredCollateralForLots(lots, multiplier);
         await this.depositCollateralsAndMakeAvailable(requiredCollateral.vault, requiredCollateral.pool);
+        return requiredCollateral;
     }
 
     async requiredCollateralForLots(lots: BNish, multiplier: number = 1) {
@@ -528,12 +529,16 @@ export class Agent extends AssetContextClient {
     }
 
     async transferToCoreVault(transferAmount: BNish) {
-        const cbTransferFee = await this.assetManager.transferToCoreVaultFee(transferAmount);
-        const res = await this.assetManager.transferToCoreVault(this.vaultAddress, transferAmount, { from: this.ownerWorkAddress, value: cbTransferFee });
-        const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
+        const rdreqs = await this.startTransferToCoreVault(transferAmount);
         assert.isAtLeast(rdreqs.length, 1);
         // perform transfer of underlying
         await this.performRedemptions(rdreqs);
+    }
+
+    async startTransferToCoreVault(transferAmount: BNish) {
+        const cbTransferFee = await this.assetManager.transferToCoreVaultFee(transferAmount);
+        const res = await this.assetManager.transferToCoreVault(this.vaultAddress, transferAmount, { from: this.ownerWorkAddress, value: cbTransferFee });
+        return filterEvents(res, "RedemptionRequested").map(evt => evt.args);
     }
 
     async confirmReturnFromCoreVault(txHash: string) {

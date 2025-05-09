@@ -27,7 +27,6 @@ export class MockChainEscrow {
 
     wallet = new MockChainWallet(this.chain);
     escrows: Map<string, MockEscrowItem> = new Map();   // preimageHash => data
-    underlyingAddress = "ESCROW_ADDRESS";
 
     async createEscrow(source: string, destinationAddress: string, amount: BN, preimageHash: string, expirationTimestamp: BN) {
         assert(!this.escrows.has(preimageHash), "preimage hash already used");
@@ -71,13 +70,14 @@ export class MockCoreVaultBot extends AssetContextClient {
     constructor(
         context: AssetContext,
         public triggeringAddress: string,
+        public mockEscrowAddress: string = "ESCROW_ADDRESS",
     ) {
         super(context);
     }
 
     chain = checkedCast(this.context.chain, MockChain);
     wallet = new MockChainWallet(this.chain);
-    escrow = new MockChainEscrow(this.chain, "ESCROW_ADDRESS");
+    escrow = new MockChainEscrow(this.chain, this.mockEscrowAddress);
     coreVaultManager = requireNotNull(this.context.coreVaultManager);
 
     async getSettings(): Promise<CoreVaultManagerSettings> {

@@ -1,6 +1,6 @@
 import { time } from "@openzeppelin/test-helpers";
 import { Challenger } from "../../../lib/actors/Challenger";
-import { isVaultCollateral, isPoolCollateral } from "../../../lib/state/CollateralIndexedList";
+import { isPoolCollateral, isVaultCollateral } from "../../../lib/state/CollateralIndexedList";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { expectErrors, formatBN, latestBlockTimestamp, mulDecimal, sleep, systemTimestamp, toBIPS, toBN, toWei } from "../../../lib/utils/helpers";
@@ -15,15 +15,16 @@ import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataCo
 import { InclusionIterable, coinFlip, currentRealTime, getEnv, randomChoice, randomInt, randomNum, weightedRandomChoice } from "../../utils/fuzzing-utils";
 import { getTestFile } from "../../utils/test-helpers";
 import { FuzzingAgent } from "./FuzzingAgent";
+import { FuzzingCoreVault } from "./FuzzingCoreVault";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingKeeper } from "./FuzzingKeeper";
+import { FuzzingPoolTokenHolder } from "./FuzzingPoolTokenHolder";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingState } from "./FuzzingState";
 import { FuzzingTimeline } from "./FuzzingTimeline";
 import { InterceptorEvmEvents } from "./InterceptorEvmEvents";
-import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
-import { FuzzingPoolTokenHolder } from "./FuzzingPoolTokenHolder";
 import { MultiStateLock } from "./MultiStateLock";
+import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
 
 contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
     const startTimestamp = systemTimestamp();
@@ -53,6 +54,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let keepers: FuzzingKeeper[] = [];
     let poolTokenHolders: FuzzingPoolTokenHolder[] = [];
     let challenger: Challenger;
+    let coreVault: FuzzingCoreVault;
     let chainInfo: TestChainInfo;
     let chain: MockChain;
     let eventDecoder: Web3EventDecoder;
@@ -162,7 +164,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         }
         // create liquidators
         runner.comment(`Initializing ${N_KEEPERS} system keepers / liquidators`);
-        const firstKeeperAddress = firstAgentAddress + 3 * N_AGENTS + N_CUSTOMERS;
+        const firstKeeperAddress = firstCustomerAddress + N_CUSTOMERS;
         for (let i = 0; i < N_KEEPERS; i++) {
             const keeper = new FuzzingKeeper(runner, accounts[firstKeeperAddress + i]);
             keepers.push(keeper);
@@ -170,18 +172,26 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         }
         // create challenger
         runner.comment(`Initializing challenger`);
-        const challengerAddress = accounts[firstAgentAddress + 3 * N_AGENTS + N_CUSTOMERS + N_KEEPERS];
+        const challengerAddress = accounts[firstKeeperAddress + N_KEEPERS];
         challenger = new Challenger(runner, fuzzingState, challengerAddress);
         eventDecoder.addAddress(`CHALLENGER`, challenger.address);
         // create pool token holders
         runner.comment(`Initializing ${N_POOL_TOKEN_HOLDERS} pool token holders`);
-        const firstPoolTokenHolderAddress = firstAgentAddress + 3 * N_AGENTS + N_CUSTOMERS + N_KEEPERS + 1;
+        const firstPoolTokenHolderAddress = firstKeeperAddress + N_KEEPERS + 1;
         for (let i = 0; i < N_POOL_TOKEN_HOLDERS; i++) {
             const underlyingAddress = "underlying_pool_token_holder_" + i;
             const tokenHolder = new FuzzingPoolTokenHolder(runner, accounts[firstPoolTokenHolderAddress + i], underlyingAddress);
             poolTokenHolders.push(tokenHolder);
             eventDecoder.addAddress(`POOL_TOKEN_HOLDER_${i}`, tokenHolder.address);
         }
+        // create core vault
+        const coreVaultTriggeringAccountAddress = accounts[firstPoolTokenHolderAddress + N_POOL_TOKEN_HOLDERS];
+        await context.assignCoreVaultManager({
+            underlyingAddress: "core_vault_underlying",
+            custodianAddress: "core_vault_custodian",
+            triggeringAccounts: [coreVaultTriggeringAccountAddress],
+        });
+        coreVault = await FuzzingCoreVault.create(runner, coreVaultTriggeringAccountAddress);
         // await context.wnat.send("1000", { from: governance });
         await interceptor.allHandled();
         // init some state
@@ -195,6 +205,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             [testLiquidate, 10],
             [testConvertDustToTicket, 1],
             [testUnderlyingWithdrawal, 5],
+            [testTransferToCoreVault, 5],
             [refreshAvailableAgents, 1],
             [updateUnderlyingBlock, 10],
             [testEnterPool, 10],
@@ -355,6 +366,11 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         if (agentsWithRedemptions.length === 0) return;
         const agent = randomChoice(agentsWithRedemptions);
         runner.startThread((scope) => agent.makeDoublePayment(scope));
+    }
+
+    async function testTransferToCoreVault() {
+        const agent = randomChoice(agents);
+        runner.startThread((scope) => agent.transferToCoreVault(scope));
     }
 
     async function testLiquidate() {

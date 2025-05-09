@@ -5,7 +5,7 @@ import { EventFormatter } from "../utils/events/EventFormatter";
 import { IEvmEvents } from "../utils/events/IEvmEvents";
 import { EventExecutionQueue, TriggerableEvent } from "../utils/events/ScopedEvents";
 import { EvmEvent, ExtractedEventArgs } from "../utils/events/common";
-import { BN_ZERO, toBN } from "../utils/helpers";
+import { BN_ZERO, sumBN, toBN } from "../utils/helpers";
 import { stringifyJson } from "../utils/json-bn";
 import { ILogger } from "../utils/logging";
 import { web3DeepNormalize, web3Normalize } from "../utils/web3normalize";
@@ -13,6 +13,21 @@ import { CollateralList, isPoolCollateral } from "./CollateralIndexedList";
 import { Prices } from "./Prices";
 import { tokenContract } from "./TokenPrice";
 import { ExtendedAgentInfo, InitialAgentData, TrackedAgentState } from "./TrackedAgentState";
+
+export class TrackedCoreVaultState {
+    // confirmed balance by CoreVaultManager
+    balance = BN_ZERO;
+
+    // tracked transfers from/to asset manager
+    transferringTo = BN_ZERO;
+    transferredTo = BN_ZERO;
+    returned = BN_ZERO;
+    redemptionRequested = BN_ZERO;
+
+    backedFAssetSupply() {
+        return this.transferringTo.add(this.transferredTo).sub(this.returned).sub(this.redemptionRequested);
+    }
+}
 
 export class TrackedState {
     constructor(
@@ -25,7 +40,8 @@ export class TrackedState {
     }
 
     // state
-    fAssetSupply = BN_ZERO;
+    agentBackedFAssetSupply = BN_ZERO;
+    coreVault = new TrackedCoreVaultState();
 
     // must call initialize to init prices and settings
     prices!: Prices;
@@ -60,7 +76,7 @@ export class TrackedState {
             }
         }
         [this.prices, this.trustedPrices] = await this.getPrices();
-        this.fAssetSupply = await this.context.fAsset.totalSupply();
+        this.agentBackedFAssetSupply = await this.measureAgentBackedFAssetSupply();
         this.registerHandlers();
     }
 
@@ -71,25 +87,25 @@ export class TrackedState {
     registerHandlers() {
         // track total supply of fAsset
         this.assetManagerEvent('MintingExecuted').subscribe(args => {
-            this.fAssetSupply = this.fAssetSupply.add(toBN(args.mintedAmountUBA).add(toBN(args.poolFeeUBA)));
+            this.agentBackedFAssetSupply = this.agentBackedFAssetSupply.add(toBN(args.mintedAmountUBA).add(toBN(args.poolFeeUBA)));
         });
         this.assetManagerEvent('SelfMint').subscribe(args => {
-            this.fAssetSupply = this.fAssetSupply.add(toBN(args.mintedAmountUBA).add(toBN(args.poolFeeUBA)));
+            this.agentBackedFAssetSupply = this.agentBackedFAssetSupply.add(toBN(args.mintedAmountUBA).add(toBN(args.poolFeeUBA)));
         });
         this.assetManagerEvent('RedemptionRequested').subscribe(args => {
-            this.fAssetSupply = this.fAssetSupply.sub(toBN(args.valueUBA));
+            this.agentBackedFAssetSupply = this.agentBackedFAssetSupply.sub(toBN(args.valueUBA));
         });
         this.assetManagerEvent('RedemptionPoolFeeMinted').subscribe(args => {
-            this.fAssetSupply = this.fAssetSupply.add(toBN(args.poolFeeUBA));
+            this.agentBackedFAssetSupply = this.agentBackedFAssetSupply.add(toBN(args.poolFeeUBA));
         });
         this.assetManagerEvent('RedeemedInCollateral').subscribe(args => {
-            this.fAssetSupply = this.fAssetSupply.sub(toBN(args.redemptionAmountUBA));
+            this.agentBackedFAssetSupply = this.agentBackedFAssetSupply.sub(toBN(args.redemptionAmountUBA));
         });
         this.assetManagerEvent('SelfClose').subscribe(args => {
-            this.fAssetSupply = this.fAssetSupply.sub(toBN(args.valueUBA));
+            this.agentBackedFAssetSupply = this.agentBackedFAssetSupply.sub(toBN(args.valueUBA));
         });
         this.assetManagerEvent('LiquidationPerformed').subscribe(args => {
-            this.fAssetSupply = this.fAssetSupply.sub(toBN(args.valueUBA));
+            this.agentBackedFAssetSupply = this.agentBackedFAssetSupply.sub(toBN(args.valueUBA));
         });
         // track setting changes
         this.assetManagerEvent('SettingChanged').subscribe(args => {
@@ -125,11 +141,40 @@ export class TrackedState {
             this.pricesUpdated.trigger();
         });
         // core vault
-        this.assetManagerEvent('TransferToCoreVaultDefaulted').subscribe(args => {
-            this.fAssetSupply = this.fAssetSupply.add(toBN(args.remintedUBA));
-        });
+        this.registerCoreVaultHandlers();
         // agents
         this.registerAgentHandlers();
+    }
+
+    private registerCoreVaultHandlers() {
+        this.assetManagerEvent('TransferToCoreVaultStarted').subscribe(args => {
+            this.coreVault.transferringTo = this.coreVault.transferringTo.add(toBN(args.valueUBA));
+            this.getAgentTriggerAdd(args.agentVault)?.handleTransferToCoreVaultStarted(args);
+        });
+        this.assetManagerEvent('TransferToCoreVaultDefaulted').subscribe(args => {
+            this.agentBackedFAssetSupply = this.agentBackedFAssetSupply.add(toBN(args.remintedUBA));
+            this.coreVault.transferringTo = this.coreVault.transferringTo.sub(toBN(args.remintedUBA));
+            this.getAgentTriggerAdd(args.agentVault)?.handleTransferToCoreVaultDefaulted(args);
+        });
+        this.assetManagerEvent('TransferToCoreVaultSuccessful').subscribe(args => {
+            this.coreVault.transferringTo = this.coreVault.transferringTo.sub(toBN(args.valueUBA));
+            this.coreVault.transferredTo = this.coreVault.transferredTo.add(toBN(args.valueUBA));
+            this.getAgentTriggerAdd(args.agentVault)?.handleTransferToCoreVaultSuccessful(args);
+        });
+        this.assetManagerEvent('ReturnFromCoreVaultRequested').subscribe(args => {
+            this.getAgentTriggerAdd(args.agentVault)?.handleReturnFromCoreVaultRequested(args);
+        });
+        this.assetManagerEvent('ReturnFromCoreVaultCancelled').subscribe(args => {
+            this.getAgentTriggerAdd(args.agentVault)?.handleReturnFromCoreVaultCancelled(args);
+        });
+        this.assetManagerEvent('ReturnFromCoreVaultConfirmed').subscribe(args => {
+            this.agentBackedFAssetSupply = this.agentBackedFAssetSupply.add(toBN(args.remintedUBA));
+            this.coreVault.returned = this.coreVault.returned.add(toBN(args.remintedUBA));
+            this.getAgentTriggerAdd(args.agentVault)?.handleReturnFromCoreVaultConfirmed(args);
+        });
+        this.assetManagerEvent('CoreVaultRedemptionRequested').subscribe(args => {
+            this.coreVault.redemptionRequested = this.coreVault.redemptionRequested.add(toBN(args.valueUBA));
+        });
     }
 
     private registerAgentHandlers() {
@@ -298,10 +343,21 @@ export class TrackedState {
         this.lastEventHandled = event;
     }
 
+    async measureAgentBackedFAssetSupply() {
+        const { 0: agents } = await this.context.assetManager.getAllAgents(0, 1000);
+        const infos = await Promise.all(agents.map(agent => this.context.assetManager.getAgentInfo(agent)));
+        return sumBN(infos, info => toBN(info.mintedUBA));
+    }
+
     // getters
 
     lotSize() {
         return toBN(this.settings.lotSizeAMG).mul(toBN(this.settings.assetMintingGranularityUBA));
+    }
+
+    // should be equal to the total supply of FAsset tokens, except perhaps for core vault network fees
+    totalFAssetSupply() {
+        return this.agentBackedFAssetSupply.add(this.coreVault.backedFAssetSupply());
     }
 
     // logs

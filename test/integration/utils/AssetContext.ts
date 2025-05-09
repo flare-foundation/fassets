@@ -148,6 +148,7 @@ export class AssetContext implements IAssetContext {
     async assignCoreVaultManager(options?: Partial<CoreVaultManagerInitSettings>) {
         const settings = createTestCoreVaultManagerSettings(this.chainInfo, options);
         this.coreVaultManager = await assignCoreVaultManager(this.assetManager, this.addressUpdater, settings);
+        return this.coreVaultManager;
     }
 
     async updateUnderlyingBlock() {

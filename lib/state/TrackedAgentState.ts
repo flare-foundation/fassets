@@ -1,9 +1,13 @@
 import {
-    AgentAvailable, AgentVaultCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, CoreVaultRedemptionRequested, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
-    RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionPoolFeeMinted, RedemptionRequested, RedemptionTicketCreated, RedemptionTicketDeleted,
-    RedemptionTicketUpdated, ReturnFromCoreVaultCancelled, ReturnFromCoreVaultConfirmed, ReturnFromCoreVaultRequested, SelfClose, SelfMint, TransferToCoreVaultDefaulted, TransferToCoreVaultStarted, TransferToCoreVaultSuccessful, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
+    AgentAvailable, AgentVaultCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved,
+    DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault, RedeemedInCollateral, RedemptionDefault,
+    RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionPoolFeeMinted, RedemptionRequested,
+    RedemptionTicketCreated, RedemptionTicketDeleted, RedemptionTicketUpdated, ReturnFromCoreVaultCancelled,
+    ReturnFromCoreVaultConfirmed, ReturnFromCoreVaultRequested, SelfClose, SelfMint, TransferToCoreVaultDefaulted,
+    TransferToCoreVaultStarted, TransferToCoreVaultSuccessful, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced,
+    UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../typechain-truffle/IIAssetManager";
-import { AgentInfo, AgentSetting, AgentStatus, CollateralType, CollateralClass } from "../fasset/AssetManagerTypes";
+import { AgentInfo, AgentSetting, AgentStatus, CollateralClass, CollateralType } from "../fasset/AssetManagerTypes";
 import { roundUBAToAmg } from "../fasset/Conversions";
 import { EvmEventArgs } from "../utils/events/IEvmEvents";
 import { EventArgs, EvmEvent } from "../utils/events/common";
@@ -306,6 +310,8 @@ export class TrackedAgentState {
     }
 
     handleReturnFromCoreVaultConfirmed(args: EvmEventArgs<ReturnFromCoreVaultConfirmed>): void {
+        // the returned amount has been re-minted
+        this.mintedUBA = this.mintedUBA.add(toBN(args.remintedUBA));
     }
 
     handleReturnFromCoreVaultCancelled(args: EvmEventArgs<ReturnFromCoreVaultCancelled>): void {
