@@ -87,9 +87,9 @@ library Minting {
         require(agent.status == Agent.Status.NORMAL, "self-mint invalid agent status");
         require(collateralData.freeCollateralLots(agent) >= _lots, "not enough free collateral");
         uint64 valueAMG = _lots * Globals.getSettings().lotSizeAMG;
-        checkMintingCap(valueAMG);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
         uint256 poolFeeUBA = calculateCurrentPoolFeeUBA(agent, mintValueUBA);
+        checkMintingCap(valueAMG + Conversion.convertUBAToAmg(poolFeeUBA));
         require(_payment.data.responseBody.standardPaymentReference == PaymentReference.selfMint(_agentVault),
             "invalid self-mint reference");
         require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
@@ -126,9 +126,9 @@ library Minting {
         require(agent.status == Agent.Status.NORMAL, "self-mint invalid agent status");
         require(collateralData.freeCollateralLots(agent) >= _lots, "not enough free collateral");
         uint64 valueAMG = _lots * Globals.getSettings().lotSizeAMG;
-        checkMintingCap(valueAMG);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
         uint256 poolFeeUBA = calculateCurrentPoolFeeUBA(agent, mintValueUBA);
+        checkMintingCap(valueAMG + Conversion.convertUBAToAmg(poolFeeUBA));
         uint256 requiredUnderlyingAfter = UnderlyingBalance.requiredUnderlyingUBA(agent) + mintValueUBA + poolFeeUBA;
         require(requiredUnderlyingAfter.toInt256() <= agent.underlyingBalanceUBA, "free underlying balance to small");
         _performMinting(agent, MintingType.FROM_FREE_UNDERLYING, 0, msg.sender, valueAMG, 0, poolFeeUBA);
