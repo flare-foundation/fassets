@@ -1,7 +1,7 @@
 import Web3 from "web3";
 import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/state-connector-protocol";
-import { TX_FAILED, TxInputOutput } from "../../../lib/underlying-chain/interfaces/IBlockChain";
-import { BN_ZERO, ZERO_BYTES32 } from "../../../lib/utils/helpers";
+import { TX_FAILED, TX_SUCCESS, TxInputOutput } from "../../../lib/underlying-chain/interfaces/IBlockChain";
+import { BN_ZERO, sumBN, ZERO_BYTES32 } from "../../../lib/utils/helpers";
 import { MockChain, MockChainTransaction } from "./MockChain";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 
@@ -20,10 +20,18 @@ function totalValueFor(ios: TxInputOutput[], address: string) {
 }
 
 function totalSpentValue(transaction: MockChainTransaction, sourceAddressHash: string) {
+    if (transaction.status !== TX_SUCCESS) {
+        // only fee is spent for failed/blocked transactions (fee is diff `totalSpent - totalReceived`)
+        return sumBN(transaction.inputs, it => it[1]).sub(sumBN(transaction.outputs, it => it[1]));
+    }
     return totalValueFor(transaction.inputs, sourceAddressHash).sub(totalValueFor(transaction.outputs, sourceAddressHash));
 }
 
 function totalReceivedValue(transaction: MockChainTransaction, receivingAddressHash: string) {
+    if (transaction.status !== TX_SUCCESS) {
+        // nothing is received for failed/blocked transactions
+        return BN_ZERO;
+    }
     return totalValueFor(transaction.outputs, receivingAddressHash).sub(totalValueFor(transaction.inputs, receivingAddressHash));
 }
 

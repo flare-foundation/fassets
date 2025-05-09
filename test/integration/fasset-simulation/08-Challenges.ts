@@ -16,6 +16,7 @@ import { Liquidator } from "../utils/Liquidator";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
+import { assertApproximatelyEqual } from "../../utils/approximation";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -143,6 +144,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         it("free balance negative challenge", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             const challenger = await Challenger.create(context, challengerAddress1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
@@ -150,32 +152,71 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // update block
             await context.updateUnderlyingBlock();
             // perform minting
-            const lots = 3;
-            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
-            const txHash = await minter.performMintingPayment(crt);
-            const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
-            // perform some payments
-            const tx1Hash = await agent.performPayment(underlyingRedeemer1, context.convertLotsToUBA(lots));
-            // check that we cannot use the same transaction multiple times
+            const [minted] = await minter.performMinting(agent.vaultAddress, 3);
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(3));
+            await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
+            // make redemption request and then pay much more than requested
+            const [[rrq]] = await redeemer.requestRedemption(1);
+            const tx1Hash = await agent.performPayment(underlyingRedeemer1, context.convertLotsToUBA(3), rrq.paymentReference);
+            // check that we cannot use other challenge types
+            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
             await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash, tx1Hash]), "mult chlg: repeated transaction");
             // challenge agent for negative underlying balance
             const startBalance = await context.usdc.balanceOf(challenger.address);
             const liquidationStarted = await challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]);
+            const endBalance = await context.usdc.balanceOf(challenger.address);
+            // challenge cannot be repeated
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: already liquidating");
             await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "chlg dbl: already liquidating");
             await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "mult chlg: already liquidating");
-            const endBalance = await context.usdc.balanceOf(challenger.address);
             // test rewarding
             const reward = await challenger.getChallengerReward(minted.mintedAmountUBA, agent);
             assertWeb3Equal(endBalance.sub(startBalance), reward);
             // test full liquidation started
-            const info = await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(reward), freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA), reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.FULL_LIQUIDATION });
+            const info = await agent.checkAgentInfo({
+                status: AgentStatus.FULL_LIQUIDATION,
+                totalVaultCollateralWei: fullAgentCollateral.sub(reward),
+                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
+                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA).sub(rrq.valueUBA),
+                redeemingUBA: rrq.valueUBA,
+            });
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
             // check that agent cannot exit
             await expectRevert(agent.exitAndDestroy(fullAgentCollateral.sub(reward)), "agent still backing f-assets");
+        });
+
+        it("trying to pay more than agent's balance results in failed transaction and shouldn't trigger challenge", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            const challenger = await Challenger.create(context, challengerAddress1);
+            // make agent available
+            await agent.depositCollateralLotsAndMakeAvailable(10);
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const [minted] = await minter.performMinting(agent.vaultAddress, 3);
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(3));
+            await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
+            const mintDepositedAmount = minted.mintedAmountUBA.add(minted.agentFeeUBA).add(minted.poolFeeUBA);
+            assertApproximatelyEqual(await context.chain.getBalance(agent.underlyingAddress), mintDepositedAmount, "absolute", 10);
+            // make redemption request and then pay much more than requested
+            const [[rrq]] = await redeemer.requestRedemption(1);
+            const tx1Hash = await agent.performPayment(underlyingRedeemer1, context.convertLotsToUBA(10), rrq.paymentReference);
+            // agent's underlying balance stays the same
+            assertApproximatelyEqual(await context.chain.getBalance(agent.underlyingAddress), mintDepositedAmount, "absolute", 10);
+            // check that we cannot challenge
+            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
+            await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "chlg dbl: same transaction");
+            await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "mult chlg: enough balance");
+            // confirming failed transaction
+            await agent.confirmFailedRedemptionPayment(rrq, tx1Hash);
+            // still can't challenge afterwards
+            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
+            await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "chlg dbl: same transaction");
+            await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "mult chlg: enough balance");
         });
 
         it("agent cannot be challenged after expiring payment, even if paid", async () => {

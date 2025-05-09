@@ -3,7 +3,7 @@ import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManag
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { toBNExp, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
+import { toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
@@ -312,10 +312,13 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
         it("should succeed in challenging payments if they make balance negative", async() => {
             await depositAndMakeAgentAvailable(agentVault, agentOwner1);
             await mint(agentVault, 1, minterAddress1, chain, underlyingMinterAddress, true);
-            // const info = await assetManager.getAgentInfo(agentVault.address);
+            const info = await assetManager.getAgentInfo(agentVault.address);
+            const transferAmount = toBN(info.underlyingBalanceUBA).muln(2);
+            // make sure agent has enough available to make transaction (but without asset manager accounting it)
+            chain.mint(underlyingAgent1, transferAmount);
             // console.log(deepFormat(info));
             let txHash2 = await wallet.addTransaction(
-                underlyingAgent1, underlyingRedeemer, toWei(1.5), PaymentReference.announcedWithdrawal(2));
+                underlyingAgent1, underlyingRedeemer, transferAmount, PaymentReference.announcedWithdrawal(2));
             let proof2 = await attestationProvider.proveBalanceDecreasingTransaction(txHash2, underlyingAgent1);
             // successful challenge
             let res1 = await assetManager.freeBalanceNegativeChallenge(

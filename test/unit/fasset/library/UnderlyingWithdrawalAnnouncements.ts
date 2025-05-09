@@ -120,7 +120,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
     it("should confirm underlying withdrawal both times", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        chain.mint(underlyingAgent1, 500);
+        chain.mint(underlyingAgent1, 1000);
         await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
         // act
