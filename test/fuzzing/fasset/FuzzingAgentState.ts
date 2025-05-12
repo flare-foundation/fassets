@@ -415,29 +415,40 @@ export class FuzzingAgentState extends TrackedAgentState {
         };
     }
 
+    addNewRedemptionTicket(event: EvmEvent, ticketId: number, amountUBA: BN) {
+        const ticket = this.newRedemptionTicket(ticketId, amountUBA);
+        this.redemptionTickets.set(ticket.id, ticket);
+        this.logAction(`new RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)}`, event);
+    }
+
     addRedemptionTicket(event: EvmEvent, ticketId: number, amountUBA: BN) {
         this.performRedemptionTicketChange(event, ticketId, "addRedemptionTicket", () => {
-            const ticket = this.newRedemptionTicket(ticketId, amountUBA);
-            this.redemptionTickets.set(ticket.id, ticket);
-            this.logAction(`new RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)}`, event);
+            this.addNewRedemptionTicket(event, ticketId, amountUBA);
         });
     }
 
     updateRedemptionTicket(event: EvmEvent, ticketId: number, amountUBA: BN) {
         this.performRedemptionTicketChange(event, ticketId, "updateRedemptionTicket", () => {
             const ticket = this.redemptionTickets.get(ticketId);
-            if (!ticket) assert.fail(`Invalid redemption ticket id ${ticketId}`);
-            this.logAction(`updated RedemptionTicket(${ticket.id}): oldAmount=${formatBN(ticket.amountUBA)} amount=${formatBN(amountUBA)}`, event);
-            ticket.amountUBA = amountUBA;
-        });
+            if (ticket) {
+                ticket.amountUBA = amountUBA;
+                this.logAction(`updated RedemptionTicket(${ticket.id}): oldAmount=${formatBN(ticket.amountUBA)} amount=${formatBN(amountUBA)}`, event);
+            } else {
+                this.parent.logger?.log(`???? ISSUE ticket ${ticketId} update before add due to inconsistent event ordering`);
+                this.addNewRedemptionTicket(event, ticketId, amountUBA);
+            }
+    });
     }
 
     deleteRedemptionTicket(event: EvmEvent, ticketId: number) {
         this.performRedemptionTicketChange(event, ticketId, "deleteRedemptionTicket", () => {
             const ticket = this.redemptionTickets.get(ticketId);
-            if (!ticket) assert.fail(`Invalid redemption ticket id ${ticketId}`);
-            this.redemptionTickets.delete(ticketId);
-            this.logAction(`deleted RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)}`, event);
+            if (ticket) {
+                this.redemptionTickets.delete(ticketId);
+                this.logAction(`deleted RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)}`, event);
+            } else {
+                this.parent.logger?.log(`???? ISSUE ticket ${ticketId} delete before add due to inconsistent event ordering`);
+            }
         });
     }
 
@@ -448,7 +459,7 @@ export class FuzzingAgentState extends TrackedAgentState {
             action();
             this.redemptionTicketsLastUpdateAt.set(ticketId, eventAt);
         } else {
-            this.parent.logger?.log(`???? ISSUE ${name} not executed due to inconsistent event ordering: prev change at ${this.lastDustChangeAt}, this change at ${eventAt}`);
+            this.parent.logger?.log(`???? ISSUE ${name} not executed due to inconsistent event ordering: prev change at ${lastChangeAt}, this change at ${eventAt}`);
         }
     }
 
