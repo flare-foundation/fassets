@@ -44,12 +44,13 @@ library Challenges {
             if (PaymentReference.isValid(paymentReference, PaymentReference.REDEMPTION)) {
                 uint256 redemptionId = PaymentReference.decodeId(paymentReference);
                 Redemption.Request storage redemption = state.redemptionRequests[redemptionId];
-                // Redemption must be for the correct agent and
+                // Redemption must be for the correct agent, must not be rejected and
                 // only statuses ACTIVE and DEFAULTED mean that redemption is still missing a payment proof.
                 // We do not check for timestamp of the payment, because on UTXO chains legal payments can be
                 // delayed by arbitrary time due to high fees and cannot be canceled, which could lead to
                 // unnecessary full liquidations.
                 bool redemptionActive = redemption.agentVault == _agentVault
+                    && redemption.rejectionTimestamp == 0
                     && (redemption.status == Redemption.Status.ACTIVE ||
                         redemption.status == Redemption.Status.DEFAULTED);
                 require(!redemptionActive, "matching redemption active");

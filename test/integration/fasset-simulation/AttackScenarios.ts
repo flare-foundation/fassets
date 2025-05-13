@@ -605,28 +605,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
 
         // Assume no one is taking over
 
-        // Perform the first payment
+        // Perform the payment
         const paymentAmount = request.valueUBA.sub(request.feeUBA);
         const tx1Hash = await agent.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
 
         await deterministicTimeIncrease((await context.assetManager.getSettings()).confirmationByOthersAfterSeconds);
-        // The payment can be confirmed by 3rd party
-        await agent.confirmActiveRedemptionPayment(request, tx1Hash);
+        // No one can confirm this payment because this redemption is already rejected
+        await expectRevert(agent.confirmActiveRedemptionPayment(request, tx1Hash), 'rejected redemption cannot be confirmed');
 
-        // Agent waits for 14 days
-        await deterministicTimeIncrease(15 * DAYS + 10);
-        mockChain.skipTime(14 * DAYS + 10);
-        mockChain.mine(100*14);
-
-        // perform double payment to the same payment reference
-        const tx2Hash = await agent.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
-
-        // cannot challenge the old transaction
-        await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash), 'verified transaction too old');
-        await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), 'verified transaction too old');
-
-        // but the new transaction can be challenged since the redemption request was deleted
-        await challenger.illegalPaymentChallenge(agent, tx2Hash);
+        // but the transaction can be challenged since the redemption request was rejected
+        await challenger.illegalPaymentChallenge(agent, tx1Hash);
     });
 
     it.skip("43711: vault CR too low but cannot liquidate", async () => {

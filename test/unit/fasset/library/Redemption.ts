@@ -2,7 +2,7 @@ import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
+import { filterEvents, findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BNish, HOURS, MAX_BIPS, randomAddress, toBIPS, toBN, toBNExp, toNumber, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, CollateralPoolInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -846,20 +846,24 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await expectRevert(promise, "invalid request id");
     });
 
-    it("should be able to 3rd party confirm redemption payment if redemption is rejected", async () => {
+    it("should not be able to confirm redemption payment if redemption is rejected but challenge it as illegal payment", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handshakeType: 1 });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
         // reject redemption request
-        const res = await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
         // try to perform redemption payment
         const paymentAmt = request.valueUBA.sub(request.feeUBA);
         const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
         //
         await deterministicTimeIncrease(settings.confirmationByOthersAfterSeconds);
         const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
-        await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: accounts[100] });
+        await expectRevert(assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: accounts[100] }), "rejected redemption cannot be confirmed");
+
+        const proof = await attestationProvider.proveBalanceDecreasingTransaction(tx1Hash, underlyingAgent1);
+        const res = await assetManager.illegalPaymentChallenge(proof, agentVault.address);
+        findRequiredEvent(res, 'IllegalPaymentConfirmed');
     });
 
     it("should revert rejected redemption payment default - redemption not rejected", async () => {
