@@ -102,8 +102,8 @@ export class FuzzingAgent extends FuzzingActor {
         if (!coinFlip(0.8)) return;
         this.runner.startThread(async (scope) => {
             const agent = this.agent;   // save in case it is destroyed and re-created
-            const cheatOnPayment = !request.feeUBA.eqn(0) && coinFlip(0.2);
-            const takeFee = cheatOnPayment ? request.feeUBA.muln(2) : request.feeUBA;   // cheat by taking more fee (so the payment should be considered failed)
+            const cheatOnPayment = coinFlip(0.2);
+            const takeFee = cheatOnPayment ? request.feeUBA.add(request.valueUBA.divn(10)) : request.feeUBA;   // cheat by taking more fee (so the payment should be considered failed)
             const paymentAmount = request.valueUBA.sub(takeFee);
             // const amountToMyself = randomBN(takeFee.add(this.freeUnderlyingBalance(agent)));  // abuse redemption to pay something to the owner via multi-transaction
             const amountToMyself = takeFee;
@@ -288,6 +288,20 @@ export class FuzzingAgent extends FuzzingActor {
         const transferAmount = transferLots.mul(this.context.lotSize());
         await this.agent.startTransferToCoreVault(transferAmount)
             .catch(e => scope.exitOnExpectedError(e, ["invalid agent status", "transfer already active", "too little minting left after transfer"]));
+    }
+
+    async returnFromCoreVault(scope: EventScope) {
+        const info = await this.agent.getAgentInfo();
+        const lots = randomBN(toBN(info.freeCollateralLots));
+        if (lots.eqn(0)) return;
+        const request = await this.agent.requestReturnFromCoreVault(lots)
+            .catch(e => scope.exitOnExpectedError(e, ["agent's underlying address not allowed by core vault", "invalid agent status",
+                "return from core vault already requested", "not enough free collateral", "not enough available on core vault"]));
+        this.comment(`Return from core vault started, paymentReference=${request.paymentReference}.`);
+        const paymentEvt = await this.chainEvents.transactionEvent({ reference: request.paymentReference, to: this.agent.underlyingAddress }).wait(scope);
+        await this.context.waitForUnderlyingTransactionFinalization(scope, paymentEvt.hash);
+        await this.agent.confirmReturnFromCoreVault(paymentEvt.hash);
+        this.comment(`Return from core vault successful, paymentReference=${request.paymentReference}.`);
     }
 
     destroying: Set<Agent> = new Set();

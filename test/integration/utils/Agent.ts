@@ -541,6 +541,11 @@ export class Agent extends AssetContextClient {
         return filterEvents(res, "RedemptionRequested").map(evt => evt.args);
     }
 
+    async requestReturnFromCoreVault(lots: BNish) {
+        const res = await this.assetManager.requestReturnFromCoreVault(this.vaultAddress, lots, { from: this.ownerWorkAddress });
+        return requiredEventArgs(res, "ReturnFromCoreVaultRequested");
+    }
+
     async confirmReturnFromCoreVault(txHash: string) {
         const proof = await this.attestationProvider.provePayment(txHash, null, this.underlyingAddress);
         await this.assetManager.confirmReturnFromCoreVault(proof, this.vaultAddress, { from: this.ownerWorkAddress });

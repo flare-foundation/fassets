@@ -18,7 +18,7 @@ import { Entered, Exited } from "../../../typechain-truffle/CollateralPool";
 import {
     AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionPoolFeeMinted, RedemptionRequested, RedemptionTicketCreated,
-    RedemptionTicketDeleted, RedemptionTicketUpdated, SelfClose, SelfMint, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
+    RedemptionTicketDeleted, RedemptionTicketUpdated, ReturnFromCoreVaultCancelled, ReturnFromCoreVaultConfirmed, ReturnFromCoreVaultRequested, SelfClose, SelfMint, TransferToCoreVaultDefaulted, TransferToCoreVaultStarted, TransferToCoreVaultSuccessful, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/IIAssetManager";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { BalanceTrackingList, BalanceTrackingRow } from "./AgentBalanceTracking";
@@ -35,6 +35,12 @@ export interface CollateralReservation {
     lastUnderlyingTimestamp: BN;
     paymentAddress: string;
     paymentReference: string;
+}
+
+export interface ReturnFromCoreVault {
+    id: number;
+    agentVault: string;
+    valueUBA: BN;
 }
 
 export interface RedemptionTicket {
@@ -58,7 +64,7 @@ export interface RedemptionRequest {
     underlyingReleased: boolean;
 }
 
-type UnderlyingBalanceChangeType = 'minting' | 'redemption' | 'topup' | 'withdrawal';
+type UnderlyingBalanceChangeType = 'minting' | 'redemption' | 'topup' | 'withdrawal' | 'coreVaultReturn';
 
 export interface UnderlyingBalanceChange {
     type: UnderlyingBalanceChangeType,
@@ -85,6 +91,7 @@ export class FuzzingAgentState extends TrackedAgentState {
     redemptionTicketsLastUpdateAt: Map<number, number> = new Map();
     redemptionRequests: Map<number, RedemptionRequest> = new Map();
     underlyingBalanceChanges: UnderlyingBalanceChange[] = [];
+    returnsFromCoreVault: Map<number, ReturnFromCoreVault> = new Map();
 
     // pool data
     poolTokenBalances = new SparseArray();
@@ -290,6 +297,37 @@ export class FuzzingAgentState extends TrackedAgentState {
     override handleLiquidationPerformed(args: EvmEventArgs<LiquidationPerformed>): void {
         super.handleLiquidationPerformed(args);
     }
+
+    // handlers: core vault
+
+    override handleTransferToCoreVaultStarted(args: EvmEventArgs<TransferToCoreVaultStarted>): void {
+        super.handleTransferToCoreVaultStarted(args);
+    }
+
+    override handleTransferToCoreVaultSuccessful(args: EvmEventArgs<TransferToCoreVaultSuccessful>): void {
+        super.handleTransferToCoreVaultSuccessful(args);
+    }
+
+    override handleTransferToCoreVaultDefaulted(args: EvmEventArgs<TransferToCoreVaultDefaulted>): void {
+        super.handleTransferToCoreVaultDefaulted(args);
+    }
+
+    override handleReturnFromCoreVaultRequested(args: EvmEventArgs<ReturnFromCoreVaultRequested>): void {
+        super.handleReturnFromCoreVaultRequested(args);
+        this.returnsFromCoreVault.set(Number(args.requestId), { id: Number(args.requestId), agentVault: args.agentVault, valueUBA: toBN(args.valueUBA) });
+    }
+
+    override handleReturnFromCoreVaultConfirmed(args: EvmEventArgs<ReturnFromCoreVaultConfirmed>): void {
+        super.handleReturnFromCoreVaultConfirmed(args);
+        this.returnsFromCoreVault.delete(Number(args.requestId));
+        this.addUnderlyingBalanceChange(args.$event, 'coreVaultReturn', toBN(args.remintedUBA));
+    }
+
+    override handleReturnFromCoreVaultCancelled(args: EvmEventArgs<ReturnFromCoreVaultCancelled>): void {
+        super.handleReturnFromCoreVaultCancelled(args);
+        this.returnsFromCoreVault.delete(Number(args.requestId));
+    }
+
 
     // handlers: underlying transactions
 
@@ -543,6 +581,10 @@ export class FuzzingAgentState extends TrackedAgentState {
         return this.calculateUnderlyingBalanceUBA().sub(mintedUBA).sub(redeemingUBA);
     }
 
+    calculateTotalCoreVaultReturns() {
+        return sumBN(this.returnsFromCoreVault.values(), ticket => ticket.valueUBA);
+    }
+
     // calculations
 
     poolName() {
@@ -596,7 +638,7 @@ export class FuzzingAgentState extends TrackedAgentState {
         }
         // this.parent.logger?.log(`STARTING DIFFERENCE CHECK FOR ${agentName} - AFTER GET INFO`);
         // reserved
-        const reservedUBA = this.calculateReservedUBA();
+        const reservedUBA = this.calculateReservedUBA().add(this.calculateTotalCoreVaultReturns());
         checker.checkEquality(`${agentName}.reservedUBA`, agentInfo.reservedUBA, this.reservedUBA);
         checker.checkEquality(`${agentName}.reservedUBA.from_requests`, agentInfo.reservedUBA, reservedUBA);
         // minted

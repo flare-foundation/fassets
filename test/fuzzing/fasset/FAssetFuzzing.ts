@@ -12,7 +12,7 @@ import { TestChainInfo, testChainInfo } from "../../integration/utils/TestChainI
 import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
-import { InclusionIterable, coinFlip, currentRealTime, getEnv, randomChoice, randomInt, randomNum, weightedRandomChoice } from "../../utils/fuzzing-utils";
+import { InclusionIterable, coinFlip, currentRealTime, getEnv, randomChoice, randomInt, randomNum, range, weightedRandomChoice } from "../../utils/fuzzing-utils";
 import { getTestFile } from "../../utils/test-helpers";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCoreVault } from "./FuzzingCoreVault";
@@ -191,6 +191,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             custodianAddress: "core_vault_custodian",
             triggeringAccounts: [coreVaultTriggeringAccountAddress],
         });
+        await context.coreVaultManager!.addAllowedDestinationAddresses(agents.map(agent => agent.agent.underlyingAddress), { from: governance });
         coreVault = await FuzzingCoreVault.create(runner, coreVaultTriggeringAccountAddress);
         // await context.wnat.send("1000", { from: governance });
         await interceptor.allHandled();
@@ -206,6 +207,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             [testConvertDustToTicket, 1],
             [testUnderlyingWithdrawal, 5],
             [testTransferToCoreVault, 5],
+            [testReturnFromCoreVault, 5],
             [refreshAvailableAgents, 1],
             [updateUnderlyingBlock, 10],
             [testEnterPool, 10],
@@ -216,6 +218,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         const timedActions: Array<[(index: number) => Promise<void>, InclusionIterable<number> | null]> = [
             [testChangeLotSize, CHANGE_LOT_SIZE_AT],
             [testChangePrices, CHANGE_PRICE_AT],
+            // [testExecuteCoreVaultTriggers, range(10, null, 10)],
         ];
         // switch underlying chain to timed mining
         chain.automine = false;
@@ -248,6 +251,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
                 }
                 await interceptor.allHandled();
             }
+            await coreVault.triggerAndPerformActions();
             // fail immediately on unexpected errors from threads
             if (runner.uncaughtErrors.length > 0) {
                 throw runner.uncaughtErrors[0];
@@ -371,6 +375,15 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     async function testTransferToCoreVault() {
         const agent = randomChoice(agents);
         runner.startThread((scope) => agent.transferToCoreVault(scope));
+    }
+
+    async function testReturnFromCoreVault() {
+        const agent = randomChoice(agents);
+        runner.startThread((scope) => agent.returnFromCoreVault(scope));
+    }
+
+    async function testExecuteCoreVaultTriggers() {
+        runner.startThread((scope) => coreVault.triggerAndPerformActions());
     }
 
     async function testLiquidate() {

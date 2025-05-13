@@ -79,6 +79,7 @@ export class TrackedAgentState {
     ccbStartTimestamp: BN = BN_ZERO;                // 0 - not in ccb/liquidation
     liquidationStartTimestamp: BN = BN_ZERO;        // 0 - not in liquidation
     announcedUnderlyingWithdrawalId: BN = BN_ZERO;  // 0 - not announced
+    coreVaultReturnReservedUBA: BN = BN_ZERO;
 
     // aggregates
     reservedUBA: BN = BN_ZERO;
@@ -307,14 +308,25 @@ export class TrackedAgentState {
     }
 
     handleReturnFromCoreVaultRequested(args: EvmEventArgs<ReturnFromCoreVaultRequested>): void {
+        if (!this.coreVaultReturnReservedUBA.isZero()) {
+            this.parent.logger?.log(`???? ISSUE core vault return started while still active for agent ${this.name()}`);
+        }
+        this.coreVaultReturnReservedUBA = toBN(args.valueUBA);
+        this.reservedUBA = this.reservedUBA.add(toBN(args.valueUBA));
     }
 
     handleReturnFromCoreVaultConfirmed(args: EvmEventArgs<ReturnFromCoreVaultConfirmed>): void {
+        this.reservedUBA = this.reservedUBA.sub(this.coreVaultReturnReservedUBA);
+        this.coreVaultReturnReservedUBA = BN_ZERO;
         // the returned amount has been re-minted
         this.mintedUBA = this.mintedUBA.add(toBN(args.remintedUBA));
+        // update with extra event data
+        this.underlyingBalanceUBA = this.underlyingBalanceUBA.add(toBN(args.remintedUBA));
     }
 
     handleReturnFromCoreVaultCancelled(args: EvmEventArgs<ReturnFromCoreVaultCancelled>): void {
+        this.reservedUBA = this.reservedUBA.sub(this.coreVaultReturnReservedUBA);
+        this.coreVaultReturnReservedUBA = BN_ZERO;
     }
 
     // agent state changing

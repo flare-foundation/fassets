@@ -149,28 +149,22 @@ export class TrackedState {
     private registerCoreVaultHandlers() {
         this.assetManagerEvent('TransferToCoreVaultStarted').subscribe(args => {
             this.coreVault.transferringTo = this.coreVault.transferringTo.add(toBN(args.valueUBA));
-            this.getAgentTriggerAdd(args.agentVault)?.handleTransferToCoreVaultStarted(args);
         });
         this.assetManagerEvent('TransferToCoreVaultDefaulted').subscribe(args => {
             this.agentBackedFAssetSupply = this.agentBackedFAssetSupply.add(toBN(args.remintedUBA));
             this.coreVault.transferringTo = this.coreVault.transferringTo.sub(toBN(args.remintedUBA));
-            this.getAgentTriggerAdd(args.agentVault)?.handleTransferToCoreVaultDefaulted(args);
         });
         this.assetManagerEvent('TransferToCoreVaultSuccessful').subscribe(args => {
             this.coreVault.transferringTo = this.coreVault.transferringTo.sub(toBN(args.valueUBA));
             this.coreVault.transferredTo = this.coreVault.transferredTo.add(toBN(args.valueUBA));
-            this.getAgentTriggerAdd(args.agentVault)?.handleTransferToCoreVaultSuccessful(args);
         });
         this.assetManagerEvent('ReturnFromCoreVaultRequested').subscribe(args => {
-            this.getAgentTriggerAdd(args.agentVault)?.handleReturnFromCoreVaultRequested(args);
         });
         this.assetManagerEvent('ReturnFromCoreVaultCancelled').subscribe(args => {
-            this.getAgentTriggerAdd(args.agentVault)?.handleReturnFromCoreVaultCancelled(args);
         });
         this.assetManagerEvent('ReturnFromCoreVaultConfirmed').subscribe(args => {
             this.agentBackedFAssetSupply = this.agentBackedFAssetSupply.add(toBN(args.remintedUBA));
             this.coreVault.returned = this.coreVault.returned.add(toBN(args.remintedUBA));
-            this.getAgentTriggerAdd(args.agentVault)?.handleReturnFromCoreVaultConfirmed(args);
         });
         this.assetManagerEvent('CoreVaultRedemptionRequested').subscribe(args => {
             this.coreVault.redemptionRequested = this.coreVault.redemptionRequested.add(toBN(args.valueUBA));

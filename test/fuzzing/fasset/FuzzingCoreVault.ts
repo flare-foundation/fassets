@@ -9,6 +9,7 @@ export class FuzzingCoreVault extends FuzzingActor {
 
     ) {
         super(runner);
+        this.registerForEvents();
     }
 
     chain = this.context.chain;
@@ -19,5 +20,12 @@ export class FuzzingCoreVault extends FuzzingActor {
         runner.interceptor.captureEvents({ coreVaultManager: bot.coreVaultManager });
         runner.eventDecoder.addAddress(`CORE_VAULT_TRIGGERING_ACCOUNT`, triggerAddress);
         return new FuzzingCoreVault(runner, bot);
+    }
+
+    async triggerAndPerformActions() {
+        await this.bot.triggerAndPerformActions();
+    }
+
+    registerForEvents() {
     }
 }
