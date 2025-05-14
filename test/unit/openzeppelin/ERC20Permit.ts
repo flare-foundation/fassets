@@ -4,8 +4,8 @@ import { abiEncodeCall, toBN } from '../../../lib/utils/helpers';
 import { ERC20PermitMockInstance } from '../../../typechain-truffle';
 import { getChainId } from '../../utils/contract-test-helpers';
 import { assertWeb3DeepEqual, assertWeb3Equal } from '../../utils/web3assertions';
-import { domainSeparator, getDomain } from '../../utils/eip712';
-import { Permit, signPermit } from '../../utils/erc20permits';
+import { domainSeparator, getDomain } from '../../../lib/utils/eip712';
+import { Permit, signPermit } from '../../../lib/utils/erc20permits';
 
 const ERC20UpgradableToken = artifacts.require('ERC20UpgradableTokenMock');
 const ERC20PermitToken = artifacts.require('ERC20PermitMock');
