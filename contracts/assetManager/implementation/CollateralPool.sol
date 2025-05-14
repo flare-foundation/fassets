@@ -854,6 +854,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
 
     function donateNat()
         external payable
+        nonReentrant
     {
         require(msg.value >= MIN_NAT_TO_ENTER && msg.value < totalCollateral / 100,
             "donation must be between 1 NAT and 1% of the total pool collateral");
@@ -936,9 +937,13 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     )
         external
         onlyAgent
+        nonReentrant
         returns (uint256)
     {
-        uint256 claimed = _rewardManager.claim(address(this), payable(address(this)), _lastRewardEpoch, true, _proofs);
+        uint256 balanceBefore = wNat.balanceOf(address(this));
+        _rewardManager.claim(address(this), payable(address(this)), _lastRewardEpoch, true, _proofs);
+        uint256 balanceAfter = wNat.balanceOf(address(this));
+        uint256 claimed = balanceAfter - balanceBefore;
         totalCollateral += claimed;
         emit ClaimedReward(claimed, 1);
         return claimed;
@@ -950,9 +955,13 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     )
         external
         onlyAgent
+        nonReentrant
         returns(uint256)
     {
-        uint256 claimed = _distribution.claim(address(this), payable(address(this)), _month, true);
+        uint256 balanceBefore = wNat.balanceOf(address(this));
+        _distribution.claim(address(this), payable(address(this)), _month, true);
+        uint256 balanceAfter = wNat.balanceOf(address(this));
+        uint256 claimed = balanceAfter - balanceBefore;
         totalCollateral += claimed;
         emit ClaimedReward(claimed, 0);
         return claimed;
@@ -963,6 +972,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     )
         external
         onlyAgent
+        nonReentrant
     {
         _distribution.optOutOfAirdrop();
     }

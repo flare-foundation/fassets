@@ -50,6 +50,7 @@ const DistributionToDelegators = artifacts.require("DistributionToDelegators");
 const MockContract = artifacts.require('MockContract');
 const FAsset = artifacts.require('FAsset');
 const FAssetProxy = artifacts.require('FAssetProxy');
+const IRewardManager = artifacts.require("IRewardManager");
 
 contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic tests`, async accounts => {
     let wNat: ERC20MockInstance;
@@ -1589,6 +1590,21 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(collateralPoolBalance, ETH(1));
         });
 
+        it("should check actual dropped amount not the claim from untrusted distribution contract", async () => {
+            // create fake distribution that will return large claimed amount but actually transfer 0
+            const distributionToDelegatorsMock = await MockContract.new();
+            await distributionToDelegatorsMock.givenAnyReturn(web3.eth.abi.encodeParameter("uint256", ETH(1)));
+            const distributionToDelegators: DistributionToDelegatorsInstance = await DistributionToDelegators.at(distributionToDelegatorsMock.address);
+            assertEqualBN(await distributionToDelegators.claim.call(collateralPool.address, collateralPool.address, 5, true), ETH(1));
+            // claim
+            const resp = await collateralPool.claimAirdropDistribution(distributionToDelegators.address, 5, { from: agent });
+            // nothing was transferred
+            assertEqualBN(await wNat.balanceOf(collateralPool.address), toBN(0));
+            // event and total collateral should reflect the actually transferred amount
+            await expectEvent.inTransaction(resp.tx, collateralPool, "ClaimedReward", { amountNatWei: "0", rewardType: '0' });
+            assertEqualBN(await collateralPool.totalCollateral(), toBN(0));
+        });
+
         it("should fail opting out of airdrop from non-agent address", async () => {
             const distributionToDelegators: DistributionToDelegatorsInstance = await DistributionToDelegators.new(wNat.address);
             const prms = collateralPool.optOutOfAirdrop(distributionToDelegators.address, { from: accounts[0] });
@@ -1618,6 +1634,21 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 [collateralPool.address, collateralPool.address, 5, true, []] as any[]);
             const invocationCount = await rewardManagerMock.invocationCountForCalldata.call(claimReward);
             assert.equal(invocationCount.toNumber(), 1);
+        });
+
+        it("should check actual dropped amount not the claim from untrusted distribution contract", async () => {
+            // create fake distribution that will return large claimed amount but actually transfer 0
+            const rewardManagerMock = await MockContract.new();
+            await rewardManagerMock.givenAnyReturn(web3.eth.abi.encodeParameter("uint256", ETH(1)));
+            const rewradManager = await IRewardManager.at(rewardManagerMock.address);
+            assertEqualBN(await rewradManager.claim.call(collateralPool.address, collateralPool.address, 5, true, []), ETH(1));
+            // claim
+            const resp = await collateralPool.claimDelegationRewards(rewradManager.address, 5, [], { from: agent });
+            // nothing was transferred
+            assertEqualBN(await wNat.balanceOf(collateralPool.address), toBN(0));
+            // event and total collateral should reflect the actually transferred amount
+            await expectEvent.inTransaction(resp.tx, collateralPool, "ClaimedReward", { amountNatWei: "0", rewardType: '1' });
+            assertEqualBN(await collateralPool.totalCollateral(), toBN(0));
         });
 
     });
