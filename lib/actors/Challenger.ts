@@ -1,4 +1,4 @@
-import { RedemptionRequested } from "../../typechain-truffle/IIAssetManager";
+import { RedemptionRequested, RedemptionRequestRejected } from "../../typechain-truffle/IIAssetManager";
 import { AgentStatus } from "../fasset/AssetManagerTypes";
 import { PaymentReference } from "../fasset/PaymentReference";
 import { TrackedAgentState } from "../state/TrackedAgentState";
@@ -19,6 +19,7 @@ interface ActiveRedemption {
     // underlying block and timestamp after which the redemption payment is invalid and can be challenged
     validUntilBlock: BN;
     validUntilTimestamp: BN;
+    rejected: boolean;
 };
 
 export class Challenger extends ActorBase {
@@ -39,6 +40,7 @@ export class Challenger extends ActorBase {
     registerForEvents() {
         this.chainEvents.transactionEvent().subscribe(transaction => this.handleUnderlyingTransaction(transaction));
         this.assetManagerEvent('RedemptionRequested').subscribe(args => this.handleRedemptionRequested(args));
+        this.assetManagerEvent('RedemptionRequestRejected').subscribe(args => this.handleRedemptionRejected(args));
         this.assetManagerEvent('RedemptionPerformed').subscribe(args => this.handleRedemptionFinished(args));
         this.assetManagerEvent('RedemptionPaymentBlocked').subscribe(args => this.handleRedemptionFinished(args));
         this.assetManagerEvent('RedemptionPaymentFailed').subscribe(args => this.handleRedemptionFinished(args));
@@ -75,16 +77,34 @@ export class Challenger extends ActorBase {
             // see Challenges.sol for this calculation
             validUntilBlock: toBN(args.lastUnderlyingBlock).add(toBN(this.state.settings.underlyingBlocksForPayment)),
             validUntilTimestamp: toBN(args.lastUnderlyingTimestamp).add(toBN(this.state.settings.underlyingSecondsForPayment)),
+            rejected: false,
         });
     }
 
+    handleRedemptionRejected(args: EvmEventArgs<RedemptionRequestRejected>): void {
+        const reference = PaymentReference.redemption(args.requestId);
+        const redemption = this.activeRedemptions.get(reference);
+        if (redemption == null) return;
+        // mark as rejected
+        redemption.rejected = true;
+        // check if there was a payment for this redemption
+        const txHash = this.transactionForPaymentReference.get(reference);
+        if (txHash) {
+            // illegal transaction challenge
+            const agent = this.state.agentsByUnderlying.get(redemption.agentAddress);
+            if (agent && agent.status !== AgentStatus.FULL_LIQUIDATION) {
+                this.runner.startThread((scope) => this.illegalTransactionChallenge(scope, txHash, agent));
+            }
+        }
+    }
+
     handleRedemptionFinished(args: { requestId: BN; agentVault: string; transactionHash: string; }): void {
-        // clean up transactionForPaymentReference tracking - after redemption is finished the payment reference is immediatelly illegal anyway
+        // clean up transactionForPaymentReference tracking - after redemption is finished the payment reference is immediately illegal anyway
         const reference = PaymentReference.redemption(args.requestId);
         this.transactionForPaymentReference.delete(reference);
         this.activeRedemptions.delete(reference);
         // also mark transaction as confirmed
-        this.handleTransactionConfirmed(args.agentVault, args.transactionHash)
+        this.handleTransactionConfirmed(args.agentVault, args.transactionHash);
     }
 
     // illegal transactions
@@ -92,17 +112,17 @@ export class Challenger extends ActorBase {
     checkForIllegalTransaction(transaction: ITransaction, agent: TrackedAgentState) {
         const transactionValid = PaymentReference.isValid(transaction.reference)
             && (this.isValidRedemptionReference(agent, transaction.reference) || this.isValidAnnouncedPaymentReference(agent, transaction.reference));
-        // if the challenger starts tracking later, activeRedemptions might not hold all active redemeptions,
+        // if the challenger starts tracking later, activeRedemptions might not hold all active redemptions,
         // but that just means there will be a few unnecessary illegal transaction challenges, which is perfectly safe
         if (!transactionValid && agent.status !== AgentStatus.FULL_LIQUIDATION) {
-            this.runner.startThread((scope) => this.illegalTransactionChallenge(scope, transaction, agent));
+            this.runner.startThread((scope) => this.illegalTransactionChallenge(scope, transaction.hash, agent));
         }
     }
 
-    async illegalTransactionChallenge(scope: EventScope, transaction: ITransaction, agent: TrackedAgentState) {
+    async illegalTransactionChallenge(scope: EventScope, txHash: string, agent: TrackedAgentState) {
         this.log(`Challenger ${this.formatAddress(this.address)}: ISSUE illegalTransactionChallenge for ${this.formatAddress(agent.address)}`);
         await this.singleChallengePerAgent(agent, async () => {
-            const proof = await this.waitForDecreasingBalanceProof(scope, transaction.hash, agent.underlyingAddressString);
+            const proof = await this.waitForDecreasingBalanceProof(scope, txHash, agent.underlyingAddressString);
             // due to async nature of challenging (and the fact that challenger might start tracking agent later), there may be some false challenges which will be rejected
             // this is perfectly safe for the system, but the errors must be caught
             await this.context.assetManager.illegalPaymentChallenge(proof, agent.address, { from: this.address })
@@ -182,7 +202,7 @@ export class Challenger extends ActorBase {
     isValidRedemptionReference(agent: TrackedAgentState, reference: string) {
         const redemption = this.activeRedemptions.get(reference);
         if (redemption == null) return false;
-        return agent.address === redemption.agentAddress;
+        return agent.address === redemption.agentAddress && !redemption.rejected;
     }
 
     isValidAnnouncedPaymentReference(agent: TrackedAgentState, reference: string) {
