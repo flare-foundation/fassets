@@ -1,13 +1,13 @@
 {
-  "name": "fasset",
+  "name": "@flarenetwork/fasset",
   "version": "1.1.0",
   "description": "Smart contracts implementing FAsset system.",
   "main": "",
   "repository": {
     "type": "git",
-    "url": "git+https://gitlab.com/flarenetwork/fasset.git"
+    "url": "git+https://github.com/flare-foundation/fassets.git"
   },
-  "author": "Flare Labs",
+  "author": "Flare Foundation",
   "license": "MIT",
   "directories": {},
   "engines": {
