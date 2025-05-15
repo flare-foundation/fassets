@@ -2,12 +2,12 @@
   {
     "name": "Relay",
     "contractName": "Relay.sol",
-    "address": "0x4087D4B5E009Af9FF41db910205439F82C3dc63c"
+    "address": "0x97702e350CaEda540935d92aAf213307e9069784"
   },
   {
     "name": "FdcHub",
     "contractName": "FdcHub.sol",
-    "address": "TODO"
+    "address": "0x48aC463d7975828989331F4De43341627b9c5f1D"
   },
   {
     "name": "FlareDaemon",
@@ -47,17 +47,17 @@
   {
     "name": "InflationAllocation",
     "contractName": "InflationAllocation.sol",
-    "address": "0xfa1903401A0cf7048A94C63D5dc5B4f36ff7b176"
+    "address": "0xfe903A4C4F4ffD0fdaa1A3bbC123Cbd70A242D74"
   },
   {
     "name": "Inflation",
     "contractName": "Inflation.sol",
-    "address": "0x98B8e9B5830F04Fe3b8d56A2f8455E337037ba28"
+    "address": "0xC738FdCDE9cd2FBd72618d36ed71008b8d001ba4"
   },
   {
     "name": "Supply",
     "contractName": "Supply.sol",
-    "address": "0x0496dcb45cDf498e3b797050f0469a0DE24F02e9"
+    "address": "0xdd1e652D6318c4Bceb7028851C5435a89C2A17fb"
   },
   {
     "name": "FtsoRewardManager",
@@ -67,7 +67,7 @@
   {
     "name": "CleanupBlockNumberManager",
     "contractName": "CleanupBlockNumberManager.sol",
-    "address": "0xEaA8968E9B70dd2559066E3e801Df1596a4CFA23"
+    "address": "0xC80D57cBDBaEd9a2540B9C1D51Ff03a916358e65"
   },
   {
     "name": "Escrow",
@@ -262,7 +262,7 @@
   {
     "name": "AddressBinder",
     "contractName": "AddressBinder.sol",
-    "address": "0x332aa9e37D64CAAF70ae5dBe8EFC2FC7611934Ae"
+    "address": "0x8B1c486A7BF6Ac30dFD1af80d6F28A686234b6f6"
   },
   {
     "name": "PChainStakeMirrorMultiSigVoting",
