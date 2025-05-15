@@ -47,7 +47,7 @@
     "averageBlockTimeMS": 4000,
     "attestationWindowSeconds": 86400,
     "redemptionPaymentExtensionSeconds": 45,
-    "confirmationByOthersAfterSeconds": 7200,
+    "confirmationByOthersAfterSeconds": 21600,
     "confirmationByOthersRewardUSD5": "50 00000",
     "paymentChallengeRewardBIPS": 0,
     "paymentChallengeRewardUSD5": "250 00000",
@@ -91,7 +91,7 @@
     "transferFeeClaimMaxUnexpiredEpochs": 30,
     "coreVaultNativeAddress": "0x000000000000000000000000000000000000dEaD",
     "coreVaultTransferFeeBIPS": 0,
-    "coreVaultTransferTimeExtensionSeconds": 900,
+    "coreVaultTransferTimeExtensionSeconds": 7200,
     "coreVaultMinimumAmountLeftBIPS": 1500,
     "coreVaultRedemptionFeeBIPS": 0,
     "coreVaultMinimumRedeemLots": 1000
