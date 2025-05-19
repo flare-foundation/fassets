@@ -677,10 +677,27 @@ export class Agent extends AssetContextClient {
         const { 0: poolPrice, 2: poolDecimals } = await this.context.priceReader.getPrice(poolCollateral.tokenFtsoSymbol);
         const { 2: assetDecimals } = await this.context.priceReader.getPrice(this.context.chainInfo.symbol);
         const assetPriceUBA = poolPrice.mul(poolBalance).div(totalUBA).divn(ratioBIPS).muln(MAX_BIPS);
-        let assetPrice = assetPriceUBA.mul(toBNExp(1, this.context.chainInfo.decimals)).div(toBNExp(1, Number(poolCollateral.decimals) + Number(poolDecimals) - Number(assetDecimals)));
+        let assetPrice = assetPriceUBA
+            .mul(toBNExp(1, this.context.chainInfo.decimals + Number(assetDecimals)))
+            .div(toBNExp(1, Number(poolCollateral.decimals) + Number(poolDecimals)));
         assetPrice = await this.adjustPriceAndDecimalsToFitUInt32(this.context.chainInfo.symbol, assetPrice);
         await this.context.priceStore.setCurrentPrice(this.context.chainInfo.symbol,  assetPrice, 0);
         await this.context.priceStore.setCurrentPriceFromTrustedProviders(this.context.chainInfo.symbol,  assetPrice, 0);
+    }
+
+    async setVaultCollateralRatioByChangingVaultTokenPrice(ratioBIPS: number) {
+        const vaultCollateral = this.vaultCollateral();
+        const totalUBA = await this.getTotalBackedAssetUBA();
+        const agentInfo = await this.getAgentInfo();
+        const { 2: vaultDecimals } = await this.context.priceReader.getPrice(vaultCollateral.tokenFtsoSymbol);
+        const { 0: assetPrice, 2: assetDecimals } = await this.context.priceReader.getPrice(this.context.chainInfo.symbol);
+        let vaultTokenPrice = totalUBA.mul(assetPrice).muln(ratioBIPS)
+            .mul(toBNExp(1, Number(vaultCollateral.decimals) + Number(assetDecimals)))
+            .div(toBNExp(1, Number(vaultDecimals) + this.context.chainInfo.decimals))
+            .divn(MAX_BIPS).div(toBN(agentInfo.totalVaultCollateralWei))
+        vaultTokenPrice = await this.adjustPriceAndDecimalsToFitUInt32(vaultCollateral.tokenFtsoSymbol, vaultTokenPrice);
+        await this.context.priceStore.setCurrentPrice(vaultCollateral.tokenFtsoSymbol, vaultTokenPrice, 0);
+        await this.context.priceStore.setCurrentPriceFromTrustedProviders(vaultCollateral.tokenFtsoSymbol, vaultTokenPrice, 0);
     }
 
     async getVaultCollateralToMakeCollateralRatioEqualTo(ratioBIPS: number, mintedUBA: BN) {

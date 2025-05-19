@@ -828,4 +828,33 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         // console.log(deepFormat({ balance: await context.chain.getBalance(minter.underlyingAddress) }));
         // console.log(deepFormat(info));
     });
+
+    it("45601: unfair ccb liquidation", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(100));
+        const liquidator = await Liquidator.create(context, minterAddress1);
+
+        async function collateralPoolTokenValueOf(address: string) {
+            const poolTokenBalance = await agent.collateralPoolToken.balanceOf(address)
+            const poolTokenSupply = await agent.collateralPoolToken.totalSupply();
+            const poolCollateral = await agent.collateralPool.totalCollateral();
+            return poolTokenBalance.mul(poolCollateral).div(poolTokenSupply);
+        }
+
+        // make agent available and give some backing
+        await agent.depositCollateralLotsAndMakeAvailable(20, 1);
+        await minter.performMinting(agent.vaultAddress, 10);
+        // enter agent's collateral pool
+        await agent.collateralPool.enter(0, false, { from: minter.address, value: toBNExp(1, 24) });
+        const minterNatBefore = await collateralPoolTokenValueOf(minter.address);
+        // put agent into CCB
+        await agent.setVaultCollateralRatioByChangingVaultTokenPrice(13050);
+        await liquidator.startLiquidation(agent);
+        // put agent in liquidation
+        await time.increase(200);
+        await liquidator.liquidate(agent, context.convertLotsToUBA(10));
+        // check if minter's collateral pool tokens lost value
+        const minterNatAfter = await collateralPoolTokenValueOf(minter.address);
+        expect(minterNatBefore).to.be.equal(minterNatAfter)
+    })
 });
