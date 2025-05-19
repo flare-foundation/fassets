@@ -12,6 +12,7 @@ runAsyncMain(async () => {
     await deployStablecoin(contracts, "Test USDCoin", "testUSDC", 6);
     await deployStablecoin(contracts, "Test Tether", "testUSDT", 6);
     await deployStablecoin(contracts, "Test Ether", "testETH", 18);
+    await deployStablecoin(contracts, "Test USDT0", "testUSDT0", 6);
 });
 
 async function deployStablecoin(contracts: FAssetContractStore, name: string, symbol: string, decimals: number) {

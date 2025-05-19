@@ -5,7 +5,7 @@
     "initialSequenceNumber": 0,
     "custodianAddress": "",
     "escrowAmount": "10000 000000",
-    "escrowEndTimeSeconds": 43200,
+    "escrowEndTimeSeconds": 46800,
     "minimalAmountLeft": "10000 000000",
     "chainPaymentFee": "100"
 }

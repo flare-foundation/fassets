@@ -111,9 +111,13 @@ export class ContractStore {
         return Array.from(this.history.values());
     }
 
+    ignoreHistoryFiles = /coston2?\.json/;
+
     public save() {
         writeFileSync(this.filename, JSON.stringify(this.list(), null, 2));
-        writeFileSync(this.historyFilename, JSON.stringify(this.historyList(), null, 2));
+        if (!this.ignoreHistoryFiles.test(this.historyFilename)) {
+            writeFileSync(this.historyFilename, JSON.stringify(this.historyList(), null, 2));
+        }
     }
 }
 
