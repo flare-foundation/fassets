@@ -3,7 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { CollateralClass } from "../../lib/fasset/AssetManagerTypes";
 import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import { Contract, ContractStore, FAssetContractStore } from "./contracts";
-import { assetManagerParameters, convertCollateralType, createAssetManagerSettings } from "./deploy-asset-manager";
+import { assetManagerParameters, convertCollateralType, coreVaultManagerParameters, createAssetManagerSettings } from "./deploy-asset-manager";
 import { assetManagerFacets, assetManagerFacetsDeployedByDiamondCut, createDiamondCutsForAllAssetManagerFacets } from "./deploy-asset-manager-facets";
 import { abiEncodeCall, loadDeployAccounts } from "./deploy-utils";
 
@@ -98,6 +98,29 @@ export async function verifyAllAssetManagerFacets(hre: HardhatRuntimeEnvironment
             console.error(`!!! Error verifying facet ${facetName}: ${error}`);
         }
     }
+}
+
+export async function verifyCoreVaultManager(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore, parametersFile: string) {
+    const artifacts = hre.artifacts as Truffle.Artifacts;
+
+    const IIAssetManager = artifacts.require("IIAssetManager");
+    const FAsset = artifacts.require("FAsset");
+
+    const { deployer } = loadDeployAccounts(hre);
+    const parameters = coreVaultManagerParameters.load(parametersFile);
+
+    const assetManager = await IIAssetManager.at(contracts.getAddress(parameters.assetManager));
+    const settings = await assetManager.getSettings();
+
+    const fAsset = await FAsset.at(settings.fAsset);
+    const fAssetSymbol = await fAsset.symbol();
+
+    const coreVaultManagerImpl = contracts.getAddress("CoreVaultManagerImplementation");
+    await verifyContract(hre, "CoreVaultManagerImplementation", contracts, []);
+    await verifyContract(hre, `CoreVaultManager_${fAssetSymbol}`, contracts,
+        [coreVaultManagerImpl, contracts.GovernanceSettings.address, deployer, deployer,
+            assetManager.address, settings.chainId, parameters.custodianAddress, parameters.underlyingAddress, String(parameters.initialSequenceNumber)],
+        true);
 }
 
 async function qualifiedName(contract: Contract) {

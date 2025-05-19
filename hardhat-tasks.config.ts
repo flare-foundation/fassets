@@ -15,7 +15,7 @@ import { deployCuts } from "./deployment/lib/deploy-cuts";
 import { deployPriceReaderV2, verifyFtsoV2PriceStore } from "./deployment/lib/deploy-ftsov2-price-store";
 import { networkConfigName } from "./deployment/lib/deploy-utils";
 import { linkContracts } from "./deployment/lib/link-contracts";
-import { verifyAllAssetManagerFacets, verifyAssetManager, verifyAssetManagerController, verifyContract } from "./deployment/lib/verify-fasset-contracts";
+import { verifyAllAssetManagerFacets, verifyAssetManager, verifyAssetManagerController, verifyContract, verifyCoreVaultManager } from "./deployment/lib/verify-fasset-contracts";
 import "./type-extensions";
 
 const FASSETS_LIST = "fassets.json";
@@ -126,6 +126,15 @@ task("verify-asset-manager-facets", "Verify all asset manager facets.")
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await verifyAllAssetManagerFacets(hre, contracts);
+    });
+
+task("verify-core-vault-manager", "Verify core vault manager for one fasset.")
+    .addPositionalParam("parametersFile", "The file with core vault manager parameters.")
+    .setAction(async ({ parametersFile }, hre) => {
+        const networkConfig = networkConfigName(hre);
+        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await hre.run("compile");
+        await verifyCoreVaultManager(hre, contracts, parametersFile);
     });
 
 task("switch-to-production", "Switch all deployed files to production mode.")

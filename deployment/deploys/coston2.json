@@ -359,5 +359,16 @@
     "name": "FTestXRP",
     "contractName": "FAssetProxy.sol",
     "address": "0x8b4abA9C4BD7DD961659b02129beE20c6286e17F"
+  },
+  {
+    "name": "CoreVaultManagerImplementation",
+    "contractName": "CoreVaultManager.sol",
+    "address": "0x76298183C2D4Ba0602348828Ff1b7Ee33c6B6c05"
+  },
+  {
+    "name": "CoreVaultManager_FTestXRP",
+    "contractName": "CoreVaultManagerProxy.sol",
+    "address": "0x11De168Bfe62425Af06cc82f3b19180DaB1e4E31",
+    "mustSwitchToProduction": true
   }
 ]
