@@ -75,6 +75,7 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
 export async function verifyAssetManagerController(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     const { deployer } = loadDeployAccounts(hre);
+    await verifyContract(hre, "AssetManagerControllerImplementation", contracts);
     await hre.run("verify:verify", {
         address: contracts.AssetManagerController!.address,
         constructorArguments: [contracts.getAddress('AssetManagerControllerImplementation'), contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address],
