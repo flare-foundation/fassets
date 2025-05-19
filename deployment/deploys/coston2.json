@@ -118,5 +118,15 @@
     "name": "testUSDT0",
     "contractName": "FakeERC20.sol",
     "address": "0x6F6238Dc0e9Dfa7641589aAe00e1Fbe875Ca5F1B"
+  },
+  {
+    "name": "PriceReader",
+    "contractName": "FtsoV2PriceStore.sol",
+    "address": "0x8707442a5f40a17cee2Ae0555620a3ab6fEf60A4"
+  },
+  {
+    "name": "FtsoV2PriceStore",
+    "contractName": "FtsoV2PriceStore.sol",
+    "address": "0x8707442a5f40a17cee2Ae0555620a3ab6fEf60A4"
   }
 ]

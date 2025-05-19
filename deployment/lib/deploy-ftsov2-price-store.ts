@@ -2,6 +2,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { readFileSync } from 'node:fs';
 import { FAssetContractStore } from "./contracts";
 import { encodeContractNames, loadDeployAccounts, networkConfigName, truffleContractMetadata } from './deploy-utils';
+import { verifyContract } from './verify-fasset-contracts';
 
 interface FtsoV2PriceStoreParameters {
     contractName: string;
@@ -72,8 +73,6 @@ function readFtsoV2Parameters(hre: HardhatRuntimeEnvironment): FtsoV2PriceStoreP
 export async function verifyFtsoV2PriceStore(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     const parameters = readFtsoV2Parameters(hre);
     const { deployer } = loadDeployAccounts(hre);
-    await hre.run("verify:verify", {
-        address: contracts.PriceReader!.address,
-        constructorArguments: [contracts.GovernanceSettings.address, deployer, deployer, parameters.firstVotingRoundStartTs, parameters.votingEpochDurationSeconds, 100]
-    });
+    await verifyContract(hre, "FtsoV2PriceStore", contracts,
+        [contracts.GovernanceSettings.address, deployer, deployer, String(parameters.firstVotingRoundStartTs), String(parameters.votingEpochDurationSeconds), String(100)]);
 }
