@@ -857,4 +857,41 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         const minterNatAfter = await collateralPoolTokenValueOf(minter.address);
         expect(minterNatBefore).to.be.equal(minterNatAfter)
     })
+
+     it("45904: malicious agent can force a default on minter if payment is not proved inside payment window", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // update block
+        await context.updateUnderlyingBlock();
+
+        // Reserve collateral, non-handshake type
+        const lots = 3;
+        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+
+        // Perform valid payment within time window
+        // minter.performMintingPayment always perform a valid payment
+        const txHash = await minter.performMintingPayment(crt);
+        // Mine some blocks
+        for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment + 10; i++) {
+            await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
+        }
+
+        // Time has now passed beyond payment window
+        // Request a proof of non-payment existence, but specify the source as bytes32(0)
+        const proof = await context.attestationProvider.proveReferencedPaymentNonexistence(
+            agent.underlyingAddress,
+            crt.paymentReference,
+            crt.valueUBA.add(crt.feeUBA),
+            crt.firstUnderlyingBlock.toNumber(),
+            crt.lastUnderlyingBlock.toNumber(),
+            crt.lastUnderlyingTimestamp.toNumber(),
+            "0x0000000000000000000000000000000000000000000000000000000000000000");
+        // The proof is generated, and indication that FDC doesn't find matching transaction despite the fact that there is one
+        // Malicious agent can invoke `mintingPaymentDefault`
+        const res = await context.assetManager.mintingPaymentDefault(proof, crt.collateralReservationId, { from: agent.ownerWorkAddress });
+        expectEvent(res, "MintingPaymentDefault");
+    });
 });
