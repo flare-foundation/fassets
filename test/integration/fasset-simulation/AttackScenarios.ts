@@ -858,7 +858,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         expect(minterNatBefore).to.be.equal(minterNatAfter)
     })
 
-     it("45904: malicious agent can force a default on minter if payment is not proved inside payment window", async () => {
+     it("45904: malicious agent can force a default on minter if payment is not proved inside payment window - fixed", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
         // make agent available
@@ -890,8 +890,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             crt.lastUnderlyingTimestamp.toNumber(),
             "0x0000000000000000000000000000000000000000000000000000000000000000");
         // The proof is generated, and indication that FDC doesn't find matching transaction despite the fact that there is one
-        // Malicious agent can invoke `mintingPaymentDefault`
-        const res = await context.assetManager.mintingPaymentDefault(proof, crt.collateralReservationId, { from: agent.ownerWorkAddress });
-        expectEvent(res, "MintingPaymentDefault");
+        // Malicious agent cannot invoke `mintingPaymentDefault` anymore
+        await expectRevert(context.assetManager.mintingPaymentDefault(proof, crt.collateralReservationId, { from: agent.ownerWorkAddress }), "invalid check or source addresses root");
     });
 });

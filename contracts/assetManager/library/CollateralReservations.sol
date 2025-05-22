@@ -150,7 +150,7 @@ library CollateralReservations {
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
         require(crt.handshakeStartTimestamp == 0, "collateral reservation not approved");
         require(!_nonPayment.data.requestBody.checkSourceAddresses && crt.sourceAddressesRoot == bytes32(0) ||
-            _nonPayment.data.requestBody.checkSourceAddresses &&
+            _nonPayment.data.requestBody.checkSourceAddresses && crt.sourceAddressesRoot != bytes32(0) &&
             crt.sourceAddressesRoot == _nonPayment.data.requestBody.sourceAddressesRoot,
             "invalid check or source addresses root");
         Agent.State storage agent = Agent.get(crt.agentVault);
