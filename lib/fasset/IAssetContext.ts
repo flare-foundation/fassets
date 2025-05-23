@@ -1,4 +1,4 @@
-import { AssetManagerControllerInstance, CoreVaultManagerInstance, FAssetInstance, FtsoV2PriceStoreInstance, IERC20Instance, IIAssetManagerInstance, IPriceReaderInstance, WNatInstance } from "../../typechain-truffle";
+import { CoreVaultManagerInstance, FAssetInstance, FtsoV2PriceStoreInstance, IERC20Instance, IIAssetManagerControllerInstance, IIAssetManagerInstance, IPriceReaderInstance, WNatInstance } from "../../typechain-truffle";
 import { AttestationHelper } from "../underlying-chain/AttestationHelper";
 import { IBlockChain } from "../underlying-chain/interfaces/IBlockChain";
 import { UnderlyingChainEvents } from "../underlying-chain/UnderlyingChainEvents";
@@ -6,7 +6,7 @@ import { ContractWithEvents } from "../utils/events/truffle";
 import { ChainInfo } from "./ChainInfo";
 
 export type AddressUpdaterEvents = import('../../typechain-truffle/AddressUpdater').AllEvents;
-export type AssetManagerControllerEvents = import('../../typechain-truffle/AssetManagerController').AllEvents;
+export type IIAssetManagerControllerEvents = import('../../typechain-truffle/IIAssetManagerController').AllEvents;
 export type WNatEvents = import('../../typechain-truffle/WNat').AllEvents;
 export type RelayEvents = import('../../typechain-truffle/IRelay').AllEvents;
 export type FdcHubEvents = import('../../typechain-truffle/IFdcHub').AllEvents;
@@ -35,7 +35,7 @@ export interface IAssetContext {
     chainEvents: UnderlyingChainEvents;
     attestationProvider: AttestationHelper;
     // contracts
-    assetManagerController: ContractWithEvents<AssetManagerControllerInstance, AssetManagerControllerEvents>;
+    assetManagerController: ContractWithEvents<IIAssetManagerControllerInstance, IIAssetManagerControllerEvents>;
     wNat: ContractWithEvents<WNatInstance, WNatEvents>;
     fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>;
     assetManager: ContractWithEvents<IIAssetManagerInstance, AssetManagerEvents>;

@@ -4,7 +4,7 @@ import { DiamondCut, FacetCutAction } from "../../../lib/utils/diamond";
 import { findEvent } from "../../../lib/utils/events/truffle";
 import { abiEncodeCall, BNish, contractMetadata, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
-import { AssetManagerControllerInstance, AssetManagerInitInstance, FAssetInstance, GovernanceSettingsInstance, IDiamondLoupeInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
+import { AssetManagerInitInstance, FAssetInstance, GovernanceSettingsInstance, IDiamondLoupeInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
 import { GovernanceCallTimelocked } from "../../../typechain-truffle/AssetManagerController";
 
 export interface AssetManagerInitSettings extends AssetManagerSettings {
@@ -25,6 +25,7 @@ export interface AssetManagerInitSettings extends AssetManagerSettings {
 }
 
 const IIAssetManager = artifacts.require('IIAssetManager');
+const IIAssetManagerController = artifacts.require('IIAssetManagerController');
 const AssetManager = artifacts.require('AssetManager');
 const AssetManagerInit = artifacts.require('AssetManagerInit');
 const FAsset = artifacts.require('FAsset');
@@ -35,12 +36,12 @@ const AssetManagerControllerProxy = artifacts.require('AssetManagerControllerPro
 export async function newAssetManagerController(governanceSettings: string, initialGovernance: string, addressUpdater: string) {
     const assetManagerControllerImpl = await AssetManagerController.new();
     const assetManagerControllerProxy = await AssetManagerControllerProxy.new(assetManagerControllerImpl.address, governanceSettings, initialGovernance, addressUpdater);
-    return await AssetManagerController.at(assetManagerControllerProxy.address);
+    return await IIAssetManagerController.at(assetManagerControllerProxy.address);
 }
 
 export async function newAssetManager(
     governanceAddress: string,
-    assetManagerController: string | AssetManagerControllerInstance,
+    assetManagerController: string | IIAssetManagerControllerInstance,
     name: string,
     symbol: string,
     decimals: number,

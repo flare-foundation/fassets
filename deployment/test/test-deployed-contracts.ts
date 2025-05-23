@@ -2,7 +2,7 @@ import hre from "hardhat";
 import { requiredEventArgs } from "../../lib/utils/events/truffle";
 import { getTestFile, itSkipIf } from "../../test/utils/test-helpers";
 import { createTestAgent } from "../../test/utils/test-settings";
-import { AgentOwnerRegistryInstance, AssetManagerControllerInstance } from "../../typechain-truffle";
+import { AgentOwnerRegistryInstance, IAssetManagerControllerInstance } from "../../typechain-truffle";
 import { FAssetContractStore } from "../lib/contracts";
 import { loadDeployAccounts, networkConfigName, requiredEnvironmentVariable } from "../lib/deploy-utils";
 import { SourceId } from "../../lib/underlying-chain/SourceId";
@@ -11,7 +11,7 @@ import { MockFlareDataConnectorClient } from "../../test/utils/fasset/MockFlareD
 import { MockChain } from "../../test/utils/fasset/MockChain";
 import { latestBlockTimestamp, toBN, toBNExp } from "../../lib/utils/helpers";
 
-const AssetManagerController = artifacts.require('AssetManagerController');
+const IAssetManagerController = artifacts.require('IAssetManagerController');
 const IIAssetManager = artifacts.require('IIAssetManager');
 const AgentOwnerRegistry = artifacts.require('AgentOwnerRegistry');
 
@@ -20,12 +20,12 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
 
     let contracts: FAssetContractStore;
 
-    let assetManagerController: AssetManagerControllerInstance;
+    let assetManagerController: IAssetManagerControllerInstance;
     let agentOwnerRegistry: AgentOwnerRegistryInstance;
 
     before(async () => {
         contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, false);
-        assetManagerController = await AssetManagerController.at(contracts.AssetManagerController!.address);
+        assetManagerController = await IAssetManagerController.at(contracts.AssetManagerController!.address);
         agentOwnerRegistry = await AgentOwnerRegistry.at(contracts.AgentOwnerRegistry!.address);
     });
 

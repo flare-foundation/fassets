@@ -5,7 +5,7 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
 import { erc165InterfaceId, toBNExp, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
-import { AgentOwnerRegistryInstance, AgentVaultInstance, AssetManagerControllerInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
+import { AgentOwnerRegistryInstance, AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
@@ -20,7 +20,7 @@ const AgentVault = artifacts.require('AgentVault');
 contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner registry tests`, async accounts => {
     const governance = accounts[10];
     const updateExecutor = accounts[11];
-    let assetManagerController: AssetManagerControllerInstance;
+    let assetManagerController: IIAssetManagerControllerInstance;
     let contracts: TestSettingsContracts;
     let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;

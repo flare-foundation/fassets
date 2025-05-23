@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "flare-smart-contracts/contracts/addressUpdater/interface/IIAddressUpdater.sol";
-import "../../userInterfaces/IAssetManagerController.sol";
 import "../interfaces/IWNat.sol";
-import "../interfaces/IIAssetManager.sol";
 import "../interfaces/IISettingsManagement.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
+import "../interfaces/IIAssetManagerController.sol";
 import "../../governance/implementation/GovernedProxyImplementation.sol";
 import "../../governance/implementation/AddressUpdatable.sol";
 
@@ -19,9 +16,7 @@ contract AssetManagerController is
     UUPSUpgradeable,
     GovernedProxyImplementation,
     AddressUpdatable,
-    IAssetManagerController,
-    IAssetManagerEvents,
-    IERC165
+    IIAssetManagerController
 {
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -132,7 +127,7 @@ contract AssetManagerController is
      * See UUPSUpgradeable.upgradeTo
      */
     function upgradeTo(address newImplementation)
-        public override
+        public override (IUUPSUpgradeable, UUPSUpgradeable)
         onlyGovernance
         onlyProxy
     {
@@ -143,7 +138,7 @@ contract AssetManagerController is
      * See UUPSUpgradeable.upgradeToAndCall
      */
     function upgradeToAndCall(address newImplementation, bytes memory data)
-        public payable override
+        public payable override (IUUPSUpgradeable, UUPSUpgradeable)
         onlyGovernance
         onlyProxy
     {
@@ -660,7 +655,11 @@ contract AssetManagerController is
         returns (bool)
     {
         return _interfaceId == type(IERC165).interfaceId
-            || _interfaceId == type(IIAddressUpdatable).interfaceId;
+            || _interfaceId == type(IAddressUpdatable).interfaceId
+            || _interfaceId == type(IIAddressUpdatable).interfaceId
+            || _interfaceId == type(IAssetManagerController).interfaceId
+            || _interfaceId == type(IIAssetManagerController).interfaceId
+            || _interfaceId == type(IGoverned).interfaceId;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////

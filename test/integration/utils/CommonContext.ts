@@ -1,15 +1,17 @@
 import { time } from "@openzeppelin/test-helpers";
 import {
-    AddressUpdaterEvents, AgentVaultFactoryEvents, AssetManagerControllerEvents,
+    AddressUpdaterEvents, AgentVaultFactoryEvents,
     CollateralPoolFactoryEvents, CollateralPoolTokenFactoryEvents, ERC20Events, FdcHubEvents,
-    FdcVerificationEvents, FtsoV2PriceStoreEvents, PriceReaderEvents, RelayEvents, WNatEvents
+    FdcVerificationEvents, FtsoV2PriceStoreEvents,
+    IIAssetManagerControllerEvents, PriceReaderEvents, RelayEvents, WNatEvents
 } from "../../../lib/fasset/IAssetContext";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import { requireNotNull, toBNExp, WEEKS, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import {
-    AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, CollateralPoolFactoryInstance,
+    AddressUpdaterInstance, AgentVaultFactoryInstance, CollateralPoolFactoryInstance,
     CollateralPoolTokenFactoryInstance, ERC20MockInstance, FdcHubMockInstance, FdcVerificationMockInstance,
-    FtsoV2PriceStoreMockInstance, GovernanceSettingsInstance, IPriceReaderInstance, RelayMockInstance, WNatInstance
+    FtsoV2PriceStoreMockInstance, GovernanceSettingsInstance,
+    IIAssetManagerControllerInstance, IPriceReaderInstance, RelayMockInstance, WNatInstance
 } from "../../../typechain-truffle";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../utils/constants";
 import { newAssetManagerController } from "../../utils/fasset/CreateAssetManager";
@@ -40,7 +42,7 @@ export class CommonContext {
         public governance: string,
         public governanceSettings: GovernanceSettingsInstance,
         public addressUpdater: ContractWithEvents<AddressUpdaterInstance, AddressUpdaterEvents>,
-        public assetManagerController: ContractWithEvents<AssetManagerControllerInstance, AssetManagerControllerEvents>,
+        public assetManagerController: ContractWithEvents<IIAssetManagerControllerInstance, IIAssetManagerControllerEvents>,
         public relay: ContractWithEvents<RelayMockInstance, RelayEvents>,
         public fdcHub: ContractWithEvents<FdcHubMockInstance, FdcHubEvents>,
         public agentVaultFactory: ContractWithEvents<AgentVaultFactoryInstance, AgentVaultFactoryEvents>,
