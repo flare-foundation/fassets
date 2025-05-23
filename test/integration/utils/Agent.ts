@@ -128,7 +128,7 @@ export class Agent extends AssetContextClient {
     async usd5ToVaultCollateralWei(usd5: BN) {
         const { 0: vaultCollateralPrice, 2: vaultCollateralDecimals } =
             await this.context.priceReader.getPrice(this.vaultCollateral().tokenFtsoSymbol);
-        return usd5.mul(toWei(10**vaultCollateralDecimals.toNumber())).divn(1e5).div(vaultCollateralPrice);
+        return usd5.mul(toWei(10 ** vaultCollateralDecimals.toNumber())).divn(1e5).div(vaultCollateralPrice);
     }
 
     async changeSettings(changes: Partial<Record<AgentSetting, BNish>>) {
@@ -379,7 +379,7 @@ export class Agent extends AssetContextClient {
         return res;
     }
 
-    async confirmFailedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string): Promise<[redemptionPaymentFailed: EventArgs<RedemptionPaymentFailed>, redemptionDefault: EventArgs<RedemptionDefault>]>  {
+    async confirmFailedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string): Promise<[redemptionPaymentFailed: EventArgs<RedemptionPaymentFailed>, redemptionDefault: EventArgs<RedemptionDefault>]> {
         const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
         const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerWorkAddress });
         return [requiredEventArgs(res, 'RedemptionPaymentFailed'), requiredEventArgs(res, 'RedemptionDefault')];
@@ -593,7 +593,7 @@ export class Agent extends AssetContextClient {
     }
 
     async buybackAgentCollateral() {
-        const [,, buybackCost] = await this.getBuybackAgentCollateralValue()
+        const [, , buybackCost] = await this.getBuybackAgentCollateralValue()
         await this.assetManager.buybackAgentCollateral(this.agentVault.address, { from: this.ownerWorkAddress, value: buybackCost });
     }
 
@@ -666,8 +666,8 @@ export class Agent extends AssetContextClient {
         const assetPriceUBA = vaultCollateralPrice.mul(toBN(agentInfo.totalVaultCollateralWei)).div(totalUBA).muln(MAX_BIPS).divn(ratioBIPS);
         let assetPrice = assetPriceUBA.mul(toBNExp(1, this.context.chainInfo.decimals)).div(toBNExp(1, Number(vaultCollateral.decimals) + Number(vaultDecimals) - Number(assetDecimals)));
         assetPrice = await this.adjustPriceAndDecimalsToFitUInt32(this.context.chainInfo.symbol, assetPrice);
-        await this.context.priceStore.setCurrentPrice(this.context.chainInfo.symbol,  assetPrice, 0);
-        await this.context.priceStore.setCurrentPriceFromTrustedProviders(this.context.chainInfo.symbol,  assetPrice, 0);
+        await this.context.priceStore.setCurrentPrice(this.context.chainInfo.symbol, assetPrice, 0);
+        await this.context.priceStore.setCurrentPriceFromTrustedProviders(this.context.chainInfo.symbol, assetPrice, 0);
     }
 
     async setPoolCollateralRatioByChangingAssetPrice(ratioBIPS: number) {
@@ -681,8 +681,8 @@ export class Agent extends AssetContextClient {
             .mul(toBNExp(1, this.context.chainInfo.decimals + Number(assetDecimals)))
             .div(toBNExp(1, Number(poolCollateral.decimals) + Number(poolDecimals)));
         assetPrice = await this.adjustPriceAndDecimalsToFitUInt32(this.context.chainInfo.symbol, assetPrice);
-        await this.context.priceStore.setCurrentPrice(this.context.chainInfo.symbol,  assetPrice, 0);
-        await this.context.priceStore.setCurrentPriceFromTrustedProviders(this.context.chainInfo.symbol,  assetPrice, 0);
+        await this.context.priceStore.setCurrentPrice(this.context.chainInfo.symbol, assetPrice, 0);
+        await this.context.priceStore.setCurrentPriceFromTrustedProviders(this.context.chainInfo.symbol, assetPrice, 0);
     }
 
     async setVaultCollateralRatioByChangingVaultTokenPrice(ratioBIPS: number) {
@@ -720,8 +720,8 @@ export class Agent extends AssetContextClient {
         const { 0: assetPrice } = await this.context.priceReader.getPrice(this.context.chainInfo.symbol);
         let newAssetPrice = assetPrice.mul(toBN(factorBIPS)).divn(MAX_BIPS);
         newAssetPrice = await this.adjustPriceAndDecimalsToFitUInt32(this.context.chainInfo.symbol, newAssetPrice);
-        await this.context.priceStore.setCurrentPrice(this.context.chainInfo.symbol,  newAssetPrice, 0);
-        await this.context.priceStore.setCurrentPriceFromTrustedProviders(this.context.chainInfo.symbol,  newAssetPrice, 0);
+        await this.context.priceStore.setCurrentPrice(this.context.chainInfo.symbol, newAssetPrice, 0);
+        await this.context.priceStore.setCurrentPriceFromTrustedProviders(this.context.chainInfo.symbol, newAssetPrice, 0);
     }
 
     private async adjustPriceAndDecimalsToFitUInt32(symbol: string, price: BN) {
@@ -778,5 +778,12 @@ export class Agent extends AssetContextClient {
         const totalCollateral = await this.collateralPool.totalCollateral();
         const totalTokens = await this.collateralPoolToken.totalSupply();
         return totalTokens.eq(BN_ZERO) ? toBN(wnat) : toBN(wnat).mul(totalCollateral).div(totalTokens);
+    }
+
+    async poolNatBalanceOf(address: string) {
+        const poolTokenBalance = await this.collateralPoolToken.balanceOf(address)
+        const poolTokenSupply = await this.collateralPoolToken.totalSupply();
+        const poolCollateral = await this.collateralPool.totalCollateral();
+        return poolTokenBalance.mul(poolCollateral).div(poolTokenSupply);
     }
 }
