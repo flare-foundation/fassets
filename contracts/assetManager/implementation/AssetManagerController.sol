@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "flare-smart-contracts/contracts/addressUpdater/interface/IIAddressUpdater.sol";
+import "../../userInterfaces/IAssetManagerController.sol";
 import "../interfaces/IWNat.sol";
 import "../interfaces/IIAssetManager.sol";
 import "../interfaces/IISettingsManagement.sol";
@@ -18,15 +19,18 @@ contract AssetManagerController is
     UUPSUpgradeable,
     GovernedProxyImplementation,
     AddressUpdatable,
+    IAssetManagerController,
     IAssetManagerEvents,
     IERC165
 {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    // New address in case this controller was replaced.
-    // Note: this code contains no checks that replacedBy==0, because when replaced,
-    // all calls to AssetManager's updateSettings/pause/terminate will fail anyway
-    // since they will arrive from wrong controller address.
+    /**
+     * New address in case this controller was replaced.
+     * Note: this code contains no checks that replacedBy==0, because when replaced,
+     * all calls to AssetManager's updateSettings/pause/terminate will fail anyway
+     * since they will arrive from wrong controller address.
+     */
     address public replacedBy;
 
     mapping(address => uint256) private assetManagerIndex;
@@ -96,13 +100,24 @@ contract AssetManagerController is
         }
     }
 
+    /**
+     * Return the list of all asset managers managed by this controller.
+     */
     function getAssetManagers()
         external view
-        returns (IIAssetManager[] memory)
+        returns (IAssetManager[] memory _assetManagers)
     {
-        return assetManagers;
+        uint256 length = assetManagers.length;
+        _assetManagers = new IAssetManager[](length);
+        for (uint256 i = 0; i < length; i++) {
+            _assetManagers[i] = assetManagers[i];
+        }
     }
 
+    /**
+     * Check wehther the asset manager is managed by this controller.
+     * @param _assetManager an asset manager address
+     */
     function assetManagerExists(address _assetManager)
         external view
         returns (bool)
