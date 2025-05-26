@@ -162,7 +162,7 @@ export class MockAttestationProver {
     addressValidity(addressStr: string): AddressValidity.ResponseBody {
         const standardAddress = addressStr.trim();
         return {
-            isValid: standardAddress != "" && !standardAddress.includes("INVALID"), // very fake check
+            isValid: standardAddress !== "" && !standardAddress.includes("INVALID"), // very fake check
             standardAddress: standardAddress,
             standardAddressHash: Web3.utils.soliditySha3Raw(standardAddress),
         }

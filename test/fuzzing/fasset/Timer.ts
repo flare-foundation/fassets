@@ -13,7 +13,7 @@ export class NodeTimer implements ITimer<NodeTimerId> {
     async currentTime() {
         return systemTimestamp();
     }
-    
+
     after(seconds: number, handler: () => void): NodeTimerId {
         return ['timeout', setTimeout(handler, seconds * 1000)];
     }
@@ -39,7 +39,7 @@ export class TruffleTimer implements ITimer<TruffleTimerId> {
     currentTime() {
         return latestBlockTimestamp();
     }
-    
+
     after(seconds: number, handler: () => void): TruffleTimerId {
         const timerId = new TruffleTimerId();
         runAsync(async () => {
@@ -66,12 +66,12 @@ export class TruffleTimer implements ITimer<TruffleTimerId> {
 
     cancel(timer: TruffleTimerId): void {
         timer.cancelled = true;
-        if (timer.timeout != undefined) {
+        if (timer.timeout !== undefined) {
             clearInterval(timer.timeout);
             timer.timeout = undefined;
         }
     }
-    
+
     private async waitNextTick(stopTime: number, timerId: TruffleTimerId) {
         while (!timerId.cancelled) {
             const timestamp = await this.currentTime();
@@ -80,11 +80,11 @@ export class TruffleTimer implements ITimer<TruffleTimerId> {
             await this.delay(waitMs, timerId);
         }
     }
-    
+
     private delay(ms: number, timerId: TruffleTimerId): Promise<void> {
         if (timerId.cancelled) return Promise.resolve();
-        return new Promise((resolve) => { 
-            timerId.timeout = setTimeout(resolve, ms); 
+        return new Promise((resolve) => {
+            timerId.timeout = setTimeout(resolve, ms);
         });
     }
 }

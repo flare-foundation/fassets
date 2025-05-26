@@ -243,7 +243,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             //Minter gets delisted from whitelist
             let res = await context.whitelist?.revokeAddress(minter.address, { from: governance });
             //Wait for timelock
-            if (res != undefined && context.whitelist != undefined) {
+            if (res !== undefined && context.whitelist !== undefined) {
                 await waitForTimelock(res, context.whitelist, governance);
             }
             //Minter tries to mint again by reserving collateral

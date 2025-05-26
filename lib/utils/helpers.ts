@@ -133,7 +133,7 @@ export function formatBN(x: BN | string | number, maxDecimals: number = 3) {
         let xint = xs.slice(0, decpos);
         if (xint === '') xint = '0';
         let xfrac = xs.slice(decpos).replace(/0+$/, '').slice(0, maxDecimals);
-        if (xfrac != '') xfrac = '.' + xfrac;
+        if (xfrac !== '') xfrac = '.' + xfrac;
         return groupIntegerDigits(xint) + xfrac + 'e+18';
     } else {
         return groupIntegerDigits(xs);
@@ -243,7 +243,7 @@ export async function getOrCreateAsync<K, V>(map: Map<K, V>, key: K, create: (ke
  */
 export function multimapAdd<K, V>(map: Map<K, Set<V>>, key: K, value: V) {
     let set = map.get(key);
-    if (set == undefined) {
+    if (set === undefined) {
         set = new Set();
         map.set(key, set);
     }
@@ -255,7 +255,7 @@ export function multimapAdd<K, V>(map: Map<K, Set<V>>, key: K, value: V) {
  */
 export function multimapDelete<K, V>(map: Map<K, Set<V>>, key: K, value: V) {
     let set = map.get(key);
-    if (set == undefined) return;
+    if (set === undefined) return;
     set.delete(value);
     if (set.size === 0) {
         map.delete(key);

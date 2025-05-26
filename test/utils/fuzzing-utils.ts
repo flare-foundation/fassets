@@ -28,8 +28,8 @@ export class Statistics {
 
     add(x: BN | number) {
         if (typeof x !== 'number') x = x.toNumber();
-        if (this.min == undefined || this.min > x) this.min = x;
-        if (this.max == undefined || this.max < x) this.max = x;
+        if (this.min === undefined || this.min > x) this.min = x;
+        if (this.max === undefined || this.max < x) this.max = x;
         this.count += 1;
         this.sum += x;
     }
@@ -159,7 +159,7 @@ export function range(start: number, end: number | null, step: number = 1, inclu
 
 export function parseRange(s: string) {
     if (/^(\d+(,\d+)*)?$/.test(s)) {
-        return s != '' ? s.split(',').map(Number) : [];
+        return s !== '' ? s.split(',').map(Number) : [];
     } else {
         const m = s.match(/^(\d+)(?:,(\d+))?,?...,?(\d+)?$/);
         if (m) return range(Number(m[1]), m[3] ? Number(m[3]) : null, m[2] ? Number(m[2]) - Number(m[1]) : 1, 'inclusive');
@@ -226,7 +226,7 @@ const envConverters = {
         if (s === 'false') return false;
         throw new Error("Invalid boolean value");
     },
-    'number[]': (s: string) => s != '' ? s.split(',').map(Number) : [],
+    'number[]': (s: string) => s !== '' ? s.split(',').map(Number) : [],
     'string[]': (s: string) => s.split(','),
     'boolean[]': (s: string) => s.split(',').map(p => envConverters['boolean'](p)),
     'range': (s: string) => parseRange(s),

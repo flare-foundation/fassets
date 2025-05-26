@@ -37,7 +37,7 @@ export class CollateralIndexedList<T> implements Iterable<T> {
     getOptional(collateral: CollateralTypeId): T | undefined;
     getOptional(cc: any, token?: any) {
         const index = this.index.get(token ? collateralTokenKey(cc, token) : collateralTokenKey(cc.collateralClass, cc.token));
-        return index != undefined ? this.list[index] : undefined;
+        return index !== undefined ? this.list[index] : undefined;
     }
 }
 

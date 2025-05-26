@@ -184,7 +184,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         const proof = await attestationProvider.provePayment(txHash, "random_address", underlyingAgent);
         // self-mint and send f-assets to minter
         await assetManager.selfMint(proof, agentVault.address, lots, { from: owner });
-        if (minter != owner) await fAsset.transfer(minter, amountUBA, { from: owner });
+        if (minter !== owner) await fAsset.transfer(minter, amountUBA, { from: owner });
         return { underlyingPaymentUBA: paymentAmountUBA, underlyingTxHash: txHash, poolFeeShareUBA, agentFeeShareUBA }
     }
 
@@ -3237,10 +3237,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
                 const info = await assetManager.getAgentInfo(agentVault.address);
                 const minVaultCR = await assetManager.getAgentMinVaultCollateralRatioBIPS(agentVault.address);
-                const vaultToken = collaterals.filter(x => x.token == info.vaultCollateralToken)[0];
+                const vaultToken = collaterals.filter(x => x.token === info.vaultCollateralToken)[0];
                 expect(minVaultCR.toString()).to.equal(vaultToken.minCollateralRatioBIPS.toString());
                 const minPoolCR = await assetManager.getAgentMinPoolCollateralRatioBIPS(agentVault.address);
-                const poolToken = collaterals.filter(x => x.token == wNat.address)[0];
+                const poolToken = collaterals.filter(x => x.token === wNat.address)[0];
                 expect(minPoolCR.toString()).to.equal(poolToken.minCollateralRatioBIPS.toString());
             });
         })

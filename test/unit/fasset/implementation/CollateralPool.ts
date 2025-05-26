@@ -450,7 +450,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 for (let i = 0; i < 10; i++) {
                     // use call to check result (does nothing, but returns correct result)
                     const cleanedAllExpired = await collateralPoolToken.cleanupExpiredTimelocks.call(accounts[0], 10);
-                    assert.equal(cleanedAllExpired, i == 9, `all should be cleaned at the last call (i=${i})`);
+                    assert.equal(cleanedAllExpired, i === 9, `all should be cleaned at the last call (i=${i})`);
                     // now execute the actual cleaning
                     await collateralPoolToken.cleanupExpiredTimelocks(accounts[0], 10);
                     // timelocked balance should not change

@@ -135,7 +135,7 @@ export class Challenger extends ActorBase {
     checkForDoublePayment(transaction: ITransaction, agent: TrackedAgentState) {
         if (!PaymentReference.isValid(transaction.reference)) return;   // handled by illegal payment challenge
         const existingHash = this.transactionForPaymentReference.get(transaction.reference);
-        if (existingHash && existingHash != transaction.hash) {
+        if (existingHash && existingHash !== transaction.hash) {
             this.runner.startThread((scope) => this.doublePaymentChallenge(scope, transaction.hash, existingHash, agent));
         } else {
             this.transactionForPaymentReference.set(transaction.reference, transaction.hash);

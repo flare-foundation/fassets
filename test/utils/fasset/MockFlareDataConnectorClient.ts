@@ -67,7 +67,7 @@ export class MockFlareDataConnectorClient implements IFlareDataConnectorClient {
             throw new FlareDataConnectorClientError(`FlareDataConnectorClient: round doesn't exist yet (${round} >= ${this.rounds.length})`);
         }
         while (this.finalizedRounds.length <= round) {
-            if (this.finalizationType == 'on_wait') {
+            if (this.finalizationType === 'on_wait') {
                 await this.finalizeRound();
             } else {
                 await sleep(1000);
@@ -137,7 +137,7 @@ export class MockFlareDataConnectorClient implements IFlareDataConnectorClient {
         // all rounds finalized?
         if (round >= this.rounds.length) return;
         // if this is the last round, start a new one, so that the one we are finalizing doesn't change
-        if (round == this.rounds.length - 1) {
+        if (round === this.rounds.length - 1) {
             this.rounds.push([]);
         }
         // verify and collect proof data of requests

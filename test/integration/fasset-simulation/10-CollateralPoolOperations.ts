@@ -398,7 +398,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         for (let i = 0; i <= 60; i++) {
             const lots = 1;
             // alternate between two agents so that tickets don't get merged
-            const vaultAddress = i % 2 == 0 ? agent.vaultAddress : agent2.vaultAddress;
+            const vaultAddress = i % 2 === 0 ? agent.vaultAddress : agent2.vaultAddress;
             const crt = await minter.reserveCollateral(vaultAddress, lots);
             const txHash1 = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash1);

@@ -442,8 +442,9 @@ export class Agent extends AssetContextClient {
             redemptionDefaultPool = toBN(0);
         }
         if (redemptionDefaultAgent.gt(maxRedemptionCollateral)) {
-            const extraPoolAmg = this.context.convertUBAToAmg(uba).mul
-                (redemptionDefaultAgent.sub(maxRedemptionCollateral)).divRound(redemptionDefaultAgent);
+            const extraPoolAmg = this.context.convertUBAToAmg(uba)
+                .mul(redemptionDefaultAgent.sub(maxRedemptionCollateral))
+                .divRound(redemptionDefaultAgent);
             return [maxRedemptionCollateral, redemptionDefaultPool.add(priceNat.convertAmgToTokenWei(extraPoolAmg))];
         }
         return [redemptionDefaultAgent, redemptionDefaultPool];
