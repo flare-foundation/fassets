@@ -12,6 +12,7 @@ SUBPROJECT_DIR=$1
 LISTFILE=$2
 OUTFILE=$3
 EXTRA_IMPORTS=$4
+FORCE_BRANCH=$5
 
 FILES=$(cat $LISTFILE)
 FIRSTFILE=$(head -n 1 $LISTFILE)
@@ -19,6 +20,11 @@ FIRSTFILE=$(head -n 1 $LISTFILE)
 TMPFILE="/tmp/$(basename $OUTFILE)"
 
 cd "$SUBPROJECT_DIR"
+if [ -n "$FORCE_BRANCH" ]; then
+    echo "Checking out $FORCE_BRANCH ..."
+    git checkout "$FORCE_BRANCH"
+fi
+
 yarn
 cd - > /dev/null
 
