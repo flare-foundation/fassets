@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "flare-smart-contracts/contracts/addressUpdater/interface/IIAddressUpdatable.sol";
+import "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdatable.sol";
 
 
 abstract contract AddressUpdatable is IIAddressUpdatable {

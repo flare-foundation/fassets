@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcHub.sol";
+import "@flarenetwork/flare-periphery-contracts/flare/IFdcHub.sol";
 import "./FdcRequestFeeConfigurationsMock.sol";
 
 
@@ -27,4 +27,9 @@ contract FdcHubMock is IFdcHub {
     function requestsOffsetSeconds() external pure returns (uint8) {
         return 0;
     }
+
+    /**
+     * The FDC inflation configurations contract.
+     */
+    function fdcInflationConfigurations() external view returns(IFdcInflationConfigurations) {}
 }

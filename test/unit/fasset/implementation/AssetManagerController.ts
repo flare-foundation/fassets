@@ -1645,7 +1645,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
     describe("ERC-165 interface identification", () => {
         it("should properly respond to supportsInterface", async () => {
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
-            const IIAddressUpdatable = artifacts.require('flare-smart-contracts/contracts/addressUpdater/interface/IIAddressUpdatable.sol:IIAddressUpdatable'as any) as any as AddressUpdatableContract;
+            const IIAddressUpdatable = artifacts.require('@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdatable.sol:IIAddressUpdatable'as any) as any as AddressUpdatableContract;
             const iERC165 = await IERC165.at(assetManagerController.address);
             const iiAddressUpdatable = await IIAddressUpdatable.at(addressUpdatableMock.address);
             assert.isTrue(await assetManagerController.supportsInterface(erc165InterfaceId(iERC165.abi)));

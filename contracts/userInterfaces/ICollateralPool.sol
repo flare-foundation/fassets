@@ -2,9 +2,9 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
-import "flare-smart-contracts/contracts/userInterfaces/IClaimSetupManager.sol";
-import "flare-smart-contracts/contracts/userInterfaces/IDistributionToDelegators.sol";
-import "flare-smart-contracts-v2/contracts/userInterfaces/IRewardManager.sol";
+import "@flarenetwork/flare-periphery-contracts/flare/IClaimSetupManager.sol";
+import "@flarenetwork/flare-periphery-contracts/flare/IDistributionToDelegators.sol";
+import "@flarenetwork/flare-periphery-contracts/flare/IRewardManager.sol";
 import "./ICollateralPoolToken.sol";
 
 

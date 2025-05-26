@@ -2,8 +2,8 @@
 pragma solidity 0.8.23;
 
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
-import "flare-smart-contracts-v2/contracts/userInterfaces/IRelay.sol";
+import "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
 
 
 contract FdcVerificationMock is IFdcVerification {
@@ -89,6 +89,19 @@ contract FdcVerificationMock is IFdcVerification {
         returns (bool _proved)
     {
         return _proof.data.attestationType == bytes32("EVMTransaction") &&
+            _proof.merkleProof.verifyCalldata(
+                relay.merkleRoots(fdcProtocolId, _proof.data.votingRound),
+                keccak256(abi.encode(_proof.data))
+            );
+    }
+
+    function verifyJsonApi(
+        IWeb2Json.Proof calldata _proof
+    )
+        external view
+        returns (bool _proved)
+    {
+        return _proof.data.attestationType == bytes32("Web2Json") &&
             _proof.merkleProof.verifyCalldata(
                 relay.merkleRoots(fdcProtocolId, _proof.data.votingRound),
                 keccak256(abi.encode(_proof.data))

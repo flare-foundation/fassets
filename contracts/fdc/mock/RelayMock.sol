@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
-import "flare-smart-contracts-v2/contracts/userInterfaces/IRelay.sol";
+import "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
 
 
 contract RelayMock is IRelay {

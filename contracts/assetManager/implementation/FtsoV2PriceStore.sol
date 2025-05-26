@@ -3,7 +3,7 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "flare-smart-contracts-v2/contracts/userInterfaces/IRelay.sol";
+import "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../governance/implementation/AddressUpdatable.sol";
 import "../interfaces/IPriceReader.sol";

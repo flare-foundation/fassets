@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
+import "@flarenetwork/flare-periphery-contracts/flare/IFtsoRegistry.sol";
 
 
 contract FtsoRegistryMock is IFtsoRegistry {

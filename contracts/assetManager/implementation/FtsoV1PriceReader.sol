@@ -2,7 +2,7 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
+import "@flarenetwork/flare-periphery-contracts/flare/IFtsoRegistry.sol";
 import "../interfaces/IPriceReader.sol";
 import "../../governance/implementation/AddressUpdatable.sol";
 

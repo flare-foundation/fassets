@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
+import "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";

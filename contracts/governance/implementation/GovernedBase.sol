@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "flare-smart-contracts/contracts/userInterfaces/IGovernanceSettings.sol";
+import "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 import "../interfaces/IGoverned.sol";
 
 /**

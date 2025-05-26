@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "flare-smart-contracts/contracts/ftso/interface/IIFtso.sol";
+import "@flarenetwork/flare-periphery-contracts/flare/ftso/interface/IIFtso.sol";
 
 
 contract FtsoMock is IIFtso {
@@ -132,6 +132,8 @@ contract FtsoMock is IIFtso {
         uint256 _highAssetUSDThreshold,
         uint256 _highAssetTurnoutThresholdBIPS,
         uint256 _lowNatTurnoutThresholdBIPS,
+        uint256 _elasticBandRewardBIPS,
+        uint256 _elasticBandWidthPPM,
         address[] memory _trustedAddresses
     ) external {}
 
@@ -157,6 +159,8 @@ contract FtsoMock is IIFtso {
             uint256 _highAssetUSDThreshold,
             uint256 _highAssetTurnoutThresholdBIPS,
             uint256 _lowNatTurnoutThresholdBIPS,
+            uint256 _elasticBandRewardBIPS,
+            uint256 _elasticBandWidthPPM,
             address[] memory _trustedAddresses
         ) {}
 

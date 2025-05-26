@@ -2,7 +2,7 @@
 pragma solidity 0.8.23;
 
 import "../../userInterfaces/IAssetManager.sol";
-import "flare-smart-contracts-v2/contracts/userInterfaces/IRewardManager.sol";
+import "@flarenetwork/flare-periphery-contracts/flare/IRewardManager.sol";
 
 contract MaliciousRewardManager {
     uint256 public amount = 0;

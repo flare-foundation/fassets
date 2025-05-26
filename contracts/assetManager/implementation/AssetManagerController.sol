@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import "flare-smart-contracts/contracts/addressUpdater/interface/IIAddressUpdater.sol";
+import "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdater.sol";
 import "../interfaces/IWNat.sol";
 import "../interfaces/IIAssetManager.sol";
 import "../interfaces/IISettingsManagement.sol";
