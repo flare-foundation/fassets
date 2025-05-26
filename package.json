@@ -13,6 +13,10 @@
   "engines": {
     "node": ">=16"
   },
+  "files": [
+    "contracts",
+    "!contracts/assetManager/mock/ImportContractsMock.sol"
+  ],
   "scripts": {
     "---------TEST---SCRIPTS": "",
     "test": "yarn hardhat test",
