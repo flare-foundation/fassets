@@ -4,7 +4,7 @@ import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BNish, deepFormat, MAX_BIPS, toBN, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
+import { BNish, toBN, toWei, ZERO_ADDRESS, ZERO_BYTES32 } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance, MinterMockInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/IIAssetManager";
 import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -645,7 +645,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         await expectRevert(promiseAddress, "invalid check or source addresses root");
     });
 
-    it("should check source addresses and default minting ", async () => {
+    it("should revert default minting if invalid check (even if zero root)", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
@@ -655,11 +655,12 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
         // act
-        // wrong source addresses root
+        // wrong source addresses root (zero root)
         const proofAddress = await attestationProvider.proveReferencedPaymentNonexistence(
             underlyingAgent1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA),
-            crt.firstUnderlyingBlock.toNumber(), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber(), "0x" + "0".repeat(64));
-        const promiseAddress = await assetManager.mintingPaymentDefault(proofAddress, crt.collateralReservationId, { from: agentOwner1 });
+            crt.firstUnderlyingBlock.toNumber(), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber(), ZERO_BYTES32);
+        const promiseAddress = assetManager.mintingPaymentDefault(proofAddress, crt.collateralReservationId, { from: agentOwner1 });
+        await expectRevert(promiseAddress, "invalid check or source addresses root");
     });
 
     it("should not unstick minting if collateral reservation is not approved", async () => {

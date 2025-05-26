@@ -848,7 +848,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await liquidator.liquidate(agent, context.convertLotsToUBA(10));
         // check if minter's collateral pool tokens lost value
         const minterNatAfter = await agent.poolNatBalanceOf(minter.address);
-        expect(minterNatBefore).to.be.equal(minterNatAfter)
+        assertWeb3Equal(minterNatBefore, minterNatAfter)
     })
 
     it("45904: malicious agent can force a default on minter if payment is not proved inside payment window - fixed", async () => {
@@ -922,7 +922,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         //await agent.collateralPool.exit(tokens.toString(), 0, { from: victim });
 
         console.log("victim nat diff:", victimNatAfter.sub(victimNatBefore).toString());
-        expect(victimNatBefore.toString()).to.equal(victimNatAfter.toString())
+        assertWeb3Equal(victimNatBefore, victimNatAfter)
     });
 
 });
