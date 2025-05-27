@@ -3255,8 +3255,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 assertApproximatelyEqual(event.args.pausedUntil, expectedPauseEnd, "absolute", allowedError);
                 // check simple
                 assert.isTrue(await assetManager.emergencyPaused());
-                assertWeb3Equal(await assetManager.emergencyPausedUntil(), expectedPauseEnd);
-                return [pauseTime, expectedPauseEnd];
+                assertWeb3Equal(await assetManager.emergencyPausedUntil(), event.args.pausedUntil);
+                return [pauseTime, toBN(event.args.pausedUntil)];
             }
 
             it("only asset manager controller can pause", async () => {
@@ -3398,8 +3398,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 assertApproximatelyEqual(event.args.pausedUntil, expectedPauseEnd, "absolute", allowedError);
                 // check simple
                 assert.isTrue(await assetManager.transfersEmergencyPaused());
-                assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), expectedPauseEnd);
-                return [pauseTime, expectedPauseEnd];
+                assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), event.args.pausedUntil);
+                return [pauseTime, toBN(event.args.pausedUntil)];
             }
 
             it("only asset manager controller can pause", async () => {
