@@ -100,7 +100,7 @@ abstract contract GovernedBase is IGoverned {
     /**
      * @notice Initialize the governance address if not first initialized.
      */
-    function initialise(IGovernanceSettings _governanceSettings, address _initialGovernance) public virtual {
+    function initialise(IGovernanceSettings _governanceSettings, address _initialGovernance) internal virtual {
         GovernedState storage state = _governedState();
         require(state.initialised == false, "initialised != false");
         require(address(_governanceSettings) != address(0), "governance settings zero");

@@ -3,7 +3,6 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../diamond/library/LibDiamond.sol";
-import "../../governance/implementation/GovernedProxyImplementation.sol";
 import "../../openzeppelin/security/ReentrancyGuard.sol";
 import "../library/CoreVault.sol";
 import "./AssetManagerBase.sol";

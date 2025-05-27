@@ -26,12 +26,12 @@ contract(`AuditV3Diamond.ts; ${getTestFile(__filename)}; FAsset diamond design a
         // For this test, an extended interface for GovernedBase was coded
         // It extends IGoverned with the initialise() function
         const IDiamondCut = artifacts.require("IDiamondCut");
-        const IGovernedBase = artifacts.require("contracts/governance/implementation/GovernedBase.sol:GovernedBase" as "GovernedBase");
+        const AssetManagerInit = artifacts.require("AssetManagerInit");
         // diamondCuts is an array of facets, the first one is the AssetManagerDiamondCutFacet
         const assetManagerDiamondCutFacetAddr = await context.assetManager.facetAddress('0x1f931c1c');
         // The AssetManagerDiamondCutFacet implements both IDiamondCut and IGovernedBase
         const iDiamondCut = await IDiamondCut.at(assetManagerDiamondCutFacetAddr);
-        const iGovernedBase = await IGovernedBase.at(assetManagerDiamondCutFacetAddr);
+        const iGovernedBase = await AssetManagerInit.at(assetManagerDiamondCutFacetAddr);
         // Deploy fake governance settings
         const FakeGovernanceSettings = artifacts.require("GovernanceSettings");
         const fakeGovSettings = await FakeGovernanceSettings.new();
@@ -39,7 +39,7 @@ contract(`AuditV3Diamond.ts; ${getTestFile(__filename)}; FAsset diamond design a
         const SuicidalContract = artifacts.require("SuicidalMock");
         const suicidalContract = await SuicidalContract.new(ZERO_ADDRESS);
         // Call initialise directly on the implementation
-        await iGovernedBase.initialise(fakeGovSettings.address, accounts[1]);
+        await (iGovernedBase as any).initialise(fakeGovSettings.address, accounts[1]);
         // Execute the call to selfdestruct the AssetManagerDiamondCutFacet
         // getTimelock() == 0 from the FakeGovernanceSettings
         // No call will be enqueued as it will be executed directly
@@ -76,6 +76,7 @@ contract(`AuditV3Diamond.ts; ${getTestFile(__filename)}; FAsset diamond design a
         const SuicidalContract = artifacts.require("SuicidalMock");
         const suicidalContract = await SuicidalContract.new(ZERO_ADDRESS);
         // Call initialise directly on the implementation
-        await expectRevert(iGovernedBase.initialise(fakeGovSettings.address, accounts[1]), "initialised != false");
+        // initialise is now internal so the call cannot even be made
+        assert.throw(() => (iGovernedBase as any).initialise(fakeGovSettings.address, accounts[1]), "iGovernedBase.initialise is not a function");
     });
 });

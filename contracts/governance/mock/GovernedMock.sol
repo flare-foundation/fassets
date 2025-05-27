@@ -15,4 +15,8 @@ contract GovernedMock is Governed {
     {
         /* empty block */
     }
+
+    function initialize(IGovernanceSettings _governanceSettings, address _initialGovernance) public {
+        GovernedBase.initialise(_governanceSettings, _initialGovernance);
+    }
 }

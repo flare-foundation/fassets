@@ -44,7 +44,7 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
         it("Should only be initializable once", async () => {
             // Assemble
             // Act
-            const initPromise = governed.initialise(governanceSettings.address, productionGovernance);
+            const initPromise = governed.initialize(governanceSettings.address, productionGovernance);
             // Assert
             await expectRevert(initPromise, ALREADY_INIT_MSG);
             // Original governance should still be set
