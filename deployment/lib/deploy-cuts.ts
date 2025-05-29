@@ -37,7 +37,7 @@ export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contra
     // create init
     const [initAddress, initCalldata] = await createInitCall(hre, contracts, cuts.init, deployer);
     // perform or print cuts
-    const IDiamondCut = artifacts.require("DiamondCutFacet");
+    const IDiamondCut = artifacts.require("AssetManagerDiamondCutFacet");
     const diamondCutInstance = await IDiamondCut.at(diamondAddress);
     const productionMode = await diamondCutInstance.productionMode();
     const executeCuts = options.execute && !productionMode;

@@ -2,9 +2,10 @@
 pragma solidity 0.8.23;
 
 import "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdatable.sol";
+import "../interfaces/IAddressUpdatable.sol";
 
 
-abstract contract AddressUpdatable is IIAddressUpdatable {
+abstract contract AddressUpdatable is IAddressUpdatable, IIAddressUpdatable {
 
     // https://docs.soliditylang.org/en/v0.8.7/contracts.html#constant-and-immutable-state-variables
     // No storage slot is allocated

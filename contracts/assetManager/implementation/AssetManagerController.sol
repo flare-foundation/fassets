@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdater.sol";
 import "../interfaces/IWNat.sol";
-import "../interfaces/IIAssetManager.sol";
 import "../interfaces/IISettingsManagement.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
+import "../interfaces/IIAssetManagerController.sol";
 import "../../governance/implementation/GovernedProxyImplementation.sol";
 import "../../governance/implementation/AddressUpdatable.sol";
 
@@ -18,15 +16,16 @@ contract AssetManagerController is
     UUPSUpgradeable,
     GovernedProxyImplementation,
     AddressUpdatable,
-    IAssetManagerEvents,
-    IERC165
+    IIAssetManagerController
 {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    // New address in case this controller was replaced.
-    // Note: this code contains no checks that replacedBy==0, because when replaced,
-    // all calls to AssetManager's updateSettings/pause/terminate will fail anyway
-    // since they will arrive from wrong controller address.
+    /**
+     * New address in case this controller was replaced.
+     * Note: this code contains no checks that replacedBy==0, because when replaced,
+     * all calls to AssetManager's updateSettings/pause/terminate will fail anyway
+     * since they will arrive from wrong controller address.
+     */
     address public replacedBy;
 
     mapping(address => uint256) private assetManagerIndex;
@@ -96,13 +95,24 @@ contract AssetManagerController is
         }
     }
 
+    /**
+     * Return the list of all asset managers managed by this controller.
+     */
     function getAssetManagers()
         external view
-        returns (IIAssetManager[] memory)
+        returns (IAssetManager[] memory _assetManagers)
     {
-        return assetManagers;
+        uint256 length = assetManagers.length;
+        _assetManagers = new IAssetManager[](length);
+        for (uint256 i = 0; i < length; i++) {
+            _assetManagers[i] = assetManagers[i];
+        }
     }
 
+    /**
+     * Check wehther the asset manager is managed by this controller.
+     * @param _assetManager an asset manager address
+     */
     function assetManagerExists(address _assetManager)
         external view
         returns (bool)
@@ -117,7 +127,7 @@ contract AssetManagerController is
      * See UUPSUpgradeable.upgradeTo
      */
     function upgradeTo(address newImplementation)
-        public override
+        public override (IUUPSUpgradeable, UUPSUpgradeable)
         onlyGovernance
         onlyProxy
     {
@@ -128,7 +138,7 @@ contract AssetManagerController is
      * See UUPSUpgradeable.upgradeToAndCall
      */
     function upgradeToAndCall(address newImplementation, bytes memory data)
-        public payable override
+        public payable override (IUUPSUpgradeable, UUPSUpgradeable)
         onlyGovernance
         onlyProxy
     {
@@ -645,7 +655,11 @@ contract AssetManagerController is
         returns (bool)
     {
         return _interfaceId == type(IERC165).interfaceId
-            || _interfaceId == type(IIAddressUpdatable).interfaceId;
+            || _interfaceId == type(IAddressUpdatable).interfaceId
+            || _interfaceId == type(IIAddressUpdatable).interfaceId
+            || _interfaceId == type(IAssetManagerController).interfaceId
+            || _interfaceId == type(IIAssetManagerController).interfaceId
+            || _interfaceId == type(IGoverned).interfaceId;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
