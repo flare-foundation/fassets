@@ -138,7 +138,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         external
         onlyAssetManager
     {
-        require(_topupTokenPriceFactorBIPS < SafePct.MAX_BIPS, "value too high");
+        require(_topupTokenPriceFactorBIPS <= SafePct.MAX_BIPS, "value too high");
         require(_topupTokenPriceFactorBIPS > 0, "must be nonzero");
         topupTokenPriceFactorBIPS = _topupTokenPriceFactorBIPS.toUint16();
     }

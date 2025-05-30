@@ -91,7 +91,7 @@ library SettingsInitializer {
         require(_settings.takeOverRedemptionRequestWindowSeconds > 0, "cannot be zero");
         uint256 rejectedRedemptionFactorBIPS = _settings.rejectedRedemptionDefaultFactorVaultCollateralBIPS +
             _settings.rejectedRedemptionDefaultFactorPoolBIPS;
-        require(rejectedRedemptionFactorBIPS > SafePct.MAX_BIPS, "bips value too low");
+        require(rejectedRedemptionFactorBIPS >= SafePct.MAX_BIPS, "bips value too low");
         SettingsValidators.validateLiquidationFactors(_settings.liquidationCollateralFactorBIPS,
             _settings.liquidationFactorVaultCollateralBIPS);
     }

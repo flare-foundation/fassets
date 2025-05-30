@@ -723,7 +723,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
-        require(_vaultF + _poolF > SafePct.MAX_BIPS, "bips value too low");
+        require(_vaultF + _poolF >= SafePct.MAX_BIPS, "bips value too low");
         require(_vaultF <= settings.rejectedRedemptionDefaultFactorVaultCollateralBIPS.mulBips(12000) + 1000,
             "fee increase too big");
         require(_vaultF >= settings.rejectedRedemptionDefaultFactorVaultCollateralBIPS.mulBips(8333),
