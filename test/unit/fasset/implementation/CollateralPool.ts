@@ -945,6 +945,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         it("should require that amount of tokens left after exit is large enough", async () => {
             await collateralPool.enter(0, true, { value: MIN_TOKEN_SUPPLY_AFTER_EXIT });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
+            await collateralPool.depositNat({ from: assetManager.address, value: ETH(1) })
             const prms = collateralPool.selfCloseExit(tokens.sub(MIN_TOKEN_SUPPLY_AFTER_EXIT).add(BN_ONE), true, "", ZERO_ADDRESS);
             await expectRevert(prms, "token supply left after exit is too low and non-zero");
         });

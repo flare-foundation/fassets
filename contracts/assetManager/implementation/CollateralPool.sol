@@ -223,15 +223,11 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         require(_tokenShare > 0, "token share is zero");
         require(_tokenShare <= token.balanceOf(msg.sender), "token balance too low");
         AssetData memory assetData = _getAssetData();
-        require(assetData.poolTokenSupply == _tokenShare ||
-            assetData.poolTokenSupply - _tokenShare >= MIN_TOKEN_SUPPLY_AFTER_EXIT,
-            "token supply left after exit is too low and non-zero");
+        _requireMinTokenSupplyAfterExit(assetData, _tokenShare);
         // poolTokenSupply >= _tokenShare > 0
         uint256 natShare = _tokenShare.mulDiv(assetData.poolNatBalance, assetData.poolTokenSupply);
         require(natShare > 0, "amount of sent tokens is too small");
-        require(assetData.poolNatBalance == natShare ||
-            assetData.poolNatBalance - natShare >= MIN_NAT_BALANCE_AFTER_EXIT,
-            "collateral left after exit is too low and non-zero");
+        _requireMinNatSupplyAfterExit(assetData, natShare);
         // special case after termination - we don't care about fees or CR anymore and we must avoid fasset transfer
         if (fAsset.terminated()) {
             token.burn(msg.sender, _tokenShare, true); // when f-asset is terminated all tokens are free tokens
@@ -322,15 +318,9 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         require(_tokenShare > 0, "token share is zero");
         require(_tokenShare <= token.balanceOf(msg.sender), "token balance too low");
         AssetData memory assetData = _getAssetData();
-        require(assetData.poolTokenSupply == _tokenShare ||
-            assetData.poolTokenSupply - _tokenShare >= MIN_TOKEN_SUPPLY_AFTER_EXIT,
-            "token supply left after exit is too low and non-zero");
         uint256 natShare = assetData.poolNatBalance.mulDiv(
             _tokenShare, assetData.poolTokenSupply); // poolTokenSupply >= _tokenShare > 0
         require(natShare > 0, "amount of sent tokens is too small");
-        require(assetData.poolNatBalance == natShare ||
-            assetData.poolNatBalance - natShare >= MIN_NAT_BALANCE_AFTER_EXIT,
-            "collateral left after exit is too low and non-zero");
         uint256 maxAgentRedemption = assetManager.maxRedemptionFromAgent(agentVault);
         uint256 requiredFAssets = _getFAssetRequiredToNotSpoilCR(assetData, natShare);
         // rare case: if agent has too many low-valued open tickets they can't redeem the requiredFAssets
@@ -340,13 +330,13 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
             requiredFAssets = maxAgentRedemption;
             natShare = _getNatRequiredToNotSpoilCR(assetData, requiredFAssets);
             require(natShare > 0, "amount of sent tokens is too small after agent max redemption correction");
-            require(assetData.poolNatBalance == natShare ||
-                assetData.poolNatBalance - natShare >= MIN_NAT_BALANCE_AFTER_EXIT,
-                "collateral left after exit is too low and non-zero");
             // poolNatBalance >= previous natShare > 0
             _tokenShare = assetData.poolTokenSupply.mulDiv(natShare, assetData.poolNatBalance);
             emit IncompleteSelfCloseExit(_tokenShare, requiredFAssets);
         }
+        // require here in case above block changed nat and token share
+        _requireMinNatSupplyAfterExit(assetData, natShare);
+        _requireMinTokenSupplyAfterExit(assetData, _tokenShare);
         // get owner f-asset fees to be spent (maximize fee withdrawal to cover the potentially necessary f-assets)
         uint256 fAssetFees = _fAssetFeesOf(assetData, msg.sender);
         (uint256 debtFAssetFeeShare, uint256 freeFAssetFeeShare) = _getDebtAndFreeFAssetFeesFromTokenShare(
@@ -673,6 +663,28 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     {
         uint256 minPoolCollateralRatioBIPS = assetManager.getAgentMinPoolCollateralRatioBIPS(agentVault);
         return Math.max(minPoolCollateralRatioBIPS, exitCollateralRatioBIPS);
+    }
+
+    function _requireMinTokenSupplyAfterExit(
+        AssetData memory _assetData,
+        uint256 _tokenShare
+    )
+        internal pure
+    {
+        require(_assetData.poolTokenSupply == _tokenShare ||
+            _assetData.poolTokenSupply - _tokenShare >= MIN_TOKEN_SUPPLY_AFTER_EXIT,
+            "token supply left after exit is too low and non-zero");
+    }
+
+    function _requireMinNatSupplyAfterExit(
+        AssetData memory _assetData,
+        uint256 _natShare
+    )
+        internal pure
+    {
+        require(_assetData.poolNatBalance == _natShare ||
+            _assetData.poolNatBalance - _natShare >= MIN_NAT_BALANCE_AFTER_EXIT,
+            "collateral left after exit is too low and non-zero");
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
