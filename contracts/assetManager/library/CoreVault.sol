@@ -80,7 +80,7 @@ library CoreVault {
         _agent.activeTransferToCoreVault = redemptionRequestId;
         // pay the transfer fee and return overpaid transfer fee when the difference is larger than gas use
         // (all transfers are guarded by nonReentrant in the facet)
-        if (msg.value > transferFeeWei + Transfers.TRANSFER_GAS_ALLOWANCE) {
+        if (msg.value > transferFeeWei + Transfers.TRANSFER_GAS_ALLOWANCE * tx.gasprice) {
             Transfers.transferNAT(state.nativeAddress, transferFeeWei);
             Transfers.transferNATAllowFailure(payable(msg.sender), msg.value - transferFeeWei);
         } else {
