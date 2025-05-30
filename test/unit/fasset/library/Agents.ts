@@ -239,6 +239,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         // assert
         await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_1", { poolTokenSuffix: "AG-X-5" }),
             "suffix already reserved");
+        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_2", { poolTokenSuffix: "" }),
+            "suffix too short");
         await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_2", { poolTokenSuffix: "AGX12345678901234567890" }),
             "suffix too long");
         await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_3", { poolTokenSuffix: "A B" }),

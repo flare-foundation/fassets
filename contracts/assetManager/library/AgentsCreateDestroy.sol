@@ -27,6 +27,7 @@ library AgentsCreateDestroy {
     using Agent for Agent.State;
     using Agents for Agent.State;
 
+    uint256 internal constant MIN_SUFFIX_LEN = 2;
     uint256 internal constant MAX_SUFFIX_LEN = 20;
 
     modifier onlyAgentVaultOwner(address _agentVault) {
@@ -246,6 +247,7 @@ library AgentsCreateDestroy {
         // validate - require only printable ASCII characters (no spaces) and limited length
         bytes memory suffixb = bytes(_suffix);
         uint256 len = suffixb.length;
+        require(len >= MIN_SUFFIX_LEN, "suffix too short");
         require(len < MAX_SUFFIX_LEN, "suffix too long");
         for (uint256 i = 0; i < len; i++) {
             bytes1 ch = suffixb[i];
