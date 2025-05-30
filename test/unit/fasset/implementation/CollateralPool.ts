@@ -258,7 +258,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
 
         it("should fail at setting topup token discount if conditions aren't met", async () => {
-            const payload = collateralPool.contract.methods.setTopupTokenPriceFactorBIPS(MAX_BIPS).encodeABI();
+            const payload = collateralPool.contract.methods.setTopupTokenPriceFactorBIPS(MAX_BIPS + 1).encodeABI();
             const prms = assetManager.callFunctionAt(collateralPool.address, payload);
             await expectRevert(prms, "value too high");
             const payload1 = collateralPool.contract.methods.setTopupTokenPriceFactorBIPS(0).encodeABI();

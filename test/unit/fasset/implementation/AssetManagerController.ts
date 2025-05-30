@@ -1250,7 +1250,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should not set rejected redemption default factor bips if bips value too low", async () => {
-            let rejectedRedemptionDefaultFactorPoolBIPS_new = 5000;
+            let rejectedRedemptionDefaultFactorPoolBIPS_new = 4999;
             let rejectedRedemptionDefaultFactorVaultCollateralBIPS_new = 5000;
             let res = assetManagerController.setRejectedRedemptionDefaultFactorBips([assetManager.address], rejectedRedemptionDefaultFactorVaultCollateralBIPS_new, rejectedRedemptionDefaultFactorPoolBIPS_new, { from: governance });
             await expectRevert(res, "bips value too low");
