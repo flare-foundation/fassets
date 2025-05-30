@@ -12,13 +12,16 @@ library SettingsUpdater {
     bytes32 internal constant UPDATES_STATE_POSITION = keccak256("fasset.AssetManager.UpdaterState");
 
     function checkEnoughTimeSinceLastUpdate() internal {
+        checkEnoughTimeSinceLastUpdate(msg.sig);
+    }
+
+    function checkEnoughTimeSinceLastUpdate(bytes32 _action) internal {
         UpdaterState storage _state = _getUpdaterState();
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        bytes4 method = msg.sig;
-        uint256 lastUpdate = _state.lastUpdate[method];
+        uint256 lastUpdate = _state.lastUpdate[_action];
         require(lastUpdate == 0 || block.timestamp >= lastUpdate + settings.minUpdateRepeatTimeSeconds,
             "too close to previous update");
-        _state.lastUpdate[method] = block.timestamp;
+        _state.lastUpdate[_action] = block.timestamp;
     }
 
     function _getUpdaterState() private pure returns (UpdaterState storage _state) {

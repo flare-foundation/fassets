@@ -746,6 +746,27 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             }
         });
 
+        it("should rate limit change of collateral settings - but only only within a single collateral", async () => {
+            // there is more than one collateral, so rate limiting one should not affect the other
+            assert.isAtLeast(collaterals.length, 2);
+            // change settings - this should work
+            for (const collateral of collaterals) {
+                const res = await assetManagerController.setCollateralRatiosForToken([assetManager.address], collateral.collateralClass, collateral.token, 2_2000, 1_8000, 2_4000, { from: governance });
+                await waitForTimelock(res, assetManagerController, updateExecutor);
+            }
+            // trying again should fail for all collateral types
+            for (const collateral of collaterals) {
+                const res = await assetManagerController.setCollateralRatiosForToken([assetManager.address], collateral.collateralClass, collateral.token, 2_2001, 1_8001, 2_4001, { from: governance });
+                await expectRevert(waitForTimelock(res, assetManagerController, updateExecutor), "too close to previous update");
+            }
+            // after 1 day, it should work again
+            await time.increase(toBN(settings.minUpdateRepeatTimeSeconds));
+            for (const collateral of collaterals) {
+                const res = await assetManagerController.setCollateralRatiosForToken([assetManager.address], collateral.collateralClass, collateral.token, 2_2002, 1_8002, 2_4002, { from: governance });
+                await waitForTimelock(res, assetManagerController, updateExecutor);
+            }
+        });
+
         it("shouldn't change time for payment settings without timelock", async () => {
             // change settings
             const currentSettings = await assetManager.getSettings();

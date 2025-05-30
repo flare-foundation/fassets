@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./Globals.sol";
+import "./SettingsUpdater.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
 
 
@@ -46,6 +47,9 @@ library CollateralTypes {
     )
         internal
     {
+        // use separate rate limit for each collateral type
+        bytes32 actionKey = keccak256(abi.encode(msg.sig, _collateralClass, _token));
+        SettingsUpdater.checkEnoughTimeSinceLastUpdate(actionKey);
         bool ratiosValid =
             SafePct.MAX_BIPS < _ccbMinCollateralRatioBIPS &&
             _ccbMinCollateralRatioBIPS <= _minCollateralRatioBIPS &&
