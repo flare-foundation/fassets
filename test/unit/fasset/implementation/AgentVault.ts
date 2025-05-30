@@ -1,5 +1,5 @@
 import { setBalance } from "@nomicfoundation/hardhat-network-helpers";
-import { expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { erc165InterfaceId, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
@@ -21,6 +21,8 @@ const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 const CollateralPool = artifacts.require("CollateralPool");
 const FAsset = artifacts.require('FAsset');
 const FAssetProxy = artifacts.require('FAssetProxy');
+const DistributionToDelegators = artifacts.require('DistributionToDelegators');
+const RewardManager = artifacts.require("RewardManagerMock");
 
 contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, async accounts => {
     let contracts: TestSettingsContracts;
@@ -342,6 +344,31 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         assert.equal(invocationCount.toNumber(), 1);
     });
 
+    it("should claim delegation rewards", async () => {
+        const agentVault = await AgentVault.new(assetManagerMock.address);
+        const rewardManager = await RewardManager.new(wNat.address);
+        const claimAmount = toBNExp(1, 18);
+        await wNat.depositTo(rewardManager.address, { value: claimAmount });
+        const startAmount = toBN(await web3.eth.getBalance(accounts[50]));
+        const res = await agentVault.claimDelegationRewards(rewardManager.address, 0, accounts[50], [], { from: owner });
+        const endAmount = toBN(await web3.eth.getBalance(accounts[50]));
+        assertWeb3Equal(endAmount.sub(startAmount), claimAmount);
+        assertWeb3Equal(await wNat.balanceOf(rewardManager.address), 0); // should be empty now
+    });
+
+    it("should claim delegation rewards to vault", async () => {
+        const agentVault = await AgentVault.new(assetManagerMock.address);
+        const rewardManager = await RewardManager.new(wNat.address);
+        const claimAmount = toBNExp(1, 18);
+        await wNat.depositTo(rewardManager.address, { value: claimAmount });
+        const startAmount = await wNat.balanceOf(agentVault.address);
+        const res = await agentVault.claimDelegationRewards(rewardManager.address, 0, agentVault.address, [], { from: owner });
+        const endAmount = await wNat.balanceOf(agentVault.address);
+        assertWeb3Equal(endAmount.sub(startAmount), claimAmount);
+        assertWeb3Equal(await wNat.balanceOf(rewardManager.address), 0); // should be empty now
+    });
+
+
     it("cannot claim rewards if not owner", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const rewardManagerMock = await MockContract.new();
@@ -371,15 +398,26 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     it("should claim airdrop distribution", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
-        const distributionMock = await MockContract.new();
-        await agentVault.claimAirdropDistribution(distributionMock.address, 2, owner, { from: owner });
-        const claim = web3.eth.abi.encodeFunctionCall({
-            type: "function", name: "claim",
-            inputs: [{ name: "_rewardOwner", type: "address" }, { name: "_recipient", type: "address" }, { name: "_month", type: "uint256" }, { name: "_wrap", type: "bool" }]
-        } as AbiItem,
-            [agentVault.address, owner, 2, false] as any[]);
-        const invocationCount = await distributionMock.invocationCountForCalldata.call(claim);
-        assert.equal(invocationCount.toNumber(), 1);
+        const distributionToDelegators = await DistributionToDelegators.new(wNat.address);
+        const claimAmount = toBNExp(1, 18);
+        await wNat.depositTo(distributionToDelegators.address, { value: claimAmount });
+        const startAmount = toBN(await web3.eth.getBalance(accounts[50]));
+        const res = await agentVault.claimAirdropDistribution(distributionToDelegators.address, 0, accounts[50], { from: owner });
+        const endAmount = toBN(await web3.eth.getBalance(accounts[50]));
+        assertWeb3Equal(endAmount.sub(startAmount), claimAmount);
+        assertWeb3Equal(await wNat.balanceOf(distributionToDelegators.address), 0); // should be empty now
+    });
+
+    it("should claim airdrop distribution to vault", async () => {
+        const agentVault = await AgentVault.new(assetManagerMock.address);
+        const distributionToDelegators = await DistributionToDelegators.new(wNat.address);
+        const claimAmount = toBNExp(1, 18);
+        await wNat.depositTo(distributionToDelegators.address, { value: claimAmount });
+        const startAmount = await wNat.balanceOf(agentVault.address);
+        const res = await agentVault.claimAirdropDistribution(distributionToDelegators.address, 0, agentVault.address, { from: owner });
+        const endAmount = await wNat.balanceOf(agentVault.address);
+        assertWeb3Equal(endAmount.sub(startAmount), claimAmount);
+        assertWeb3Equal(await wNat.balanceOf(distributionToDelegators.address), 0); // should be empty now
     });
 
     it("cannot claim airdrop distribution if not owner", async () => {

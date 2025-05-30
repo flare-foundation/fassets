@@ -164,7 +164,8 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         onlyOwner
         returns (uint256)
     {
-        return _rewardManager.claim(address(this), _recipient, _lastRewardEpoch, false, _proofs);
+        bool shouldWrap = _recipient == address(this);
+        return _rewardManager.claim(address(this), _recipient, _lastRewardEpoch, shouldWrap, _proofs);
     }
 
     function claimAirdropDistribution(
@@ -176,7 +177,8 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         onlyOwner
         returns(uint256)
     {
-        return _distribution.claim(address(this), _recipient, _month, false);
+        bool shouldWrap = _recipient == address(this);
+        return _distribution.claim(address(this), _recipient, _month, shouldWrap);
     }
 
     function optOutOfAirdrop(IDistributionToDelegators _distribution)

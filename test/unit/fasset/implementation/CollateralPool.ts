@@ -50,6 +50,7 @@ const DistributionToDelegators = artifacts.require("DistributionToDelegators");
 const MockContract = artifacts.require('MockContract');
 const FAsset = artifacts.require('FAsset');
 const FAssetProxy = artifacts.require('FAssetProxy');
+const RewardManager = artifacts.require("RewardManagerMock");
 const IRewardManager = artifacts.require("IRewardManager");
 
 contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic tests`, async accounts => {
@@ -1618,22 +1619,18 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
 
         it("should claim rewards from reward manager", async () => {
-            const rewardManagerMock = await MockContract.new();
-            const resp = await collateralPool.claimDelegationRewards(rewardManagerMock.address, 5, [], { from: agent });
-            await expectEvent.inTransaction(resp.tx, collateralPool, "ClaimedReward", { amountNatWei: '0', rewardType: '1' });
-            const claimReward = web3.eth.abi.encodeFunctionCall({
-                type: "function", name: "claim",
-                inputs: [{ name: "_rewardOwner", type: "address" }, { name: "_recipient", type: "address" }, { name: "_rewardEpoch", type: "uint24" }, { name: "_wrap", type: "bool" },
-                {
-                    components: [{ name: "merkleProof", type: "bytes32[]" }, {
-                        components: [{ name: "rewardEpochId", type: "uint24" }, { name: "beneficiary", type: "bytes20" },
-                        { name: "amount", type: "uint120" }, { name: "claimType", type: "uint8" }], name: "body", type: "tuple"
-                    }], name: "_proofs", type: "tuple[]"
-                }]
-            } as AbiItem,
-                [collateralPool.address, collateralPool.address, 5, true, []] as any[]);
-            const invocationCount = await rewardManagerMock.invocationCountForCalldata.call(claimReward);
-            assert.equal(invocationCount.toNumber(), 1);
+            const WNat = artifacts.require("WNat");
+            const wNat = await WNat.new(accounts[0], "WNat", "WNAT");
+            // create reward manager
+            const rewardManager = await RewardManager.new(wNat.address);
+            const claimAmount = toBNExp(1, 18);
+            await wNat.depositTo(rewardManager.address, { value: claimAmount });
+            // claim
+            const startAmount = await wNat.balanceOf(collateralPool.address);
+            const resp = await collateralPool.claimDelegationRewards(rewardManager.address, 5, [], { from: agent });
+            const endAmount = await wNat.balanceOf(collateralPool.address);
+            assertEqualBN(endAmount.sub(startAmount), claimAmount);
+            assertEqualBN(await wNat.balanceOf(rewardManager.address), toBN(0)); // should be empty now
         });
 
         it("should check actual dropped amount not the claim from untrusted distribution contract", async () => {

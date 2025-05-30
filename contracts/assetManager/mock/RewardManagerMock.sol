@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import "@flarenetwork/flare-periphery-contracts/flare/IRewardManager.sol";
 import "../interfaces/IWNat.sol";
 
-contract DistributionToDelegators {
+contract RewardManagerMock {
     IWNat private wNat;
-
-    event OptedOutOfAirdrop(address account);
 
     constructor(IWNat _wNat) {
         wNat = _wNat;
@@ -14,7 +13,13 @@ contract DistributionToDelegators {
 
     receive() external payable {}
 
-    function claim(address /* _rewardOwner */, address _recipient, uint256 /* _month */, bool _wrap)
+    function claim(
+        address /* _rewardOwner */,
+        address payable _recipient,
+        uint24 /* _rewardEpochId */,
+        bool _wrap,
+        IRewardManager.RewardClaimWithProof[] calldata /* _proofs */
+    )
         external returns(uint256 _rewardAmount)
     {
         uint256 reward = 1 ether;
@@ -30,9 +35,4 @@ contract DistributionToDelegators {
         }
         return reward;
     }
-
-    function optOutOfAirdrop() external {
-        emit OptedOutOfAirdrop(msg.sender);
-    }
-
 }
