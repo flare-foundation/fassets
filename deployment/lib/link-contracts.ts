@@ -60,7 +60,7 @@ export async function linkContracts(hre: HardhatRuntimeEnvironment, contracts: s
             if (info.toplevel) continue;                // not a dependency - no need to deploy
             if (info.dependencies.size > 0) continue;   // has undeployed dependencies itself
             const existingAddress = deployedLibs.get(name) ?? existingDeployedLibs.get(name);
-            const existingDeployedCode = await readDeployedCode(existingAddress);
+            const existingDeployedCode = await readDeployedCode(hre, existingAddress);
             if (existingAddress && existingDeployedCode && existingDeployedCode === info.artifact.deployedBytecode) {
                 console.log(`  using ${info.artifact.contractName} at ${existingAddress}`);
                 deployedLibs.set(name, existingAddress);

@@ -154,7 +154,7 @@ export async function deployCoreVaultManager(hre: HardhatRuntimeEnvironment, con
 
     // hack to set contract addresses without governance call from AddressUpdater
     await waitFinalize(hre, deployer,
-        () => coreVaultManager.updateContractAddresses(encodeContractNames(["AddressUpdater", "FdcVerification"]),
+        () => coreVaultManager.updateContractAddresses(encodeContractNames(hre, ["AddressUpdater", "FdcVerification"]),
                     [contracts.AddressUpdater.address, contracts.FdcVerification!.address],
                     { from: deployer }));
 

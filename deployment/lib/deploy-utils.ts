@@ -1,3 +1,4 @@
+import Web3 from "web3";
 import { Artifact, HardhatRuntimeEnvironment } from "hardhat/types";
 
 // same as in @openzeppelin/test-helpers, but including those in hadhat scripts breaks tests for some reason
@@ -22,15 +23,15 @@ export function loadDeployAccounts(hre: HardhatRuntimeEnvironment): DeployAccoun
     };
 }
 
-export async function readDeployedCode(address: string | undefined) {
+export async function readDeployedCode(hre: HardhatRuntimeEnvironment, address: string | undefined) {
     if (address == null) return null;
-    const code = await web3.eth.getCode(address);
+    const code = await hre.web3.eth.getCode(address);
     return code.replace(new RegExp(address.slice(2), "gi"), "0000000000000000000000000000000000000000");
 }
 
-export async function deployedCodeMatches(artifact: Artifact, address: string | undefined) {
+export async function deployedCodeMatches(hre: HardhatRuntimeEnvironment, artifact: Artifact, address: string | undefined) {
     if (!address) return false;
-    const code = await readDeployedCode(address);
+    const code = await readDeployedCode(hre, address);
     return artifact.deployedBytecode === code;
 }
 
@@ -82,15 +83,15 @@ export function truffleContractMetadata(contract: Truffle.Contract<any>): { cont
 /**
  * Encode contract names in a way compatible with AddressUpdatable.updateContractAddresses.
  */
-export function encodeContractNames(names: string[]): string[] {
-    return names.map(name => encodeContractName(name));
+export function encodeContractNames(hre: HardhatRuntimeEnvironment, names: string[]): string[] {
+    return names.map(name => encodeContractName(hre, name));
 }
 
 /**
  * Encode contract name in a way compatible with AddressUpdatable.updateContractAddresses.
  */
-export function encodeContractName(text: string): string {
-    return web3.utils.keccak256(web3.eth.abi.encodeParameters(["string"], [text]));
+export function encodeContractName(hre: HardhatRuntimeEnvironment, text: string): string {
+    return Web3.utils.keccak256(hre.web3.eth.abi.encodeParameters(["string"], [text]));
 }
 
 /**
