@@ -124,6 +124,7 @@ library Agents {
     )
         internal
     {
+        require(_poolTopupTokenPriceFactorBIPS >= SafePct.MAX_BIPS * 3 / 4, "value too low");
         _agent.collateralPool.setTopupTokenPriceFactorBIPS(_poolTopupTokenPriceFactorBIPS);
     }
 
