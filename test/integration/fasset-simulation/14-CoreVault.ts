@@ -1190,4 +1190,18 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         assert.approximately(Number(maximumTransferUBA) / Number(info.mintedUBA), 0.76, 1e-3);
         assert.approximately(Number(minimumLeftAmountUBA) / Number(info.mintedUBA), 0.24, 1e-3);
     });
+
+    it("nnez - zero amount redemption - fixed", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        // make agent available
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        await context.updateUnderlyingBlock();
+
+        const txHash = await agent.performTopupPayment(toBN(100));
+        await agent.confirmTopupPayment(txHash);
+
+        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, 10, { from: agent.ownerWorkAddress }), "nothing minted");
+        // const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, 10, { from: agent.ownerWorkAddress });
+        // const logs = filterEvents(res, "RedemptionRequested");
+    });
 });

@@ -62,6 +62,7 @@ library CoreVault {
         require(_agent.activeTransferToCoreVault == 0, "transfer already active");
         // close agent's redemption tickets
         (uint64 transferredAMG,) = Redemptions.closeTickets(_agent, _amountAMG, false, false);
+        require(transferredAMG > 0, "nothing minted");
         // check the transfer fee
         uint256 transferFeeWei = getTransferFee(transferredAMG);
         require(msg.value >= transferFeeWei, "transfer fee payment too small");
