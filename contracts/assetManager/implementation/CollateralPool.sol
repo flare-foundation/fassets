@@ -302,6 +302,8 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         external payable
         nonReentrant
     {
+        require(_recipient != address(0) && _recipient != address(this) && _recipient != agentVault,
+            "invalid recipient address");
         _selfCloseExitTo(_tokenShare, _redeemToCollateral, _recipient, _redeemerUnderlyingAddress, _executor);
     }
 

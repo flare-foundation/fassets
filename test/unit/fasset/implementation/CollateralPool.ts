@@ -1299,6 +1299,22 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(receiverReceivedFAssets, ETH(5).sub(transferFee));   // half fees get redeemed, so expect half fees to be paid out
             // on half of the fees that were paid out transfer fee is paid
         });
+
+        it("self-close exit recipient should be valid", async () => {
+            // account0 enters the pool
+            await collateralPool.enter(0, true, { value: ETH(10), from: accounts[0] });
+            // collateral pool collects fees
+            await givePoolFAssetFees(ETH(10));
+            // someone else add some backing
+            await collateralPool.enter(0, false, { value: ETH(3), from: accounts[0] });
+            // account1 exits with fees using MAXIMIZE_FEE_WITHDRAWAL token exit type
+            const exitTokens = ETH(10);
+            //
+            await expectRevert(collateralPool.selfCloseExitTo(exitTokens, true, ZERO_ADDRESS, "underlying_1", ZERO_ADDRESS, { from: accounts[0] }), "invalid recipient address");
+            await expectRevert(collateralPool.selfCloseExitTo(exitTokens, true, collateralPool.address, "underlying_1", ZERO_ADDRESS, { from: accounts[0] }), "invalid recipient address");
+            const vaultAddress = await collateralPool.agentVault();
+            await expectRevert(collateralPool.selfCloseExitTo(exitTokens, true, vaultAddress, "underlying_1", ZERO_ADDRESS, { from: accounts[0] }), "invalid recipient address");
+        });
     });
 
     describe("externally dealing with fasset debt", async () => {
