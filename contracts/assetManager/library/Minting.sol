@@ -56,18 +56,18 @@ library Minting {
         // execute minting
         _performMinting(agent, MintingType.PUBLIC, _crtId, crt.minter, crt.valueAMG,
             uint256(_payment.data.responseBody.receivedAmount), calculatePoolFeeUBA(agent, crt));
-        // pay to executor if they called this method
-        uint256 unclaimedExecutorFee = crt.executorFeeNatGWei * Conversion.GWEI;
-        if (msg.sender == crt.executor) {
-            // safe - 1) guarded by nonReentrant in AssetManager.executeMinting, 2) recipient is msg.sender
-            Transfers.transferNAT(crt.executor, unclaimedExecutorFee);
-            unclaimedExecutorFee = 0;
-        }
+        // calculate the fee to be paid to the executor (if the executor called this method)
+        address payable executor = crt.executor;
+        uint256 executorFee = crt.executorFeeNatGWei * Conversion.GWEI;
+        uint256 claimedExecutorFee = msg.sender == executor ? executorFee : 0;
         // pay the collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
+        // add the executor fee if it is not claimed by the executor
         CollateralReservations.distributeCollateralReservationFee(agent,
-            crt.reservationFeeNatWei + unclaimedExecutorFee);
+            crt.reservationFeeNatWei + executorFee - claimedExecutorFee);
         // cleanup
         CollateralReservations.releaseCollateralReservation(crt, _crtId);   // crt can't be used after this
+        // pay to executor at the end to avoid reentrancy via pool.enter (allowing exploits by pool topup)
+        Transfers.transferNAT(executor, claimedExecutorFee);
     }
 
     function selfMint(
