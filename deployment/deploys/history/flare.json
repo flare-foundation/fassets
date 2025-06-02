@@ -1,0 +1,16 @@
+[
+  {
+    "name": "PriceReader",
+    "contractName": "FtsoV2PriceStore.sol",
+    "addresses": [
+      "0xC56bc4Bb0AC6AaB3538238F5Ec4aBe9381eb6259"
+    ]
+  },
+  {
+    "name": "FtsoV2PriceStore",
+    "contractName": "FtsoV2PriceStore.sol",
+    "addresses": [
+      "0xC56bc4Bb0AC6AaB3538238F5Ec4aBe9381eb6259"
+    ]
+  }
+]
