@@ -53,8 +53,7 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
 
     /**
      * If the agent hasn't performed the payment, the agent can close the redemption request to free underlying funds.
-     * It can be done immediately after the redeemer or agent calls redemptionPaymentDefault,
-     * or this method can trigger the default payment without proof, but only after enough time has passed so that
+     * This method can trigger the default payment without proof, but only after enough time has passed so that
      * attestation proof of non-payment is not available any more.
      * NOTE: may only be called by the owner of the agent vault in the redemption request.
      * @param _proof proof that the attestation query window can not not contain
