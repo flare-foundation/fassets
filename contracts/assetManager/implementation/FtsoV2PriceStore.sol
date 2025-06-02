@@ -395,7 +395,7 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
         if (length % 2 == 1) {
             _medianPrice = prices[middleIndex];
             if (length >= 3) {
-                spread = prices[middleIndex + 1] - prices[middleIndex - 1];
+                spread = (prices[middleIndex + 1] - prices[middleIndex - 1]) / 2;
             }
         } else {
             // if median is "in the middle", take the average price of the two consecutive prices

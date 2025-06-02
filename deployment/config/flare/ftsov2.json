@@ -8,7 +8,7 @@
         "0xC1699acb7D6E0553FbA6a03d8A622b57955cfA1B"
     ],
     "trustedProvidersThreshold": 2,
-    "maxSpreadBIPS": 50,
+    "maxSpreadBIPS": 100,
     "feeds": [
         { "feedId": "FLR/USD", "symbol": "FLR", "feedDecimals": 6 },
         { "feedId": "BTC/USD", "symbol": "BTC", "feedDecimals": 2 },
