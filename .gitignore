@@ -44,6 +44,7 @@ package-lock.json
 ## gas report
 .gas-report.txt
 gasReporterOutput.json
+gas-costs.txt
 
 ## Fake multiplatform /dev/null. On Win `1> nul` does not create a file
 ## On Unix systems it creates a file
