@@ -189,7 +189,7 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     }
 
     // Used by asset manager when destroying agent.
-    // Completely erases agent vault and transfers all funds to the owner.
+    // Completely erases agent vault and transfers all funds to the recipient.
     function destroy(address payable _recipient)
         external override
         onlyAssetManager
