@@ -248,7 +248,7 @@ library AgentsCreateDestroy {
         bytes memory suffixb = bytes(_suffix);
         uint256 len = suffixb.length;
         require(len >= MIN_SUFFIX_LEN, "suffix too short");
-        require(len < MAX_SUFFIX_LEN, "suffix too long");
+        require(len <= MAX_SUFFIX_LEN, "suffix too long");
         for (uint256 i = 0; i < len; i++) {
             bytes1 ch = suffixb[i];
             // allow A-Z, 0-9 and '-' (but not at start or end)
