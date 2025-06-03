@@ -59,28 +59,32 @@
     "name": "AgentVaultProxyImplementation",
     "contractName": "AgentVault.sol",
     "addresses": [
-      "0x7Da107cc9696b34Fce151C6C4C1c85E626b2480D"
+      "0x7Da107cc9696b34Fce151C6C4C1c85E626b2480D",
+      "0xE6C4E88c87A4EcD3f83319B5a7c7fe03227b9C6F"
     ]
   },
   {
     "name": "AgentVaultFactory",
     "contractName": "AgentVaultFactory.sol",
     "addresses": [
-      "0x9426C77c843c99079571BeC0ceD8e31b1f49f005"
+      "0x9426C77c843c99079571BeC0ceD8e31b1f49f005",
+      "0xBdc78602E3C74FA40d74c9555C3340946Ea17d8e"
     ]
   },
   {
     "name": "CollateralPoolProxyImplementation",
     "contractName": "CollateralPool.sol",
     "addresses": [
-      "0x01C2Dae4b2cEbb0ccB6b7Af166D397dEC1513e4E"
+      "0x01C2Dae4b2cEbb0ccB6b7Af166D397dEC1513e4E",
+      "0x71621f9611374F4ee6477261Bc71B5cD6069F3d7"
     ]
   },
   {
     "name": "CollateralPoolFactory",
     "contractName": "CollateralPoolFactory.sol",
     "addresses": [
-      "0x3D77acbDF0fB951C4E556C07B4F1b61f8744acfd"
+      "0x3D77acbDF0fB951C4E556C07B4F1b61f8744acfd",
+      "0x359a46C8c56F4A1dD0B7f150C4Fd42Ca28AfA5D6"
     ]
   },
   {
@@ -101,7 +105,8 @@
     "name": "AssetManagerControllerImplementation",
     "contractName": "AssetManagerController.sol",
     "addresses": [
-      "0x2493371415C6Ef5a62FB234f3523daC70D7ed5Ad"
+      "0x2493371415C6Ef5a62FB234f3523daC70D7ed5Ad",
+      "0x3E6246CB8489DE73E67f5D28733Ec56cDD9644cD"
     ]
   },
   {

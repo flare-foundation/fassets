@@ -102,3 +102,10 @@ export function runAsyncMain(func: (args: string[]) => Promise<void>, errorExitC
         .then(() => { process.exit(0); })
         .catch(e => { console.error(e); process.exit(errorExitCode); });
 }
+
+export const ERC1967_STORAGE = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+
+export async function getProxyImplementationAddress(hre: HardhatRuntimeEnvironment, proxyAddr: string) {
+    const addressBytes32 = await hre.network.provider.send('eth_getStorageAt', [proxyAddr, ERC1967_STORAGE, 'latest']);
+    return web3.utils.toChecksumAddress('0x' + addressBytes32.slice(26));
+}
