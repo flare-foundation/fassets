@@ -323,6 +323,15 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const longAddress = "abcdefghijklmnopqrstuvwxyz012345abcdefghijklmnopqrstuvwxyz012345abcdefghijklmnopqrstuvwxyz012345abcdefghijklmnopqrstuvwxyz012345";
+        await expectRevert(mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, longAddress, redeemerAddress1, true),
+            "underlying address too long");
+    });
+
+    it("should not redeem - address too long", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
         //perform redemption payment
         const paymentAmt = request.valueUBA.sub(request.feeUBA);

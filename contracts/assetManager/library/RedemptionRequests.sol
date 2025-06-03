@@ -327,6 +327,7 @@ library RedemptionRequests {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_data.agentVault);
         // validate redemption address
+        require(bytes(_redeemerUnderlyingAddressString).length < 128, "underlying address too long");
         bytes32 underlyingAddressHash = keccak256(bytes(_redeemerUnderlyingAddressString));
         // both addresses must be normalized (agent's address is checked at vault creation,
         // and if redeemer address isn't normalized, the agent can trigger rejectInvalidRedemption),
