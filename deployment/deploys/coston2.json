@@ -217,17 +217,17 @@
   {
     "name": "CollateralReservationsFacet",
     "contractName": "CollateralReservationsFacet.sol",
-    "address": "0x16A986043335C665Be338c651CAE7B3F931e7A1F"
+    "address": "0x9F7b9e986D07448FEF943a6028a5A88F48e94cB9"
   },
   {
     "name": "MintingFacet",
     "contractName": "MintingFacet.sol",
-    "address": "0x75F79Df31F0fbF3332EBA67d013CbA1154Bf20F1"
+    "address": "0xe80EF41c69a204ea5C90F033fe722B9D8f5681D8"
   },
   {
     "name": "RedemptionRequestsFacet",
     "contractName": "RedemptionRequestsFacet.sol",
-    "address": "0x0e16329b59A6448315B29F9d663BedC2F54Bcf9B"
+    "address": "0xe6c74f81623Be4Dd580d9DB9aE47a966b3f167F9"
   },
   {
     "name": "RedemptionHandshakeFacet",
@@ -267,17 +267,17 @@
   {
     "name": "AgentVaultManagementFacet",
     "contractName": "AgentVaultManagementFacet.sol",
-    "address": "0xE0F0d0bbD62f1ace5Aa86C3818e51728C86cd7a9"
+    "address": "0xfD74D7d5aAd50233329dC60CD126d7afa56DAEe7"
   },
   {
     "name": "AgentSettingsFacet",
     "contractName": "AgentSettingsFacet.sol",
-    "address": "0xcA5969f4F5d7152f675aC9F066B4C3A50A9184B3"
+    "address": "0x58C0b2BC2d7a6a79C92495dCcA3cEE2F56147c37"
   },
   {
     "name": "CollateralTypesFacet",
     "contractName": "CollateralTypesFacet.sol",
-    "address": "0xBc9bDE568C2f072CCAF99721be1A67BCC09d2D8b"
+    "address": "0x41D4aD5D841BE7a16A6Dbf9393d848E1E18F9f0b"
   },
   {
     "name": "AgentCollateralFacet",
@@ -292,7 +292,7 @@
   {
     "name": "SettingsManagementFacet",
     "contractName": "SettingsManagementFacet.sol",
-    "address": "0xedA602F80688Da30b466a9429BED6ff72Ad00171"
+    "address": "0xa7cD5A28Df3ddc66B8fBb86023c3C71E3db91536"
   },
   {
     "name": "AgentVaultAndPoolSupportFacet",
@@ -342,7 +342,7 @@
   {
     "name": "CoreVaultFacet",
     "contractName": "CoreVaultFacet.sol",
-    "address": "0x603A230Ec92451336436F6Effc70f6384cAA1DE9"
+    "address": "0x349068D4145e0d0E2F6173e26C9CAaC0803BB856"
   },
   {
     "name": "CoreVaultSettingsFacet",
