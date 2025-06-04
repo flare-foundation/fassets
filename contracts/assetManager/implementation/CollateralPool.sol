@@ -165,6 +165,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         }
         // calculate obtained pool tokens and free f-assets
         uint256 tokenShare = _collateralToTokenShare(assetData, msg.value);
+        require(tokenShare > 0, "deposited amount results in zero received tokens");
         uint256 fAssetShare = assetData.poolTokenSupply > 0 ?
             assetData.poolVirtualFAssetFees.mulDiv(tokenShare, assetData.poolTokenSupply) : 0;
         uint256 depositedFAsset = _enterWithFullFAssets ? fAssetShare : Math.min(_fAssets, fAssetShare);
