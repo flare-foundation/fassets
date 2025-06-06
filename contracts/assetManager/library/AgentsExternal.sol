@@ -167,6 +167,9 @@ library AgentsExternal {
         //       withdrawal without announcement by switching, withdrawing and switching back
         CollateralTypeInt.Data storage currentCollateral = agent.getVaultCollateral();
         require(currentCollateral.validUntil != 0, "current collateral not deprecated");
+        // cannot switch if collateral withdrawal is announced
+        Agent.WithdrawalAnnouncement storage withdrawal = agent.withdrawalAnnouncement(Collateral.Kind.VAULT);
+        require(withdrawal.allowedAt == 0, "collateral withdrawal announced");
         // set new collateral
         agent.setVaultCollateral(_token);
         emit IAssetManagerEvents.AgentCollateralTypeChanged(_agentVault,

@@ -705,6 +705,23 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(res, "not enough collateral");
         });
 
+        it("should not switch vault collateral token when withdrawal announced", async () => {
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            await depositAgentCollaterals(agentVault, agentOwner1, toWei(1000), toWei(1000));
+            // announce
+            await assetManager.announceVaultCollateralWithdrawal(agentVault.address, toWei(1000), { from: agentOwner1 });
+            // deprecate collateral
+            const tx = await assetManager.deprecateCollateralType(collaterals[1].collateralClass, collaterals[1].token,
+                settings.tokenInvalidationTimeMinSeconds, { from: assetManagerController });
+            expectEvent(tx, "CollateralTypeDeprecated");
+            // should not work
+            await expectRevert(assetManager.switchVaultCollateral(agentVault.address, collaterals[2].token, { from: agentOwner1 }),
+                "collateral withdrawal announced");
+            // should work after withdrawal is cleared
+            await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 0, { from: agentOwner1 });
+            await assetManager.switchVaultCollateral(agentVault.address, collaterals[2].token, { from: agentOwner1 });
+        });
+
         it("If agent doesn't switch vault collateral after deprecation and invalidation time, liquidator can start liquidation", async () => {
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(1));
