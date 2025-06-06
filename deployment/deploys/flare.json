@@ -77,7 +77,6 @@
   {
     "name": "FtsoV2PriceStore",
     "contractName": "FtsoV2PriceStore.sol",
-    "address": "0xC56bc4Bb0AC6AaB3538238F5Ec4aBe9381eb6259",
-    "mustSwitchToProduction": true
+    "address": "0xC56bc4Bb0AC6AaB3538238F5Ec4aBe9381eb6259"
   }
 ]
