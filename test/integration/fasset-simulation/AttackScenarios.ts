@@ -840,4 +840,53 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         // console.log(deepFormat({ balance: await context.chain.getBalance(minter.underlyingAddress) }));
         // console.log(deepFormat(info));
     });
+
+    it("46807: agent circumvents double payment challenge", async () => {
+        // Prelim setup
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+        const challenger = await Challenger.create(context, challengerAddress1);
+
+        // Make agent available and deposit some collateral
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // update block, passing agent creation block
+        await context.updateUnderlyingBlock();
+
+        // Perform minting
+        const lots = 3;
+        const crt = await minter.reserveCollateral(agent.vaultAddress, 2 * lots);
+        const txHash = await minter.performMintingPayment(crt);
+        const minted = await minter.executeMinting(crt, txHash);
+
+        // Make a redemption request to agent's owned address
+        await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+        const [redemptionRequests, , ,] = await redeemer.requestRedemption(lots);
+        const request = redemptionRequests[0];
+
+        // Redeemer waits for 14 days
+        await deterministicTimeIncrease(15 * DAYS + 10);
+        mockChain.skipTime(14 * DAYS + 10);
+        mockChain.mine(100 * 14);
+
+        await redeemer.redemptionPaymentDefault(request);
+
+        // Perform the first payment
+        const paymentAmount = request.valueUBA.sub(request.feeUBA);
+        const tx1Hash = await agent.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
+
+        await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), 'matching redemption active');
+
+        // Agent waits for 14 days
+        await deterministicTimeIncrease(15 * DAYS + 10);
+        mockChain.skipTime(14 * DAYS + 10);
+        mockChain.mine(100 * 14);
+
+        // Perform the second payment
+        const tx2Hash = await agent.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
+
+        await expectRevert(challenger.illegalPaymentChallenge(agent, tx2Hash), 'matching redemption active');
+        await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash), 'verified transaction too old');
+    });
 });
