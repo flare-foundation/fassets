@@ -293,8 +293,7 @@ export async function createTestContracts(governance: string): Promise<TestSetti
         priceReader, agentOwnerRegistry, ftsoRegistry, wNat, stablecoins };
 }
 
-export async function assignCoreVaultManager(assetManager: IIAssetManagerInstance, addressUpdater: AddressUpdaterInstance, settings: CoreVaultManagerInitSettings)
-{
+export async function createCoreVaultManager(assetManager: IIAssetManagerInstance, addressUpdater: AddressUpdaterInstance, settings: CoreVaultManagerInitSettings) {
     const coreVaultManagerImpl = await CoreVaultManager.new();
     const assetManagerSettings = await assetManager.getSettings();
     const governanceSettings = await assetManager.governanceSettings();
@@ -305,6 +304,13 @@ export async function assignCoreVaultManager(assetManager: IIAssetManagerInstanc
     await addressUpdater.updateContractAddresses([coreVaultManager.address], { from: governance });
     await coreVaultManager.updateSettings(settings.escrowEndTimeSeconds, settings.escrowAmount, settings.minimalAmountLeft, settings.chainPaymentFee, { from: governance });
     await coreVaultManager.addTriggeringAccounts(settings.triggeringAccounts, { from: governance });
+    return coreVaultManager;
+}
+
+export async function assignCoreVaultManager(assetManager: IIAssetManagerInstance, addressUpdater: AddressUpdaterInstance, settings: CoreVaultManagerInitSettings)
+{
+    const governance = await assetManager.governance();
+    const coreVaultManager = await createCoreVaultManager(assetManager, addressUpdater, settings);
     await waitForTimelock(assetManager.setCoreVaultManager(coreVaultManager.address, { from: governance }), assetManager, governance);
     return coreVaultManager;
 }

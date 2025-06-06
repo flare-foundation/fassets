@@ -220,6 +220,11 @@ interface ICoreVaultManager {
     function coreVaultAddressHash() external view returns (bytes32);
 
     /**
+     * The corresponding asset manager.
+     */
+    function assetManager() external view returns (address);
+
+    /**
      * Gets the custodian address.
      * @return Custodian address.
      */

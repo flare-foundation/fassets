@@ -1,6 +1,6 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BNish, DAYS, deepFormat, HOURS, MAX_BIPS, requireNotNull, toBIPS, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { BNish, DAYS, deepFormat, HOURS, MAX_BIPS, requireNotNull, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
@@ -17,6 +17,7 @@ import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { MockCoreVaultBot } from "../utils/MockCoreVaultBot";
 import { assertApproximatelyEqual } from "../../utils/approximation";
 import { calculateReceivedNat } from "../../utils/eth";
+import { newAssetManager } from "../../utils/fasset/CreateAssetManager";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -758,9 +759,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
     it("modify core vault settings", async () => {
         // update manager
-        let res = await context.assetManager.setCoreVaultManager(accounts[31], { from: context.governance });
-        expectEvent(res, "ContractChanged", { name: "coreVaultManager", value: accounts[31] })
-        assertWeb3Equal(await context.assetManager.getCoreVaultManager(), accounts[31]);
+        const newCVM = await context.createCoreVaultManager();
+        let res = await context.assetManager.setCoreVaultManager(newCVM.address, { from: context.governance });
+        expectEvent(res, "ContractChanged", { name: "coreVaultManager", value: newCVM.address })
+        assertWeb3Equal(await context.assetManager.getCoreVaultManager(), newCVM.address);
         // update vault native address (collects fees)
         res = await context.assetManager.setCoreVaultNativeAddress(accounts[32], { from: context.governance });
         expectEvent(res, "ContractChanged", { name: "coreVaultNativeAddress", value: accounts[32] })
@@ -794,6 +796,13 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         await expectRevert(context.assetManager.setCoreVaultMinimumAmountLeftBIPS(MAX_BIPS + 1, { from: context.governance }), "bips value too high");
     });
 
+    it("revert if assigning core vault manager belonging to wrong asset manager", async () => {
+        const [am2,] = await newAssetManager(context.governance, context.assetManagerController,
+            context.chainInfo.name, context.chainInfo.symbol, context.chainInfo.decimals, context.initSettings, context.collaterals, context.chainInfo.assetName, context.chainInfo.assetSymbol,
+            { governanceSettings: commonContext.governanceSettings.address });
+        await expectRevert(am2.setCoreVaultManager(context.coreVaultManager!.address, { from: context.governance }), "wrong asset manager");
+    });
+
     it("core vault setting modification requires governance call", async () => {
         await expectRevert(context.assetManager.setCoreVaultManager(accounts[31]), "only governance");
         await expectRevert(context.assetManager.setCoreVaultNativeAddress(accounts[32]), "only governance");
@@ -808,8 +817,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         let timelocked: boolean;
         await context.assetManager.switchToProductionMode({ from: context.governance });
         // manager is timelocked
+        const newCVM = await context.createCoreVaultManager();
         timelocked = await executeTimelockedGovernanceCall(context.assetManager,
-            (governance) => context.assetManager.setCoreVaultManager(accounts[31], { from: governance }));
+            (governance) => context.assetManager.setCoreVaultManager(newCVM.address, { from: governance }));
         assert.equal(timelocked, true);
         // others aren't timelocked
         timelocked = await executeTimelockedGovernanceCall(context.assetManager,
