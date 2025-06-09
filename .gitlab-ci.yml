@@ -119,15 +119,17 @@ test-linter:
 
 test-slither-check:
   extends: .test-node-sc-noschedule
-  variables:
-    PIP_BREAK_SYSTEM_PACKAGES: "1"
   before_script:
-  - apt update
-  - apt install -y python3-pip
-  - pip3 install slither-analyzer
-  - yarn install --frozen-lockfile
+    - apt update
+    - apt install -y python3-pip python3-venv
+    - python3 -m venv .venv
+    - source .venv/bin/activate
+    - pip install --upgrade pip setuptools
+    - pip install slither-analyzer
+    - yarn install --frozen-lockfile
   script:
-  - yarn slither
+    - source .venv/bin/activate
+    - yarn slither
 
 
 coverage:schedule:

@@ -13,11 +13,11 @@ jobs:
     permissions:
       contents: read
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - name: Install Node.js 18
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: 18
     - name: Install node modules
@@ -37,11 +37,11 @@ jobs:
       LOOPS: 5000
       CHANGE_PRICE_AT: '300,600,...'
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - name: Install Node.js 18
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: 18
     - name: Install node modules
@@ -51,7 +51,7 @@ jobs:
     - name: Run the test
       run: yarn run fuzzing_fasset
     - name: Archive fuzzer log
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: fuzzer-log
         path: test_logs/fasset-fuzzing.log
