@@ -1,5 +1,5 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import { BN_ZERO, deepFormat, MAX_BIPS, sumBN, toBN, toBNExp, toWei, ZERO_ADDRESS, ZERO_BYTES32 } from "../../../lib/utils/helpers";
+import { BN_ZERO, MAX_BIPS, sumBN, toBN, toBNExp, toWei, ZERO_ADDRESS, ZERO_BYTES32 } from "../../../lib/utils/helpers";
 import { Approximation } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
@@ -14,6 +14,7 @@ import { ERC20MockInstance } from "../../../typechain-truffle";
 import { impersonateContract, stopImpersonatingContract } from "../../utils/contract-test-helpers";
 import { waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { requiredEventArgsFrom } from "../../utils/Web3EventDecoder";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -801,6 +802,29 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // now allowedMinter cannot mint
             await expectRevert(context.assetManager.reserveCollateral(agent.vaultAddress, 1, agentInfo.feeBIPS, ZERO_ADDRESS, [], { from: allowedMinter.address }),
                 "agent not in mint queue")
+        });
+
+        it("non-public agent can add 'always allowed minter' for a proxy contract and people can mint through that", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            await agent.depositCollateralLots(10);
+            // deploy minting proxy
+            const operatorAddress = accounts[50];
+            const MintingProxy = artifacts.require("MintingProxyMock");
+            const mintingProxy = await MintingProxy.new(context.assetManager.address, agent.vaultAddress, operatorAddress);
+            // allow a only minting proxy as minter
+            await context.assetManager.addAlwaysAllowedMinterForAgent(agent.vaultAddress, mintingProxy.address, { from: agent.ownerWorkAddress });
+            // ordinary minters cannot mint
+            await expectRevert(minter.reserveCollateral(agent.vaultAddress, 1), "agent not in mint queue");
+            // but can mint through proxy
+            const maxFeeBIPS = await mintingProxy.mintingFeeBIPS();
+            const res = await mintingProxy.reserveCollateral(10, maxFeeBIPS, { from: minter.address });
+            const crt = requiredEventArgsFrom(res, context.assetManager, "CollateralReserved");
+            const txHash = await minter.performMintingPayment(crt);
+            const proof = await context.attestationProvider.provePayment(txHash, minter.underlyingAddress, crt.paymentAddress);
+            await mintingProxy.executeMinting(proof, crt.collateralReservationId, { from: operatorAddress });
+            // minter should receive 10 lots of fassets
+            assertWeb3Equal(await context.fAsset.balanceOf(minter.address), context.convertLotsToUBA(10));
         });
 
         it("when agent sets non-zero redemption pool fee share, some fassets are minted to pool after redemption", async () => {

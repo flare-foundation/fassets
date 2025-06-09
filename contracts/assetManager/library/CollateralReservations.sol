@@ -35,6 +35,7 @@ library CollateralReservations {
         string[] calldata _minterUnderlyingAddresses
     )
         internal
+        returns (uint64 _collateralReservationId)
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireWhitelistedAgentVaultOwner(agent);
@@ -92,6 +93,7 @@ library CollateralReservations {
             _emitCollateralReservationEvent(agent, cr, crtId);
         }
         state.crts[crtId] = cr;
+        return crtId;
     }
 
     function approveCollateralReservation(

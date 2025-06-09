@@ -629,7 +629,8 @@ interface IAssetManager is
         uint256 _maxMintingFeeBIPS,
         address payable _executor,
         string[] calldata _minterUnderlyingAddresses
-    ) external payable;
+    ) external payable
+        returns (uint256 _collateralReservationId);
 
     /**
      * Agent approves the collateral reservation request after checking the minter's identity.

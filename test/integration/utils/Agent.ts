@@ -170,8 +170,14 @@ export class Agent extends AssetContextClient {
     }
 
     async depositCollateralLotsAndMakeAvailable(lots: BNish, multiplier: number = 1) {
+        await this.depositCollateralLots(lots, multiplier);
+        await this.makeAvailable();
+    }
+
+    async depositCollateralLots(lots: BNish, multiplier: number = 1) {
         const requiredCollateral = await this.requiredCollateralForLots(lots, multiplier);
-        await this.depositCollateralsAndMakeAvailable(requiredCollateral.vault, requiredCollateral.pool);
+        await this.depositVaultCollateral(requiredCollateral.vault);
+        await this.buyCollateralPoolTokens(requiredCollateral.pool);
         return requiredCollateral;
     }
 

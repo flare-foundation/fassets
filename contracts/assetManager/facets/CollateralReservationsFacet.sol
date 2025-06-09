@@ -45,8 +45,9 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
         onlyWhitelistedSender
         notEmergencyPaused
         nonReentrant
+        returns (uint256 _collateralReservationId)
     {
-        CollateralReservations.reserveCollateral(msg.sender, _agentVault,
+        return CollateralReservations.reserveCollateral(msg.sender, _agentVault,
             _lots.toUint64(), _maxMintingFeeBIPS.toUint64(), _executor, _minterUnderlyingAddresses);
     }
 
