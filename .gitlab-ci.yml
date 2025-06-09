@@ -119,6 +119,8 @@ test-linter:
 
 test-slither-check:
   extends: .test-node-sc-noschedule
+  tags:
+  - flarenetwork-md
   before_script:
     - apt update
     - apt install -y python3-pip python3-venv
