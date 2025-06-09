@@ -101,6 +101,22 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsMan
      */
     function terminate() external;
 
+    /**
+     * When agent vault, collateral pool or collateral pool token factory is upgraded, new agent vaults
+     * automatically get the new implementation from the factory. The existing vaults can be batch updated
+     * by this method.
+     * Parameters `_start` and `_end` allow limiting the upgrades to a selection of all agents, to avoid
+     * breaking the block gas limit.
+     * NOTE: may not be called directly - only through asset manager controller by governance.
+     * @param _start the start index of the list of agent vaults (in getAllAgents()) to upgrade
+     * @param _end the end index (exclusive) of the list of agent vaults to upgrade;
+     *  can be larger then the number of agents, if gas is not an issue
+     */
+    function upgradeAgentVaultsAndPools(
+        uint256 _start,
+        uint256 _end
+    ) external;
+
     ////////////////////////////////////////////////////////////////////////////////////
     // Collateral type management
 

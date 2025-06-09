@@ -3,6 +3,7 @@ pragma solidity 0.8.23;
 
 import "../interfaces/IIAssetManager.sol";
 import "../library/AgentsCreateDestroy.sol";
+import "../library/AgentsExternal.sol";
 import "./AssetManagerBase.sol";
 
 
@@ -92,7 +93,32 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         address _agentVault
     )
         external
+        onlyAgentVaultOwner(_agentVault)
     {
         AgentsCreateDestroy.upgradeAgentVaultAndPool(_agentVault);
+    }
+
+    /**
+     * When agent vault, collateral pool or collateral pool token factory is upgraded, new agent vaults
+     * automatically get the new implementation from the factory. The existing vaults can be batch updated
+     * by this method.
+     * Parameters `_start` and `_end` allow limiting the upgrades to a selection of all agents, to avoid
+     * breaking the block gas limit.
+     * NOTE: may not be called directly - only through asset manager controller by governance.
+     * @param _start the start index of the list of agent vaults (in getAllAgents()) to upgrade
+     * @param _end the end index (exclusive) of the list of agent vaults to upgrade;
+     *  can be larger then the number of agents, if gas is not an issue
+     */
+    function upgradeAgentVaultsAndPools(
+        uint256 _start,
+        uint256 _end
+    )
+        external
+        onlyAssetManagerController
+    {
+        (address[] memory _agents,) = AgentsExternal.getAllAgents(_start, _end);
+        for (uint256 i = 0; i < _agents.length; i++) {
+            AgentsCreateDestroy.upgradeAgentVaultAndPool(_agents[i]);
+        }
     }
 }

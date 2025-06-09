@@ -6,7 +6,7 @@ import { DiamondCut } from "../../../../lib/utils/diamond";
 import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, WEEKS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, latestBlockTimestamp, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
-import { AgentVaultInstance, AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, AssetManagerInitInstance, CollateralPoolInstance, CollateralPoolTokenInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { AssetManagerInitSettings, deployAssetManagerFacets, newAssetManager, newAssetManagerDiamond } from "../../../utils/fasset/CreateAssetManager";
@@ -557,6 +557,42 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.equal(await agentVault.implementation(), testProxyImpl.address);
             assert.equal(await collateralPool.implementation(), newCollateralPoolImpl.address);
             assert.equal(await collateralPoolToken.implementation(), testProxyImpl.address);
+        });
+
+        it("should batch upgrade agent vaults, pools and pool tokens", async () => {
+            // create some agents
+            const agentVaults: AgentVaultInstance[] = [];
+            for (let i = 0; i < 10; i++) {
+                const agentVault = await createAgentVaultWithEOA(accounts[20 + i], `underlying_agent_${i}`);
+                agentVaults.push(agentVault);
+            }
+            // create new implementations
+            const newAgentVaultImpl = await AgentVault.new(ZERO_ADDRESS);
+            const newCollateralPoolTokenImpl = await CollateralPoolToken.new(ZERO_ADDRESS, "", "");
+            const newCollateralPoolImpl = await CollateralPool.new(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0, 0, 0);
+            // create new factories
+            const agentVaultFactory = await AgentVaultFactory.new(newAgentVaultImpl.address);
+            const collateralPoolFactory = await CollateralPoolFactory.new(newCollateralPoolImpl.address);
+            const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new(newCollateralPoolTokenImpl.address);
+            // upgrade factories
+            await assetManager.setAgentVaultFactory(agentVaultFactory.address, { from: assetManagerController });
+            await assetManager.setCollateralPoolFactory(collateralPoolFactory.address, { from: assetManagerController });
+            await assetManager.setCollateralPoolTokenFactory(collateralPoolTokenFactory.address, { from: assetManagerController });
+            // upgrade must be called through controller
+            await expectRevert(assetManager.upgradeAgentVaultsAndPools(0, 100), "only asset manager controller");
+            // upgrade vaults and pools
+            await assetManager.upgradeAgentVaultsAndPools(0, 100, { from: assetManagerController });
+            // check
+            const { 0: vaultAddresses } = await assetManager.getAllAgents(0, 100);
+            assert.equal(vaultAddresses.length, 10);
+            for (const vaultAddress of vaultAddresses) {
+                const agentVault = await AgentVault.at(vaultAddress);
+                const collateralPool = await CollateralPool.at(await agentVault.collateralPool());
+                const collateralPoolToken = await CollateralPoolToken.at(await collateralPool.poolToken());
+                assert.equal(await agentVault.implementation(), newAgentVaultImpl.address);
+                assert.equal(await collateralPool.implementation(), newCollateralPoolImpl.address);
+                assert.equal(await collateralPoolToken.implementation(), newCollateralPoolTokenImpl.address);
+            }
         });
 
         it("only owner can call upgrade vault and pool", async () => {

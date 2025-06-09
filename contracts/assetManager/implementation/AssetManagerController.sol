@@ -194,6 +194,14 @@ contract AssetManagerController is
             IISettingsManagement.setCollateralPoolTokenFactory.selector, _value);
     }
 
+    function upgradeAgentVaultsAndPools(IIAssetManager[] memory _assetManagers, uint256 _start, uint256 _end)
+        external
+        onlyImmediateGovernance
+    {
+        _callOnManagers(_assetManagers,
+            abi.encodeCall(IIAssetManager.upgradeAgentVaultsAndPools, (_start, _end)));
+    }
+
     function setPriceReader(IIAssetManager[] memory _assetManagers, address _value)
         external
         onlyGovernance

@@ -59,6 +59,9 @@ interface IIAssetManagerController is
     function setCollateralPoolTokenFactory(IIAssetManager[] memory _assetManagers, address _value)
         external;
 
+    function upgradeAgentVaultsAndPools(IIAssetManager[] memory _assetManagers, uint256 _start, uint256 _end)
+        external;
+
     function setPriceReader(IIAssetManager[] memory _assetManagers, address _value)
         external;
 

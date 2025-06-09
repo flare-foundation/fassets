@@ -3,13 +3,13 @@ import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/Ass
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, latestBlockTimestamp, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
-import { AddressUpdatableContract, AddressUpdatableInstance, ERC20MockInstance, FAssetInstance, GovernanceSettingsInstance, IERC165Contract, IIAssetManagerControllerInstance, IIAssetManagerInstance, TestUUPSProxyImplInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
+import { AddressUpdatableInstance, ERC20MockInstance, FAssetInstance, GovernanceSettingsInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance, TestUUPSProxyImplInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
-import { TestFtsos, TestSettingsContracts, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
+import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
 import { getStorageAt } from "@nomicfoundation/hardhat-network-helpers";
 
@@ -578,6 +578,23 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await waitForTimelock(prms, assetManagerController, updateExecutor);
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             assertWeb3Equal(settings.agentVaultFactory, accounts[84]);
+        });
+
+        it("should batch upgrade agent vault factory on asset manager controller", async () => {
+            const AgentVault = artifacts.require("AgentVault");
+            const AgentVaultFactory = artifacts.require("AgentVaultFactory");
+            // create an agent vault
+            const agentVault = await createTestAgent({ assetManager, attestationProvider, settings, chain, wallet }, accounts[20], "underlying_agent_1", usdc.address);
+            // upgrade vault implementation and factory
+            const newAgentVaultImpl = await AgentVault.new(ZERO_ADDRESS);
+            const agentVaultFactory = await AgentVaultFactory.new(newAgentVaultImpl.address);
+            const res = assetManagerController.setAgentVaultFactory([assetManager.address], agentVaultFactory.address, { from: governance });
+            await waitForTimelock(res, assetManagerController, updateExecutor);
+            const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            assertWeb3Equal(newSettings.agentVaultFactory, agentVaultFactory.address);
+            // batch upgrade should change agent vault implementation address
+            await assetManagerController.upgradeAgentVaultsAndPools([assetManager.address], 0, 10, { from: governance });
+            assert.equal(await agentVault.implementation(), newAgentVaultImpl.address);
         });
 
         it("should change collateral pool factory on asset manager controller", async () => {

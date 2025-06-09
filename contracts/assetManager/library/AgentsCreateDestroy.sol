@@ -178,7 +178,6 @@ library AgentsCreateDestroy {
 
     function upgradeAgentVaultAndPool(address _agentVault)
         internal
-        onlyAgentVaultOwner(_agentVault)
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         ICollateralPool collateralPool = Agent.get(_agentVault).collateralPool;
