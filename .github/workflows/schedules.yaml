@@ -51,7 +51,7 @@ jobs:
     - name: Run the test
       run: yarn run fuzzing_fasset
     - name: Archive fuzzer log
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: fuzzer-log
         path: test_logs/fasset-fuzzing.log
