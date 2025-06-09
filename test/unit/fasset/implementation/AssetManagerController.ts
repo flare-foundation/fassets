@@ -1661,6 +1661,21 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assert.isFalse(await fAsset.terminated());
         });
 
+        it("should not upgrade terminated FAsset", async () => {
+            // terminate
+            const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
+            await assetManagerController.pauseMinting([assetManager.address], { from: governance });
+            assert.isTrue(await assetManager.mintingPaused());
+            await deterministicTimeIncrease(MINIMUM_PAUSE_BEFORE_STOP);
+            assert.isFalse(await fAsset.terminated());
+            await assetManagerController.terminate([assetManager.address], { from: governance })
+            assert.isTrue(await fAsset.terminated());
+            // should not upgrade
+            const FAsset = artifacts.require('FAsset');
+            const impl = await FAsset.new();
+            const res = await assetManagerController.upgradeFAssetImplementation([assetManager.address], impl.address, "0x", { from: governance });
+            await expectRevert(waitForTimelock(res, assetManagerController, updateExecutor), "f-asset terminated");
+        });
     });
 
     describe("ERC-165 interface identification", () => {

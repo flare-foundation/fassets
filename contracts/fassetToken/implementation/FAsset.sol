@@ -402,5 +402,6 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
         internal virtual override
         onlyAssetManager
     {
+        require(terminatedAt == 0, "f-asset terminated");
     }
 }
