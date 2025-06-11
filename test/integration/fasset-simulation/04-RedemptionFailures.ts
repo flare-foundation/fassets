@@ -1,4 +1,4 @@
-import { expectRevert } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { eventArgs, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { DAYS, deepFormat, MAX_BIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
@@ -13,6 +13,7 @@ import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
+import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
@@ -786,6 +787,36 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             // Second redeem and default - price ratio pool_token:NAT is still 1 because agent pool tokens were burned.
             // However, agent's pool token holdings will be lower, because of 10% pool participation which is also charged to the agent.
             await redeemAndDefaultSanctioned(3);
+        });
+
+        it("redemption - must not select agent's address as receiver in payment proof", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await agent.depositCollateralLotsAndMakeAvailable(1);
+            // mint and start redemption
+            const [minted] = await minter.performMinting(agent.vaultAddress, 1);
+            await minter.transferFAsset(redeemer.address, context.convertLotsToUBA(1));
+            const [[req]] = await redeemer.requestRedemption(1);
+            // pay as on utxo chain - required amount to redeemer, the rest back to self
+            const txHash = await agent.wallet.addMultiTransaction(
+                { [agent.underlyingAddress]: req.valueUBA },
+                {
+                    [req.paymentAddress]: req.valueUBA.sub(req.feeUBA),
+                    [agent.underlyingAddress]: req.feeUBA
+                },
+                req.paymentReference
+            );
+            // try to prove with agent's underlying address as receiver
+            const proof1 = await context.attestationProvider.provePayment(txHash, agent.underlyingAddress, agent.underlyingAddress);
+            await expectRevert(context.assetManager.confirmRedemptionPayment(proof1, req.requestId, { from: agent.ownerWorkAddress }),
+                "invalid receiving address selected");
+            // proving with redeemer's address works
+            const proof2 = await context.attestationProvider.provePayment(txHash, agent.underlyingAddress, redeemer.underlyingAddress);
+            const res = await context.assetManager.confirmRedemptionPayment(proof2, req.requestId, { from: agent.ownerWorkAddress });
+            expectEvent(res, "RedemptionPerformed", { requestId: req.requestId });
+            // agent should be ok
+            await agent.checkAgentInfo({ status: AgentStatus.NORMAL, redeemingUBA: 0, freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(req.feeUBA) }, 'reset');
         });
     });
 });
