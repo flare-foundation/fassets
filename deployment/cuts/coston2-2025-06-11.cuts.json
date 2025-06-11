@@ -1,0 +1,26 @@
+{
+    "$schema": "./diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FTestXRP"],
+    "facets": [
+        {
+            "contract": "CoreVaultSettingsFacet",
+            "exposedInterfaces": ["ICoreVaultSettings"]
+        },
+        {
+            "contract": "AgentCollateralFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "AgentVaultManagementFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "CollateralReservationsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionConfirmationsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        }
+    ]
+}

@@ -36,15 +36,32 @@ task("deploy-price-reader-v2", "Deploy price reader v2.")
     });
 
 task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
-    .setAction(async ({}, hre) => {
+    .addVariadicPositionalParam("contractNames", `Contract names to deploy`, [])
+    .addFlag("all", "Deploy all dependencies (AgentOwnerRegistry, UserWhitelist, AgentVaultFactory, CollateralPoolFactory, CollateralPoolTokenFactory)")
+    .setAction(async ({ contractNames, all }, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await hre.run("compile");
-        await deployAgentOwnerRegistry(hre, contracts);
-        await deployUserWhitelist(hre, contracts);
-        await deployAgentVaultFactory(hre, contracts);
-        await deployCollateralPoolFactory(hre, contracts);
-        await deployCollateralPoolTokenFactory(hre, contracts);
+        if (all || contractNames.includes('AgentOwnerRegistry')) {
+            const address = await deployAgentOwnerRegistry(hre, contracts);
+            console.log(`AgentOwnerRegistry deployed at ${address}`);
+        }
+        if (all || contractNames.includes('UserWhitelist')) {
+            const address = await deployUserWhitelist(hre, contracts);
+            console.log(`UserWhitelist deployed at ${address}`);
+        }
+        if (all || contractNames.includes('AgentVaultFactory')) {
+            const address = await deployAgentVaultFactory(hre, contracts);
+            console.log(`AgentVaultFactory deployed at ${address}`);
+        }
+        if (all || contractNames.includes('CollateralPoolFactory')) {
+            const address = await deployCollateralPoolFactory(hre, contracts);
+            console.log(`CollateralPoolFactory deployed at ${address}`);
+        }
+        if (all || contractNames.includes('CollateralPoolTokenFactory')) {
+            const address = await deployCollateralPoolTokenFactory(hre, contracts);
+            console.log(`CollateralPoolTokenFactory deployed at ${address}`);
+        }
     });
 
 task("deploy-asset-managers", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")

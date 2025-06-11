@@ -15,6 +15,8 @@ export async function deployUserWhitelist(hre: HardhatRuntimeEnvironment, contra
     const whitelist = await waitFinalize(hre, deployer, () => Whitelist.new(contracts.GovernanceSettings.address, deployer, false, { from: deployer }));
 
     contracts.add(`UserWhitelist`, "Whitelist.sol", whitelist.address, { mustSwitchToProduction: true });
+
+    return whitelist.address;
 }
 
 export async function deployAgentOwnerRegistry(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
@@ -29,6 +31,8 @@ export async function deployAgentOwnerRegistry(hre: HardhatRuntimeEnvironment, c
     const whitelist = await waitFinalize(hre, deployer, () => AgentOwnerRegistry.new(contracts.GovernanceSettings.address, deployer, true, { from: deployer }));
 
     contracts.add("AgentOwnerRegistry", "AgentOwnerRegistry.sol", whitelist.address, { mustSwitchToProduction: true });
+
+    return whitelist.address;
 }
 
 export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
@@ -46,6 +50,8 @@ export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, co
 
     contracts.add("AgentVaultProxyImplementation", "AgentVault.sol", agentVaultImplementation.address);
     contracts.add("AgentVaultFactory", "AgentVaultFactory.sol", agentVaultFactory.address);
+
+    return agentVaultFactory.address;
 }
 
 export async function deployCollateralPoolFactory(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
@@ -63,6 +69,8 @@ export async function deployCollateralPoolFactory(hre: HardhatRuntimeEnvironment
 
     contracts.add("CollateralPoolProxyImplementation", "CollateralPool.sol", collateralPoolImplementation.address);
     contracts.add("CollateralPoolFactory", "CollateralPoolFactory.sol", collateralPoolFactory.address);
+
+    return collateralPoolFactory.address;
 }
 
 export async function deployCollateralPoolTokenFactory(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
@@ -80,4 +88,6 @@ export async function deployCollateralPoolTokenFactory(hre: HardhatRuntimeEnviro
 
     contracts.add("CollateralPoolTokenProxyImplementation", "CollateralPoolToken.sol", collateralPoolTokenImplementation.address);
     contracts.add("CollateralPoolTokenFactory", "CollateralPoolTokenFactory.sol", collateralPoolTokenFactory.address);
+
+    return collateralPoolTokenFactory.address;
 }

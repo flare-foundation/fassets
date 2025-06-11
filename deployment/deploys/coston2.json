@@ -156,12 +156,12 @@
   {
     "name": "CollateralPoolProxyImplementation",
     "contractName": "CollateralPool.sol",
-    "address": "0x71621f9611374F4ee6477261Bc71B5cD6069F3d7"
+    "address": "0x2684149b0aF1CB8B02749faf5280C51e18dd4D90"
   },
   {
     "name": "CollateralPoolFactory",
     "contractName": "CollateralPoolFactory.sol",
-    "address": "0x359a46C8c56F4A1dD0B7f150C4Fd42Ca28AfA5D6"
+    "address": "0xEc400a6e2D46fC392D05BF94276e6bc1Bab325E1"
   },
   {
     "name": "CollateralPoolTokenProxyImplementation",
@@ -176,7 +176,7 @@
   {
     "name": "AssetManagerControllerImplementation",
     "contractName": "AssetManagerController.sol",
-    "address": "0x3E6246CB8489DE73E67f5D28733Ec56cDD9644cD"
+    "address": "0xa8e603775996836E22569061517544a33BB385AD"
   },
   {
     "name": "AssetManagerController",
@@ -187,7 +187,7 @@
   {
     "name": "FAssetImplementation",
     "contractName": "FAsset.sol",
-    "address": "0xD96006B65a2B5Dc69bBc4B4c31019c3A2A79B50b"
+    "address": "0x2A9d4EBd2196b1f2718400f2ad4Ce716C67C9925"
   },
   {
     "name": "AssetManagerInit",
@@ -217,7 +217,7 @@
   {
     "name": "CollateralReservationsFacet",
     "contractName": "CollateralReservationsFacet.sol",
-    "address": "0x9F7b9e986D07448FEF943a6028a5A88F48e94cB9"
+    "address": "0x83a547cE20D8A6Ac06fc42E557E0Fc104F334460"
   },
   {
     "name": "MintingFacet",
@@ -237,7 +237,7 @@
   {
     "name": "RedemptionConfirmationsFacet",
     "contractName": "RedemptionConfirmationsFacet.sol",
-    "address": "0xf66dEC1236319AA8202A1B0F2aa8442A4ad88A8F"
+    "address": "0xbFb623F2f183adfF3770A7314cf22A7cDF47c849"
   },
   {
     "name": "RedemptionDefaultsFacet",
@@ -267,7 +267,7 @@
   {
     "name": "AgentVaultManagementFacet",
     "contractName": "AgentVaultManagementFacet.sol",
-    "address": "0xfD74D7d5aAd50233329dC60CD126d7afa56DAEe7"
+    "address": "0xb1E94dDf2d51DB9593e4FD4357A34AC901De9135"
   },
   {
     "name": "AgentSettingsFacet",
@@ -282,7 +282,7 @@
   {
     "name": "AgentCollateralFacet",
     "contractName": "AgentCollateralFacet.sol",
-    "address": "0xe58Fc996afb42621f1C2De0a4E13fd9ffc1F344C"
+    "address": "0x3a10e6f33a795F497477B63d49df04b79770E3b3"
   },
   {
     "name": "SettingsReaderFacet",
@@ -347,7 +347,7 @@
   {
     "name": "CoreVaultSettingsFacet",
     "contractName": "CoreVaultSettingsFacet.sol",
-    "address": "0xF8e94262c2B56589B123AcCAB021F3aC4964dC7b"
+    "address": "0xaBE05b617899A3D8c36A60a03a4B9fA995f4762E"
   },
   {
     "name": "AssetManager_FTestXRP",
