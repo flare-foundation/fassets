@@ -12,7 +12,9 @@ const FdcVerification = artifacts.require('FdcVerificationMock');
 
 export async function mockDeployDependencies(hre: HardhatRuntimeEnvironment, contractsFile: string) {
     const { deployer } = loadDeployAccounts(hre);
-    const governance = requiredEnvironmentVariable('GOVERNANCE_PUBLIC_KEY');
+
+    const accounts = await hre.web3.eth.getAccounts();
+    const governance = accounts[99];
 
     // GovernanceSettings
     const governanceSettings = await testDeployGovernanceSettings(governance, 1, [governance, deployer]);

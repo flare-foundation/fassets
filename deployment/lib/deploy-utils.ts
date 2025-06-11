@@ -14,10 +14,20 @@ export function requiredEnvironmentVariable(name: string): string {
     throw new Error(`Missing environment variable ${name}`);
 }
 
+export function networkDeployerPrivateKeyName(network: string) {
+    if (network === "flare") {
+        return "FLARE_DEPLOYER_PRIVATE_KEY";
+    } else if (network === "songbird") {
+        return "SONGBIRD_DEPLOYER_PRIVATE_KEY";
+    } else {
+        return "DEPLOYER_PRIVATE_KEY";
+    }
+}
+
 export function loadDeployAccounts(hre: HardhatRuntimeEnvironment): DeployAccounts {
-    const deployerPrivateKey = requiredEnvironmentVariable('DEPLOYER_PRIVATE_KEY');
+    const deployerPrivateKeyName = networkDeployerPrivateKeyName(hre.network.name);
+    const deployerPrivateKey = requiredEnvironmentVariable(deployerPrivateKeyName);
     const deployerAccount = hre.web3.eth.accounts.privateKeyToAccount(deployerPrivateKey);
-    hre.web3.eth.accounts.wallet.add(deployerPrivateKey);
     return {
         deployer: deployerAccount.address
     };

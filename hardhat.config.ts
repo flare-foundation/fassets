@@ -1,20 +1,22 @@
 import "dotenv/config";
 
+import "@nomicfoundation/hardhat-verify";
 import "@nomiclabs/hardhat-truffle5";
 import "@nomiclabs/hardhat-web3";
-import "@nomicfoundation/hardhat-verify";
 import fs from "fs";
 import glob from "glob";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
 import { TASK_COMPILE, TASK_TEST_GET_TEST_FILES } from 'hardhat/builtin-tasks/task-names';
 import { HardhatUserConfig, task } from "hardhat/config";
+import { HardhatNetworkAccountUserConfig } from "hardhat/types";
 import path from "path";
 import 'solidity-coverage';
 import "./type-extensions";
 const intercept = require('intercept-stdout');
 
 // more complex tasks
+import { networkDeployerPrivateKeyName } from "./deployment/lib/deploy-utils";
 import "./hardhat-tasks.config";
 
 // allow glob patterns in test file args
@@ -46,64 +48,56 @@ task(TASK_COMPILE)
         await runSuper(args);
     });
 
-let accounts = [
-    // In Truffle, default account is always the first one.
-    ...(process.env.DEPLOYER_PRIVATE_KEY ? [{ privateKey: process.env.DEPLOYER_PRIVATE_KEY, balance: "100000000000000000000000000000000" }] : []),
-    ...JSON.parse(fs.readFileSync('test-1020-accounts.json').toString()).slice(0, process.env.TENDERLY == 'true' ? 150 : 2000).filter((x: any) => x.privateKey != process.env.DEPLOYER_PRIVATE_KEY),
-    ...(process.env.GENESIS_GOVERNANCE_PRIVATE_KEY ? [{ privateKey: process.env.GENESIS_GOVERNANCE_PRIVATE_KEY, balance: "100000000000000000000000000000000" }] : []),
-    ...(process.env.GOVERNANCE_PRIVATE_KEY ? [{ privateKey: process.env.GOVERNANCE_PRIVATE_KEY, balance: "100000000000000000000000000000000" }] : []),
-];
+function readAccounts(network: string) {
+    const deployerPK = process.env[networkDeployerPrivateKeyName(network)];
+    const deployerAccounts: HardhatNetworkAccountUserConfig[] = deployerPK ? [{ privateKey: deployerPK, balance: "100000000000000000000000000000000" }] : [];
+    let testAccounts: HardhatNetworkAccountUserConfig[] = JSON.parse(fs.readFileSync('test-1020-accounts.json').toString());
+    if (process.env.TENDERLY === 'true') {
+        testAccounts = testAccounts.slice(0, 100);
+    }
+    testAccounts = testAccounts.filter(x => x.privateKey !== deployerPK);
+    return [...deployerAccounts, ...testAccounts];
+}
 
 const config: HardhatUserConfig = {
     defaultNetwork: "hardhat",
 
     networks: {
-        develop: {
-            url: "http://127.0.0.1:9650/ext/bc/C/rpc",
-            gas: 10000000,
-            timeout: 40000,
-            accounts: accounts.map((x: any) => x.privateKey)
-        },
         scdev: {
             url: "http://127.0.0.1:9650/ext/bc/C/rpc",
             gas: 8000000,
             timeout: 40000,
-            accounts: accounts.map((x: any) => x.privateKey)
-        },
-        staging: {
-            url: process.env.STAGING_RPC || "http://127.0.0.1:9650/ext/bc/C/rpc",
-            timeout: 40000,
-            accounts: accounts.map((x: any) => x.privateKey)
+            accounts: readAccounts('scdev').map(x => x.privateKey)
         },
         songbird: {
             url: process.env.SONGBIRD_RPC || "https://songbird-api.flare.network/ext/C/rpc",
             timeout: 40000,
-            accounts: accounts.map((x: any) => x.privateKey)
+            accounts: readAccounts('songbird').map(x => x.privateKey)
         },
         flare: {
             url: process.env.FLARE_RPC || "https://flare-api.flare.network/ext/C/rpc",
             timeout: 40000,
-            accounts: accounts.map((x: any) => x.privateKey)
+            accounts: readAccounts('flare').map(x => x.privateKey)
         },
         coston: {
             url: process.env.COSTON_RPC || "https://coston-api.flare.network/ext/C/rpc",
             timeout: 40000,
-            accounts: accounts.map((x: any) => x.privateKey)
+            accounts: readAccounts('coston').map(x => x.privateKey)
         },
         coston2: {
             url: process.env.COSTON2_RPC || "https://coston2-api.flare.network/ext/C/rpc",
             timeout: 40000,
-            accounts: accounts.map((x: any) => x.privateKey)
+            accounts: readAccounts('coston2').map(x => x.privateKey)
         },
         hardhat: {
-            accounts,
+            accounts: readAccounts('hardhat'),
             allowUnlimitedContractSize: true,
             blockGasLimit: 125000000 // 10x ETH gas
         },
         local: {
             url: 'http://127.0.0.1:8545',
             chainId: 31337,
-            accounts: accounts.map((x: any) => x.privateKey)
+            accounts: readAccounts('local').map(x => x.privateKey)
         }
     },
     solidity: {
