@@ -8,7 +8,7 @@ import { assetManagerFacets, assetManagerFacetsDeployedByDiamondCut, createDiamo
 import { abiEncodeCall, loadDeployAccounts } from "./deploy-utils";
 
 export async function verifyContract(hre: HardhatRuntimeEnvironment, contractNameOrAddress: string, contracts: FAssetContractStore, constructorArgs: string[] = [], force: boolean = false) {
-    const contract = contracts.get(contractNameOrAddress) ?? contracts.list().find(c => c.address === contractNameOrAddress);
+    const contract = contracts.get(contractNameOrAddress) ?? contracts.findByAddress(contractNameOrAddress);
     if (contract == null) {
         throw new Error(`Unknown contract ${contractNameOrAddress}`);
     }
