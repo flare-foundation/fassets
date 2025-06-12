@@ -53,7 +53,7 @@ const FAssetProxy = artifacts.require('FAssetProxy');
 const RewardManager = artifacts.require("RewardManagerMock");
 const IRewardManager = artifacts.require("IRewardManager");
 
-contract.only(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic tests`, async accounts => {
+contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic tests`, async accounts => {
     let wNat: ERC20MockInstance;
     let assetManager: AssetManagerMockInstance;
     let fAsset: FAssetInstance;
@@ -1027,7 +1027,7 @@ contract.only(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool b
             assert((await getPoolCRBIPS()).gten(exitCR * MAX_BIPS))
         });
 
-        it.only("should do a self-close exit where redemption is done in underlying asset with executor", async () => {
+        it("should do a self-close exit where redemption is done in underlying asset with executor", async () => {
             await givePoolFAssetFees(ETH(100));
             const natToEnter = await poolFAssetFeeNatValue();
             await collateralPool.enter(0, true, { value: natToEnter });
@@ -1276,7 +1276,7 @@ contract.only(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool b
             assertEqualBN(agentRedemption._amountUBA, requiredFAssets.subn(1));
         });
 
-        it.only("should self-close exit and collect fees with recipient", async () => {
+        it("should self-close exit and collect fees with recipient", async () => {
             // account0 enters the pool
             await collateralPool.enter(0, true, { value: ETH(10), from: accounts[0] });
             // collateral pool collects fees

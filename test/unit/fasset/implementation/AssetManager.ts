@@ -512,6 +512,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "handshakeType"), agentInfo.handshakeType);
         });
 
+        it("should revert updating agent handshake type", async () => {
+            const agentFeeChangeTimelockSeconds = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
+            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "handshakeType", 2, { from: agentOwner1 });
+            await deterministicTimeIncrease(agentFeeChangeTimelockSeconds);
+            await expectRevert(assetManager.executeAgentSettingUpdate(agentVault.address, "handshakeType", { from: agentOwner1 }), "invalid handshake type");
+        });
+
         it("should correctly update agent setting redemptionPoolFeeShareBIPS", async () => {
             const agentFeeChangeTimelockSeconds = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);

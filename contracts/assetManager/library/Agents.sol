@@ -134,6 +134,7 @@ library Agents {
     )
         internal
     {
+        require(_handshakeType <= 1, "invalid handshake type");
         _agent.handshakeType = _handshakeType.toUint32();
     }
 
