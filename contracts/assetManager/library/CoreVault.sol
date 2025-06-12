@@ -83,7 +83,10 @@ library CoreVault {
         // (all transfers are guarded by nonReentrant in the facet)
         if (msg.value > transferFeeWei + Transfers.TRANSFER_GAS_ALLOWANCE * tx.gasprice) {
             Transfers.transferNAT(state.nativeAddress, transferFeeWei);
-            Transfers.transferNATAllowFailure(payable(msg.sender), msg.value - transferFeeWei);
+            bool success = Transfers.transferNATAllowFailure(payable(msg.sender), msg.value - transferFeeWei);
+            if (!success) {
+                Agents.burnDirectNAT(msg.value - transferFeeWei);
+            }
         } else {
             Transfers.transferNAT(state.nativeAddress, msg.value);
         }
@@ -232,7 +235,7 @@ library CoreVault {
         // create new request id
         state.newRedemptionFromCoreVaultId += PaymentReference.randomizedIdSkip();
         bytes32 paymentReference = PaymentReference.redemptionFromCoreVault(state.newRedemptionFromCoreVaultId);
-        // transfer from core vault (paymentReference may change when the reuest is merged)
+        // transfer from core vault (paymentReference may change when the request is merged)
         paymentReference = state.coreVaultManager.requestTransferFromCoreVault(
             _redeemerUnderlyingAddress, paymentReference, paymentUBA, false);
         emit ICoreVault.CoreVaultRedemptionRequested(msg.sender, _redeemerUnderlyingAddress, paymentReference,

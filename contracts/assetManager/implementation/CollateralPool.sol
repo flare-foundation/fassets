@@ -354,16 +354,19 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
             require(success, "f-asset transfer failed");
         }
         // redeem f-assets if necessary
+        bool redeemFromAgent = false;
         if (requiredFAssets > 0) {
             if (requiredFAssets < assetManager.lotSize() || _redeemToCollateral) {
                 assetManager.redeemFromAgentInCollateral(
                     agentVault, _recipient, requiredFAssets);
             } else {
+                redeemFromAgent = true; // redeem from agent vault
                 // automatically pass `msg.value` to `redeemFromAgent` for the executor fee
                 assetManager.redeemFromAgent{ value: msg.value }(
                     agentVault, _recipient, requiredFAssets, _redeemerUnderlyingAddress, _executor);
             }
         }
+        uint256 tokenShare = _tokenShare; // copy to new variable to avoid stack too deep error
         // sort out the sender's f-asset fees that were spent on redemption
         uint256 spentFAssetFees = Math.min(requiredFAssets, fAssetFees);
         if (spentFAssetFees > 0) {
@@ -384,10 +387,17 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         if (debtFAssetFeeShare > 0) {
             _burnFAssetFeeDebt(msg.sender, debtFAssetFeeShare);
         }
-        token.burn(msg.sender, _tokenShare, false);
+        token.burn(msg.sender, tokenShare, false);
         _withdrawWNatTo(_recipient, natShare);
+        if (!redeemFromAgent && msg.value > 0) {
+            // return any unused NAT
+            bool success = Transfers.transferNATAllowFailure(payable(msg.sender), msg.value);
+            if (!success) {
+                Transfers.transferNAT(_recipient, msg.value);
+            }
+        }
         // emit event
-        emit Exited(msg.sender, _tokenShare, natShare, spentFAssetFees, requiredFAssets, _fAssetFeeDebtOf[msg.sender]);
+        emit Exited(msg.sender, tokenShare, natShare, spentFAssetFees, requiredFAssets, _fAssetFeeDebtOf[msg.sender]);
     }
 
     /**

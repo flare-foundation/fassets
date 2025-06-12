@@ -140,9 +140,10 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
      * available. In this case agent can call this method, which burns reserved collateral at market price
      * and releases the remaining collateral (CRF is also burned).
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
-     * NOTE: the agent (management address) receives the vault collateral and NAT is burned instead. Therefore
-     *      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral
-     *      amount multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
+     * NOTE: the agent (management address) receives the vault collateral (if not NAT) and NAT is burned instead.
+     *      Therefore this method is `payable` and the caller must provide enough NAT to cover the received vault
+     *      collateral amount multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
+     *      If vault collateral is NAT, it is simply burned and msg.value must be zero.
      * @param _proof proof that the attestation query window can not not contain
      *      the payment/non-payment proof anymore
      * @param _collateralReservationId collateral reservation id

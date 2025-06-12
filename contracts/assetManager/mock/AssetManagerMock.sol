@@ -78,7 +78,7 @@ contract AssetManagerMock {
     function redeemFromAgent(
         address /* _agentVault */, address _redeemer, uint256 _amountUBA,
         string memory _receiverUnderlyingAddress, address payable _executor
-    ) external {
+    ) external payable {
         fasset.burn(msg.sender, _amountUBA);
         emit AgentRedemption(_redeemer, _receiverUnderlyingAddress, _amountUBA, _executor);
     }

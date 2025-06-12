@@ -323,6 +323,7 @@ library Agents {
         CollateralTypeInt.Data storage vaultCollateral = getVaultCollateral(_agent);
         CollateralTypeInt.Data storage poolCollateral = getPoolCollateral(_agent);
         if (vaultCollateral.token == poolCollateral.token) {
+            require(msg.value == 0, "msg.value must be 0");
             // If vault collateral is NAT, just burn directly.
             burnVaultNATCollateral(_agent, _amountVaultCollateralWei);
         } else {

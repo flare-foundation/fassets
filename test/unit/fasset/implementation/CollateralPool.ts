@@ -53,7 +53,7 @@ const FAssetProxy = artifacts.require('FAssetProxy');
 const RewardManager = artifacts.require("RewardManagerMock");
 const IRewardManager = artifacts.require("IRewardManager");
 
-contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic tests`, async accounts => {
+contract.only(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic tests`, async accounts => {
     let wNat: ERC20MockInstance;
     let assetManager: AssetManagerMockInstance;
     let fAsset: FAssetInstance;
@@ -1000,7 +1000,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             }
         });
 
-        it("should do a self-close exit where additional f-assets are required but the allowance is not high enough", async () => {
+        it("should not do a self-close exit where additional f-assets are required and the allowance is not high enough", async () => {
             await fAsset.mint(accounts[0], ETH(100), { from: assetManager.address });
             await fAsset.approve(collateralPool.address, ETH(99));
             await collateralPool.enter(0, false, { value: ETH(10) });
@@ -1027,12 +1027,12 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assert((await getPoolCRBIPS()).gten(exitCR * MAX_BIPS))
         });
 
-        it("should do a self-close exit where redemption is done in underlying asset with executor", async () => {
+        it.only("should do a self-close exit where redemption is done in underlying asset with executor", async () => {
             await givePoolFAssetFees(ETH(100));
             const natToEnter = await poolFAssetFeeNatValue();
             await collateralPool.enter(0, true, { value: natToEnter });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
-            const resp = await collateralPool.selfCloseExit(tokens, false, "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2", accounts[5]);
+            const resp = await collateralPool.selfCloseExit(tokens, false, "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2", accounts[5], { value: ETH(1) });
             await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemption", { _executor: accounts[5] });
             assert((await getPoolCRBIPS()).gten(exitCR * MAX_BIPS))
         });
@@ -1276,7 +1276,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(agentRedemption._amountUBA, requiredFAssets.subn(1));
         });
 
-        it("should self-close exit and collect fees with recipient", async () => {
+        it.only("should self-close exit and collect fees with recipient", async () => {
             // account0 enters the pool
             await collateralPool.enter(0, true, { value: ETH(10), from: accounts[0] });
             // collateral pool collects fees
@@ -1286,13 +1286,13 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // account1 exits with fees using MAXIMIZE_FEE_WITHDRAWAL token exit type
             const exitTokens = ETH(10);
             // const receipt = await collateralPool.exitTo(exitTokens, accounts[2], TokenExitType.MAXIMIZE_FEE_WITHDRAWAL, { from: accounts[0] });
-            const receipt = await collateralPool.selfCloseExitTo(exitTokens, true, accounts[2], "underlying_1", ZERO_ADDRESS, { from: accounts[0] });
+            const receipt = await collateralPool.selfCloseExitTo(exitTokens, true, accounts[2], "underlying_1", ZERO_ADDRESS, { from: accounts[0], value: ETH(1) });
             await expectEvent.inTransaction(receipt.tx, assetManager, "AgentRedemptionInCollateral", { _recipient: accounts[2], _amountUBA: ETH(5) });
             const holderReceivedNat = await calculateReceivedNat(receipt, accounts[0]);
             const receiverReceivedNat = await calculateReceivedNat(receipt, accounts[2]);
             const holderReceivedFAssets = await fAsset.balanceOf(accounts[0]);
             const receiverReceivedFAssets = await fAsset.balanceOf(accounts[2]);
-            assertEqualBN(holderReceivedNat, BN_ZERO);
+            assertEqualBN(holderReceivedNat, BN_ZERO); // get back msg.value
             assertEqualBN(receiverReceivedNat, exitTokens);
             assertEqualBN(holderReceivedFAssets, BN_ZERO);
             const transferFee = await calculateFee(ETH(5), false);

@@ -110,9 +110,10 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
      * This method ONLY works when f-asset is terminated, which will only be done when AssetManager is already paused
      * at least for a month and most f-assets are already burned and the only ones remaining are unrecoverable.
      * NOTE: may only be called by the agent vault owner.
-     * NOTE: the agent (management address) receives the vault collateral and NAT is burned instead. Therefore
-     *      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral
-     *      amount multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
+     * NOTE: the agent (management address) receives the vault collateral (if not NAT) and NAT is burned instead.
+     *      Therefore this method is `payable` and the caller must provide enough NAT to cover the received vault
+     *      collateral amount multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
+     *      If vault collateral is NAT, it is simply burned and msg.value must be zero.
      */
     function buybackAgentCollateral(
         address _agentVault
