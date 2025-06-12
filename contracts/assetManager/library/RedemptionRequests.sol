@@ -324,6 +324,7 @@ library RedemptionRequests {
         internal
         returns (uint64 _requestId)
     {
+        require(_executorFeeNatGWei == 0 || _executor != address(0), "executor fee without executor");
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_data.agentVault);
         // validate redemption address

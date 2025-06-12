@@ -1649,6 +1649,19 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assertEqualWithNumError(redeemerWNatBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorPoolBIPS)), toBN(10));
         });
 
+        it("should revert redeeming if sending funds but not setting executor ", async () => {
+            // define redeemer and its underlying address
+            const redeemer = accounts[83];
+            const underlyingRedeemer = "redeemer"
+            // create available agentVault and mint f-assets
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
+            // redemption request
+            const executorFee = toWei(0.1);
+            await expectRevert(assetManager.redeem(1, underlyingRedeemer, ZERO_ADDRESS, { from: redeemer, value: executorFee }),
+                "executor fee without executor");
+        });
+
         it("should finish non-defaulted redemption payment", async () => {
             // define redeemer and its underlying address
             const redeemer = accounts[83];

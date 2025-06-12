@@ -27,7 +27,7 @@ library CollateralReservations {
     bytes32 internal constant EMPTY_ADDRESS_DOUBLE_HASH = keccak256(abi.encodePacked(keccak256(bytes(""))));
 
     function reserveCollateral(
-        address _minter,
+        address _minter, // msg.sender
         address _agentVault,
         uint64 _lots,
         uint64 _maxMintingFeeBIPS,
@@ -68,8 +68,10 @@ library CollateralReservations {
         cr.poolFeeShareBIPS = agent.poolFeeShareBIPS + 1;
         cr.agentVault = _agentVault;
         cr.minter = _minter;
-        cr.executor = _executor;
-        cr.executorFeeNatGWei = ((msg.value - reservationFee) / Conversion.GWEI).toUint64();
+        if (_executor != address(0)) {
+            cr.executor = _executor;
+            cr.executorFeeNatGWei = ((msg.value - reservationFee) / Conversion.GWEI).toUint64();
+        }
 
         if (agent.handshakeType != 0) {
             require(_minterUnderlyingAddresses.length > 0, "minter underlying addresses required");
@@ -93,6 +95,14 @@ library CollateralReservations {
             _emitCollateralReservationEvent(agent, cr, crtId);
         }
         state.crts[crtId] = cr;
+
+        // if executor is not set, we return the change to the minter or burn it if transfer fails
+        if (cr.executor == address(0) && msg.value > reservationFee) {
+            bool success = Transfers.transferNATAllowFailure(payable(cr.minter), msg.value - reservationFee);
+            if (!success) {
+                Agents.burnDirectNAT(msg.value - reservationFee);
+            }
+        }
         return crtId;
     }
 
