@@ -18,6 +18,7 @@ import { MockCoreVaultBot } from "../utils/MockCoreVaultBot";
 import { assertApproximatelyEqual } from "../../utils/approximation";
 import { calculateReceivedNat } from "../../utils/eth";
 import { newAssetManager } from "../../utils/fasset/CreateAssetManager";
+import { Challenger } from "../utils/Challenger";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -1213,5 +1214,52 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, 10, { from: agent.ownerWorkAddress }), "nothing minted");
         // const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, 10, { from: agent.ownerWorkAddress });
         // const logs = filterEvents(res, "RedemptionRequested");
+    });
+
+    it("47053: should let the agent temporarily steal funds using core vault payment reference", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        const wallet = new MockChainWallet(mockChain);
+        const challenger = await Challenger.create(context, challengerAddress2);
+        const agentOtherAddress = "otherAddress";
+        // make agent available
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        await agent2.depositCollateralLotsAndMakeAvailable(100);
+        // mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        // another mint, just to prevent merging tickets
+        await minter.performMinting(agent2.vaultAddress, 1);
+        // update time
+        await context.updateUnderlyingBlock();
+        // agent requests transfer for half backing to core vault
+        const transferAmount = context.lotSize().muln(5);
+        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
+        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount,
+            { from: agent.ownerWorkAddress, value: cbTransferFee });
+        const [request] = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
+        // agent makes an illegal payment using the transfer to core vault reference
+        const txHash = await agent.performPayment(agentOtherAddress, toBN(request.valueUBA), request.paymentReference);
+        await expectRevert(challenger.illegalPaymentChallenge(agent, txHash), 'matching redemption active')
+        await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [txHash]), 'mult chlg: enough balance')
+        // agent's other address gets some yield
+        mockChain.mint(agentOtherAddress, toBN(request.valueUBA));
+        // skip until the payment time passes
+        context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+        // agent defaults its own core vault transfer and topups
+        await agent.transferToCoreVaultDefault(request, agent.ownerWorkAddress);
+        // agent topups via self-mint
+        const topupHash = await wallet.addTransaction(agentOtherAddress, agent.underlyingAddress,
+            toBN(request.valueUBA), PaymentReference.selfMint(agent.agentVault.address));
+        const topupProof = await context.attestationProvider.provePayment(topupHash, null, agent.underlyingAddress);
+        await context.assetManager.selfMint(topupProof, agent.agentVault.address, 0, { from: agent.ownerWorkAddress });
+        // agent confirms its redemption payment
+        const proof = await context.attestationProvider.provePayment(txHash, agent.underlyingAddress, agentOtherAddress);
+        await context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agentOwner1 });
+        assert(Number((await agent.getAgentInfo()).status) == 0);
+        // when allowed, the challenger cann the payment
+        await deterministicTimeIncrease(context.settings.confirmationByOthersAfterSeconds);
+        await expectRevert(context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: challenger.address }), 'invalid request id');
+        await expectRevert(challenger.illegalPaymentChallenge(agent, txHash), 'chlg: transaction confirmed')
     });
 });
