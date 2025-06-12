@@ -142,7 +142,7 @@ library RedemptionRequests {
             RedemptionFailures.executeDefaultOrCancel(agent, request, _redemptionRequestId);
             // burn the executor fee
             // guarded against reentrancy in RedemptionRequestsFacet
-            Redemptions.payOrBurnExecutorFee(request);
+            Redemptions.burnExecutorFee(request);
             // delete redemption request at end
             Redemptions.deleteRedemptionRequest(_redemptionRequestId);
         } else {
@@ -253,7 +253,7 @@ library RedemptionRequests {
         // release agent collateral
         Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
         // burn the executor fee
-        Redemptions.payOrBurnExecutorFee(request);
+        Redemptions.burnExecutorFee(request);
         // emit event
         uint256 valueUBA = Conversion.convertAmgToUBA(request.valueAMG);
         emit IAssetManagerEvents.RedemptionRejected(request.agentVault, request.redeemer,

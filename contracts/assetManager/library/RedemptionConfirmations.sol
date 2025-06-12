@@ -92,9 +92,9 @@ library RedemptionConfirmations {
         if (!isAgent) {
             Agents.payForConfirmationByOthers(agent, msg.sender);
         }
-        // burn executor fee (or pay executor if the "other" that provided proof is the executor)
+        // burn executor fee - if confirmed by "other" (also executor), it is already paid from agent's vault
         // guarded against reentrancy in RedemptionConfirmationsFacet
-        Redemptions.payOrBurnExecutorFee(request);
+        Redemptions.burnExecutorFee(request);
         // redemption can make agent healthy, so check and pull out of liquidation
         Liquidation.endLiquidationIfHealthy(agent);
         // delete redemption request at end

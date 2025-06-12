@@ -113,7 +113,7 @@ library RedemptionFailures {
             executeDefaultOrCancel(agent, request, _redemptionRequestId);
             // burn the executor fee
             // guarded against reentrancy in RedemptionDefaultsFacet
-            Redemptions.payOrBurnExecutorFee(request);
+            Redemptions.burnExecutorFee(request);
             // make sure it cannot be defaulted again
             request.status = Redemption.Status.DEFAULTED;
         }
