@@ -16,24 +16,9 @@ contract TransfersMock is ReentrancyGuard {
         Transfers.transferNAT(_recipient, _amount);
     }
 
-    function transferNATAllowFailure(address payable _recipient, uint256 _amount)
-        external
-        nonReentrant
-        returns (bool)
-    {
-        return Transfers.transferNATAllowFailure(_recipient, _amount);
-    }
-
     function transferNATNoGuard(address payable _recipient, uint256 _amount)
         external
     {
         Transfers.transferNAT(_recipient, _amount);
-    }
-
-    function transferNATAllowFailureNoGuard(address payable _recipient, uint256 _amount)
-        external
-        returns (bool)
-    {
-        return Transfers.transferNATAllowFailure(_recipient, _amount);
     }
 }

@@ -96,12 +96,9 @@ library CollateralReservations {
         }
         state.crts[crtId] = cr;
 
-        // if executor is not set, we return the change to the minter or burn it if transfer fails
+        // if executor is not set, we return the change to the minter
         if (cr.executor == address(0) && msg.value > reservationFee) {
-            bool success = Transfers.transferNATAllowFailure(payable(cr.minter), msg.value - reservationFee);
-            if (!success) {
-                Agents.burnDirectNAT(msg.value - reservationFee);
-            }
+            Transfers.transferNAT(payable(cr.minter), msg.value - reservationFee);
         }
         return crtId;
     }
@@ -331,17 +328,15 @@ library CollateralReservations {
         uint256 totalFee = crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI;
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 returnFee = totalFee.mulBips(settings.rejectOrCancelCollateralReservationReturnFactorBIPS);
-        address payable minter = payable(crt.minter);
+        address minter = crt.minter;
 
         // release agent's reserved collateral
         releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
 
-        // guarded against reentrancy in CollateralReservationsFacet
-        bool success = Transfers.transferNATAllowFailure(minter, returnFee);
-        // if failed, burn the whole fee, otherwise burn the difference
-        if (!success) {
-            Agents.burnDirectNAT(totalFee);
-        } else if (totalFee > returnFee) {
+        // return the fee to the minter in WNat
+        Globals.getWNat().depositTo{value: returnFee}(minter);
+        // burn the difference
+        if (totalFee > returnFee) {
             Agents.burnDirectNAT(totalFee - returnFee);
         }
     }

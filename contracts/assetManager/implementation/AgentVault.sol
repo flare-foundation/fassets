@@ -194,7 +194,7 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         destroyed = true;
         ownerAfterDestroy = assetManager.getAgentVaultOwner(address(this));
         // transfer native balance, if any (used to be done by selfdestruct)
-        Transfers.transferNATAllowFailure(_recipient, address(this).balance);
+        Transfers.transferNAT(_recipient, address(this).balance);
     }
 
     // Used by asset manager for liquidation and failed redemption.

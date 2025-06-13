@@ -389,11 +389,8 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         token.burn(msg.sender, tokenShare, false);
         _withdrawWNatTo(_recipient, natShare);
         if (returnFunds && msg.value > 0) {
-            // return any unused NAT
-            bool success = Transfers.transferNATAllowFailure(payable(msg.sender), msg.value);
-            if (!success) {
-                Transfers.transferNAT(_recipient, msg.value);
-            }
+            // send any unused NAT to the recipient
+            Transfers.transferNAT(_recipient, msg.value);
         }
         // emit event
         emit Exited(msg.sender, tokenShare, natShare, spentFAssetFees, requiredFAssets, _fAssetFeeDebtOf[msg.sender]);

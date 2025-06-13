@@ -83,10 +83,7 @@ library CoreVault {
         // (all transfers are guarded by nonReentrant in the facet)
         if (msg.value > transferFeeWei + Transfers.TRANSFER_GAS_ALLOWANCE * tx.gasprice) {
             Transfers.transferNAT(state.nativeAddress, transferFeeWei);
-            bool success = Transfers.transferNATAllowFailure(payable(msg.sender), msg.value - transferFeeWei);
-            if (!success) {
-                Agents.burnDirectNAT(msg.value - transferFeeWei);
-            }
+            Transfers.transferNAT(payable(msg.sender), msg.value - transferFeeWei);
         } else {
             Transfers.transferNAT(state.nativeAddress, msg.value);
         }
