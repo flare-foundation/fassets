@@ -18,15 +18,14 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
 
     bool private initialized;
 
-    IERC20[] private usedTokens;
-
-    mapping(IERC20 => uint256) private tokenUseFlags;
+    // only storage placeholders now
+    IERC20[] private __usedTokens;
+    mapping(IERC20 => uint256) private __tokenUseFlags;
 
     bool private internalWithdrawal;
 
-    uint256 private constant TOKEN_DEPOSIT = 1;
-    uint256 private constant TOKEN_DELEGATE = 2;
-    uint256 private constant TOKEN_DELEGATE_GOVERNANCE = 4;
+    bool private destroyed;
+    address private ownerAfterDestroy;
 
     modifier onlyOwner {
         require(isOwner(msg.sender), "only owner");
@@ -62,7 +61,6 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     {
         _wNat.deposit{value: msg.value}();
         assetManager.updateCollateral(address(this), _wNat);
-        _tokenUsed(_wNat, TOKEN_DEPOSIT);
     }
 
     // without "onlyOwner" to allow owner to send funds from any source
@@ -96,7 +94,6 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     {
         _token.safeTransferFrom(msg.sender, address(this), _amount);
         assetManager.updateCollateral(address(this), _token);
-        _tokenUsed(_token, TOKEN_DEPOSIT);
     }
 
     // update collateral after `transfer(vault, some amount)` was called (alternative to depositCollateral)
@@ -105,7 +102,6 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         onlyOwner
     {
         assetManager.updateCollateral(address(this), _token);
-        _tokenUsed(_token, TOKEN_DEPOSIT);
     }
 
     function withdrawCollateral(IERC20 _token, uint256 _amount, address _recipient)
@@ -113,8 +109,10 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         onlyOwner
         nonReentrant
     {
-        // check that enough was announced and reduce announcement
-        assetManager.beforeCollateralWithdrawal(_token, _amount);
+        // check that enough was announced and reduce announcement (not relevant after destroy)
+        if (!destroyed) {
+            assetManager.beforeCollateralWithdrawal(_token, _amount);
+        }
         // transfer tokens to recipient
         _token.safeTransfer(_recipient, _amount);
     }
@@ -126,14 +124,13 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         onlyOwner
         nonReentrant
     {
-        require(!assetManager.isLockedVaultToken(address(this), _token), "only non-collateral tokens");
+        require(destroyed || !assetManager.isLockedVaultToken(address(this), _token), "only non-collateral tokens");
         address ownerManagementAddress = assetManager.getAgentVaultOwner(address(this));
         _token.safeTransfer(ownerManagementAddress, _amount);
     }
 
     function delegate(IVPToken _token, address _to, uint256 _bips) external override onlyOwner {
         _token.delegate(_to, _bips);
-        _tokenUsed(_token, TOKEN_DELEGATE);
     }
 
     function undelegateAll(IVPToken _token) external override onlyOwner {
@@ -146,7 +143,6 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
 
     function delegateGovernance(IVPToken _token, address _to) external override onlyOwner {
         _token.governanceVotePower().delegate(_to);
-        _tokenUsed(_token, TOKEN_DELEGATE_GOVERNANCE);
     }
 
     function undelegateGovernance(IVPToken _token) external override onlyOwner {
@@ -195,28 +191,10 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         onlyAssetManager
         nonReentrant
     {
-        uint256 length = usedTokens.length;
-        for (uint256 i = 0; i < length; i++) {
-            IERC20 token = usedTokens[i];
-            uint256 useFlags = tokenUseFlags[token];
-            // undelegate all governance delegation
-            if ((useFlags & TOKEN_DELEGATE_GOVERNANCE) != 0) {
-                IWNat(address(token)).governanceVotePower().undelegate();
-            }
-            // undelegate all WNat delegation
-            if ((useFlags & TOKEN_DELEGATE) != 0) {
-                IVPToken(address(token)).undelegateAll();
-            }
-            // transfer balance to recipient
-            if ((useFlags & TOKEN_DEPOSIT) != 0) {
-                uint256 balance = token.balanceOf(address(this));
-                if (balance > 0) {
-                    token.safeTransfer(_recipient, balance);
-                }
-            }
-        }
+        destroyed = true;
+        ownerAfterDestroy = assetManager.getAgentVaultOwner(address(this));
         // transfer native balance, if any (used to be done by selfdestruct)
-        Transfers.transferNAT(_recipient, address(this).balance);
+        Transfers.transferNATAllowFailure(_recipient, address(this).balance);
     }
 
     // Used by asset manager for liquidation and failed redemption.
@@ -250,7 +228,11 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         public view
         returns (bool)
     {
-        return assetManager.isAgentVaultOwner(address(this), _address);
+        if (ownerAfterDestroy == address(0)) {
+            return assetManager.isAgentVaultOwner(address(this), _address);
+        } else {
+            return ownerAfterDestroy == _address || assetManager.getWorkAddress(ownerAfterDestroy) == _address;
+        }
     }
 
     /**
@@ -270,13 +252,6 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         _wNat.withdraw(_amount);
         internalWithdrawal = false;
         Transfers.transferNAT(_recipient, _amount);
-    }
-
-    function _tokenUsed(IERC20 _token, uint256 _flags) private {
-        if (tokenUseFlags[_token] == 0) {
-            usedTokens.push(_token);
-        }
-        tokenUseFlags[_token] |= _flags;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

@@ -3358,7 +3358,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 const response = await assetManager.emergencyPause(byGovernance, duration, { from: assetManagerController });
                 const pauseTime = await time.latest();
                 const expectedPauseEnd = opts.expectedEnd ?? pauseTime.addn(opts.expectedDuration ?? duration);
-                const allowedError = opts.expectedEnd ? 5 : 0; // allow 5s error if clock jumps between two commands
+                const allowedError = 5; // allow 5s error if clock jumps between two commands
                 const event = findRequiredEvent(response, "EmergencyPauseTriggered");
                 assertApproximatelyEqual(event.args.pausedUntil, expectedPauseEnd, "absolute", allowedError);
                 // check simple
@@ -3501,7 +3501,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 const response = await assetManager.emergencyPauseTransfers(byGovernance, duration, { from: assetManagerController });
                 const pauseTime = await time.latest();
                 const expectedPauseEnd = opts.expectedEnd ?? pauseTime.addn(opts.expectedDuration ?? duration);
-                const allowedError = opts.expectedEnd ? 5 : 0; // allow 5s error if clock jumps between two commands
+                const allowedError = 5; // allow 5s error if clock jumps between two commands
                 const event = findRequiredEvent(response, "EmergencyPauseTransfersTriggered");
                 assertApproximatelyEqual(event.args.pausedUntil, expectedPauseEnd, "absolute", allowedError);
                 // check simple

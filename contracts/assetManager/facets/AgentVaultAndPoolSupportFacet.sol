@@ -46,6 +46,13 @@ contract AgentVaultAndPoolSupportFacet is AssetManagerBase {
         return Agents.isOwner(Agent.get(_agentVault), _address);
     }
 
+    function getWorkAddress(address _managementAddress)
+        external view
+        returns (address)
+    {
+        return Globals.getAgentOwnerRegistry().getWorkAddress(_managementAddress);
+    }
+
     /**
      * Get WNat contract. Used by AgentVault.
      * @return WNat contract

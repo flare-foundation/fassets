@@ -5,7 +5,7 @@ import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { checkEventNotEmited, eventArgs, filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BN_ZERO, BNish, MAX_BIPS, randomAddress, requireNotNull, toBIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { BN_ZERO, BNish, deepFormat, MAX_BIPS, randomAddress, requireNotNull, toBIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { AgentVaultInstance, CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import { CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/IIAssetManager";
@@ -237,12 +237,15 @@ export class Agent extends AssetContextClient {
         // destroy (no need to pull out vault collateral first, it will be withdrawn automatically during destroy)
         const destroyAllowedAt = await this.announceDestroy();
         await time.increaseTo(destroyAllowedAt);
+        await this.destroy();
+        // withdraw remaining vault collateral - can do it immediately now
         const vaultCollateralToken = this.vaultCollateralToken();
         const ownerVaultCollateralBalance = await vaultCollateralToken.balanceOf(this.ownerWorkAddress);
-        await this.destroy();
-        const ownerVaultCollateralBalanceAfterDestroy = await vaultCollateralToken.balanceOf(this.ownerWorkAddress);
+        const vaultBalance = await vaultCollateralToken.balanceOf(this.vaultAddress);
+        await this.withdrawVaultCollateral(vaultBalance);
+        const ownerVaultCollateralBalanceAfterWithdraw = await vaultCollateralToken.balanceOf(this.ownerWorkAddress);
         if (expectedCollateral != null) {
-            assertWeb3Equal(ownerVaultCollateralBalanceAfterDestroy.sub(ownerVaultCollateralBalance), expectedCollateral);
+            assertWeb3Equal(ownerVaultCollateralBalanceAfterWithdraw.sub(ownerVaultCollateralBalance), expectedCollateral);
         }
     }
 

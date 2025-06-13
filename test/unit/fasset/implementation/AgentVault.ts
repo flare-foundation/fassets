@@ -433,19 +433,6 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await expectRevert(res, "only owner")
     });
 
-    it("should call governanceVP.undelegate() when destroying agent if governanceVP was delegated", async () => {
-        const governanceVP = await createGovernanceVP();
-        await wNat.setGovernanceVotePower(governanceVP.address, { from: governance });
-        const agentVault = await createAgentVault(owner, underlyingAgent1);
-        await agentVault.delegateGovernance(wNat.address, accounts[5], { from: owner });
-        await assetManager.announceDestroyAgent(agentVault.address, { from: owner });
-        await deterministicTimeIncrease(settings.withdrawalWaitMinSeconds);
-        await assetManager.destroyAgent(agentVault.address, owner, { from: owner });
-        const undelegate = web3.eth.abi.encodeFunctionCall({ type: "function", name: "undelegate", inputs: [] } as AbiItem, []);
-        const invocationCount = await governanceVP.invocationCountForCalldata.call(undelegate);
-        assert.equal(invocationCount.toNumber(), 1);
-    });
-
     it("cannot call destroy if not asset manager", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const res = agentVault.destroy(owner, { from: accounts[2] });
@@ -495,7 +482,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         assert.equal(await web3.eth.getBalance(agentVault.address), "0");
     });
 
-    it("should destroy the agentVault contract with token used", async () => {
+    it("should destroy the agentVault contract and return accidental NAT", async () => {
         await assetManagerMock.setCheckForValidAgentVaultAddress(false);
         const agentVault = await AgentVault.new(assetManagerMock.address);
         // use a token and delegate
@@ -510,12 +497,6 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         assert.equal(await web3.eth.getBalance(agentVault.address), "1000");
         await assetManagerMock.callFunctionAt(agentVault.address, agentVault.contract.methods.destroy(accounts[80]).encodeABI(), { from: owner });
         assert.equal(await web3.eth.getBalance(agentVault.address), "0");
-        // check that wnat was returned
-        const recipientWNat = await wNat.balanceOf(accounts[80]);
-        assertWeb3Equal(recipientWNat, toBN(100));
-        // check that delegation was removed
-        const delegatedAfter = await wNat.votePowerOf(owner);
-        assertWeb3Equal(delegatedAfter, toBN(0));
     });
 
     it("should destroy the agentVault contract with token used but 0 token balance in agent vault branch test", async () => {

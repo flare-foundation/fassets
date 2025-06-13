@@ -476,6 +476,10 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         await deterministicTimeIncrease(150);
         const startBalance = await usdc.balanceOf(agentOwner1);
         const tx = await assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 });
+        // nothing is returned automatically, but the owner can withdraw collateral without announcement now
+        assertWeb3Equal(await usdc.balanceOf(agentVault.address), amount);
+        await agentVault.withdrawCollateral(usdc.address, amount, agentOwner1, { from: agentOwner1 });
+        assertWeb3Equal(await usdc.balanceOf(agentVault.address), 0);
         // assert
         const recovered = (await usdc.balanceOf(agentOwner1)).sub(startBalance);
         // console.log(`recovered = ${recovered},  rec=${recipient}`);
