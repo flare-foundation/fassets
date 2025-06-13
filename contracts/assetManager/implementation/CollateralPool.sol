@@ -520,11 +520,12 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         internal view
         returns (uint256 debtFAssetFeeShare, uint256 freeFAssetFeeShare)
     {
-        uint256 virtualFAsset = _virtualFAssetFeesOf(_assetData, _account);
-        uint256 debtFAsset = _fAssetFeeDebtOf[_account];
         uint256 tokens = token.balanceOf(_account);
         if (tokens == 0) return (0, 0); // never happens in this contract
-        uint256 fAssetShare = virtualFAsset.mulDiv(_tokenShare, tokens);
+        // poolTokenSupply >= tokens > 0
+        uint256 virtualFAsset = _assetData.poolVirtualFAssetFees.mulDiv(tokens, _assetData.poolTokenSupply);
+        uint256 debtFAsset = _fAssetFeeDebtOf[_account];
+        uint256 fAssetShare = _assetData.poolVirtualFAssetFees.mulDiv(_tokenShare, _assetData.poolTokenSupply);
         // note: rounding errors can be responsible for:
         // - debtFAsset > virtualFAsset
         // - freeFAsset > totalFAssetFees
@@ -537,7 +538,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
             debtFAssetFeeShare = Math.min(fAssetShare, debtFAsset);
             freeFAssetFeeShare = fAssetShare - debtFAssetFeeShare;
         } else { // KEEP_RATIO
-            debtFAssetFeeShare = virtualFAsset > 0 ? debtFAsset.mulDiv(fAssetShare, virtualFAsset) : 0;
+            debtFAssetFeeShare = debtFAsset.mulDiv(_tokenShare, tokens);
             freeFAssetFeeShare = MathUtils.subOrZero(fAssetShare, debtFAssetFeeShare);
         }
         // cap the fee shares in case of rounding errors
@@ -613,7 +614,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         returns (uint256)
     {
         uint256 tokens = token.balanceOf(_account);
-        if (tokens == 0) return 0;
+        if (tokens == 0) return 0; // prevents poolTokenSupply = 0
         return _assetData.poolVirtualFAssetFees.mulDiv(
             tokens, _assetData.poolTokenSupply);
     }

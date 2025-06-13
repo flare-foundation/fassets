@@ -318,7 +318,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assertWeb3Equal(await context.wNat.balanceOf(minter.address), redeemedPoolCollateralWei);
     });
 
-    it("should simulate a situation in which minter virtual f-asset is larger than his f-asset debt", async () => {
+    it("should simulate a situation in which minter virtual f-asset is smaller than his f-asset debt - fixed", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e10));
         // agent deposits into the pool
@@ -352,10 +352,10 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         // minter enters the pool again
         const minterPoolDeposit2 = toWei(11_544);
         await agent.collateralPool.enter(0, false, { from: minter.address, value: minterPoolDeposit2 });
-        // see that minter's debt-fasset is virtual-fasset + 1
+        // see that minter's debt-fasset equals virtual-fasset
         const minterDebtFAsset = await agent.collateralPool.fAssetFeeDebtOf(minter.address);
         const minterVirtualFAsset = await agent.collateralPool.virtualFAssetOf(minter.address);
-        assertWeb3Equal(minterDebtFAsset, minterVirtualFAsset.addn(1));
+        assertWeb3Equal(minterDebtFAsset, minterVirtualFAsset);
     });
 
     it("self close exit test", async () => {
