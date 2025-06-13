@@ -92,6 +92,14 @@ export class ContractStore {
         }
     }
 
+    public findByAddress(address: string) {
+        for (const contract of this.map.values()) {
+            if (contract.address.toLowerCase() === address.toLowerCase()) {
+                return contract;
+            }
+        }
+    }
+
     public addHistoryItem({ name, contractName, address }: Contract) {
         let contractHistory = this.history.get(name);
         if (contractHistory == null) {
