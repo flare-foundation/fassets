@@ -782,6 +782,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         if (msg.value > 0) {
             totalCollateral += msg.value;
             wNat.deposit{value: msg.value}();
+            assetManager.updateCollateral(agentVault, wNat);
         }
     }
 
