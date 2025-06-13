@@ -178,7 +178,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         }
         _mintFAssetFeeDebt(msg.sender, fAssetShare - depositedFAsset);
         _depositWNat();
-        assetManager.updateCollateral(agentVault, wNat);
         uint256 timelockExp = token.mint(msg.sender, tokenShare);
         // emit event
         emit Entered(msg.sender, msg.value, tokenShare, depositedFAsset, _fAssetFeeDebtOf[msg.sender], timelockExp);
