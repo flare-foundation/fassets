@@ -112,7 +112,7 @@ library Agent {
 
         // The amount of fassets being redeemed EXCEPT those from pool self-close exits.
         // Unlike normal redemption, pool collateral was already withdrawn, so the redeeming collateral
-        // must only be accounte for / locked for vault collateral.
+        // must only be accounted for / locked for vault collateral.
         // On redemption payment failure, redeemer will be paid only in vault collateral in this case
         // (and will be paid less if there isn't enough - small extra risk for pool token holders).
         // There will always be `poolRedeemingAMG <= redeemingAMG`.
@@ -124,7 +124,7 @@ library Agent {
         uint64 dustAMG;
 
         // The amount of funds that on the agent's underlying address.
-        // If it is higher than the amount neded to back mintings, it can be withdrawn after announcement.
+        // If it is higher than the amount needed to back mintings, it can be withdrawn after announcement.
         // It is signed int, because unreported deposits combined with other operations can in principle
         // make it negative. We could truncate it at 0, but if deposit report comes later, this would make
         // the value wrong.
@@ -179,7 +179,7 @@ library Agent {
 
         // The redemption fee share paid to the pool (as FAssets).
         // In redemption dominated situations (when agent requests return from core vault to earn
-        // from redemption fees), pool can get some share to make it sustainble for pool users.
+        // from redemption fees), pool can get some share to make it sustainable for pool users.
         // NOTE: the pool fee share is locked at the redemption request time, but is charged at the redemption
         // confirmation time. If agent uses all the redemption fee for transaction fees, this could make the
         // agent's free underlying balance negative.

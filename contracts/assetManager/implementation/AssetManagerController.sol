@@ -110,7 +110,7 @@ contract AssetManagerController is
     }
 
     /**
-     * Check wehther the asset manager is managed by this controller.
+     * Check whether the asset manager is managed by this controller.
      * @param _assetManager an asset manager address
      */
     function assetManagerExists(address _assetManager)

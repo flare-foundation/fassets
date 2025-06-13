@@ -39,7 +39,7 @@ library RedemptionRequestInfo {
         // and goes to the collateral pool.
         uint16 poolFeeShareBIPS;
 
-        // The underlying block (approximate - as known by the asset manager) when the request occured.
+        // The underlying block (approximate - as known by the asset manager) when the request occurred.
         uint64 firstUnderlyingBlock;
 
         // The last underlying block and timestamp for redemption payment. Redemption is defaulted if
@@ -47,7 +47,7 @@ library RedemptionRequestInfo {
         uint64 lastUnderlyingBlock;
         uint64 lastUnderlyingTimestamp;
 
-        // The native (Flare/Songbird) chain timstamp when the request occured.
+        // The native (Flare/Songbird) chain timestamp when the request occurred.
         uint64 timestamp;
 
         // True if redemption was created by a selfCloseExit on the collateral pool.
@@ -60,7 +60,7 @@ library RedemptionRequestInfo {
         // (Only redeemer, agent or executor may execute the default.)
         address executor;
 
-        // The fee in NAT that the executor receives if they successfuly call default.
+        // The fee in NAT that the executor receives if they successfully call default.
         uint256 executorFeeNatWei;
 
         // If non-zero, request was rejected in handshake process.

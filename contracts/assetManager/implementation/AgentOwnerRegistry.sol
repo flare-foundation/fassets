@@ -28,7 +28,7 @@ contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {
      * @param _description agent owner's description
      * @param _iconUrl url of the agent owner's icon image; governance or manager should check it is in correct format
      *      and size and it is on a server where it cannot change or be deleted
-     * @param _touUrl url of the agent's page with terms of use; similar considerations appli as for icon url
+     * @param _touUrl url of the agent's page with terms of use; similar considerations apply as for icon url
      */
     function whitelistAndDescribeAgent(
         address _managementAddress,

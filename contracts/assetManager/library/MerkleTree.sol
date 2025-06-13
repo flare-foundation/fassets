@@ -20,7 +20,7 @@ library MerkleTree {
     /// The last n elements of the array are the leaves. The data structure uses the
     /// complete left aligned binary tree in an array, a well known representation for binary heaps.
     /// Instead of actually constructing the tree the following recursive algorithm is used:
-    /// merklerRoot(tree) = sortedHash(merkleRoot(leftSubTree(tree)), merkleRoot(rightSubTree(tree)))
+    /// merkleRoot(tree) = sortedHash(merkleRoot(leftSubTree(tree)), merkleRoot(rightSubTree(tree)))
     /// The algorithm is essentially an iterative version of the recursive algorithm using a stack.
     function calculateMerkleRoot(
         bytes32[] memory leaves

@@ -30,10 +30,10 @@ library CollateralReservationInfo {
         // Part of the fee is goes to the pool and the rest to the agent vault as WNAT.
         uint128 reservationFeeNatWei;
 
-        // Proportion of the mintingFeeUBA and reservationFeeNatWei that belogs to the collateral pool.
+        // Proportion of the mintingFeeUBA and reservationFeeNatWei that belongs to the collateral pool.
         uint16 poolFeeShareBIPS;
 
-        // The underlying block (approximate - as known by the asset manager) when the reservation occured.
+        // The underlying block (approximate - as known by the asset manager) when the reservation occurred.
         uint64 firstUnderlyingBlock;
 
         // The last underlying block and timestamp for redemption payment. Redemption is defaulted if
@@ -45,7 +45,7 @@ library CollateralReservationInfo {
         // (Only minter, agent or executor may execute the minting.)
         address executor;
 
-        // The fee in NAT that the executor receives if they successfuly execute the minting.
+        // The fee in NAT that the executor receives if they successfully execute the minting.
         uint256 executorFeeNatWei;
 
         // If non-zero, the agent has started the handshake process.

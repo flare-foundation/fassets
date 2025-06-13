@@ -55,7 +55,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
     }
 
     /**
-     * If an agent has enough free underlying, they can mint immediatelly without any underlying payment.
+     * If an agent has enough free underlying, they can mint immediately without any underlying payment.
      * This is a one-step process, skipping collateral reservation and collateral reservation fee payment.
      * Moreover, the agent doesn't have to be on the publicly available agents list to self-mint.
      * NOTE: may only be called by the agent vault owner.

@@ -47,7 +47,7 @@ library RedemptionConfirmations {
         require(_payment.data.responseBody.sourceAddressHash == agent.underlyingAddressHash,
             "source not agent's underlying address");
         // On UTXO chains, malicious submitter could select agent's return address as receiving address index in FDC
-        // request, which would wrongly mark payment as FAILED becuse the receiver is not the redeemer.
+        // request, which would wrongly mark payment as FAILED because the receiver is not the redeemer.
         // Following check prevents this for common payments with single receiver while still allowing payments to
         // actually wrong address to be marked as invalid.
         require(_payment.data.responseBody.receivingAddressHash != agent.underlyingAddressHash,

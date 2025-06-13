@@ -56,7 +56,7 @@ contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents, ITransferFee
      * This method is only needed if this facet was deployed by diamond cut when some agents already
      * back nonzero minting.
      * This method is no-op if the agent already has some history checkpoints or it has 0 minting,
-     * so it is safe to be called by anybody. E.g. it won't do anything unless it is called after a dimanod cut with
+     * so it is safe to be called by anybody. E.g. it won't do anything unless it is called after a diamond cut with
      * some agents already backing some mintings and it will do nothing when called the second time on the same agent.
      * If this method is not called, the agents will be automatically initialized on first minting or redemption,
      * but they may miss out on some tracking fees for the duration between the diamond cut and the first

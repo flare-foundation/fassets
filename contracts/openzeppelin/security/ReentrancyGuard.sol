@@ -39,7 +39,7 @@ abstract contract ReentrancyGuard {
     }
 
     /**
-     * Should be called once at construction time of the main contract (not a contructor, to allow proxies/diamond).
+     * Should be called once at construction time of the main contract (not a constructor, to allow proxies/diamond).
      * Not a big issue if it is never called - just the first nonReentrant method call will use more gas.
      */
     function initializeReentrancyGuard() internal {
