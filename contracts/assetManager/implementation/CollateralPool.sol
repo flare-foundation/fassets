@@ -354,15 +354,15 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
             require(success, "f-asset transfer failed");
         }
         // redeem f-assets if necessary
-        bool redeemFromAgent = false;
+        bool returnFunds = true;
         if (requiredFAssets > 0) {
             if (requiredFAssets < assetManager.lotSize() || _redeemToCollateral) {
                 assetManager.redeemFromAgentInCollateral(
                     agentVault, _recipient, requiredFAssets);
             } else {
-                redeemFromAgent = true; // redeem from agent vault
-                // automatically pass `msg.value` to `redeemFromAgent` for the executor fee
-                assetManager.redeemFromAgent{ value: msg.value }(
+                returnFunds = _executor == address(0);
+                // pass `msg.value` to `redeemFromAgent` for the executor fee if `_executor` is set
+                assetManager.redeemFromAgent{ value: returnFunds ? 0 : msg.value }(
                     agentVault, _recipient, requiredFAssets, _redeemerUnderlyingAddress, _executor);
             }
         }
@@ -389,7 +389,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         }
         token.burn(msg.sender, tokenShare, false);
         _withdrawWNatTo(_recipient, natShare);
-        if (!redeemFromAgent && msg.value > 0) {
+        if (returnFunds && msg.value > 0) {
             // return any unused NAT
             bool success = Transfers.transferNATAllowFailure(payable(msg.sender), msg.value);
             if (!success) {
@@ -876,16 +876,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         onlyAssetManager
     {
         _depositWNat();
-    }
-
-    function donateNat()
-        external payable
-        nonReentrant
-    {
-        require(msg.value >= MIN_NAT_TO_ENTER && msg.value < totalCollateral / 100,
-            "donation must be between 1 NAT and 1% of the total pool collateral");
-        _depositWNat();
-        emit Donated(msg.sender, msg.value);
     }
 
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant

@@ -15,6 +15,7 @@ import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../
 import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { AgentCollateral } from "../../../utils/fasset/AgentCollateral";
+import { calcGasCost } from "../../../utils/eth";
 
 contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralReservations basic tests`, async accounts => {
     const governance = accounts[10];
@@ -111,6 +112,54 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [], { from: minterAddress1, value: crFee });
+        // assert
+        const settings = await assetManager.getSettings();
+        const lotSize = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA));
+        const args = requiredEventArgs(tx, "CollateralReserved");
+        assertWeb3Equal(args.agentVault, agentVault.address);
+        assert.isAbove(Number(args.collateralReservationId), 0);
+        assertWeb3Equal(args.minter, minterAddress1);
+        assertWeb3Equal(args.paymentAddress, underlyingAgent1);
+        assertWeb3Equal(args.paymentReference, PaymentReference.minting(args.collateralReservationId));
+        assertWeb3Equal(args.valueUBA, lotSize.muln(lots));
+        assertWeb3Equal(args.feeUBA, lotSize.muln(lots * feeBIPS).divn(10000));
+    });
+
+    it("should reserve collateral and get funds back if not setting executor", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        // act
+        const lots = 1;
+        const balanceBefore = await web3.eth.getBalance(minterAddress1);
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, [], { from: minterAddress1, value: crFee.addn(1000) });
+        const balanceAfter = await web3.eth.getBalance(minterAddress1);
+        assertWeb3Equal(toBN(balanceBefore).sub(crFee).sub(calcGasCost(tx)), balanceAfter);
+        // assert
+        const settings = await assetManager.getSettings();
+        const lotSize = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA));
+        const args = requiredEventArgs(tx, "CollateralReserved");
+        assertWeb3Equal(args.agentVault, agentVault.address);
+        assert.isAbove(Number(args.collateralReservationId), 0);
+        assertWeb3Equal(args.minter, minterAddress1);
+        assertWeb3Equal(args.paymentAddress, underlyingAgent1);
+        assertWeb3Equal(args.paymentReference, PaymentReference.minting(args.collateralReservationId));
+        assertWeb3Equal(args.valueUBA, lotSize.muln(lots));
+        assertWeb3Equal(args.feeUBA, lotSize.muln(lots * feeBIPS).divn(10000));
+    });
+
+    it("should reserve collateral and not get funds back if setting executor", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        // act
+        const lots = 1;
+        const balanceBefore = await web3.eth.getBalance(minterAddress1);
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, accounts[19], [], { from: minterAddress1, value: crFee.addn(1000) });
+        const balanceAfter = await web3.eth.getBalance(minterAddress1);
+        assertWeb3Equal(toBN(balanceBefore).sub(crFee).subn(1000).sub(calcGasCost(tx)), balanceAfter);
         // assert
         const settings = await assetManager.getSettings();
         const lotSize = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA));

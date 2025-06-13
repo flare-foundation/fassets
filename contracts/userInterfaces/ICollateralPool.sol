@@ -30,11 +30,6 @@ interface ICollateralPool {
         uint256 closedFAssetsUBA,
         uint256 newFAssetFeeDebt);
 
-    // Emitted in case of NAT collateral donation to the pool
-    event Donated(
-        address indexed donator,
-        uint256 amountNatWei);
-
     // Emitted when asset manager forces payout from the pool
     event PaidOut(
         address indexed recipient,
