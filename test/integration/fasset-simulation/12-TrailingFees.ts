@@ -111,6 +111,57 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(poolFBalance, poolExpected);
         });
 
+        it("should charge transfer fee and anyone can claim to agent's address", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.lotSize().muln(100));
+            const redeemer = await Redeemer.create(context, userAddress2, underlyingUser2);
+            const agentInfo = await agent.getAgentInfo();
+            await agent.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
+            mockChain.mine(10);
+            await context.updateUnderlyingBlock();
+            const currentEpoch = await assetManager.currentTransferFeeEpoch();
+            // perform minting
+            const lots = 3;
+            const [minted] = await minter.performMinting(agent.vaultAddress, lots);
+            // transfer and check that fee was subtracted
+            const transferAmount = context.lotSize().muln(2);
+            const transferFee = await calculateFee(transferAmount, false);
+            const { 1: fee } = await context.fAsset.getReceivedAmount(minter.address, redeemer.address, transferAmount);
+            assertWeb3Equal(transferFee, fee);
+            const startBalanceM = await fAsset.balanceOf(minter.address);
+            const startBalanceR = await fAsset.balanceOf(redeemer.address);
+            const transfer = await minter.transferFAsset(redeemer.address, transferAmount);
+            const endBalanceM = await fAsset.balanceOf(minter.address);
+            const endBalanceR = await fAsset.balanceOf(redeemer.address);
+            assertWeb3Equal(transfer.fee, transferFee);
+            assert.isAbove(Number(transferFee), 100);
+            assertWeb3Equal(endBalanceM, startBalanceM.sub(transferAmount));
+            assertWeb3Equal(endBalanceR.sub(startBalanceR), transferAmount.sub(transferFee));
+            // at this epoch, claimable amount should be 0, though fees are collected
+            const epochData = await assetManager.transferFeeEpochData(currentEpoch);
+            const claimableAmount0 = await agent.transferFeeShare(10);
+            assertWeb3Equal(epochData.totalFees, transferFee);
+            assertWeb3Equal(claimableAmount0, 0);
+            // skip 1 epoch and claim
+            await deterministicTimeIncrease(epochDuration);
+            const claimableAmount1 = await agent.transferFeeShare(10);
+            assertWeb3Equal(claimableAmount1, transferFee);
+            await expectRevert(context.assetManager.claimTransferFees(agent.vaultAddress, accounts[3], 10, { from: accounts[3] }), "only agent owner or claiming to agent's address");
+            await expectRevert(context.assetManager.claimTransferFees(agent.vaultAddress, ZERO_ADDRESS, 10, { from: accounts[3] }), "only agent owner or claiming to agent's address");
+            // anyone can claim to agent's address
+            const res = await context.assetManager.claimTransferFees(agent.vaultAddress, agent.ownerWorkAddress, 10, { from: accounts[3] });
+            const claimed = requiredEventArgs(res, "TransferFeesClaimed");
+            const ownerFBalance = await fAsset.balanceOf(agent.ownerWorkAddress);
+            const poolFeeShare = transferFee.mul(toBN(agentInfo.poolFeeShareBIPS)).divn(MAX_BIPS);
+            const agentFeeShare = transferFee.sub(poolFeeShare);
+            assertWeb3Equal(ownerFBalance, agentFeeShare);
+            assertWeb3Equal(agentFeeShare, claimed.agentClaimedUBA);
+            assertWeb3Equal(poolFeeShare, claimed.poolClaimedUBA);
+            const poolFBalance = await fAsset.balanceOf(agentInfo.collateralPool);
+            const poolExpected = toBN(minted.poolFeeUBA).add(poolFeeShare);
+            assertWeb3Equal(poolFBalance, poolExpected);
+        });
+
         it("transfer fees should not affect mint and redeem", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.lotSize().muln(100));

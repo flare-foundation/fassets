@@ -93,12 +93,15 @@ contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents, ITransferFee
 
     function claimTransferFees(address _agentVault, address _recipient, uint256 _maxEpochsToClaim)
         external
-        onlyAgentVaultOwner(_agentVault)
         returns (uint256 _agentClaimedUBA, uint256 _poolClaimedUBA, uint256 _remainingUnclaimedEpochs)
     {
+        Agent.State storage agent = Agent.get(_agentVault);
+        require(
+            Agents.isOwner(agent, msg.sender) || _recipient != address(0) && Agents.isOwner(agent, _recipient),
+            "only agent owner or claiming to agent's address"
+        );
         TransferFeeTracking.Data storage data = _getTransferFeeData();
         (uint256 claimedUBA, uint256 unclaimedEpochs) = data.claimFees(_agentVault, _maxEpochsToClaim);
-        Agent.State storage agent = Agent.get(_agentVault);
         IIFAsset fAsset = Globals.getFAsset();
         _poolClaimedUBA = SafePct.mulBips(claimedUBA, agent.poolFeeShareBIPS);
         _agentClaimedUBA = claimedUBA - _poolClaimedUBA;

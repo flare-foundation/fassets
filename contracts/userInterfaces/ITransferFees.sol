@@ -25,7 +25,7 @@ interface ITransferFees {
 
     /**
      * Claim FAsset transfer fees by an agent.
-     * NOTE: may only be called by the agent vault owner
+     * NOTE: may only be called by the agent vault owner or by anyone if claiming to the agent's address.
      * @param _agentVault the agent vault for which to claim
      * @param _recipient the account that will receive agent's share of fasset fees
      * @param _maxEpochsToClaim limit the number of epochs to claim, to avoid using too much gas
