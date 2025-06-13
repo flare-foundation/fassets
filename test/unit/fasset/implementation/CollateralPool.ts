@@ -1292,8 +1292,8 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const receiverReceivedNat = await calculateReceivedNat(receipt, accounts[2]);
             const holderReceivedFAssets = await fAsset.balanceOf(accounts[0]);
             const receiverReceivedFAssets = await fAsset.balanceOf(accounts[2]);
-            assertEqualBN(holderReceivedNat, BN_ZERO); // get back msg.value
-            assertEqualBN(receiverReceivedNat, exitTokens);
+            assertEqualBN(holderReceivedNat, ETH(-1));
+            assertEqualBN(receiverReceivedNat, exitTokens.add(ETH(1))); // get back msg.value
             assertEqualBN(holderReceivedFAssets, BN_ZERO);
             const transferFee = await calculateFee(ETH(5), false);
             assertEqualBN(receiverReceivedFAssets, ETH(5).sub(transferFee));   // half fees get redeemed, so expect half fees to be paid out
