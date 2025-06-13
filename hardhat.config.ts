@@ -51,7 +51,7 @@ task(TASK_COMPILE)
 function readAccounts(network: string) {
     const deployerPK = process.env[networkDeployerPrivateKeyName(network)];
     const deployerAccounts: HardhatNetworkAccountUserConfig[] = deployerPK ? [{ privateKey: deployerPK, balance: "100000000000000000000000000000000" }] : [];
-    let testAccounts: HardhatNetworkAccountUserConfig[] = JSON.parse(fs.readFileSync('test-1020-accounts.json').toString());
+    let testAccounts: HardhatNetworkAccountUserConfig[] = JSON.parse(fs.readFileSync('test/test-1020-accounts.json').toString());
     if (process.env.TENDERLY === 'true') {
         testAccounts = testAccounts.slice(0, 100);
     }
