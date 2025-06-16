@@ -47,6 +47,8 @@ export default tseslint.config([
       'guard-for-in': 'warn',
       // Errors when a case in a switch statement falls through to the next case without a break statement or other termination.
       'no-fallthrough': 'error',
+      // Require the use of === and !== instead of == and != for equality checks.
+      'eqeqeq': ['warn', 'always', { null: 'ignore' }],
     },
   },
   // Override rules for specific files
