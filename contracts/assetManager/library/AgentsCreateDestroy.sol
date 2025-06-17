@@ -160,7 +160,7 @@ library AgentsCreateDestroy {
         // destroy pool
         agent.collateralPool.destroy(_recipient);
         // destroy agent vault
-        IIAgentVault(_agentVault).destroy(_recipient);
+        IIAgentVault(_agentVault).destroy();
         // remove from the list of all agents
         uint256 ind = agent.allAgentsPos;
         if (ind + 1 < state.allAgents.length) {

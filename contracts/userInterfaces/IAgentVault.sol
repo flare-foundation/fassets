@@ -96,38 +96,6 @@ interface IAgentVault {
     function undelegateGovernance(IVPToken _token) external;
 
     /**
-     * Claim the rewards earned by delegating.
-     * Alternatively, you can set a claim executor and then claim directly from RewardManager.
-     * NOTE: only the owner of the agent vault may call this method.
-     */
-    function claimDelegationRewards(
-        IRewardManager _rewardManager,
-        uint24 _lastRewardEpoch,
-        address payable _recipient,
-        IRewardManager.RewardClaimWithProof[] calldata _proofs
-    ) external
-        returns (uint256);
-
-    /**
-     * Claim airdrops earned by holding wNAT in the vault.
-     * NOTE: only the owner of the agent vault may call this method.
-     */
-    function claimAirdropDistribution(
-        IDistributionToDelegators _distribution,
-        uint256 _month,
-        address payable _recipient
-    ) external
-        returns(uint256);
-
-    /**
-     * Opt out of airdrops for wNAT in the vault.
-     * NOTE: only the owner of the agent vault may call this method.
-     */
-    function optOutOfAirdrop(
-        IDistributionToDelegators _distribution
-    ) external;
-
-    /**
      * Get the address of the collateral pool contract corresponding to this agent vault
      * (there is 1:1 correspondence between agent vault and collateral pools).
      */

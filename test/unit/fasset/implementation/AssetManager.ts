@@ -921,10 +921,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // buy back the collateral
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const mintedUSD = await ubaToC1Wei(toBN(agentInfo.mintedUBA));
-            //Random address can't buy back agent collateral
+            // random address can't buy back agent collateral
             const res = assetManager.buybackAgentCollateral(agentVault.address, { from: accounts[12], value: toWei(3e6) });
             await expectRevert(res, "only agent vault owner");
-            //Buy back agent collateral
+            // buy back agent collateral from owner address
             await assetManager.buybackAgentCollateral(agentVault.address, { from: agentOwner1, value: toWei(3e6) });
             const buybackPriceUSD = mulBIPS(mintedUSD, toBN(settings.buybackCollateralFactorBIPS));
             assertEqualWithNumError(await usdc.balanceOf(agentOwner1), buybackPriceUSD, toBN(1));
@@ -947,16 +947,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.terminate({ from: assetManagerController });
             // buy back the collateral
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            const beforeBalance = toBN(await wNat.balanceOf(agentVault.address));
-            //Calculate buyback collateral
-            const mintingUBA = toBN(agentInfo.reservedUBA).add(toBN(agentInfo.mintedUBA));
-            const totalMintingUBAWithPremium = mintingUBA.mul(toBN(settings.buybackCollateralFactorBIPS)).divn(MAX_BIPS);
-            const buyBackCollateral = await ubaToPoolWei(totalMintingUBAWithPremium);
-            // check that we do not need to send any value as vault collateral is NAT
-            await expectRevert(assetManager.buybackAgentCollateral(agentVault.address, { from: agentOwner1, value: toWei(3e6) }), "msg.value must be 0");
-            await assetManager.buybackAgentCollateral(agentVault.address, { from: agentOwner1 });
-            const afterBalance = toBN(await wNat.balanceOf(agentVault.address));
-            assertWeb3Equal(beforeBalance.sub(afterBalance), buyBackCollateral);
+            const mintedCollateral = await ubaToPoolWei(toBN(agentInfo.mintedUBA));
+            const wnatBalanceBefore = await wNat.balanceOf(agentOwner1);
+            await assetManager.buybackAgentCollateral(agentVault.address, { from: agentOwner1, value: toWei(3e6) });
+            const wnatBalanceAfter = await wNat.balanceOf(agentOwner1);
+            const buybackPrice = mulBIPS(mintedCollateral, toBN(settings.buybackCollateralFactorBIPS));
+            assertEqualWithNumError(wnatBalanceAfter.sub(wnatBalanceBefore), buybackPrice, toBN(1));
         });
     });
 
@@ -1472,7 +1468,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // check that agent and pool got wNat (on default, they must share totalFee - including executor fee)
             const poolShare = mulBIPS(totalFee, toBN(agentSettings.poolFeeShareBIPS));
             const agentShare = totalFee.sub(poolShare);
-            const agentWnatBalance = await wNat.balanceOf(agentVault.address);
+            const agentWnatBalance = await wNat.balanceOf(agentOwner1);
             assertWeb3Equal(agentWnatBalance, agentShare);
             const poolAddress = await assetManager.getCollateralPool(agentVault.address);
             const poolWnatBalance = await wNat.balanceOf(poolAddress);
@@ -1523,17 +1519,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // don't mint f-assets for a long time (> 24 hours)
             skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
             // calculate the cost of unsticking the minting
-            const unstickMintingCost = await ubaToPoolWei(crt.valueUBA);
+            const { 0: multiplier, 1: divisor } = await assetManager.assetPriceNatWei();
+            const mintedValueUBA = lotsToUBA(1);
+            const mintedValueNAT = mintedValueUBA.mul(multiplier).div(divisor);
+            const unstickMintingCost = mulBIPS(mintedValueNAT, toBN(settings.vaultCollateralBuyForFlareFactorBIPS));
             // unstick minting
-            const beforeBalance = toBN(await wNat.balanceOf(agentVault.address));
             const heightExistenceProof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
-            // check that we do not need to send any value as vault collateral is NAT
-            await expectRevert(assetManager.unstickMinting(heightExistenceProof, crt.collateralReservationId, { from: agentOwner1, value: toWei(3e6) }), "msg.value must be 0");
-            const tx2 = await assetManager.unstickMinting(heightExistenceProof, crt.collateralReservationId, { from: agentOwner1 });
+            const tx2 = await assetManager.unstickMinting(heightExistenceProof, crt.collateralReservationId,
+                { from: agentOwner1, value: unstickMintingCost });
             const collateralReservationDeleted = findRequiredEvent(tx2, "CollateralReservationDeleted").args;
             assertWeb3Equal(collateralReservationDeleted.collateralReservationId, crt.collateralReservationId);
-            const afterBalance = toBN(await wNat.balanceOf(agentVault.address));
-            assertWeb3Equal(beforeBalance.sub(afterBalance), unstickMintingCost);
         });
 
         it("should self-mint", async () => {

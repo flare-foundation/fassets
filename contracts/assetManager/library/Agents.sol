@@ -4,6 +4,7 @@ pragma solidity 0.8.23;
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../utils/lib/SafeMath64.sol";
+import "../../utils/lib/Transfers.sol";
 import "../interfaces/IIAgentVault.sol";
 import "./data/AssetManagerState.sol";
 import "./data/Collateral.sol";
@@ -323,38 +324,19 @@ library Agents {
     {
         CollateralTypeInt.Data storage vaultCollateral = getVaultCollateral(_agent);
         CollateralTypeInt.Data storage poolCollateral = getPoolCollateral(_agent);
-        if (vaultCollateral.token == poolCollateral.token) {
-            require(msg.value == 0, "msg.value must be 0");
-            // If vault collateral is NAT, just burn directly.
-            burnVaultNATCollateral(_agent, _amountVaultCollateralWei);
-        } else {
-            AssetManagerSettings.Data storage settings = Globals.getSettings();
-            IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
-            // Calculate NAT amount the agent has to pay to receive the "burned" vault collateral tokens.
-            // The price is FTSO price plus configurable premium (vaultCollateralBuyForFlareFactorBIPS).
-            uint256 amountNatWei = Conversion.convert(_amountVaultCollateralWei, vaultCollateral, poolCollateral)
-                .mulBips(settings.vaultCollateralBuyForFlareFactorBIPS);
-            // Transfer vault collateral to the agent vault owner
-            vault.payout(vaultCollateral.token, _agent.ownerManagementAddress, _amountVaultCollateralWei);
-            // Burn the NAT equivalent (must be provided with the call).
-            require(msg.value >= amountNatWei, "not enough funds provided");
-            burnDirectNAT(amountNatWei);
-            // If there is some overpaid NAT, just send it to the agent's vault.
-            if (msg.value > amountNatWei) {
-                vault.depositNat{ value: msg.value - amountNatWei }(Globals.getWNat());
-            }
-        }
-    }
-
-    function burnVaultNATCollateral(
-        Agent.State storage _agent,
-        uint256 _amountNATWei
-    )
-        internal
-    {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
-        vault.payoutNAT(Globals.getWNat(), settings.burnAddress, _amountNATWei);
+        // Calculate NAT amount the agent has to pay to receive the "burned" vault collateral tokens.
+        // The price is FTSO price plus configurable premium (vaultCollateralBuyForFlareFactorBIPS).
+        uint256 amountNatWei = Conversion.convert(_amountVaultCollateralWei, vaultCollateral, poolCollateral)
+            .mulBips(settings.vaultCollateralBuyForFlareFactorBIPS);
+        // Transfer vault collateral to the agent vault owner
+        vault.payout(vaultCollateral.token, _agent.ownerManagementAddress, _amountVaultCollateralWei);
+        // Burn the NAT equivalent (must be provided with the call).
+        require(msg.value >= amountNatWei, "not enough funds provided");
+        burnDirectNAT(amountNatWei);
+        // If there is some overpaid NAT, send it to the agent owner's work address.
+        Transfers.transferNAT(getOwnerPayAddress(_agent), msg.value - amountNatWei);
     }
 
     function burnDirectNAT(
@@ -393,9 +375,22 @@ library Agents {
         internal view
         returns (bool)
     {
-        address ownerManagementAddress = _agent.ownerManagementAddress;
-        return _address == ownerManagementAddress ||
-            _address == Globals.getAgentOwnerRegistry().getWorkAddress(ownerManagementAddress);
+        return _address == _agent.ownerManagementAddress || _address == getWorkAddress(_agent);
+    }
+
+    function getWorkAddress(Agent.State storage _agent)
+        internal view
+        returns (address)
+    {
+        return Globals.getAgentOwnerRegistry().getWorkAddress(_agent.ownerManagementAddress);
+    }
+
+    function getOwnerPayAddress(Agent.State storage _agent)
+        internal view
+        returns (address payable)
+    {
+        address payable workAddress = payable(getWorkAddress(_agent));
+        return workAddress != address(0) ? workAddress : payable(_agent.ownerManagementAddress);
     }
 
     function requireWhitelisted(

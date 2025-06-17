@@ -227,15 +227,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     it("cannot transfer NAT to agent vault", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const res = web3.eth.sendTransaction({ from: owner, to: agentVault.address, value: 500 });
-        await expectRevert(res, "internal use only")
-    });
-
-    it("cannot payoutNAT if transfer fails", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        await wNat.depositTo(agentVault.address, { value: toBN(100) });
-        await assetManagerMock.payoutNAT(agentVault.address, agentVault.address, 0, { from: owner });
-        const res = assetManagerMock.payoutNAT(agentVault.address, agentVault.address, 100, { from: owner });
-        await expectRevert(res, "transfer failed")
+        await expectRevert(res, "there's no fallback nor receive function")
     });
 
     it("cannot delegate if not owner", async () => {
@@ -325,108 +317,6 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         assert.equal(invocationCount.toNumber(), 1);
     });
 
-    it("should claim rewards", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        const rewardManagerMock = await MockContract.new();
-        await agentVault.claimDelegationRewards(rewardManagerMock.address, 5, owner, [], { from: owner });
-        const claimReward = web3.eth.abi.encodeFunctionCall({
-            type: "function", name: "claim",
-            inputs: [{ name: "_rewardOwner", type: "address" }, { name: "_recipient", type: "address" }, { name: "_rewardEpoch", type: "uint24" }, { name: "_wrap", type: "bool" },
-            {
-                components: [{ name: "merkleProof", type: "bytes32[]" }, {
-                    components: [{ name: "rewardEpochId", type: "uint24" }, { name: "beneficiary", type: "bytes20" },
-                    { name: "amount", type: "uint120" }, { name: "claimType", type: "uint8" }], name: "body", type: "tuple"
-                }], name: "_proofs", type: "tuple[]"
-            }]
-        } as AbiItem,
-            [agentVault.address, owner, 5, false, []] as any[]);
-        const invocationCount = await rewardManagerMock.invocationCountForCalldata.call(claimReward);
-        assert.equal(invocationCount.toNumber(), 1);
-    });
-
-    it("should claim delegation rewards", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        const rewardManager = await RewardManager.new(wNat.address);
-        const claimAmount = toBNExp(1, 18);
-        await wNat.depositTo(rewardManager.address, { value: claimAmount });
-        const startAmount = toBN(await web3.eth.getBalance(accounts[50]));
-        const res = await agentVault.claimDelegationRewards(rewardManager.address, 0, accounts[50], [], { from: owner });
-        const endAmount = toBN(await web3.eth.getBalance(accounts[50]));
-        assertWeb3Equal(endAmount.sub(startAmount), claimAmount);
-        assertWeb3Equal(await wNat.balanceOf(rewardManager.address), 0); // should be empty now
-    });
-
-    it("should claim delegation rewards to vault", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        const rewardManager = await RewardManager.new(wNat.address);
-        const claimAmount = toBNExp(1, 18);
-        await wNat.depositTo(rewardManager.address, { value: claimAmount });
-        const startAmount = await wNat.balanceOf(agentVault.address);
-        const res = await agentVault.claimDelegationRewards(rewardManager.address, 0, agentVault.address, [], { from: owner });
-        const endAmount = await wNat.balanceOf(agentVault.address);
-        assertWeb3Equal(endAmount.sub(startAmount), claimAmount);
-        assertWeb3Equal(await wNat.balanceOf(rewardManager.address), 0); // should be empty now
-    });
-
-
-    it("cannot claim rewards if not owner", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        const rewardManagerMock = await MockContract.new();
-        const claimPromise = agentVault.claimDelegationRewards(rewardManagerMock.address, 5, owner, [], { from: accounts[2] });
-        await expectRevert(claimPromise, "only owner");
-    });
-
-    it("should opt out of airdrop distribution", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        const distributionMock = await MockContract.new();
-        await agentVault.optOutOfAirdrop(distributionMock.address, { from: owner });
-        const optOutOfAirdrop = web3.eth.abi.encodeFunctionCall({
-            type: "function", name: "optOutOfAirdrop",
-            inputs: []
-        } as AbiItem,
-            [] as any[]);
-        const invocationCount = await distributionMock.invocationCountForCalldata.call(optOutOfAirdrop);
-        assert.equal(invocationCount.toNumber(), 1);
-    });
-
-    it("cannot opt out of airdrop distribution if not owner", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        const distributionMock = await MockContract.new();
-        const optOutOfAirdropPromise = agentVault.optOutOfAirdrop(distributionMock.address, { from: accounts[2] });
-        await expectRevert(optOutOfAirdropPromise, "only owner");
-    });
-
-    it("should claim airdrop distribution", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        const distributionToDelegators = await DistributionToDelegators.new(wNat.address);
-        const claimAmount = toBNExp(1, 18);
-        await wNat.depositTo(distributionToDelegators.address, { value: claimAmount });
-        const startAmount = toBN(await web3.eth.getBalance(accounts[50]));
-        const res = await agentVault.claimAirdropDistribution(distributionToDelegators.address, 0, accounts[50], { from: owner });
-        const endAmount = toBN(await web3.eth.getBalance(accounts[50]));
-        assertWeb3Equal(endAmount.sub(startAmount), claimAmount);
-        assertWeb3Equal(await wNat.balanceOf(distributionToDelegators.address), 0); // should be empty now
-    });
-
-    it("should claim airdrop distribution to vault", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        const distributionToDelegators = await DistributionToDelegators.new(wNat.address);
-        const claimAmount = toBNExp(1, 18);
-        await wNat.depositTo(distributionToDelegators.address, { value: claimAmount });
-        const startAmount = await wNat.balanceOf(agentVault.address);
-        const res = await agentVault.claimAirdropDistribution(distributionToDelegators.address, 0, agentVault.address, { from: owner });
-        const endAmount = await wNat.balanceOf(agentVault.address);
-        assertWeb3Equal(endAmount.sub(startAmount), claimAmount);
-        assertWeb3Equal(await wNat.balanceOf(distributionToDelegators.address), 0); // should be empty now
-    });
-
-    it("cannot claim airdrop distribution if not owner", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        const distributionMock = await MockContract.new();
-        const claimPromise = agentVault.claimAirdropDistribution(distributionMock.address, 2, owner, { from: accounts[2] });
-        await expectRevert(claimPromise, "only owner");
-    });
-
     it("cannot withdraw collateral if not owner", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const res = agentVault.withdrawCollateral(usdc.address, 100, accounts[2], { from: accounts[2] });
@@ -435,19 +325,13 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     it("cannot call destroy if not asset manager", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
-        const res = agentVault.destroy(owner, { from: accounts[2] });
+        const res = agentVault.destroy({ from: accounts[2] });
         await expectRevert(res, "only asset manager")
     });
 
     it("cannot call payout if not asset manager", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const res = agentVault.payout(wNat.address, accounts[2], 100, { from: accounts[2] });
-        await expectRevert(res, "only asset manager")
-    });
-
-    it("cannot call payoutNAT if not asset manager", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        const res = agentVault.payoutNAT(wNat.address, accounts[2], 100, { from: accounts[2] });
         await expectRevert(res, "only asset manager")
     });
 
@@ -474,42 +358,21 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         assert.equal(balance2, "7");
     });
 
-    it("should destroy the agentVault contract with with no token used", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        await setBalance(agentVault.address, 1000);
-        assert.equal(await web3.eth.getBalance(agentVault.address), "1000");
-        await assetManagerMock.callFunctionAt(agentVault.address, agentVault.contract.methods.destroy(owner).encodeABI(), { from: owner });
-        assert.equal(await web3.eth.getBalance(agentVault.address), "0");
-    });
-
-    it("should destroy the agentVault contract and return accidental NAT", async () => {
-        await assetManagerMock.setCheckForValidAgentVaultAddress(false);
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        // use a token and delegate
-        await wNat.deposit({ from: owner, value: toBN(100) })
-        await wNat.approve(agentVault.address, toBN(100), { from: owner })
-        await agentVault.depositCollateral(wNat.address, toBN(100), { from: owner });
-        await agentVault.delegate(wNat.address, owner, 10_000, { from: owner });
-        const delegatedBefore = await wNat.votePowerOf(owner);
-        assertWeb3Equal(delegatedBefore, toBN(100));
-        // destroy contract
-        await setBalance(agentVault.address, 1000);
-        assert.equal(await web3.eth.getBalance(agentVault.address), "1000");
-        await assetManagerMock.callFunctionAt(agentVault.address, agentVault.contract.methods.destroy(accounts[80]).encodeABI(), { from: owner });
-        assert.equal(await web3.eth.getBalance(agentVault.address), "0");
-    });
-
-    it("should destroy the agentVault contract with token used but 0 token balance in agent vault branch test", async () => {
+    it("after destroy of agentVault contract collateral can be withdrawn immediatelly", async () => {
         const agentVault = await createAgentVault(owner, underlyingAgent1);
         //Deposit some token collateral
-        await wNat.deposit({ from: owner, value: toBN(100) })
-        await wNat.approve(agentVault.address, toBN(100), { from: owner })
-        await agentVault.depositCollateral(wNat.address, toBN(100), { from: owner });
+        await usdc.mintAmount(owner, toBN(100));
+        await usdc.approve(agentVault.address, toBN(100), { from: owner })
+        await agentVault.depositCollateral(usdc.address, toBN(100), { from: owner });
         //Withdraw token so balance is 0
-        await agentVault.withdrawCollateral(wNat.address, toBN(100), accounts[12], { from: owner });
+        await expectRevert(agentVault.withdrawCollateral(usdc.address, toBN(100), accounts[12], { from: owner }), "withdrawal: not announced");
         await assetManager.announceDestroyAgent(agentVault.address, { from: owner });
         await deterministicTimeIncrease(settings.withdrawalWaitMinSeconds);
         await assetManager.destroyAgent(agentVault.address, owner, { from: owner });
+        // now it should work
+        assertWeb3Equal(await usdc.balanceOf(agentVault.address), toBN(100));
+        await agentVault.withdrawCollateral(usdc.address, toBN(100), accounts[12], { from: owner });
+        assertWeb3Equal(await usdc.balanceOf(agentVault.address), 0);
     });
 
     it("should payout from a given token", async () => {

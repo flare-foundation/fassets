@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "../../openzeppelin/security/ReentrancyGuard.sol";
-import "../../utils/lib/Transfers.sol";
 import "../interfaces/IWNat.sol";
 import "../interfaces/IIAgentVault.sol";
 import "../interfaces/IIAssetManager.sol";
@@ -21,8 +20,7 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     // only storage placeholders now
     IERC20[] private __usedTokens;
     mapping(IERC20 => uint256) private __tokenUseFlags;
-
-    bool private internalWithdrawal;
+    bool private __internalWithdrawal;
 
     bool private destroyed;
     address private ownerAfterDestroy;
@@ -47,20 +45,6 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         require(!initialized, "already initialized");
         initialized = true;
         assetManager = _assetManager;
-    }
-
-    // needed to allow wNat.withdraw() to send back funds, since there is no withdrawTo()
-    receive() external payable {
-        require(internalWithdrawal, "internal use only");
-    }
-
-    // used by asset manager to transfer collateral reservation fee to the agent vault
-    function depositNat(IWNat _wNat)
-        external payable override
-        onlyAssetManager
-    {
-        _wNat.deposit{value: msg.value}();
-        assetManager.updateCollateral(address(this), _wNat);
     }
 
     // without "onlyOwner" to allow owner to send funds from any source
@@ -149,52 +133,18 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         _token.governanceVotePower().undelegate();
     }
 
-    // Claim delegation rewards. Alternatively, you can set claim executor and then claim directly from RewardManager.
-    function claimDelegationRewards(
-        IRewardManager _rewardManager,
-        uint24 _lastRewardEpoch,
-        address payable _recipient,
-        IRewardManager.RewardClaimWithProof[] calldata _proofs
-    )
-        external override
-        onlyOwner
-        returns (uint256)
-    {
-        bool shouldWrap = _recipient == address(this);
-        return _rewardManager.claim(address(this), _recipient, _lastRewardEpoch, shouldWrap, _proofs);
-    }
-
-    function claimAirdropDistribution(
-        IDistributionToDelegators _distribution,
-        uint256 _month,
-        address payable _recipient
-    )
-        external override
-        onlyOwner
-        returns(uint256)
-    {
-        bool shouldWrap = _recipient == address(this);
-        return _distribution.claim(address(this), _recipient, _month, shouldWrap);
-    }
-
-    function optOutOfAirdrop(IDistributionToDelegators _distribution)
-        external override
-        onlyOwner
-    {
-        _distribution.optOutOfAirdrop();
-    }
-
-    // Used by asset manager when destroying agent.
-    // Completely erases agent vault and transfers all funds to the recipient.
-    function destroy(address payable _recipient)
+    /**
+     * Used by asset manager when destroying agent.
+     * Marks agent as destroyed so that funds can be withdrawn by the agent owner.
+     * Note: Can only be called by the asset manager.
+     */
+    function destroy()
         external override
         onlyAssetManager
         nonReentrant
     {
         destroyed = true;
         ownerAfterDestroy = assetManager.getAgentVaultOwner(address(this));
-        // transfer native balance, if any (used to be done by selfdestruct)
-        Transfers.transferNAT(_recipient, address(this).balance);
     }
 
     // Used by asset manager for liquidation and failed redemption.
@@ -205,16 +155,6 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         nonReentrant
     {
         _token.safeTransfer(_recipient, _amount);
-    }
-
-    // Used by asset manager (only for burn for now).
-    // Is nonReentrant to prevent reentrancy, in case this is not the last method called.
-    function payoutNAT(IWNat _wNat, address payable _recipient, uint256 _amount)
-        external override
-        onlyAssetManager
-        nonReentrant
-    {
-        _withdrawWNatTo(_wNat, _recipient, _amount);
     }
 
     function collateralPool()
@@ -245,13 +185,6 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         return _interfaceId == type(IERC165).interfaceId
             || _interfaceId == type(IAgentVault).interfaceId
             || _interfaceId == type(IIAgentVault).interfaceId;
-    }
-
-    function _withdrawWNatTo(IWNat _wNat, address payable _recipient, uint256 _amount) private {
-        internalWithdrawal = true;
-        _wNat.withdraw(_amount);
-        internalWithdrawal = false;
-        Transfers.transferNAT(_recipient, _amount);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

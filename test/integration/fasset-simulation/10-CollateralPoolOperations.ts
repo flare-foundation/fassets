@@ -674,13 +674,13 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         // mine some blocks to create overflow block
         context.skipToExpiration(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
         // test rewarding for mint default
-        const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
+        const startBalanceAgent = await context.wNat.balanceOf(agent.ownerWorkAddress);
         const startBalancePool = await context.wNat.balanceOf(agent.collateralPool.address);
         const startTotalCollateralPool = await agent.collateralPool.totalCollateral();
         await agent.mintingPaymentDefault(crt);
         const userFassetFees = await agent.collateralPool.fAssetFeesOf(user);
         await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
-        const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
+        const endBalanceAgent = await context.wNat.balanceOf(agent.ownerWorkAddress);
         const endBalancePool = await context.wNat.balanceOf(agent.collateralPool.address);
         const endTotalCollateralPool = await agent.collateralPool.totalCollateral();
         const poolFee = crFee.mul(toBN(agent.settings.poolFeeShareBIPS)).divn(MAX_BIPS);

@@ -201,21 +201,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             "cannot redeem to agent's address");
     });
 
-    it("39933: attacker can prevent agent from calling destroy by depositing malcious token to vault", async () => {
-        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-        // make agent available
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-        // deposit malicious token
-        const MaliciousToken = artifacts.require("MaliciousToken");
-        const maliciousToken = await MaliciousToken.new();
-        // previously, this call worked and prevent later calling destroy()
-        await expectRevert(agent.agentVault.depositNat(maliciousToken.address, { value: "1" }),
-            "only asset manager");
-        // close vault should work now
-        await agent.exitAndDestroy();
-    });
-
     it.skip("40499: force agent liquidation by reentering `liquidate` from `executeMinting`", async () => {
         // Vault collateral is USDC, 18 decimals
         // USDC price - 1.01
