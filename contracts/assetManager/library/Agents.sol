@@ -1,19 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
-import "../../utils/library/SafeMath64.sol";
-import "../../utils/library/Transfers.sol";
-import "../../agentVault/interfaces/IIAgentVault.sol";
-import "./data/AssetManagerState.sol";
-import "./data/Collateral.sol";
-import "./Globals.sol";
-import "./Conversion.sol";
-import "./CollateralTypes.sol";
-import "./AgentCollateral.sol";
-import "./TransferFees.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeMath64} from "../../utils/library/SafeMath64.sol";
+import {Transfers} from "../../utils/library/Transfers.sol";
+import {IIAgentVault} from "../../agentVault/interfaces/IIAgentVault.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {Collateral} from "./data/Collateral.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {Globals} from "./Globals.sol";
+import {Conversion} from "./Conversion.sol";
+import {CollateralTypes} from "./CollateralTypes.sol";
+import {AgentCollateral} from "./AgentCollateral.sol";
+import {TransferFees} from "./TransferFees.sol";
+import {Agent} from "./data/Agent.sol";
+import {RedemptionQueue} from "./data/RedemptionQueue.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
+import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
 
 library Agents {
     using SafeCast for uint256;

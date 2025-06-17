@@ -1,24 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "../diamond/interfaces/IDiamondLoupe.sol";
-import "./data/AssetManagerSettings.sol";
-import "./data/CollateralType.sol";
-import "./data/AgentInfo.sol";
-import "./data/AgentSettings.sol";
-import "./data/AvailableAgentInfo.sol";
-import "./data/RedemptionTicketInfo.sol";
-import "./data/RedemptionRequestInfo.sol";
-import "./data/CollateralReservationInfo.sol";
-import "./IAssetManagerEvents.sol";
-import "./IAgentPing.sol";
-import "./IRedemptionTimeExtension.sol";
-import "./ITransferFees.sol";
-import "./ICoreVault.sol";
-import "./ICoreVaultSettings.sol";
-import "./IAgentAlwaysAllowedMinters.sol";
+import {IConfirmedBlockHeightExists, IPayment, IAddressValidity, IReferencedPaymentNonexistence, IBalanceDecreasingTransaction} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {IDiamondLoupe} from "../diamond/interfaces/IDiamondLoupe.sol";
+import {AssetManagerSettings} from "./data/AssetManagerSettings.sol";
+import {CollateralType} from "./data/CollateralType.sol";
+import {AgentInfo} from "./data/AgentInfo.sol";
+import {AgentSettings} from "./data/AgentSettings.sol";
+import {AvailableAgentInfo} from "./data/AvailableAgentInfo.sol";
+import {RedemptionTicketInfo} from "./data/RedemptionTicketInfo.sol";
+import {RedemptionRequestInfo} from "./data/RedemptionRequestInfo.sol";
+import {CollateralReservationInfo} from "./data/CollateralReservationInfo.sol";
+import {IAssetManagerEvents} from "./IAssetManagerEvents.sol";
+import {IAgentPing} from "./IAgentPing.sol";
+import {IRedemptionTimeExtension} from "./IRedemptionTimeExtension.sol";
+import {ITransferFees} from "./ITransferFees.sol";
+import {ICoreVault} from "./ICoreVault.sol";
+import {ICoreVaultSettings} from "./ICoreVaultSettings.sol";
+import {IAgentAlwaysAllowedMinters} from "./IAgentAlwaysAllowedMinters.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 /**

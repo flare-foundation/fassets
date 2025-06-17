@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../library/AgentsExternal.sol";
-import "../library/AgentsCreateDestroy.sol";
-import "../library/FullAgentInfo.sol";
-import "./AssetManagerBase.sol";
+import {AgentsExternal} from "../library/AgentsExternal.sol";
+import {AgentsCreateDestroy} from "../library/AgentsCreateDestroy.sol";
+import {FullAgentInfo} from "../library/FullAgentInfo.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {AgentInfo} from "../../userInterfaces/data/AgentInfo.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Collateral} from "../library/data/Collateral.sol";
+import {Agent} from "../../assetManager/library/data/Agent.sol";
+
 
 
 contract AgentInfoFacet is AssetManagerBase {

@@ -1,10 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../library/data/AssetManagerState.sol";
-import "../library/AgentsExternal.sol";
-import "../library/Agents.sol";
-import "./AssetManagerBase.sol";
+import {AssetManagerState} from "../library/data/AssetManagerState.sol";
+import {AgentsExternal} from "../library/AgentsExternal.sol";
+import {Agents} from "../library/Agents.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {Conversion} from "../library/Conversion.sol";
+import {Globals} from "../library/Globals.sol";
+import {Agent} from "../../assetManager/library/data/Agent.sol";
+
 
 
 contract AgentVaultAndPoolSupportFacet is AssetManagerBase {

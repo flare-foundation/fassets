@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../data/TransferFeeTracking.sol";
+import {TransferFeeTracking} from "../data/TransferFeeTracking.sol";
+import {TimeCumulative} from "../../../utils/library/TimeCumulative.sol";
 
 
 contract TransferFeeTrackingMock {

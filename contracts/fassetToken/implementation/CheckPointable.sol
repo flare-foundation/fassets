@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "../interfaces/IICheckPointable.sol";
-import "../library/CheckPointHistory.sol";
-import "../library/CheckPointsByAddress.sol";
+import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import {IICheckPointable} from "../interfaces/IICheckPointable.sol";
+import {CheckPointHistory} from "../library/CheckPointHistory.sol";
+import {CheckPointsByAddress} from "../library/CheckPointsByAddress.sol";
 
 /**
  * @title Check Pointable ERC20 Behavior

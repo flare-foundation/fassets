@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "./data/AssetManagerState.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
-import "./Agents.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {Agents} from "./Agents.sol";
+import {Agent} from "./data/Agent.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {Globals} from "./Globals.sol";
 
 
 library AgentSettingsUpdater {

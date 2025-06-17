@@ -1,17 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
-import "../../utils/interfaces/IUpgradableProxy.sol";
-import "../../utils/library/SafePct.sol";
-import "../interfaces/IISettingsManagement.sol";
-import "../library/Globals.sol";
-import "../library/CollateralTypes.sol";
-import "../library/SettingsUpdater.sol";
-import "../library/SettingsValidators.sol";
-import "./AssetManagerBase.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {IUpgradableProxy} from "../../utils/interfaces/IUpgradableProxy.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
+import {IISettingsManagement} from "../../assetManager/interfaces/IISettingsManagement.sol";
+import {Globals} from "../library/Globals.sol";
+import {CollateralTypes} from "../library/CollateralTypes.sol";
+import {SettingsUpdater} from "../library/SettingsUpdater.sol";
+import {SettingsValidators} from "../library/SettingsValidators.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
+import {IIFAsset} from "../../fassetToken/interfaces/IIFAsset.sol";
 
 
 contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISettingsManagement {

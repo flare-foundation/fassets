@@ -1,13 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
-import "./data/AssetManagerState.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
-import "./Agents.sol";
-import "./UnderlyingBalance.sol";
-import "./TransactionAttestation.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {Agents} from "./Agents.sol";
+import {UnderlyingBalance} from "./UnderlyingBalance.sol";
+import {TransactionAttestation} from "./TransactionAttestation.sol";
+import {PaymentConfirmations} from "./data/PaymentConfirmations.sol";
+import {Agent} from "./data/Agent.sol";
+import {PaymentReference} from "./data/PaymentReference.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {Globals} from "./Globals.sol";
+
 
 
 library UnderlyingWithdrawalAnnouncements {

@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../userInterfaces/data/AvailableAgentInfo.sol";
-import "./data/AssetManagerState.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
-import "./Agents.sol";
-import "./AgentCollateral.sol";
-import "./FullAgentInfo.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {AvailableAgentInfo} from "../../userInterfaces/data/AvailableAgentInfo.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {Agents} from "./Agents.sol";
+import {AgentCollateral} from "./AgentCollateral.sol";
+import {FullAgentInfo} from "./FullAgentInfo.sol";
+import {Collateral} from "./data/Collateral.sol";
+import {Agent} from "./data/Agent.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {Globals} from "./Globals.sol";
 
 library AvailableAgents {
     using SafeCast for uint256;

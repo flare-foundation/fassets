@@ -1,19 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../utils/library/SafePct.sol";
-import "../../utils/library/MathUtils.sol";
-import "./data/AssetManagerState.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
-import "./Globals.sol";
-import "./Agents.sol";
-import "./Conversion.sol";
-import "./Redemptions.sol";
-import "./AgentCollateral.sol";
-import "./LiquidationPaymentStrategy.sol";
+import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
+import {MathUtils} from "../../utils/library/MathUtils.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {Globals} from "./Globals.sol";
+import {Agents} from "./Agents.sol";
+import {Conversion} from "./Conversion.sol";
+import {Redemptions} from "./Redemptions.sol";
+import {AgentCollateral} from "./AgentCollateral.sol";
+import {LiquidationPaymentStrategy} from "./LiquidationPaymentStrategy.sol";
+import {Agent} from "./data/Agent.sol";
+import {Collateral} from "./data/Collateral.sol";
+import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {CollateralTypes} from "./CollateralTypes.sol";
 
 
 library Liquidation {

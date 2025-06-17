@@ -2,11 +2,15 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "../../userInterfaces/IAssetManagerController.sol";
-import "../../flareSmartContracts/interfaces/IAddressUpdatable.sol";
-import "../../utils/interfaces/IUUPSUpgradeable.sol";
-import "../../assetManager/interfaces/IIAssetManager.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {IAssetManagerController} from "../../userInterfaces/IAssetManagerController.sol";
+import {IAddressUpdatable} from "../../flareSmartContracts/interfaces/IAddressUpdatable.sol";
+import {IUUPSUpgradeable} from "../../utils/interfaces/IUUPSUpgradeable.sol";
+import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
+import {IGoverned} from "../../governance/interfaces/IGoverned.sol";
+import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 
 
 interface IIAssetManagerController is

@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../implementation/FtsoV2PriceStore.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {FtsoV2PriceStore} from "../implementation/FtsoV2PriceStore.sol";
+import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
+
 
 
 contract FtsoV2PriceStoreMock is FtsoV2PriceStore {

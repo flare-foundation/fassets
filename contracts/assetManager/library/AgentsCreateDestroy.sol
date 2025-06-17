@@ -1,23 +1,35 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
-import "../../utils/interfaces/IUpgradableProxy.sol";
-import "../../utils/library/SafeMath64.sol";
-import "../../utils/library/SafePct.sol";
-import "../../assetManagerController/interfaces/IIAssetManagerController.sol";
-import "../../collateralPool/interfaces/IICollateralPoolFactory.sol";
-import "../../collateralPool/interfaces/IICollateralPoolTokenFactory.sol";
-import "../../agentVault/interfaces/IIAgentVaultFactory.sol";
-import "../interfaces/IIAssetManager.sol";
-import "./data/AssetManagerState.sol";
-import "./Conversion.sol";
-import "./AgentCollateral.sol";
-import "./TransactionAttestation.sol";
-import "./AgentSettingsUpdater.sol";
-import "./StateUpdater.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
+import {IICollateralPoolFactory} from "../../collateralPool/interfaces/IICollateralPoolFactory.sol";
+import {IICollateralPoolTokenFactory} from "../../collateralPool/interfaces/IICollateralPoolTokenFactory.sol";
+import {IIAgentVaultFactory} from "../../agentVault/interfaces/IIAgentVaultFactory.sol";
+import {IIAssetManagerController} from "../../assetManagerController/interfaces/IIAssetManagerController.sol";
+import {IUpgradableProxy} from "../../utils/interfaces/IUpgradableProxy.sol";
+import {SafeMath64} from "../../utils/library/SafeMath64.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {Conversion} from "./Conversion.sol";
+import {AgentCollateral} from "./AgentCollateral.sol";
+import {TransactionAttestation} from "./TransactionAttestation.sol";
+import {AgentSettingsUpdater} from "./AgentSettingsUpdater.sol";
+import {StateUpdater} from "./StateUpdater.sol";
+import {UnderlyingAddressOwnership} from "./data/UnderlyingAddressOwnership.sol";
+import {Agent} from "./data/Agent.sol";
+import {Agents} from "./Agents.sol";
+import {IPayment, IAddressValidity} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {AgentSettings} from "../../userInterfaces/data/AgentSettings.sol";
+import {IUpgradableContractFactory} from "../../utils/interfaces/IUpgradableContractFactory.sol";
+import {IICollateralPool} from "../../collateralPool/interfaces/IICollateralPool.sol";
+import {Globals} from "./Globals.sol";
+import {IIAgentVault} from "../../agentVault/interfaces/IIAgentVault.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {ICollateralPool} from "../../userInterfaces/ICollateralPool.sol";
+import {ICollateralPoolToken} from "../../userInterfaces/ICollateralPoolToken.sol";
 
 
 library AgentsCreateDestroy {

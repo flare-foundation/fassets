@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
-import "../../governance/implementation/Governed.sol";
-import "../../flareSmartContracts/implementation/AddressUpdatable.sol";
-import "../interfaces/IPriceReader.sol";
-import "../interfaces/IPricePublisher.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import {IRelay} from "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
+import {Governed} from "../../governance/implementation/Governed.sol";
+import {AddressUpdatable} from "../../flareSmartContracts/implementation/AddressUpdatable.sol";
+import {IPriceReader} from "../../ftso/interfaces/IPriceReader.sol";
+import {IPricePublisher} from "../interfaces/IPricePublisher.sol";
+import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 
 
 contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, AddressUpdatable {

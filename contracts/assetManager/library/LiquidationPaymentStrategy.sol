@@ -1,9 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "./data/AssetManagerState.sol";
-import "./Agents.sol";
-import "./CollateralTypes.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {Agents} from "./Agents.sol";
+import {CollateralTypes} from "./CollateralTypes.sol";
+import {Agent} from "./data/Agent.sol";
+import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {Globals} from "./Globals.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol"; // TODO: Is this the correct library to use? - one is already in the flattened contracts
 
 library LiquidationPaymentStrategy {
     using Agent for Agent.State;

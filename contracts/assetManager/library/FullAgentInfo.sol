@@ -1,16 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../../userInterfaces/data/AgentInfo.sol";
-import "../../utils/library/SafePct.sol";
-import "./data/AssetManagerState.sol";
-import "./Conversion.sol";
-import "./Agents.sol";
-import "./AgentCollateral.sol";
-import "./Liquidation.sol";
-import "./UnderlyingBalance.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {AgentInfo} from "../../userInterfaces/data/AgentInfo.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {Conversion} from "./Conversion.sol";
+import {Agents} from "./Agents.sol";
+import {Agent} from "./data/Agent.sol";
+import {AgentCollateral} from "./AgentCollateral.sol";
+import {Liquidation} from "./Liquidation.sol";
+import {UnderlyingBalance} from "./UnderlyingBalance.sol";
+import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import {MathUtils} from "../../utils/library/MathUtils.sol";
+import {Collateral} from "./data/Collateral.sol";
+import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
+import {IICollateralPool} from "../../collateralPool/interfaces/IICollateralPool.sol";
+
 
 library FullAgentInfo {
     using SafeMath for uint256;

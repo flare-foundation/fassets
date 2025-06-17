@@ -1,16 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "../../openzeppelin/security/ReentrancyGuard.sol";
-import "../../governance/implementation/GovernedBase.sol";
-import "../../governance/implementation/GovernedProxyImplementation.sol";
-import "../../userInterfaces/IAssetManager.sol";
-import "../interfaces/IIAssetManager.sol";
-import "../../diamond/library/LibDiamond.sol";
-import "../library/data/AssetManagerState.sol";
-import "../library/SettingsInitializer.sol";
-import "../library/CollateralTypes.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
+import {GovernedBase} from "../../governance/implementation/GovernedBase.sol";
+import {GovernedProxyImplementation} from "../../governance/implementation/GovernedProxyImplementation.sol";
+import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
+import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
+import {LibDiamond} from "../../diamond/library/LibDiamond.sol";
+import {AssetManagerState} from "../library/data/AssetManagerState.sol";
+import {SettingsInitializer} from "../library/SettingsInitializer.sol";
+import {CollateralTypes} from "../library/CollateralTypes.sol";
+import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
+import {IAgentPing} from "../../userInterfaces/IAgentPing.sol";
+import {IGoverned} from "../../governance/interfaces/IGoverned.sol";
+import {IDiamondCut} from "../../diamond/interfaces/IDiamondCut.sol";
+import {IDiamondLoupe} from "../../diamond/interfaces/IDiamondLoupe.sol";
 
 
 contract AssetManagerInit is GovernedProxyImplementation, ReentrancyGuard {

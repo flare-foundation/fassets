@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../interfaces/IUpgradableContractFactory.sol";
-import "./TestUUPSProxyImpl.sol";
+import {IUpgradableContractFactory} from "../../utils/interfaces/IUpgradableContractFactory.sol";
+import {TestUUPSProxyImpl} from "./TestUUPSProxyImpl.sol";
 
 
 contract MockProxyFactory is IUpgradableContractFactory {

@@ -2,8 +2,9 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
-import "../../userInterfaces/IAgentOwnerRegistry.sol";
-import "./Whitelist.sol";
+import {IAgentOwnerRegistry} from "../../userInterfaces/IAgentOwnerRegistry.sol";
+import {Whitelist} from "./Whitelist.sol";
+import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 
 
 contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {

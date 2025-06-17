@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "../../utils/interfaces/IUpgradableContractFactory.sol";
-import "./IICollateralPool.sol";
+import {IICollateralPool} from "./IICollateralPool.sol";
+import {IUpgradableContractFactory} from "../../utils/interfaces/IUpgradableContractFactory.sol";
 
 
 /**

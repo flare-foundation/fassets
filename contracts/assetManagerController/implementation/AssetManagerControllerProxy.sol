@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
-import "./AssetManagerController.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
+import {AssetManagerController} from "./AssetManagerController.sol";
 
 
 contract AssetManagerControllerProxy is ERC1967Proxy {

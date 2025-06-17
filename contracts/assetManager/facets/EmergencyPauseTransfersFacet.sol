@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
-import "../library/data/AssetManagerState.sol";
-import "../library/Globals.sol";
-import "./AssetManagerBase.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {AssetManagerState} from "../library/data/AssetManagerState.sol";
+import {Globals} from "../library/Globals.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 
 
 contract EmergencyPauseTransfersFacet is AssetManagerBase, IAssetManagerEvents {

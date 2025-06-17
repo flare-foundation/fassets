@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../utils/library/SafePct.sol";
-import "./data/AssetManagerState.sol";
-import "./Globals.sol";
-import "./SettingsUpdater.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
+
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {Globals} from "./Globals.sol";
+import {SettingsUpdater} from "./SettingsUpdater.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
+import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+
 
 
 library CollateralTypes {

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@flarenetwork/flare-periphery-contracts/flare/IRewardManager.sol";
-import "../../flareSmartContracts/interfaces/IWNat.sol";
+import {IRewardManager} from "@flarenetwork/flare-periphery-contracts/flare/IRewardManager.sol";
+import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 
 contract RewardManagerMock {
     IWNat private wNat;

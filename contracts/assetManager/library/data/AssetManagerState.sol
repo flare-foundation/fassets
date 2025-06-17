@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../../userInterfaces/data/AssetManagerSettings.sol";
-import "./Agent.sol";
-import "./RedemptionQueue.sol";
-import "./PaymentConfirmations.sol";
-import "./UnderlyingAddressOwnership.sol";
-import "./CollateralReservation.sol";
-import "./Redemption.sol";
-import "./CollateralTypeInt.sol";
+import {AssetManagerSettings} from "../../../userInterfaces/data/AssetManagerSettings.sol";
+import {Agent} from "./Agent.sol";
+import {RedemptionQueue} from "./RedemptionQueue.sol";
+import {PaymentConfirmations} from "./PaymentConfirmations.sol";
+import {UnderlyingAddressOwnership} from "./UnderlyingAddressOwnership.sol";
+import {CollateralReservation} from "./CollateralReservation.sol";
+import {Redemption} from "./Redemption.sol";
+import {CollateralTypeInt} from "./CollateralTypeInt.sol";
 
 
 library AssetManagerState {

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "../interfaces/IICollateralPoolTokenFactory.sol";
-import "./CollateralPoolToken.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {IICollateralPoolTokenFactory} from "../../collateralPool/interfaces/IICollateralPoolTokenFactory.sol";
+import {CollateralPoolToken} from "./CollateralPoolToken.sol";
+import {IICollateralPool} from "../../collateralPool/interfaces/IICollateralPool.sol";
 
 
 contract CollateralPoolTokenFactory is IICollateralPoolTokenFactory, IERC165 {

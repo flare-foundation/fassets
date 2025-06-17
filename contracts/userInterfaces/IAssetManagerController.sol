@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "./IAssetManager.sol";
+import {IAssetManager} from "./IAssetManager.sol";
 
 
 interface IAssetManagerController {

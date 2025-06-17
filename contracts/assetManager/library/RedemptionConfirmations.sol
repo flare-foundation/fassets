@@ -1,16 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
-import "./data/AssetManagerState.sol";
-import "../../utils/library/SafePct.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
-import "./Redemptions.sol";
-import "./RedemptionFailures.sol";
-import "./Liquidation.sol";
-import "./UnderlyingBalance.sol";
-import "./CoreVault.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {Redemptions} from "./Redemptions.sol";
+import {RedemptionFailures} from "./RedemptionFailures.sol";
+import {Liquidation} from "./Liquidation.sol";
+import {UnderlyingBalance} from "./UnderlyingBalance.sol";
+import {CoreVault} from "./CoreVault.sol";
+import {Agent} from "./data/Agent.sol";
+import {PaymentConfirmations} from "./data/PaymentConfirmations.sol";
+import {Redemption} from "./data/Redemption.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {Globals} from "./Globals.sol";
+import {TransactionAttestation} from "./TransactionAttestation.sol";
+import {Agents} from "./Agents.sol";
+import {Conversion} from "./Conversion.sol";
+import {PaymentReference} from "./data/PaymentReference.sol";
 
 
 library RedemptionConfirmations {

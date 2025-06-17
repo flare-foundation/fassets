@@ -1,16 +1,29 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdater.sol";
-import "../../flareSmartContracts/interfaces/IWNat.sol";
-import "../../governance/implementation/GovernedProxyImplementation.sol";
-import "../../flareSmartContracts/implementation/AddressUpdatable.sol";
-import "../../assetManager/interfaces/IISettingsManagement.sol";
-import "../interfaces/IIAssetManagerController.sol";
-
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {IIAddressUpdater} from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdater.sol";
+import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
+import {IISettingsManagement} from "../../assetManager/interfaces/IISettingsManagement.sol";
+import {IIAssetManagerController} from "../interfaces/IIAssetManagerController.sol";
+import {GovernedProxyImplementation} from "../../governance/implementation/GovernedProxyImplementation.sol";
+import {AddressUpdatable} from "../../flareSmartContracts/implementation/AddressUpdatable.sol";
+import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
+import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
+import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
+import {IUUPSUpgradeable} from "../../utils/interfaces/IUUPSUpgradeable.sol";
+import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IGoverned} from "../../governance/interfaces/IGoverned.sol";
+import {IAssetManagerController} from "../../userInterfaces/IAssetManagerController.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {IIAddressUpdatable} from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdatable.sol";
+import {IAddressUpdatable} from "../../flareSmartContracts/interfaces/IAddressUpdatable.sol";
+import {ITransferFees} from "../../userInterfaces/ITransferFees.sol";
+import {IRedemptionTimeExtension} from "../../userInterfaces/IRedemptionTimeExtension.sol";
+import {GovernedBase} from "../../governance/implementation/GovernedBase.sol";
 
 contract AssetManagerController is
     UUPSUpgradeable,

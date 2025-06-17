@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "../../userInterfaces/data/AssetManagerSettings.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
-import "../../userInterfaces/IRedemptionTimeExtension.sol";
-import "../library/data/RedemptionTimeExtension.sol";
-import "../library/SettingsUpdater.sol";
-import "../../diamond/library/LibDiamond.sol";
-import "./AssetManagerBase.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {IRedemptionTimeExtension} from "../../userInterfaces/IRedemptionTimeExtension.sol";
+import {RedemptionTimeExtension} from "../library/data/RedemptionTimeExtension.sol";
+import {SettingsUpdater} from "../library/SettingsUpdater.sol";
+import {LibDiamond} from "../../diamond/library/LibDiamond.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {Globals} from "../library/Globals.sol";
 
 contract RedemptionTimeExtensionFacet is AssetManagerBase, IRedemptionTimeExtension {
 

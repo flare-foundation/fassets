@@ -1,14 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../utils/library/SafePct.sol";
-import "../../utils/library/MathUtils.sol";
-import "./data/AssetManagerState.sol";
-import "./data/Collateral.sol";
-import "./Conversion.sol";
-import "./Agents.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
+import {MathUtils} from "../../utils/library/MathUtils.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {Collateral} from "./data/Collateral.sol";
+import {Conversion} from "./Conversion.sol";
+import {Agents} from "./Agents.sol";
+import {Agent} from "./data/Agent.sol";
+import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {Globals} from "./Globals.sol";
 
 
 library AgentCollateral {

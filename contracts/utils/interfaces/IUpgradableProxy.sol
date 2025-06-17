@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "@openzeppelin/contracts/interfaces/IERC1967.sol";
+import {IERC1967} from "@openzeppelin/contracts/interfaces/IERC1967.sol";
 
 
 interface IUpgradableProxy is IERC1967 {
