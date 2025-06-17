@@ -447,12 +447,12 @@ contract AssetManagerController is
             IISettingsManagement.setAgentMintingCRChangeTimelockSeconds.selector, _value);
     }
 
-    function setPoolExitAndTopupChangeTimelockSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
+    function setPoolExitCRChangeTimelockSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers,
-            IISettingsManagement.setPoolExitAndTopupChangeTimelockSeconds.selector, _value);
+            IISettingsManagement.setPoolExitCRChangeTimelockSeconds.selector, _value);
     }
 
     function setAgentTimelockedOperationWindowSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)

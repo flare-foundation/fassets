@@ -29,9 +29,7 @@ contract CollateralPoolFactory is ICollateralPoolFactory, IERC165 {
         ERC1967Proxy proxy = new ERC1967Proxy(implementation, new bytes(0));
         CollateralPool pool = CollateralPool(payable(address(proxy)));
         pool.initialize(_agentVault, address(_assetManager), fAsset,
-            _settings.poolExitCollateralRatioBIPS.toUint32(),
-            _settings.poolTopupCollateralRatioBIPS.toUint32(),
-            _settings.poolTopupTokenPriceFactorBIPS.toUint16());
+            _settings.poolExitCollateralRatioBIPS.toUint32());
         return pool;
     }
 

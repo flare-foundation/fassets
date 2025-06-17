@@ -108,8 +108,6 @@ library AgentsCreateDestroy {
         agent.collateralPool = _createCollateralPool(_assetManager, address(agentVault), _settings);
         // run the pool setters just for validation
         agent.setPoolExitCollateralRatioBIPS(_settings.poolExitCollateralRatioBIPS);
-        agent.setPoolTopupCollateralRatioBIPS(_settings.poolTopupCollateralRatioBIPS);
-        agent.setPoolTopupTokenPriceFactorBIPS(_settings.poolTopupTokenPriceFactorBIPS);
         // handshake type
         agent.setHandshakeType(_settings.handshakeType);
         // add to the list of all agents
@@ -279,8 +277,6 @@ library AgentsCreateDestroy {
         data.mintingPoolCollateralRatioBIPS = _settings.mintingPoolCollateralRatioBIPS;
         data.buyFAssetByAgentFactorBIPS = _settings.buyFAssetByAgentFactorBIPS;
         data.poolExitCollateralRatioBIPS = _settings.poolExitCollateralRatioBIPS;
-        data.poolTopupCollateralRatioBIPS = _settings.poolTopupCollateralRatioBIPS;
-        data.poolTopupTokenPriceFactorBIPS = _settings.poolTopupTokenPriceFactorBIPS;
         data.handshakeType = _settings.handshakeType;
         emit IAssetManagerEvents.AgentVaultCreated(_ownerManagementAddress, _agentVault, data);
     }

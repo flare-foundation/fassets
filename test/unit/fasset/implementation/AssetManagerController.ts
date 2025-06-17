@@ -891,17 +891,17 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "agentMintingCRChangeTimelockSeconds", value: toBN(agentMintingCRChangeTimelockSeconds_new) });
         });
 
-        it("should revert setting pool exit and topup change timelock seconds when value is too big", async () => {
+        it("should revert setting pool exit CR timelock seconds when value is too big", async () => {
             const currentSettings = await assetManager.getSettings();
-            let poolExitAndTopupChangeTimelockSeconds_tooBig = toBN(currentSettings.poolExitAndTopupChangeTimelockSeconds).muln(5).addn(WEEKS);
-            const res = assetManagerController.setPoolExitAndTopupChangeTimelockSeconds([assetManager.address], poolExitAndTopupChangeTimelockSeconds_tooBig, { from: governance });
+            let poolExitCRChangeTimelockSeconds_tooBig = toBN(currentSettings.poolExitCRChangeTimelockSeconds).muln(5).addn(WEEKS);
+            const res = assetManagerController.setPoolExitCRChangeTimelockSeconds([assetManager.address], poolExitCRChangeTimelockSeconds_tooBig, { from: governance });
             await expectRevert.unspecified(res);
         });
 
-        it("should set pool exit and topup change timelock seconds", async () => {
-            let poolExitAndTopupChangeTimelockSeconds_new = DAYS;
-            const res = await assetManagerController.setPoolExitAndTopupChangeTimelockSeconds([assetManager.address], poolExitAndTopupChangeTimelockSeconds_new, { from: governance });
-            await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "poolExitAndTopupChangeTimelockSeconds", value: toBN(poolExitAndTopupChangeTimelockSeconds_new) });
+        it("should set pool exit CR timelock seconds", async () => {
+            let poolExitCRChangeTimelockSeconds_new = DAYS;
+            const res = await assetManagerController.setPoolExitCRChangeTimelockSeconds([assetManager.address], poolExitCRChangeTimelockSeconds_new, { from: governance });
+            await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "poolExitCRChangeTimelockSeconds", value: toBN(poolExitCRChangeTimelockSeconds_new) });
         });
 
         it("should set agent timelocked ops window seconds", async () => {
@@ -1833,9 +1833,9 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(res, "only governance");
         });
 
-        it("random address shouldn't be able to set pool exit and topup change timelock seconds", async () => {
-            let poolExitAndTopupChangeTimelockSeconds_new = DAYS;
-            const res = assetManagerController.setPoolExitAndTopupChangeTimelockSeconds([assetManager.address], poolExitAndTopupChangeTimelockSeconds_new, { from: accounts[12] });
+        it("random address shouldn't be able to set pool exit CR timelock seconds", async () => {
+            let poolExitCRChangeTimelockSeconds_new = DAYS;
+            const res = assetManagerController.setPoolExitCRChangeTimelockSeconds([assetManager.address], poolExitCRChangeTimelockSeconds_new, { from: accounts[12] });
             await expectRevert(res, "only governance");
         });
 
@@ -1849,8 +1849,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let assetManager2: IIAssetManagerInstance;
             let fAsset2: FAssetInstance;
             [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, "Ether", "ETH", { governanceSettings, updateExecutor });
-            let poolExitAndTopupChangeTimelockSeconds_new = DAYS;
-            const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager2.address], poolExitAndTopupChangeTimelockSeconds_new, { from: governance });
+            let poolExitCRChangeTimelockSeconds_new = DAYS;
+            const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager2.address], poolExitCRChangeTimelockSeconds_new, { from: governance });
             await expectRevert(res, "Asset manager not managed");
         });
 

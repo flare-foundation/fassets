@@ -108,27 +108,6 @@ library Agents {
         _agent.collateralPool.setExitCollateralRatioBIPS(_poolExitCollateralRatioBIPS);
     }
 
-    function setPoolTopupCollateralRatioBIPS(
-        Agent.State storage _agent,
-        uint256 _poolTopupCollateralRatioBIPS
-    )
-        internal
-    {
-        CollateralTypeInt.Data storage collateral = getPoolCollateral(_agent);
-        require(_poolTopupCollateralRatioBIPS >= collateral.minCollateralRatioBIPS, "value too low");
-        _agent.collateralPool.setTopupCollateralRatioBIPS(_poolTopupCollateralRatioBIPS);
-    }
-
-    function setPoolTopupTokenPriceFactorBIPS(
-        Agent.State storage _agent,
-        uint256 _poolTopupTokenPriceFactorBIPS
-    )
-        internal
-    {
-        require(_poolTopupTokenPriceFactorBIPS >= SafePct.MAX_BIPS * 3 / 4, "value too low");
-        _agent.collateralPool.setTopupTokenPriceFactorBIPS(_poolTopupTokenPriceFactorBIPS);
-    }
-
     function setHandshakeType(
         Agent.State storage _agent,
         uint256 _handshakeType

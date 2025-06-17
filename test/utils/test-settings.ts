@@ -119,7 +119,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         announcedUnderlyingConfirmationMinSeconds: 0,           // should be higher in production (~ Flare data connector response time, in tests sc response time is 0)
         agentFeeChangeTimelockSeconds: 6 * HOURS,
         agentMintingCRChangeTimelockSeconds: 1 * HOURS,
-        poolExitAndTopupChangeTimelockSeconds: 2 * HOURS,
+        poolExitCRChangeTimelockSeconds: 2 * HOURS,
         agentTimelockedOperationWindowSeconds: 1 * HOURS,
         agentExitAvailableTimelockSeconds: 10 * MINUTES,
         vaultCollateralBuyForFlareFactorBIPS: toBIPS(1.05),
@@ -231,8 +231,6 @@ export function createTestAgentSettings(vaultCollateralTokenAddress: string, opt
         mintingPoolCollateralRatioBIPS: toBIPS(2.5),
         poolExitCollateralRatioBIPS: toBIPS(2.6),
         buyFAssetByAgentFactorBIPS: toBIPS(0.9),
-        poolTopupCollateralRatioBIPS: toBIPS(2.1),
-        poolTopupTokenPriceFactorBIPS: toBIPS(0.8),
         handshakeType: 0,
     };
     return { ...defaults, ...(options ?? {}) };
@@ -279,7 +277,7 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     const agentVaultImplementation = await AgentVault.new(ZERO_ADDRESS);
     const agentVaultFactory = await AgentVaultFactory.new(agentVaultImplementation.address);
     // create collateral pool factory
-    const collateralPoolImplementation = await CollateralPool.new(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0, 0, 0);
+    const collateralPoolImplementation = await CollateralPool.new(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0);
     const collateralPoolFactory = await CollateralPoolFactory.new(collateralPoolImplementation.address);
     // create collateral pool token factory
     const collateralPoolTokenImplementation = await CollateralPoolToken.new(ZERO_ADDRESS, "", "");

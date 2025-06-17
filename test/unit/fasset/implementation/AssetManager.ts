@@ -404,7 +404,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should correctly update agent setting pool exit collateral ratio BIPS", async () => {
-            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
+            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).poolExitCRChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", 25000, { from: agentOwner1 });
             await deterministicTimeIncrease(agentPoolExitCRChangeTimelock);
@@ -415,7 +415,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should not update agent setting pool exit collateral ratio BIPS if value too low", async () => {
-            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
+            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).poolExitCRChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", 2, { from: agentOwner1 });
             await deterministicTimeIncrease(agentPoolExitCRChangeTimelock);
@@ -424,7 +424,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should not update agent setting pool exit collateral ratio BIPS if increase too big", async () => {
-            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
+            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).poolExitCRChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const newExitCR = toBN(agentInfo.poolExitCollateralRatioBIPS).muln(2);
@@ -435,7 +435,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should always be able to update exitCR to 1.2 minCR (even if minCR grows so fast that the increase is higher that 3/2)", async () => {
-            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
+            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).poolExitCRChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             const ct = await assetManager.getCollateralType(CollateralClass.POOL, wNat.address);
             const newMinCR = toBN(ct.minCollateralRatioBIPS).muln(2);
@@ -460,7 +460,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should correctly update agent setting pool exit collateral ratio BIPS", async () => {
-            const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
+            const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).poolExitCRChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", 25000, { from: agentOwner1 });
             await deterministicTimeIncrease(agentPoolTopupCRChangeTimelock);
@@ -468,37 +468,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.poolExitCollateralRatioBIPS.toString(), "25000");
             assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "poolExitCollateralRatioBIPS"), agentInfo.poolExitCollateralRatioBIPS);
-        });
-
-        it("should correctly update agent setting pool topup collateral ratio BIPS", async () => {
-            const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
-            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
-            await assetManager.announceAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", 25000, { from: agentOwner1 });
-            await deterministicTimeIncrease(agentPoolTopupCRChangeTimelock);
-            await assetManager.executeAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", { from: agentOwner1 });
-            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            assert.equal(agentInfo.poolTopupCollateralRatioBIPS.toString(), "25000");
-            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "poolTopupCollateralRatioBIPS"), agentInfo.poolTopupCollateralRatioBIPS);
-        });
-
-        it("should not update agent setting pool topup collateral ratio BIPS if value too low", async () => {
-            const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
-            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
-            await assetManager.announceAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", 2, { from: agentOwner1 });
-            await deterministicTimeIncrease(agentPoolTopupCRChangeTimelock);
-            let res = assetManager.executeAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", { from: agentOwner1 });
-            await expectRevert(res, "value too low")
-        });
-
-        it("should correctly update agent setting pool topup token price factor BIPS", async () => {
-            const agentPoolTopupPriceFactorChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
-            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
-            await assetManager.announceAgentSettingUpdate(agentVault.address, "poolTopupTokenPriceFactorBIPS", 9000, { from: agentOwner1 });
-            await deterministicTimeIncrease(agentPoolTopupPriceFactorChangeTimelock);
-            await assetManager.executeAgentSettingUpdate(agentVault.address, "poolTopupTokenPriceFactorBIPS", { from: agentOwner1 });
-            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            assert.equal(agentInfo.poolTopupTokenPriceFactorBIPS.toString(), "9000");
-            assertWeb3Equal(await assetManager.getAgentSetting(agentVault.address, "poolTopupTokenPriceFactorBIPS"), agentInfo.poolTopupTokenPriceFactorBIPS);
         });
 
         it("should correctly update agent setting handshake type", async () => {
@@ -551,7 +520,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const collateralPool = await CollateralPool.at(await agentVault.collateralPool());
             const collateralPoolToken = await CollateralPoolToken.at(await collateralPool.poolToken());
             const testProxyImpl = await TestUUPSProxyImpl.new();
-            const newCollateralPoolImpl = await CollateralPool.new(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0, 0, 0);
+            const newCollateralPoolImpl = await CollateralPool.new(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0);
             //
             const agentVaultFactory = await AgentVaultFactory.new(testProxyImpl.address);
             const collateralPoolFactory = await CollateralPoolFactory.new(newCollateralPoolImpl.address);
@@ -577,7 +546,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // create new implementations
             const newAgentVaultImpl = await AgentVault.new(ZERO_ADDRESS);
             const newCollateralPoolTokenImpl = await CollateralPoolToken.new(ZERO_ADDRESS, "", "");
-            const newCollateralPoolImpl = await CollateralPool.new(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0, 0, 0);
+            const newCollateralPoolImpl = await CollateralPool.new(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0);
             // create new factories
             const agentVaultFactory = await AgentVaultFactory.new(newAgentVaultImpl.address);
             const collateralPoolFactory = await CollateralPoolFactory.new(newCollateralPoolImpl.address);
@@ -2638,8 +2607,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(promise, "only asset manager controller");
         });
 
-        it("should not setPoolExitAndTopupChangeTimelockSeconds if not from asset manager controller", async () => {
-            const promise = assetManager.setPoolExitAndTopupChangeTimelockSeconds(0);
+        it("should not setPoolExitCRChangeTimelockSeconds if not from asset manager controller", async () => {
+            const promise = assetManager.setPoolExitCRChangeTimelockSeconds(0);
             await expectRevert(promise, "only asset manager controller");
         });
 
@@ -3102,16 +3071,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.setAgentMintingCRChangeTimelockSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
         });
 
-        it("should not setPoolExitAndTopupChangeTimelockSeconds if rate limited", async () => {
-            const oldValue = settings.poolExitAndTopupChangeTimelockSeconds;
-            await assetManager.setPoolExitAndTopupChangeTimelockSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+        it("should not setPoolExitCRChangeTimelockSeconds if rate limited", async () => {
+            const oldValue = settings.poolExitCRChangeTimelockSeconds;
+            await assetManager.setPoolExitCRChangeTimelockSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
             const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
             // skip time
             await deterministicTimeIncrease(toBN(minUpdateTime).subn(2));
-            const promise = assetManager.setPoolExitAndTopupChangeTimelockSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            const promise = assetManager.setPoolExitCRChangeTimelockSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
             await expectRevert(promise, "too close to previous update");
             await deterministicTimeIncrease(1);
-            await assetManager.setPoolExitAndTopupChangeTimelockSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await assetManager.setPoolExitCRChangeTimelockSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
         });
 
         it("should not setAgentTimelockedOperationWindowSeconds if rate limited", async () => {

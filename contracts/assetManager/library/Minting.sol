@@ -66,7 +66,7 @@ library Minting {
             crt.reservationFeeNatWei + executorFee - claimedExecutorFee);
         // cleanup
         CollateralReservations.releaseCollateralReservation(crt, _crtId);   // crt can't be used after this
-        // pay to executor at the end to avoid reentrancy via pool.enter (allowing exploits by pool topup)
+        // pay to executor at the end to avoid reentrancy via pool.enter (allowing exploits by pool enter)
         Transfers.transferNAT(executor, claimedExecutorFee);
     }
 

@@ -18,8 +18,6 @@ interface IAssetManagerEvents {
         uint256 mintingPoolCollateralRatioBIPS;
         uint256 buyFAssetByAgentFactorBIPS;
         uint256 poolExitCollateralRatioBIPS;
-        uint256 poolTopupCollateralRatioBIPS;
-        uint256 poolTopupTokenPriceFactorBIPS;
         uint256 handshakeType;
     }
 

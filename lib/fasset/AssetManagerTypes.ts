@@ -37,8 +37,6 @@ export type AgentSetting =
     | "mintingPoolCollateralRatioBIPS"
     | "buyFAssetByAgentFactorBIPS"
     | "poolExitCollateralRatioBIPS"
-    | "poolTopupCollateralRatioBIPS"
-    | "poolTopupTokenPriceFactorBIPS"
     | "handshakeType";
 
 type _RedemptionTicketInfo = Awaited<ReturnType<IIAssetManagerInstance['redemptionQueue']>>[0][0];

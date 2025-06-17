@@ -48,8 +48,11 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
 
     IWNat public wNat;
     uint32 public exitCollateralRatioBIPS;
-    uint32 public topupCollateralRatioBIPS;
-    uint16 public topupTokenPriceFactorBIPS;
+
+    // only storage placeholders now
+    uint32 private __topupCollateralRatioBIPS;
+    uint16 private __topupTokenPriceFactorBIPS;
+
     bool private internalWithdrawal;
     bool private initialized;
 
@@ -74,21 +77,17 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         address _agentVault,
         address _assetManager,
         address _fAsset,
-        uint32 _exitCollateralRatioBIPS,
-        uint32 _topupCollateralRatioBIPS,
-        uint16 _topupTokenPriceFactorBIPS
+        uint32 _exitCollateralRatioBIPS
     ) {
         initialize(_agentVault, _assetManager, _fAsset,
-            _exitCollateralRatioBIPS, _topupCollateralRatioBIPS, _topupTokenPriceFactorBIPS);
+            _exitCollateralRatioBIPS);
     }
 
     function initialize(
         address _agentVault,
         address _assetManager,
         address _fAsset,
-        uint32 _exitCollateralRatioBIPS,
-        uint32 _topupCollateralRatioBIPS,
-        uint16 _topupTokenPriceFactorBIPS
+        uint32 _exitCollateralRatioBIPS
     )
         public
     {
@@ -101,8 +100,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         // for proxy implementation, assetManager will be 0
         wNat = address(assetManager) != address(0) ? assetManager.getWNat() : IWNat(address(0));
         exitCollateralRatioBIPS = _exitCollateralRatioBIPS;
-        topupCollateralRatioBIPS = _topupCollateralRatioBIPS;
-        topupTokenPriceFactorBIPS = _topupTokenPriceFactorBIPS;
     }
 
     receive() external payable {
@@ -121,26 +118,8 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         external
         onlyAssetManager
     {
-        require(_exitCollateralRatioBIPS > topupCollateralRatioBIPS, "value too low");
+        require(_exitCollateralRatioBIPS > 0, "value too low");
         exitCollateralRatioBIPS = _exitCollateralRatioBIPS.toUint32();
-    }
-
-    function setTopupCollateralRatioBIPS(uint256 _topupCollateralRatioBIPS)
-        external
-        onlyAssetManager
-    {
-        require(_topupCollateralRatioBIPS < exitCollateralRatioBIPS, "value too high");
-        require(_topupCollateralRatioBIPS > 0, "must be nonzero");
-        topupCollateralRatioBIPS = _topupCollateralRatioBIPS.toUint32();
-    }
-
-    function setTopupTokenPriceFactorBIPS(uint256 _topupTokenPriceFactorBIPS)
-        external
-        onlyAssetManager
-    {
-        require(_topupTokenPriceFactorBIPS <= SafePct.MAX_BIPS, "value too high");
-        require(_topupTokenPriceFactorBIPS > 0, "must be nonzero");
-        topupTokenPriceFactorBIPS = _topupTokenPriceFactorBIPS.toUint16();
     }
 
     /**
@@ -485,25 +464,13 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         AssetData memory _assetData,
         uint256 _collateral
     )
-        internal view
+        internal pure
         returns (uint256)
     {
-        bool poolConsideredEmpty = _assetData.poolNatBalance == 0 || _assetData.poolTokenSupply == 0;
-        // calculate nat share to be priced with topup discount and nat share to be priced standardly
-        uint256 _aux = (_assetData.assetPriceMul * _assetData.agentBackedFAsset).mulBips(topupCollateralRatioBIPS);
-        uint256 natRequiredToTopup = _aux > _assetData.poolNatBalance * _assetData.assetPriceDiv ?
-            _aux / _assetData.assetPriceDiv - _assetData.poolNatBalance : 0;
-        uint256 collateralForTopupPricing = Math.min(_collateral, natRequiredToTopup);
-        uint256 collateralAtStandardPrice = MathUtils.subOrZero(_collateral, collateralForTopupPricing);
-        uint256 collateralAtTopupPrice = collateralForTopupPricing.mulDiv(
-            SafePct.MAX_BIPS, topupTokenPriceFactorBIPS);
-        uint256 tokenShareAtTopupPrice = poolConsideredEmpty ?
-            collateralAtTopupPrice : _assetData.poolTokenSupply.mulDiv(
-                collateralAtTopupPrice, _assetData.poolNatBalance);
-        uint256 tokenShareAtStandardPrice = poolConsideredEmpty && tokenShareAtTopupPrice == 0 ?
-            collateralAtStandardPrice : (_assetData.poolTokenSupply + tokenShareAtTopupPrice).mulDiv(
-                collateralAtStandardPrice, _assetData.poolNatBalance + collateralForTopupPricing);
-        return tokenShareAtTopupPrice + tokenShareAtStandardPrice;
+        if (_assetData.poolNatBalance == 0 || _assetData.poolTokenSupply == 0) { // pool is empty
+            return _collateral;
+        }
+        return _assetData.poolTokenSupply.mulDiv(_collateral, _assetData.poolNatBalance);
     }
 
     // _tokenShare is assumed to be smaller or equal to _account's token balance

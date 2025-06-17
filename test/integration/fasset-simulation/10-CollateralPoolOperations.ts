@@ -56,32 +56,6 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         mockFlareDataConnectorClient = context.flareDataConnectorClient as MockFlareDataConnectorClient;
     });
 
-    it("agent should never be able to set poolTopupCollateralRatio > poolExitCollateralRatio", async () => {
-        await expectRevert(Agent.createTest(context, agentOwner1, underlyingAgent1, {
-            poolTopupCollateralRatioBIPS: toBIPS(2.5),
-            poolExitCollateralRatioBIPS: toBIPS(2.4),
-        }), "value too low");
-        // but this should succeed
-        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, {
-            poolTopupCollateralRatioBIPS: toBIPS(2.4),
-            poolExitCollateralRatioBIPS: toBIPS(2.5),
-        })
-        // trying to set value later should fail also
-        await expectRevert(agent.changeSettings({ poolExitCollateralRatioBIPS: toBIPS(2.3) }), "value too low");
-        await expectRevert(agent.changeSettings({ poolTopupCollateralRatioBIPS: toBIPS(2.6) }), "value too high");
-    });
-
-    it("agent should not be able to set topupTokenPriceFactorBIPS too low", async () => {
-        await expectRevert(Agent.createTest(context, agentOwner1, underlyingAgent1, { poolTopupTokenPriceFactorBIPS: toBIPS(0.7) }), "value too low");
-        // but this should succeed
-        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { poolTopupTokenPriceFactorBIPS: toBIPS(0.75)});
-        // trying to set value later should fail also
-        await expectRevert(agent.changeSettings({ poolTopupTokenPriceFactorBIPS: toBIPS(0.7) }), "value too low");
-        await expectRevert(agent.changeSettings({ poolTopupTokenPriceFactorBIPS: toBIPS(1.1) }), "value too high");
-        // 1 should be ok
-        await agent.changeSettings({ poolTopupTokenPriceFactorBIPS: toBIPS(1) });
-    });
-
     it("should test minter entering the pool, then redeeming and agent collecting pool fees", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));

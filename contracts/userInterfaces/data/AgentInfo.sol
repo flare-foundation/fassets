@@ -175,13 +175,6 @@ library AgentInfo {
         // Must be higher than system minimum collateral ratio for pool collateral.
         uint256 poolExitCollateralRatioBIPS;
 
-        // The CR below which it is possible to enter the pool at discounted rate (to prevent liquidation).
-        // Must be higher than system minimum collateral ratio for pool collateral.
-        uint256 poolTopupCollateralRatioBIPS;
-
-        // The discount to pool token price when entering and pool CR is below pool topup CR.
-        uint256 poolTopupTokenPriceFactorBIPS;
-
         // Agent's handshake type - minting or redeeming can be rejected.
         // 0 - no verification, 1 - manual verification, ...
         uint256 handshakeType;

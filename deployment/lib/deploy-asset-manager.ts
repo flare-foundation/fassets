@@ -271,7 +271,7 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         agentExitAvailableTimelockSeconds: parameters.agentExitAvailableTimelockSeconds,
         agentFeeChangeTimelockSeconds: parameters.agentFeeChangeTimelockSeconds,
         agentMintingCRChangeTimelockSeconds: parameters.agentMintingCRChangeTimelockSeconds,
-        poolExitAndTopupChangeTimelockSeconds: parameters.poolExitAndTopupChangeTimelockSeconds,
+        poolExitCRChangeTimelockSeconds: parameters.poolExitCRChangeTimelockSeconds,
         agentTimelockedOperationWindowSeconds: parameters.agentTimelockedOperationWindowSeconds,
         collateralPoolTokenTimelockSeconds: parameters.collateralPoolTokenTimelockSeconds,
         diamondCutMinTimelockSeconds: parameters.diamondCutMinTimelockSeconds,

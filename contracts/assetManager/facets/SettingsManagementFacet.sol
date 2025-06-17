@@ -541,17 +541,17 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         emit SettingChanged("agentMintingCRChangeTimelockSeconds", _value);
     }
 
-    function setPoolExitAndTopupChangeTimelockSeconds(uint256 _value)
+    function setPoolExitCRChangeTimelockSeconds(uint256 _value)
         external
         onlyAssetManagerController
         rateLimited
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
-        require(_value <= settings.poolExitAndTopupChangeTimelockSeconds * 4 + 1 days);
+        require(_value <= settings.poolExitCRChangeTimelockSeconds * 4 + 1 days);
         // update
-        settings.poolExitAndTopupChangeTimelockSeconds = _value.toUint64();
-        emit SettingChanged("poolExitAndTopupChangeTimelockSeconds", _value);
+        settings.poolExitCRChangeTimelockSeconds = _value.toUint64();
+        emit SettingChanged("poolExitCRChangeTimelockSeconds", _value);
     }
 
     function setAgentTimelockedOperationWindowSeconds(uint256 _value)

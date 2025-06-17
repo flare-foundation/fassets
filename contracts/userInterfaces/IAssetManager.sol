@@ -473,8 +473,7 @@ interface IAssetManager is
      * @param _agentVault agent vault address
      * @param _name setting name, one of: `feeBIPS`, `poolFeeShareBIPS`, `redemptionPoolFeeShareBIPS`,
      *  `mintingVaultCollateralRatioBIPS`, `mintingPoolCollateralRatioBIPS`,`buyFAssetByAgentFactorBIPS`,
-     *  `poolExitCollateralRatioBIPS`, `poolTopupCollateralRatioBIPS`, `poolTopupTokenPriceFactorBIPS`,
-     *  `handshakeType`
+     *  `poolExitCollateralRatioBIPS`, `handshakeType`
      */
     function getAgentSetting(address _agentVault, string memory _name)
         external view

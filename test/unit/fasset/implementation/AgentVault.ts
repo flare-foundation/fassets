@@ -120,7 +120,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             await impersonateContract(assetManagerMock.address, toBNExp(1000, 18), accounts[0]);
             const agentVault = await AgentVault.new(assetManagerMock.address);
             // create pool
-            const pool = await CollateralPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000, 13000, 8000);
+            const pool = await CollateralPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000);
             const token = await CollateralPoolToken.new(pool.address, "FAsset Collateral Pool Token ETH-AG1", "FCPT-ETH-AG1");
             await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.setPoolToken(token.address).encodeABI());
             await assetManagerMock.setCollateralPool(pool.address);
@@ -427,7 +427,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             // create agent with mocked fAsset
             const agentVault = await AgentVault.new(assetManagerMock.address);
             // create pool
-            const pool = await CollateralPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000, 13000, 8000);
+            const pool = await CollateralPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000);
             const token = await CollateralPoolToken.new(pool.address, "FAsset Collateral Pool Token ETH-AG2", "FCPT-ETH-AG2");
             await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.setPoolToken(token.address).encodeABI());
             await assetManagerMock.setCollateralPool(pool.address);

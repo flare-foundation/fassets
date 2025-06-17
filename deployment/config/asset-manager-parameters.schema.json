@@ -305,8 +305,8 @@
             "$ref": "#/definitions/CollateralTypeParameters",
             "description": "Data about the collateral used in the collateral pool, token is always WNat (FLR/SGB)."
         },
-        "poolExitAndTopupChangeTimelockSeconds": {
-            "description": "Amount of seconds that have to pass between agent-set settings for pool exit and topup\n(exit CR, topup CR, topup bonus) change announcement and execution.",
+        "poolExitCRChangeTimelockSeconds": {
+            "description": "Amount of seconds that have to pass between agent-set settings for pool exit collateral ratio\nchange announcement and execution.",
             "minimum": 0,
             "type": "integer"
         },
@@ -470,7 +470,7 @@
         "paymentChallengeRewardBIPS",
         "paymentChallengeRewardUSD5",
         "poolCollateral",
-        "poolExitAndTopupChangeTimelockSeconds",
+        "poolExitCRChangeTimelockSeconds",
         "poolTokenSuffix",
         "redemptionDefaultFactorPoolBIPS",
         "redemptionDefaultFactorVaultCollateralBIPS",

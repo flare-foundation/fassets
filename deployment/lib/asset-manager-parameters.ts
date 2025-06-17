@@ -442,11 +442,11 @@ export interface AssetManagerParameters {
     agentMintingCRChangeTimelockSeconds: integer;
 
     /**
-     * Amount of seconds that have to pass between agent-set settings for pool exit and topup
-     * (exit CR, topup CR, topup bonus) change announcement and execution.
+     * Amount of seconds that have to pass between agent-set settings for pool exit collateral ratio
+     * change announcement and execution.
      * @minimum 0
      */
-    poolExitAndTopupChangeTimelockSeconds: integer;
+    poolExitCRChangeTimelockSeconds: integer;
 
     /**
      * Amount of seconds that an agent is allowed to execute an update once it is allowed.

@@ -229,23 +229,6 @@ interface ICollateralPool {
         external view
         returns (uint32);
 
-    /**
-     * Get the topup collateral ratio in BIPS.
-     * If the pool's collateral ratio sinks below this value, users are encouraged to
-     * buy collateral by making tokens have discount prices
-     */
-    function topupCollateralRatioBIPS()
-        external view
-        returns (uint32);
-
-    /**
-     * Get the topup token discount in BIPS.
-     * If the pool's collateral ratio sinks below topup collateral ratio, tokens are
-     * discounted by this factor
-     */
-    function topupTokenPriceFactorBIPS()
-        external view
-        returns (uint16);
 
     /**
      * Return total amount of collateral in the pool.

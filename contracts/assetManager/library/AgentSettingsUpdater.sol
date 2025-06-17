@@ -17,8 +17,6 @@ library AgentSettingsUpdater {
     bytes32 internal constant MINTING_POOL_COLLATERAL_RATIO_BIPS = keccak256("mintingPoolCollateralRatioBIPS");
     bytes32 internal constant BUY_FASSET_BY_AGENT_FACTOR_BIPS = keccak256("buyFAssetByAgentFactorBIPS");
     bytes32 internal constant POOL_EXIT_COLLATERAL_RATIO_BIPS = keccak256("poolExitCollateralRatioBIPS");
-    bytes32 internal constant POOL_TOPUP_COLLATERAL_RATIO_BIPS = keccak256("poolTopupCollateralRatioBIPS");
-    bytes32 internal constant POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS = keccak256("poolTopupTokenPriceFactorBIPS");
     bytes32 internal constant HAND_SHAKE_TYPE = keccak256("handshakeType");
 
     function announceUpdate(
@@ -73,8 +71,6 @@ library AgentSettingsUpdater {
         delete _agent.settingUpdates[MINTING_POOL_COLLATERAL_RATIO_BIPS];
         delete _agent.settingUpdates[BUY_FASSET_BY_AGENT_FACTOR_BIPS];
         delete _agent.settingUpdates[POOL_EXIT_COLLATERAL_RATIO_BIPS];
-        delete _agent.settingUpdates[POOL_TOPUP_COLLATERAL_RATIO_BIPS];
-        delete _agent.settingUpdates[POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS];
         delete _agent.settingUpdates[HAND_SHAKE_TYPE];
     }
 
@@ -101,10 +97,6 @@ library AgentSettingsUpdater {
             return agent.buyFAssetByAgentFactorBIPS;
         } else if (hash == POOL_EXIT_COLLATERAL_RATIO_BIPS) {
             return agent.collateralPool.exitCollateralRatioBIPS();
-        } else if (hash == POOL_TOPUP_COLLATERAL_RATIO_BIPS) {
-            return agent.collateralPool.topupCollateralRatioBIPS();
-        } else if (hash == POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS) {
-            return agent.collateralPool.topupTokenPriceFactorBIPS();
         } else if (hash == HAND_SHAKE_TYPE) {
             return agent.handshakeType;
         } else {
@@ -133,10 +125,6 @@ library AgentSettingsUpdater {
             Agents.setBuyFAssetByAgentFactorBIPS(_agent, _value);
         } else if (_hash == POOL_EXIT_COLLATERAL_RATIO_BIPS) {
             Agents.setPoolExitCollateralRatioBIPS(_agent, _value);
-        } else if (_hash == POOL_TOPUP_COLLATERAL_RATIO_BIPS) {
-            Agents.setPoolTopupCollateralRatioBIPS(_agent, _value);
-        } else if (_hash == POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS) {
-            Agents.setPoolTopupTokenPriceFactorBIPS(_agent, _value);
         } else if (_hash == HAND_SHAKE_TYPE) {
             Agents.setHandshakeType(_agent, _value);
         } else {
@@ -152,7 +140,7 @@ library AgentSettingsUpdater {
         } else if (_hash == MINTING_VAULT_COLLATERAL_RATIO_BIPS || _hash == MINTING_POOL_COLLATERAL_RATIO_BIPS) {
             return settings.agentMintingCRChangeTimelockSeconds;
         } else {
-            return settings.poolExitAndTopupChangeTimelockSeconds;
+            return settings.poolExitCRChangeTimelockSeconds;
         }
     }
 
@@ -166,8 +154,6 @@ library AgentSettingsUpdater {
             hash == MINTING_POOL_COLLATERAL_RATIO_BIPS ||
             hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS ||
             hash == POOL_EXIT_COLLATERAL_RATIO_BIPS ||
-            hash == POOL_TOPUP_COLLATERAL_RATIO_BIPS ||
-            hash == POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS ||
             hash == HAND_SHAKE_TYPE;
         require(settingNameValid, "invalid setting name");
         return hash;

@@ -111,7 +111,7 @@ interface IISettingsManagement {
     function setAgentMintingCRChangeTimelockSeconds(uint256 _value)
         external;
 
-    function setPoolExitAndTopupChangeTimelockSeconds(uint256 _value)
+    function setPoolExitCRChangeTimelockSeconds(uint256 _value)
         external;
 
     function setAgentTimelockedOperationWindowSeconds(uint256 _value)

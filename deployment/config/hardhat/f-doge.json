@@ -82,7 +82,7 @@
     "agentExitAvailableTimelockSeconds": 86400,
     "agentFeeChangeTimelockSeconds": 86400,
     "agentMintingCRChangeTimelockSeconds": 3600,
-    "poolExitAndTopupChangeTimelockSeconds": 86400,
+    "poolExitCRChangeTimelockSeconds": 86400,
     "agentTimelockedOperationWindowSeconds": 3600,
     "collateralPoolTokenTimelockSeconds": 60,
     "diamondCutMinTimelockSeconds": 7200,

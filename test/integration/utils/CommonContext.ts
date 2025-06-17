@@ -87,7 +87,7 @@ export class CommonContext {
         const agentVaultImplementation = await AgentVault.new(ZERO_ADDRESS);
         const agentVaultFactory = await AgentVaultFactory.new(agentVaultImplementation.address);
         // create collateral pool factory
-        const collateralPoolImplementation = await CollateralPool.new(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0, 0, 0);
+        const collateralPoolImplementation = await CollateralPool.new(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0);
         const collateralPoolFactory = await CollateralPoolFactory.new(collateralPoolImplementation.address);
         // create collateral pool token factory
         const collateralPoolTokenImplementation = await CollateralPoolToken.new(ZERO_ADDRESS, "", "");
