@@ -198,10 +198,12 @@ library AgentsExternal {
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(collateral);
         uint256 buybackCollateral = Conversion.convertAmgToTokenWei(mintingAMG, amgToTokenWeiPrice)
             .mulBips(Globals.getSettings().buybackCollateralFactorBIPS);
-        agent.burnVaultCollateral(buybackCollateral);
+        uint256 burnedNatWei = agent.burnVaultCollateral(buybackCollateral);
         agent.releaseMintedAssets(agent.mintedAMG); // release all
         state.totalReservedCollateralAMG -= agent.reservedAMG;
         agent.reservedAMG = 0;
+        // If there is some overpaid NAT, send it back.
+        Transfers.transferNAT(payable(msg.sender), msg.value - burnedNatWei);
     }
 
     function getAllAgents(

@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "../../openzeppelin/security/ReentrancyGuard.sol";
-import "../interfaces/IWNat.sol";
 import "../interfaces/IIAgentVault.sol";
 import "../interfaces/IIAssetManager.sol";
 

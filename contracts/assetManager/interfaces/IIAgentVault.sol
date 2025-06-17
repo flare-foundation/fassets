@@ -4,7 +4,6 @@ pragma abicoder v2;
 
 import "../../userInterfaces/IAgentVault.sol";
 import "./IIAssetManager.sol";
-import "./IWNat.sol";
 
 
 interface IIAgentVault is IAgentVault {

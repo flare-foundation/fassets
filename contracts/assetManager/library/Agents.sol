@@ -300,6 +300,7 @@ library Agents {
         uint256 _amountVaultCollateralWei
     )
         internal
+        returns (uint256 _burnedNatWei)
     {
         CollateralTypeInt.Data storage vaultCollateral = getVaultCollateral(_agent);
         CollateralTypeInt.Data storage poolCollateral = getPoolCollateral(_agent);
@@ -307,15 +308,13 @@ library Agents {
         IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
         // Calculate NAT amount the agent has to pay to receive the "burned" vault collateral tokens.
         // The price is FTSO price plus configurable premium (vaultCollateralBuyForFlareFactorBIPS).
-        uint256 amountNatWei = Conversion.convert(_amountVaultCollateralWei, vaultCollateral, poolCollateral)
+        _burnedNatWei = Conversion.convert(_amountVaultCollateralWei, vaultCollateral, poolCollateral)
             .mulBips(settings.vaultCollateralBuyForFlareFactorBIPS);
         // Transfer vault collateral to the agent vault owner
-        vault.payout(vaultCollateral.token, _agent.ownerManagementAddress, _amountVaultCollateralWei);
+        vault.payout(vaultCollateral.token, getOwnerPayAddress(_agent), _amountVaultCollateralWei);
         // Burn the NAT equivalent (must be provided with the call).
-        require(msg.value >= amountNatWei, "not enough funds provided");
-        burnDirectNAT(amountNatWei);
-        // If there is some overpaid NAT, send it to the agent owner's work address.
-        Transfers.transferNAT(getOwnerPayAddress(_agent), msg.value - amountNatWei);
+        require(msg.value >= _burnedNatWei, "not enough funds provided");
+        burnDirectNAT(_burnedNatWei);
     }
 
     function burnDirectNAT(
@@ -368,8 +367,8 @@ library Agents {
         internal view
         returns (address payable)
     {
-        address payable workAddress = payable(getWorkAddress(_agent));
-        return workAddress != address(0) ? workAddress : payable(_agent.ownerManagementAddress);
+        address workAddress = getWorkAddress(_agent);
+        return workAddress != address(0) ? payable(workAddress) : payable(_agent.ownerManagementAddress);
     }
 
     function requireWhitelisted(

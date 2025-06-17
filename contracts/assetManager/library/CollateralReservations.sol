@@ -211,12 +211,14 @@ library CollateralReservations {
         // burn reserved collateral at market price
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(agent.vaultCollateralIndex);
         uint256 reservedCollateral = Conversion.convertAmgToTokenWei(crt.valueAMG, amgToTokenWeiPrice);
-        Agents.burnVaultCollateral(agent, reservedCollateral);
+        uint256 burnedNatWei = Agents.burnVaultCollateral(agent, reservedCollateral);
         // send event
         uint256 reservedValueUBA = Conversion.convertAmgToUBA(crt.valueAMG) + Minting.calculatePoolFeeUBA(agent, crt);
         emit IAssetManagerEvents.CollateralReservationDeleted(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
         // release agent's reserved collateral
         releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
+        // If there is some overpaid NAT, send it back.
+        Transfers.transferNAT(payable(msg.sender), msg.value - burnedNatWei);
     }
 
     function distributeCollateralReservationFee(
