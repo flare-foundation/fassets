@@ -216,13 +216,6 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await expectRevert(prms, "pool token already set");
         });
 
-        it("should fail at setting exit collateral ratio if conditions aren't met", async () => {
-            const setTo = new BN(0);
-            const payload = collateralPool.contract.methods.setExitCollateralRatioBIPS(setTo).encodeABI();
-            const prms = assetManager.callFunctionAt(collateralPool.address, payload);
-            await expectRevert(prms, "value too low");
-        });
-
         it("should correctly set exit collateral ratio", async () => {
             const setTo = BN_ONE;
             const payload = collateralPool.contract.methods.setExitCollateralRatioBIPS(setTo).encodeABI();

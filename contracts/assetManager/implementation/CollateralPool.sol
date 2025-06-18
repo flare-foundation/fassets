@@ -118,7 +118,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         external
         onlyAssetManager
     {
-        require(_exitCollateralRatioBIPS > 0, "value too low");
         exitCollateralRatioBIPS = _exitCollateralRatioBIPS.toUint32();
     }
 
