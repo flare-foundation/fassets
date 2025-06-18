@@ -216,7 +216,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
-        assetSymbol = ci.assetSymbol;
+        assetSymbol = ci.symbol;
         return { contracts, diamondCuts, assetManagerInit, wNat, usdc, assetSymbol, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
     }
 
@@ -694,10 +694,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should not switch vault collateral token", async () => {
-            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
-            await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(50));
-            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(5, 10), 0);
-            await contracts.priceStore.setCurrentPriceFromTrustedProviders(usdcSymbol, toBNExp(5, 10), 0);
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e6), toWei(3e6));
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(2));
+            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(5, 8), 0);
+            await contracts.priceStore.setCurrentPriceFromTrustedProviders(usdcSymbol, toBNExp(5, 8), 0);
             //Can't switch vault collateral if it has not been deprecated
             let res = assetManager.switchVaultCollateral(agentVault.address,collaterals[2].token, { from: agentOwner1 });
             await expectRevert(res, "current collateral not deprecated");
@@ -1883,12 +1883,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     describe("liquidation", () => {
 
         it("should start liquidation", async () => {
-            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1)
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e6), toWei(3e6))
             // mint some f-assets that require backing
-            await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[82], toBN(1));
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[82], toBN(5));
             // price change
-            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(3521, 50), 0);
-            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, toBNExp(3521, 50), 0);
+            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(9, 8), 0);
+            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, toBNExp(9, 8), 0);
             // start liquidation
             const tx = await assetManager.startLiquidation(agentVault.address, { from: accounts[83] });
             expectEvent(tx, "LiquidationStarted");
@@ -1899,31 +1899,33 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should liquidate", async () => {
             const liquidator = accounts[83];
-            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e8), toWei(3e8))
-            await mintFassets(agentVault, agentOwner1, underlyingAgent1, liquidator, toBN(2));
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e6), toWei(3e6))
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, liquidator, toBN(5));
             // simulate liquidation (set cr to eps > 0)
-            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(10, 12), 0);
-            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, toBNExp(10, 12), 0);
+            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(9, 8), 0);
+            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, toBNExp(9, 8), 0);
             await assetManager.startLiquidation(agentVault.address, { from: liquidator });
             // calculate liquidation value and liquidate liquidate
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const liquidationUBA = lotsToUBA(2);
-            const liquidationUSDC = await ubaToC1Wei(mulBIPS(liquidationUBA, toBN(agentInfo.vaultCollateralRatioBIPS)));
-            const liquidationPool = await ubaToPoolWei(mulBIPS(liquidationUBA, toBN(agentInfo.poolCollateralRatioBIPS)));
-            const tx = await assetManager.liquidate(agentVault.address, lotsToUBA(2), { from: liquidator });
+            const liquidationUSDC = await ubaToC1Wei(mulBIPS(liquidationUBA, toBN(agentInfo.liquidationPaymentFactorVaultBIPS)));
+            const liquidationPool = await ubaToPoolWei(mulBIPS(liquidationUBA, toBN(agentInfo.liquidationPaymentFactorPoolBIPS)));
+            const tx = await assetManager.liquidate(agentVault.address, liquidationUBA, { from: liquidator });
             expectEvent(tx, "LiquidationPerformed");
-            assertWeb3Equal(await usdc.balanceOf(liquidator), liquidationUSDC);
-            assertWeb3Equal(await wNat.balanceOf(liquidator), liquidationPool);
+            assertApproximatelyEqual(await usdc.balanceOf(liquidator), liquidationUSDC, "absolute", 100);
+            assertApproximatelyEqual(await wNat.balanceOf(liquidator), liquidationPool, "absolute", 100);
         });
 
         it("should start and then end liquidation", async () => {
-            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e8), toWei(3e8))
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e6), toWei(3e6))
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(2));
             // price change #1
-            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(3521, 50), 0);
-            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, toBNExp(3521, 50), 0);
+            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(3, 9), 0);
+            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, toBNExp(3, 9), 0);
             // start liquidation
             await assetManager.startLiquidation(agentVault.address, { from: accounts[83] });
+            const agentInfo1 = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(agentInfo1.status, 2);
             // price change #2
             await contracts.priceStore.setCurrentPrice(assetSymbol, testChainInfo.eth.startPrice, 0);
             await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, testChainInfo.eth.startPrice, 0);
@@ -1931,8 +1933,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const tx = await assetManager.endLiquidation(agentVault.address, { from: accounts[83] });
             expectEvent(tx, "LiquidationEnded");
             // check that agent status is normal
-            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(agentInfo.status, 0);
+            const agentInfo2 = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(agentInfo2.status, 0);
         });
     });
 
@@ -2182,12 +2184,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("when whitelist is enabled, address not whitelisted can't start liquidation", async () => {
-            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1)
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e6), toWei(3e6))
             // mint some f-assets that require backing
-            await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[82], toBN(1));
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[82], toBN(5));
             // price change
-            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(3521, 50), 0);
-            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, toBNExp(3521, 50), 0);
+            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(9, 8), 0);
+            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, toBNExp(9, 8), 0);
             // start liquidation
             const governanceSettings = await GovernanceSettings.new();
             await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
@@ -2202,11 +2204,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("when whitelist is enabled, address not whitelisted can't liquidate", async () => {
             const liquidator = accounts[83];
-            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e8), toWei(3e8))
-            await mintFassets(agentVault, agentOwner1, underlyingAgent1, liquidator, toBN(2));
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e6), toWei(3e6))
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, liquidator, toBN(5));
             // simulate liquidation (set cr to eps > 0)
-            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(10, 12), 0);
-            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, toBNExp(10, 12), 0);
+            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(9, 8), 0);
+            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, toBNExp(9, 8), 0);
             await assetManager.startLiquidation(agentVault.address, { from: liquidator });
             // calculate liquidation value and liquidate liquidate
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
