@@ -1,12 +1,11 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
-import { artifacts, contract } from "hardhat";
 import { getTestFile } from "../../../utils/test-helpers";
 import { MerkleTreeMockInstance } from "../../../../typechain-truffle";
 import { MerkleTree } from "@flarenetwork/state-connector-protocol/dist/libs/ts/MerkleTree";
 
 const MerkleTreeMock = artifacts.require("MerkleTreeMock");
 
-contract(`MerkleTree.sol; ${getTestFile(__filename)}`, async () => {
+contract(`MerkleTree.sol; ${getTestFile(__filename)}`, () => {
 
     let merkleTreeMock: MerkleTreeMockInstance;
 
