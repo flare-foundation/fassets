@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../data/RedemptionQueue.sol";
+import {RedemptionQueue} from "../data/RedemptionQueue.sol";
 
 /**
  * @title RedemptionQueue mock contract

@@ -12,7 +12,7 @@ const ALREADY_INIT_MSG = "initialised != false";
 const ONLY_GOVERNANCE_MSG = "only governance";
 const GOVERNANCE_ZERO = "_governance zero";
 
-contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async accounts => {
+contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, accounts => {
     const initialGovernance = accounts[1];
     const productionGovernance = accounts[2];
     const productionExecutor = accounts[3];

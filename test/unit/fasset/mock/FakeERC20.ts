@@ -9,7 +9,7 @@ import { waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 const FakeERC20 = artifacts.require('FakeERC20');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
 
-contract(`FakeERC20.sol; ${getTestFile(__filename)}; FakeERC20 basic tests`, async accounts => {
+contract(`FakeERC20.sol; ${getTestFile(__filename)}; FakeERC20 basic tests`, accounts => {
     let coin: FakeERC20Instance;
     const governance = accounts[10];
 

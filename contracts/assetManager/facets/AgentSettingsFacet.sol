@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../library/AgentSettingsUpdater.sol";
-import "./AssetManagerBase.sol";
+import {AgentSettingsUpdater} from "../library/AgentSettingsUpdater.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
 
 
 contract AgentSettingsFacet is AssetManagerBase {

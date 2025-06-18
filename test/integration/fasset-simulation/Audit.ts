@@ -21,7 +21,7 @@ const AgentVault = artifacts.require('AgentVault');
 const CollateralPool = artifacts.require('CollateralPool');
 const CollateralPoolToken = artifacts.require('CollateralPoolToken');
 
-contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => {
+contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];
@@ -166,15 +166,15 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => 
 
     async function performFakeRedemptionPayment(agent: Agent, request: EventArgs<RedemptionRequested>, options?: MockTransactionOptionsWithFee) {
         const paymentAmount = request.valueUBA.sub(request.feeUBA);
-        let ref = request.paymentReference;
-        let newRef = "0xffffffffffffffff" + ref.substring(18, ref.length);
+        const ref = request.paymentReference;
+        const newRef = "0xffffffffffffffff" + ref.substring(18, ref.length);
         return await agent.performPayment(request.paymentAddress, paymentAmount, newRef, options);
     }
 
     async function performFakeRedemptionPaymentID(agent: Agent, request: EventArgs<RedemptionRequested>, options?: MockTransactionOptionsWithFee) {
         const paymentAmount = request.valueUBA.sub(request.feeUBA);
-        let ref = request.paymentReference;
-        let newRef = "0x4642505266410002aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" + ref.substring(50, ref.length);
+        const ref = request.paymentReference;
+        const newRef = "0x4642505266410002aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" + ref.substring(50, ref.length);
         return await agent.performPayment(request.paymentAddress, paymentAmount, newRef, options);
     }
 });

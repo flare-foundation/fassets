@@ -44,13 +44,13 @@
 | [contracts/assetManager/implementation/CollateralPoolTokenFactory.sol](/contracts/assetManager/implementation/CollateralPoolTokenFactory.sol) | 34
 | [contracts/assetManager/implementation/CoreVaultManager.sol](/contracts/assetManager/implementation/CoreVaultManager.sol) | 620
 | [contracts/assetManager/implementation/CoreVaultManagerProxy.sol](/contracts/assetManager/implementation/CoreVaultManagerProxy.sol) | 26
-| [contracts/assetManager/implementation/FtsoV1PriceReader.sol](/contracts/assetManager/implementation/FtsoV1PriceReader.sol) | 50
+<!-- | [contracts/assetManager/implementation/FtsoV1PriceReader.sol](/contracts/assetManager/implementation/FtsoV1PriceReader.sol) | 50 -->
 | [contracts/assetManager/implementation/FtsoV2PriceStore.sol](/contracts/assetManager/implementation/FtsoV2PriceStore.sol) | 285
 | [contracts/assetManager/implementation/Whitelist.sol](/contracts/assetManager/implementation/Whitelist.sol) | 61
 | [contracts/assetManager/interfaces/IIAgentVaultFactory.sol](/contracts/assetManager/interfaces/IIAgentVaultFactory.sol) | 7
 | [contracts/assetManager/interfaces/IICollateralPoolFactory.sol](/contracts/assetManager/interfaces/IICollateralPoolFactory.sol) | 12
 | [contracts/assetManager/interfaces/IICollateralPoolTokenFactory.sol](/contracts/assetManager/interfaces/IICollateralPoolTokenFactory.sol) | 11
-| [contracts/assetManager/interfaces/IIAgentVault.sol](/contracts/assetManager/interfaces/IIAgentVault.sol) | 13
+| [contracts/assetManager/../agentVault/interfaces/IIAgentVault.sol](/contracts/assetManager/../agentVault/interfaces/IIAgentVault.sol) | 13
 | [contracts/assetManager/interfaces/IIAssetManager.sol](/contracts/assetManager/interfaces/IIAssetManager.sol) | 82
 | [contracts/assetManager/interfaces/IIAssetManagerController.sol](/contracts/assetManager/interfaces/IIAssetManagerController.sol) | 6
 | [contracts/assetManager/interfaces/IICollateralPool.sol](/contracts/assetManager/interfaces/IICollateralPool.sol) | 21

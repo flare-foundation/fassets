@@ -2,7 +2,7 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
-import "../../flareSmartContracts/interfaces/IWNat.sol";
+import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 
 
 interface IISettingsManagement {

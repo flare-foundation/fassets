@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../openzeppelin/library/Reentrancy.sol";
+import {Reentrancy} from "../../openzeppelin/library/Reentrancy.sol";
 
 
 library Transfers {

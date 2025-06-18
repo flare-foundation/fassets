@@ -16,7 +16,7 @@ const AgentVault = artifacts.require('AgentVault');
 const CollateralPool = artifacts.require('CollateralPool');
 const CollateralPoolToken = artifacts.require('CollateralPoolToken');
 
-contract(`AuditV2.ts; ${getTestFile(__filename)}; FAsset V2 audit tests`, async accounts => {
+contract(`AuditV2.ts; ${getTestFile(__filename)}; FAsset V2 audit tests`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const minterAddress1 = accounts[30];

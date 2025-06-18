@@ -5,8 +5,7 @@
 
 pragma solidity 0.8.23;
 
-import "../library/Reentrancy.sol";
-
+import {Reentrancy} from "../library/Reentrancy.sol";
 
 /**
  * @dev Contract module that helps prevent reentrant calls to a function.

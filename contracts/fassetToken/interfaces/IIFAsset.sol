@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "@flarenetwork/flare-periphery-contracts/flare/token/interface/IICleanable.sol";
-import "../../userInterfaces/IFAsset.sol";
-import "./IICheckPointable.sol";
+import {IICleanable} from "@flarenetwork/flare-periphery-contracts/flare/token/interface/IICleanable.sol";
+import {IFAsset} from "../../userInterfaces/IFAsset.sol";
+import {IICheckPointable} from "./IICheckPointable.sol";
 
 
 interface IIFAsset is IFAsset, IICheckPointable, IICleanable {

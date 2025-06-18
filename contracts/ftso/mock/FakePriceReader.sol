@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../interfaces/IPriceReader.sol";
-import "../interfaces/IPriceChangeEmitter.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IPriceReader} from "../../ftso/interfaces/IPriceReader.sol";
+import {IPriceChangeEmitter} from "../interfaces/IPriceChangeEmitter.sol";
 
 
 contract FakePriceReader is IPriceReader, IPriceChangeEmitter, IERC165 {

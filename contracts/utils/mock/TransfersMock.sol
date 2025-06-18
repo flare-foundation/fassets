@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../openzeppelin/security/ReentrancyGuard.sol";
-import { Transfers } from "../library/Transfers.sol";
+import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
+import {Transfers} from "../../utils/library/Transfers.sol";
 
 
 contract TransfersMock is ReentrancyGuard {

@@ -1,17 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "./AssetManagerBase.sol";
-import "../../diamond/library/LibDiamond.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
-import "../../userInterfaces/ITransferFees.sol";
-import "../../utils/library/SafePct.sol";
-import "../library/SettingsUpdater.sol";
-import "../library/data/TransferFeeTracking.sol";
-import "../library/TransferFees.sol";
-import "../library/Agents.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {LibDiamond} from "../../diamond/library/LibDiamond.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {ITransferFees} from "../../userInterfaces/ITransferFees.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
+import {SettingsUpdater} from "../library/SettingsUpdater.sol";
+import {TransferFeeTracking} from "../library/data/TransferFeeTracking.sol";
+import {TransferFees} from "../library/TransferFees.sol";
+import {Agents} from "../library/Agents.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {Agent} from "../library/data/Agent.sol";
+import {Globals} from "../library/Globals.sol";
+import {IIFAsset} from "../../fassetToken/interfaces/IIFAsset.sol";
 
 
 contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents, ITransferFees {

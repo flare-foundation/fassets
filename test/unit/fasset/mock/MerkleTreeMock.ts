@@ -52,14 +52,14 @@ contract(`MerkleTree.sol; ${getTestFile(__filename)}`, async () => {
     });
 
     function calculateMerkleRoot(hashes: string[]): string {
-        let n = hashes.length;
+        const n = hashes.length;
         if (n === 0) {
             throw Error("Must have at least one leaf");
         }
         if (n === 1) {
             return hashes[0];
         }
-        let merkleTree: string[] = [];
+        const merkleTree: string[] = [];
         hashes.map((v, i) => merkleTree[n - 1 + i] = v);
         for (let i = n - 2; i >= 0; i--) {
             if (merkleTree[i * 2 + 1] <= (merkleTree[i * 2 + 2])) {

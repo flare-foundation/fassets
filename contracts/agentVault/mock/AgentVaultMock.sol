@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../collateralPool/interfaces/IICollateralPool.sol";
+import {IICollateralPool} from "../../collateralPool/interfaces/IICollateralPool.sol";
 
 contract AgentVaultMock {
 

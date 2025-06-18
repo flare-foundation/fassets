@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "../../governance/implementation/Governed.sol";
-import "../../userInterfaces/IWhitelist.sol";
-
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {Governed} from "../../governance/implementation/Governed.sol";
+import {IWhitelist} from "../../userInterfaces/IWhitelist.sol";
+import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 
 contract Whitelist is IWhitelist, Governed, IERC165 {
     event ManagerChanged(address manager);

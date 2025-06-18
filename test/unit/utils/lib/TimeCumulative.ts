@@ -5,7 +5,7 @@ import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 const TimeCumulative = artifacts.require("TimeCumulativeMock");
 
-contract(`TimeCumulative.sol; ${getTestFile(__filename)};  TimeCumulative unit tests`, async accounts => {
+contract(`TimeCumulative.sol; ${getTestFile(__filename)};  TimeCumulative unit tests`, accounts => {
     let timeCumulative: TimeCumulativeMockInstance;
 
     beforeEach(async () => {

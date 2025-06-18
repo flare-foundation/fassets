@@ -3,9 +3,9 @@ import { toBN } from '../../../../lib/utils/helpers';
 import { CheckPointableMockContract, CheckPointableMockInstance } from '../../../../typechain-truffle';
 import { getTestFile } from '../../../utils/test-helpers';
 
-const CheckPointable = artifacts.require("CheckPointableMock") as CheckPointableMockContract;
+const CheckPointable = artifacts.require("CheckPointableMock");
 
-contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit tests`, async accounts => {
+contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit tests`, accounts => {
     // contains a fresh contract for each test
     let checkPointable: CheckPointableMockInstance;
 
@@ -21,7 +21,7 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
         b[0] = await web3.eth.getBlockNumber();
         await checkPointable.mintForAtNow(accounts[1], 20);
         // Act
-        let value = await checkPointable.balanceOfAt(accounts[1], b[0]);
+        const value = await checkPointable.balanceOfAt(accounts[1], b[0]);
         // Assert
         assert.equal(value as any, 10);
     });
@@ -34,7 +34,7 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
         b[0] = await web3.eth.getBlockNumber();
         await checkPointable.burnForAtNow(accounts[2], 10);
         // Act
-        let value = await checkPointable.totalSupplyAt(b[0]);
+        const value = await checkPointable.totalSupplyAt(b[0]);
         // Assert
         assert.equal(value as any, 30);
     });
@@ -50,8 +50,8 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
         await checkPointable.burnForAtNow(accounts[2], 10);
         b[1] = await web3.eth.getBlockNumber();
         // Assert
-        let account2PastValue = await checkPointable.balanceOfAt(accounts[2], b[0]);
-        let account2Value = await checkPointable.balanceOfAt(accounts[2], b[1]);
+        const account2PastValue = await checkPointable.balanceOfAt(accounts[2], b[0]);
+        const account2Value = await checkPointable.balanceOfAt(accounts[2], b[1]);
         assert.equal(account2PastValue as any, 10);
         assert.equal(account2Value as any, 0);
     });

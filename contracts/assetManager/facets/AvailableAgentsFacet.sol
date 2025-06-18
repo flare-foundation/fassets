@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../library/AvailableAgents.sol";
-import "./AssetManagerBase.sol";
+import {AvailableAgents} from "../library/AvailableAgents.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {AvailableAgentInfo} from "../../userInterfaces/data/AvailableAgentInfo.sol";
 
 
 contract AvailableAgentsFacet is AssetManagerBase {

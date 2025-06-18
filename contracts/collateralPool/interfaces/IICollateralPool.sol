@@ -2,10 +2,10 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../userInterfaces/ICollateralPool.sol";
-import "../../flareSmartContracts/interfaces/IWNat.sol";
-import "../../assetManager/interfaces/IIAssetManager.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ICollateralPool} from "../../userInterfaces/ICollateralPool.sol";
+import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
+import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 
 /**
  * Collateral pool methods that are only callable by the asset manager or pool token.
@@ -15,7 +15,11 @@ interface IICollateralPool is ICollateralPool {
 
     function depositNat() external payable;
 
-    function payout(address _receiver, uint256 _amountWei, uint256 _agentResponsibilityWei) external;
+    function payout(
+        address _receiver,
+        uint256 _amountWei,
+        uint256 _agentResponsibilityWei
+    ) external;
 
     function destroy(address payable _recipient) external;
 
@@ -29,7 +33,9 @@ interface IICollateralPool is ICollateralPool {
 
     function debtFreeTokensOf(address _account) external view returns (uint256);
 
-    function debtLockedTokensOf(address _account) external view returns (uint256);
+    function debtLockedTokensOf(
+        address _account
+    ) external view returns (uint256);
 
     function assetManager() external view returns (IIAssetManager);
 }

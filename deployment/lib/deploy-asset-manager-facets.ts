@@ -56,7 +56,7 @@ export async function deployFacet(hre: HardhatRuntimeEnvironment, facetName: str
     const alreadyDeployed = await deployedCodeMatches(hre, artifact, contracts.get(facetName)?.address);
     if (!alreadyDeployed) {
         const contractFactory = hre.artifacts.require(facetArtifactName);
-        const instance = await waitFinalize(hre, deployer, () => contractFactory.new({ from: deployer })) as Truffle.ContractInstance;
+        const instance = await waitFinalize(hre, deployer, () => contractFactory.new({ from: deployer }));
         contracts.add(facetName, `${facetArtifactName}.sol`, instance.address);
         console.log(facetArtifactName === facetName ? `Deployed facet ${facetName}` : `Deployed facet ${facetName} from ${facetArtifactName}.sol`);
         return instance.address;

@@ -2,7 +2,7 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
-import "./IWhitelist.sol";
+import {IWhitelist} from "./IWhitelist.sol";
 
 /**
  * Agent owner management and work address management

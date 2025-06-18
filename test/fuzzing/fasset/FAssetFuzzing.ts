@@ -49,10 +49,10 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let commonContext: CommonContext;
     let context: AssetContext;
     let timeline: FuzzingTimeline;
-    let agents: FuzzingAgent[] = [];
-    let customers: FuzzingCustomer[] = [];
-    let keepers: FuzzingKeeper[] = [];
-    let poolTokenHolders: FuzzingPoolTokenHolder[] = [];
+    const agents: FuzzingAgent[] = [];
+    const customers: FuzzingCustomer[] = [];
+    const keepers: FuzzingKeeper[] = [];
+    const poolTokenHolders: FuzzingPoolTokenHolder[] = [];
     let challenger: Challenger;
     let coreVault: FuzzingCoreVault;
     let chainInfo: TestChainInfo;

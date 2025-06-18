@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../openzeppelin/security/ReentrancyGuard.sol";
-import "../library/Challenges.sol";
-import "./AssetManagerBase.sol";
+import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
+import {Challenges} from "../library/Challenges.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {IBalanceDecreasingTransaction} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 
 
 contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {

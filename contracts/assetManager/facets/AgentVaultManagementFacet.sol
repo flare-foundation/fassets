@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../interfaces/IIAssetManager.sol";
-import "../library/AgentsCreateDestroy.sol";
-import "../library/AgentsExternal.sol";
-import "./AssetManagerBase.sol";
+import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
+import {AgentsCreateDestroy} from "../library/AgentsCreateDestroy.sol";
+import {AgentsExternal} from "../library/AgentsExternal.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {IAddressValidity, IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {AgentSettings} from "../../userInterfaces/data/AgentSettings.sol";
 
 
 contract AgentVaultManagementFacet is AssetManagerBase {

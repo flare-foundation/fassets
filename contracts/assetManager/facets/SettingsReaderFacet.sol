@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../library/data/AssetManagerState.sol";
-import "../library/Globals.sol";
-import "./AssetManagerBase.sol";
+import {AssetManagerState} from "../library/data/AssetManagerState.sol";
+import {Globals} from "../library/Globals.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 
 
 contract SettingsReaderFacet is AssetManagerBase {

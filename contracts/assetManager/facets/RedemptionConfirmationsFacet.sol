@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../openzeppelin/security/ReentrancyGuard.sol";
-import "../library/RedemptionConfirmations.sol";
-import "./AssetManagerBase.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
+import {RedemptionConfirmations} from "../library/RedemptionConfirmations.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 
 
 contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {

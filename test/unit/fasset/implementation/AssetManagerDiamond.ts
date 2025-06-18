@@ -10,13 +10,13 @@ import { AssetManagerInitSettings, deployAssetManagerFacets, newAssetManager } f
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
-import { TestFtsos, TestSettingsContracts, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
+import { TestSettingsContracts, createTestCollaterals, createTestContracts, createTestSettings } from "../../../utils/test-settings";
 import { ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 
-contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond tests`, async accounts => {
+contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond tests`, accounts => {
     const governance = accounts[10];
     const executor = accounts[11];
-    let assetManagerController = accounts[11];
+    const assetManagerController = accounts[11];
     let contracts: TestSettingsContracts;
     let assetManagerInit: AssetManagerInitInstance;
     let diamondCuts: DiamondCut[];
@@ -24,7 +24,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond te
     let fAsset: FAssetInstance;
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;
-    let ftsos: TestFtsos;
     let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];
     let chain: MockChain;
@@ -42,8 +41,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond te
         ({ wNat } = contracts);
         usdc = contracts.stablecoins.USDC;
         usdt = contracts.stablecoins.USDT;
-        // create FTSOs for nat, stablecoins and asset and set some price
-        ftsos = await createTestFtsos(contracts.ftsoRegistry, ci);
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
@@ -55,11 +52,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond te
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol,
             { governanceSettings: contracts.governanceSettings, updateExecutor: executor });
         await assetManager.switchToProductionMode({ from: governance });
-        return { contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
+        return { contracts, diamondCuts, assetManagerInit, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
     }
 
     beforeEach(async () => {
-        ({ contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt } = await loadFixtureCopyVars(initialize));
+        ({ contracts, diamondCuts, assetManagerInit, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt } = await loadFixtureCopyVars(initialize));
     });
 
     describe("governed with extra timelock", () => {

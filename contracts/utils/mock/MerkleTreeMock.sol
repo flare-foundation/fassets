@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../library/MerkleTree.sol";
+import {MerkleTree} from "../library/MerkleTree.sol";
 
 contract MerkleTreeMock {
 

@@ -45,7 +45,7 @@ export function findRequiredEvent<E extends EventSelector, N extends E['name']>(
     if (event == null) {
         throw new Error(`Missing event ${name}`);
     }
-    return event!;
+    return event;
 }
 
 export function checkEventNotEmited<E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N) {

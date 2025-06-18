@@ -46,7 +46,7 @@
     "flatten-flare-sc": "yarn flatten-dependencies ../flare-smart-contracts scripts/flatten-files.txt flattened/FlareSmartContracts.sol scripts/flatten-extra-imports.txt flare-distribution-to-delegators",
     "flatten-dependencies": "env bash scripts/flatten-dependencies.sh",
     "ts-compile-watch": "tsc --watch --noEmit",
-    "eslint": "eslint \"lib/**/*.ts\" \"test/**/*.ts\"",
+    "eslint": "eslint",
     "generate-json-schema": "typescript-json-schema --noExtraProps --required --strictNullChecks",
     "generate-parameter-schema": "yarn generate-json-schema deployment/lib/asset-manager-parameters.ts AssetManagerParameters -o deployment/config/asset-manager-parameters.schema.json",
     "---------DEPLOY---SCRIPTS---HARDHAT": "",
@@ -91,6 +91,7 @@
     "@openzeppelin/contracts": "4.9.2"
   },
   "devDependencies": {
+    "@eslint/js": "^9.29.0",
     "@flarenetwork/state-connector-protocol": "1.0.0-beta.6",
     "@gnosis.pm/mock-contract": "4.0.0",
     "@nomicfoundation/hardhat-network-helpers": "1.0.11",
@@ -105,11 +106,9 @@
     "@types/chai": "4.3.5",
     "@types/mocha": "10.0.1",
     "@types/node": "16.18.39",
-    "@typescript-eslint/eslint-plugin": "6.1.0",
-    "@typescript-eslint/parser": "6.1.0",
     "chai": "4.3.7",
     "dotenv": "16.3.1",
-    "eslint": "8.45.0",
+    "eslint": "^9.29.0",
     "eth-sig-util": "3.0.1",
     "ethereumjs-util": "7.1.5",
     "glob": "9.3.0",
@@ -122,6 +121,7 @@
     "ts-node": "10.9.2",
     "typechain": "8.3.2",
     "typescript": "5.1.6",
+    "typescript-eslint": "^8.34.0",
     "typescript-json-schema": "0.59.0",
     "yarn-audit-fix": "9.3.12"
   },

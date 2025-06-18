@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../implementation/AddressUpdatable.sol";
+import {AddressUpdatable} from "../implementation/AddressUpdatable.sol";
 
 
 contract AddressUpdatableMock is AddressUpdatable {

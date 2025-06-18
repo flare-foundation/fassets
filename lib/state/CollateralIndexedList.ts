@@ -9,7 +9,7 @@ export interface CollateralTypeId {
 
 export class CollateralIndexedList<T> implements Iterable<T> {
     list: T[] = [];
-    index: Map<String, number> = new Map();
+    index: Map<string, number> = new Map();
 
     set(token: CollateralTypeId, value: T) {
         const key = collateralTokenKey(token.collateralClass, token.token);

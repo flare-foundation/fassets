@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../userInterfaces/data/AssetManagerSettings.sol";
-import "../../userInterfaces/IAgentOwnerRegistry.sol";
-import "../../fassetToken/interfaces/IIFAsset.sol";
-import "../../flareSmartContracts/interfaces/IWNat.sol";
-import "./data/AssetManagerState.sol";
+import {IIFAsset} from "../../fassetToken/interfaces/IIFAsset.sol";
+import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {IAgentOwnerRegistry} from "../../userInterfaces/IAgentOwnerRegistry.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
 
 
 // global state helpers

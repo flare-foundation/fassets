@@ -4,7 +4,7 @@ import { getTestFile } from "../../../utils/test-helpers";
 
 const FtsoManagerMock = artifacts.require('FtsoManagerMock');
 
-contract(`FtsoManagerMock.sol; ${getTestFile(__filename)}; Ftso manager mock basic tests`, async accounts => {
+contract(`FtsoManagerMock.sol; ${getTestFile(__filename)}; Ftso manager mock basic tests`, accounts => {
     let ftsoManager: FtsoManagerMockInstance;
 
     describe("create and set", () => {

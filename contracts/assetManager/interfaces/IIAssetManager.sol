@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "../../diamond/interfaces/IDiamondCut.sol";
-import "../../governance/interfaces/IGoverned.sol";
-import "../../userInterfaces/IAssetManager.sol";
-import "../../flareSmartContracts/interfaces/IWNat.sol";
-import "./IISettingsManagement.sol";
+import {IDiamondCut} from "../../diamond/interfaces/IDiamondCut.sol";
+import {IGoverned} from "../../governance/interfaces/IGoverned.sol";
+import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
+import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
+import {IISettingsManagement} from "./IISettingsManagement.sol";
+import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 /**

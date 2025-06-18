@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../flareSmartContracts/interfaces/IWNat.sol";
+import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 
 contract DistributionToDelegatorsMock {
     IWNat private wNat;

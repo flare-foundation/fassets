@@ -9,8 +9,8 @@ import { expectRevert } from "@openzeppelin/test-helpers";
 
 const TransferFeeTrackingMock = artifacts.require("TransferFeeTrackingMock");
 
-contract(`TransferFeeTracking.sol; ${getTestFile(__filename)};  Transfer fee unit tests`, async accounts => {
-    let agents = accounts.slice(10, 20);
+contract(`TransferFeeTracking.sol; ${getTestFile(__filename)};  Transfer fee unit tests`, accounts => {
+    const agents = accounts.slice(10, 20);
     let tracking: TransferFeeTrackingMockInstance;
     let agentMinted: SparseArray;
 

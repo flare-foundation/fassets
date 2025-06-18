@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../userInterfaces/IAssetManager.sol";
-import "../../userInterfaces/IFAsset.sol";
+import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
+import {IFAsset} from "../../userInterfaces/IFAsset.sol";
+import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+
 
 
 contract MaliciousMintExecutor {

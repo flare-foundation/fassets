@@ -2,11 +2,10 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
-import "@flarenetwork/flare-periphery-contracts/flare/IVPToken.sol";
-import "@flarenetwork/flare-periphery-contracts/flare/IClaimSetupManager.sol";
-import "@flarenetwork/flare-periphery-contracts/flare/IDistributionToDelegators.sol";
-import "@flarenetwork/flare-periphery-contracts/flare/IRewardManager.sol";
-import "./ICollateralPool.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IVPToken} from "@flarenetwork/flare-periphery-contracts/flare/IVPToken.sol";
+import {ICollateralPool} from "./ICollateralPool.sol";
+
 
 interface IAgentVault {
     /**

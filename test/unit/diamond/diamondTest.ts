@@ -12,8 +12,8 @@ const DiamondLoupeFacet = artifacts.require('DiamondLoupeFacet');
 const Test1Facet = artifacts.require('Test1Facet');
 const Test2Facet = artifacts.require('Test2Facet');
 
-contract('DiamondTest', async function (accounts) {
-    let governance = accounts[0];
+contract('DiamondTest', function (accounts) {
+    const governance = accounts[0];
     let contracts: TestSettingsContracts;
     let diamondAddress: string;
     let diamondCutFacet: DiamondCutFacetInstance;
@@ -84,7 +84,7 @@ contract('DiamondTest', async function (accounts) {
     it('should add test1 functions', async () => {
         const test1FacetCode = await createTest1Facet();
         const selectors = DiamondSelectors.fromABI(test1FacetCode).remove(['supportsInterface(bytes4)']);
-        let result = await diamondLoupeFacet.facetFunctionSelectors(test1FacetCode.address);
+        const result = await diamondLoupeFacet.facetFunctionSelectors(test1FacetCode.address);
         assert.sameMembers(result, selectors.selectors);
     });
 
@@ -106,7 +106,7 @@ contract('DiamondTest', async function (accounts) {
                 functionSelectors: selectors.selectors
             }],
             ZERO_ADDRESS, '0x', { gas: 800000 });
-        let result = await diamondLoupeFacet.facetFunctionSelectors(testFacetAddress);
+        const result = await diamondLoupeFacet.facetFunctionSelectors(testFacetAddress);
         assert.sameMembers(result, DiamondSelectors.fromABI(test1Facet).selectors);
     });
 
@@ -126,7 +126,7 @@ contract('DiamondTest', async function (accounts) {
     it('should add test2 functions', async () => {
         const test2FacetCode = await createTest2Facet();
         const selectors = DiamondSelectors.fromABI(test2FacetCode);
-        let result = await diamondLoupeFacet.facetFunctionSelectors(test2FacetCode.address);
+        const result = await diamondLoupeFacet.facetFunctionSelectors(test2FacetCode.address);
         assert.sameMembers(result, selectors.selectors);
     });
 
@@ -143,7 +143,7 @@ contract('DiamondTest', async function (accounts) {
                 functionSelectors: selectors.selectors
             }],
             ZERO_ADDRESS, '0x', { gas: 800000 });
-        let result = await diamondLoupeFacet.facetFunctionSelectors(test2FacetCode.address);
+        const result = await diamondLoupeFacet.facetFunctionSelectors(test2FacetCode.address);
         assert.sameMembers(result, DiamondSelectors.fromABI(test2Facet).restrict(functionsToKeep).selectors);
     });
 
@@ -160,7 +160,7 @@ contract('DiamondTest', async function (accounts) {
                 functionSelectors: selectors.selectors
             }],
             ZERO_ADDRESS, '0x', { gas: 800000 });
-        let result = await diamondLoupeFacet.facetFunctionSelectors(test1FacetCode.address);
+        const result = await diamondLoupeFacet.facetFunctionSelectors(test1FacetCode.address);
         assert.sameMembers(result, DiamondSelectors.fromABI(test1Facet).restrict(functionsToKeep).selectors);
     });
 
@@ -181,7 +181,7 @@ contract('DiamondTest', async function (accounts) {
         const test2FacetCode = await createTest2Facet();
         await removeMostFunctionsAndFacets();
         // check
-        let facets = await diamondLoupeFacet.facets();
+        const facets = await diamondLoupeFacet.facets();
         assert.equal(facets.length, 2);
         const cutFacet = facets.find(f => f.facetAddress === diamondCutAddr);
         assert.isDefined(cutFacet);
@@ -301,7 +301,7 @@ contract('DiamondTest', async function (accounts) {
     });
 
     it('should revert if no function selectors are passed to diamondCut', async () => {
-        let res = diamondCutFacet.diamondCut(
+        const res = diamondCutFacet.diamondCut(
             [{
                 facetAddress: ZERO_ADDRESS,
                 action: FacetCutAction.Remove,
@@ -314,7 +314,7 @@ contract('DiamondTest', async function (accounts) {
     it('should revert if functions are to be added to address zero', async () => {
         const test1FacetCode = await Test1Facet.new();
         const selectors = DiamondSelectors.fromABI(test1FacetCode).remove(['supportsInterface(bytes4)']);
-        let res = diamondCutFacet.diamondCut(
+        const res = diamondCutFacet.diamondCut(
             [{
                 facetAddress: ZERO_ADDRESS,
                 action: FacetCutAction.Add,
@@ -327,7 +327,7 @@ contract('DiamondTest', async function (accounts) {
     it('should revert if functions that already exist are added to diamond', async () => {
         const test1FacetCode = await createTest1Facet();
         const selectors = DiamondSelectors.fromABI(test1FacetCode).remove(['supportsInterface(bytes4)']);
-        let result = diamondCutFacet.diamondCut(
+        const result = diamondCutFacet.diamondCut(
             [{
                 facetAddress: test1FacetCode.address,
                 action: FacetCutAction.Add,
@@ -340,7 +340,7 @@ contract('DiamondTest', async function (accounts) {
     it('should revert if facet address is zero', async () => {
         const test1FacetCode = await createTest1Facet();
         const selectors = DiamondSelectors.fromABI(test1FacetCode).restrict(['supportsInterface(bytes4)']);
-        let result = diamondCutFacet.diamondCut(
+        const result = diamondCutFacet.diamondCut(
             [{
                 facetAddress: ZERO_ADDRESS,
                 action: FacetCutAction.Replace,
@@ -353,7 +353,7 @@ contract('DiamondTest', async function (accounts) {
     it('should revert if facet function is to be replaced with the same function from the same facet', async () => {
         const test1FacetCode = await createTest1Facet();
         const selectors = DiamondSelectors.fromABI(test1FacetCode).remove(['supportsInterface(bytes4)']);
-        let result = diamondCutFacet.diamondCut(
+        const result = diamondCutFacet.diamondCut(
             [{
                 facetAddress: test1FacetCode.address,
                 action: FacetCutAction.Replace,
@@ -366,7 +366,7 @@ contract('DiamondTest', async function (accounts) {
     it('should revert if function to be replaced does not exist', async () => {
         const test1FacetCode = await createTest1Facet();
         const selectors = DiamondSelectors.fromABI(test1FacetCode).remove(['supportsInterface(bytes4)']);
-        let result = diamondCutFacet.diamondCut(
+        const result = diamondCutFacet.diamondCut(
             [{
                 facetAddress: test1FacetCode.address,
                 action: FacetCutAction.Replace,
@@ -381,7 +381,7 @@ contract('DiamondTest', async function (accounts) {
         const test1FacetCode = await createTest1Facet();
         const functionsToKeep = ['test1Func1()', 'test1Func5()', 'test1Func6()', 'test1Func19()', 'test1Func20()'];
         const selectors = DiamondSelectors.fromABI(test1FacetCode).remove(functionsToKeep);
-        let result = diamondCutFacet.diamondCut(
+        const result = diamondCutFacet.diamondCut(
             [{
                 facetAddress: test1FacetCode.address,
                 action: FacetCutAction.Remove,
@@ -395,7 +395,7 @@ contract('DiamondTest', async function (accounts) {
         const test1FacetCode = await createTest1Facet();
         const functionsToKeep = ['test1Func1()', 'test1Func5()', 'test1Func6()', 'test1Func19()', 'test1Func20()'];
         const selectors = DiamondSelectors.fromABI(test1FacetCode).remove(functionsToKeep);
-        let result = diamondCutFacet.diamondCut(
+        const result = diamondCutFacet.diamondCut(
             [{
                 facetAddress: ZERO_ADDRESS,
                 action: FacetCutAction.Remove,
@@ -406,7 +406,7 @@ contract('DiamondTest', async function (accounts) {
     });
 
     it('should revert if address to have functions replaced has no code', async () => {
-        let result = diamondCutFacet.diamondCut(
+        const result = diamondCutFacet.diamondCut(
             [{
                 // Address with no code
                 facetAddress: accounts[0],
@@ -422,7 +422,7 @@ contract('DiamondTest', async function (accounts) {
         const test1Facet = await Test1Facet.at(diamondCutAddr);
         const selectors = DiamondSelectors.fromABI(test1Facet).restrict(['supportsInterface(bytes4)']);
         const testFacetAddress = test1FacetCode.address;
-        let result = diamondCutFacet.diamondCut(
+        const result = diamondCutFacet.diamondCut(
             [{
                 facetAddress: ZERO_ADDRESS,
                 action: FacetCutAction.Remove,
@@ -445,7 +445,7 @@ contract('DiamondTest', async function (accounts) {
             }],
             ZERO_ADDRESS, '0x', { gas: 800000 });
         // Try to remove functions defined directly in the diamond
-        let result = diamondCutFacet.diamondCut(
+        const result = diamondCutFacet.diamondCut(
             [{
                 facetAddress: ZERO_ADDRESS,
                 action: FacetCutAction.Remove,
@@ -468,7 +468,7 @@ contract('DiamondTest', async function (accounts) {
             }],
             ZERO_ADDRESS, '0x', { gas: 800000 });
         // Try to replace functions defined directly in the diamond
-        let result = diamondCutFacet.diamondCut(
+        const result = diamondCutFacet.diamondCut(
             [{
                 facetAddress: diamondAddress,
                 action: FacetCutAction.Replace,

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../library/StateUpdater.sol";
-import "./AssetManagerBase.sol";
+import {StateUpdater} from "../library/StateUpdater.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 
 
 contract SystemStateManagementFacet is AssetManagerBase {

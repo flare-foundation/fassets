@@ -2,9 +2,9 @@ import { expectRevert } from "@openzeppelin/test-helpers";
 import { CheckPointHistoryMockContract, CheckPointHistoryMockInstance } from "../../../../typechain-truffle";
 import { getTestFile } from "../../../utils/test-helpers";
 
-const CheckPointHistoryMock = artifacts.require("CheckPointHistoryMock") as CheckPointHistoryMockContract;
+const CheckPointHistoryMock = artifacts.require("CheckPointHistoryMock");
 
-contract(`CheckPointHistory.sol; ${getTestFile(__filename)}`, async accounts => {
+contract(`CheckPointHistory.sol; ${getTestFile(__filename)}`, accounts => {
     // a fresh contract for each test
     let checkPointHistoryMock: CheckPointHistoryMockInstance;
 
@@ -18,7 +18,7 @@ contract(`CheckPointHistory.sol; ${getTestFile(__filename)}`, async accounts => 
         // Act
         await checkPointHistoryMock.writeValue(10);
         // Assert
-        let value = await checkPointHistoryMock.valueAtNow();
+        const value = await checkPointHistoryMock.valueAtNow();
         assert.equal(value as any, 10);
     });
 
@@ -33,10 +33,10 @@ contract(`CheckPointHistory.sol; ${getTestFile(__filename)}`, async accounts => 
         await checkPointHistoryMock.writeValue(5);
         b[3] = await web3.eth.getBlockNumber();
         // Act
-        let balanceAtBlock0 = await checkPointHistoryMock.valueAt(b[0]);
-        let balanceAtBlock1 = await checkPointHistoryMock.valueAt(b[1]);
-        let balanceAtBlock2 = await checkPointHistoryMock.valueAt(b[2]);
-        let balanceAtBlock3 = await checkPointHistoryMock.valueAt(b[3]);
+        const balanceAtBlock0 = await checkPointHistoryMock.valueAt(b[0]);
+        const balanceAtBlock1 = await checkPointHistoryMock.valueAt(b[1]);
+        const balanceAtBlock2 = await checkPointHistoryMock.valueAt(b[2]);
+        const balanceAtBlock3 = await checkPointHistoryMock.valueAt(b[3]);
         // Assert
         assert.equal(balanceAtBlock0 as any, 0);
         assert.equal(balanceAtBlock1 as any, 50);

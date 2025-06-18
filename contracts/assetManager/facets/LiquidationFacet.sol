@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../openzeppelin/security/ReentrancyGuard.sol";
-import "../library/Liquidation.sol";
-import "./AssetManagerBase.sol";
+import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
+import {Liquidation} from "../library/Liquidation.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {Agent} from "../library/data/Agent.sol";
 
 
 contract LiquidationFacet is AssetManagerBase, ReentrancyGuard {

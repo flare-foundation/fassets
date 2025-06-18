@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../userInterfaces/IWhitelist.sol";
-import "../library/data/AssetManagerState.sol";
-import "../library/Globals.sol";
-import "../library/Agents.sol";
+import {IWhitelist} from "../../userInterfaces/IWhitelist.sol";
+import {AssetManagerState} from "../library/data/AssetManagerState.sol";
+import {Globals} from "../library/Globals.sol";
+import {Agents} from "../library/Agents.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 
 
 abstract contract AssetManagerBase {

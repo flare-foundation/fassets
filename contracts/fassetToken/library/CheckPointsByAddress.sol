@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "./CheckPointHistory.sol";
+import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import {CheckPointHistory} from "./CheckPointHistory.sol";
 
 
 /**

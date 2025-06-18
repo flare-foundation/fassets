@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../userInterfaces/IAssetManager.sol";
+import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
 
 contract MaliciousDistributionToDelegatorsMock {
     uint256 public amount = 0;

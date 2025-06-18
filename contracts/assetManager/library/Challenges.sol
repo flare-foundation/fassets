@@ -1,17 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
-import "../../utils/library/SafePct.sol";
-import "./data/AssetManagerState.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
-import "./Conversion.sol";
-import "./Agents.sol";
-import "./Liquidation.sol";
-import "./AgentCollateral.sol";
-import "./TransactionAttestation.sol";
-import "./UnderlyingBalance.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IFdcVerification} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {Conversion} from "./Conversion.sol";
+import {Agents} from "./Agents.sol";
+import {Liquidation} from "./Liquidation.sol";
+import {AgentCollateral} from "./AgentCollateral.sol";
+import {TransactionAttestation} from "./TransactionAttestation.sol";
+import {UnderlyingBalance} from "./UnderlyingBalance.sol";
+import {PaymentConfirmations} from "./data/PaymentConfirmations.sol";
+import {IFdcVerification, IBalanceDecreasingTransaction} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {PaymentReference} from "./data/PaymentReference.sol";
+import {Agent} from "./data/Agent.sol";
+import {Redemption} from "./data/Redemption.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {Globals} from "./Globals.sol";
+import {Collateral} from "./data/Collateral.sol";
 
 
 library Challenges {

@@ -53,7 +53,7 @@ const FAssetProxy = artifacts.require('FAssetProxy');
 const RewardManager = artifacts.require("RewardManagerMock");
 const IRewardManager = artifacts.require("IRewardManager");
 
-contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic tests`, async accounts => {
+contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic tests`, accounts => {
     let wNat: ERC20MockInstance;
     let assetManager: AssetManagerMockInstance;
     let fAsset: FAssetInstance;
@@ -1610,45 +1610,45 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
 
         it("random address shouldn't be able to mint collateral pool tokens", async () => {
-            let res = collateralPoolToken.mint(accounts[12], ETH(10000), { from: accounts[5] });
+            const res = collateralPoolToken.mint(accounts[12], ETH(10000), { from: accounts[5] });
             await expectRevert(res, "only collateral pool");
         });
 
         it("random address shouldn't be able to burn collateral pool tokens", async () => {
-            let res = collateralPoolToken.burn(accounts[12], ETH(1), false, { from: accounts[5] });
+            const res = collateralPoolToken.burn(accounts[12], ETH(1), false, { from: accounts[5] });
             await expectRevert(res, "only collateral pool");
         });
 
         it("random address shouldn't be able to destroy collateral pool token", async () => {
-            let res = collateralPoolToken.destroy(accounts[12], { from: accounts[5] });
+            const res = collateralPoolToken.destroy(accounts[12], { from: accounts[5] });
             await expectRevert(res, "only collateral pool");
         });
 
         it("random address shouldn't be able to deposit fasset fees", async () => {
-            let res = collateralPool.fAssetFeeDeposited(ETH(1), { from: accounts[5] });
+            const res = collateralPool.fAssetFeeDeposited(ETH(1), { from: accounts[5] });
             await expectRevert(res, "only asset manager");
         });
 
         it("random address shouldn't be able to destory collateral pool", async () => {
-            let res = collateralPool.destroy(accounts[5], { from: accounts[5] });
+            const res = collateralPool.destroy(accounts[5], { from: accounts[5] });
             await expectRevert(res, "only asset manager");
         });
 
         it("random address shouldn't be able to payout", async () => {
-            let res = collateralPool.payout(accounts[5], toWei(1), toWei(1), { from: accounts[5] });
+            const res = collateralPool.payout(accounts[5], toWei(1), toWei(1), { from: accounts[5] });
             await expectRevert(res, "only asset manager");
         });
 
         it("random address shouldn't be able to upgrade wNat contract", async () => {
             const newWNat: ERC20MockInstance = await ERC20Mock.new("new wnat", "WNat");
-            let res = collateralPool.upgradeWNatContract(newWNat.address, { from: accounts[5] });
+            const res = collateralPool.upgradeWNatContract(newWNat.address, { from: accounts[5] });
             await expectRevert(res, "only asset manager");
         });
 
         it("random address shouldn't be able to claim rewards from reward manager", async () => {
             const distributionToDelegators: DistributionToDelegatorsMockInstance = await DistributionToDelegatorsMock.new(wNat.address);
             await wNat.mintAmount(distributionToDelegators.address, ETH(1));
-            let res = collateralPool.claimDelegationRewards(distributionToDelegators.address, 0, [], { from: accounts[5] });
+            const res = collateralPool.claimDelegationRewards(distributionToDelegators.address, 0, [], { from: accounts[5] });
             await expectRevert(res, "only agent");
         });
 

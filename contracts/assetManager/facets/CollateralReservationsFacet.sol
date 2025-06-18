@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../openzeppelin/security/ReentrancyGuard.sol";
-import "../library/CollateralReservations.sol";
-import "./AssetManagerBase.sol";
-
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
+import {CollateralReservations} from "../library/CollateralReservations.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {IReferencedPaymentNonexistence, IConfirmedBlockHeightExists} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
 
 contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
     using SafeCast for uint256;

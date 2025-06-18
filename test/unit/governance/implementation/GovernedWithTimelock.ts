@@ -10,7 +10,7 @@ const GovernedWithTimelockMock = artifacts.require("GovernedWithTimelockMock");
 
 const GOVERNANCE_SETTINGS_ADDRESS = "0x1000000000000000000000000000000000000007";
 
-contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTimelock unit tests`, async accounts => {
+contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTimelock unit tests`, accounts => {
     const initialGovernance = accounts[10];
     const governance = accounts[11];
     const executor = accounts[12];

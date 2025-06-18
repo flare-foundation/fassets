@@ -12,7 +12,7 @@ import { Redeemer } from "../utils/Redeemer";
 import { Liquidator } from "../utils/Liquidator";
 import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 
-contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations - emergency pause`, async accounts => {
+contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations - emergency pause`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];

@@ -1,15 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../../utils/library/SafeMath64.sol";
-import "../../utils/library/SafePct.sol";
-import "./data/AssetManagerState.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
-import "./Conversion.sol";
-import "./AgentCollateral.sol";
-import "./Liquidation.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeMath64} from "../../utils/library/SafeMath64.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {Conversion} from "./Conversion.sol";
+import {AgentCollateral} from "./AgentCollateral.sol";
+import {Liquidation} from "./Liquidation.sol";
+import {Collateral} from "./data/Collateral.sol";
+import {Agent} from "./data/Agent.sol";
+import {Agents} from "./Agents.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {IWNat} from "../../assetManager/../flareSmartContracts/interfaces/IWNat.sol";
+import {Globals} from "./Globals.sol";
+import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
+import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
+import {Transfers} from "../../utils/library/Transfers.sol";
 
 library AgentsExternal {
     using SafePct for uint256;

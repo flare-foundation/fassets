@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../library/Agents.sol";
-import "./AssetManagerBase.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {Agents} from "../library/Agents.sol";
+import {Agent} from "../../assetManager/library/data/Agent.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
 
 
 contract AgentAlwaysAllowedMintersFacet is AssetManagerBase {

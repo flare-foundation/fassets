@@ -175,7 +175,7 @@ export class FuzzingTimeline {
                 break;
             }
             // mine next block unless skip of `seconds` is reached
-            let nextBlockSkip = skippedTime + this.chain.nextBlockTimestamp() - this.chain.currentTimestamp();
+            const nextBlockSkip = skippedTime + this.chain.nextBlockTimestamp() - this.chain.currentTimestamp();
             if (nextBlockSkip <= seconds) {
                 if (skipUnderlyingBlocks) {
                     this.chain.skipTimeTo(this.chain.lastBlockTimestamp() + seconds);

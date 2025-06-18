@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../diamond/implementation/Diamond.sol";
-import "../../diamond/library/LibDiamond.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
+import {Diamond} from "../../diamond/implementation/Diamond.sol";
+import {LibDiamond} from "../../diamond/library/LibDiamond.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {IDiamondCut} from "../../diamond/interfaces/IDiamondCut.sol";
 
 /**
  * The contract that can mint and burn f-assets while managing collateral and backing funds.

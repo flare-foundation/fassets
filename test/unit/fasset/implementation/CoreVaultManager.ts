@@ -380,7 +380,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         { from: governance }
       );
 
-      let unusedHashes = await coreVaultManager.getUnusedPreimageHashes();
+      const unusedHashes = await coreVaultManager.getUnusedPreimageHashes();
       assertWeb3Equal(unusedHashes.length, 4);
       assertWeb3DeepEqual(unusedHashes, [
         web3.utils.keccak256("hash1"),
@@ -1131,7 +1131,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
 
         const currentTimestamp = await time.latest();
         const escrowEndTimestamp1 = currentTimestamp.addn(DAY);
-        let cancelAfterTs1 = escrowEndTimestamp1.subn(escrowEndTimestamp1.modn(DAY)).addn(escrowTimeSeconds);
+        const cancelAfterTs1 = escrowEndTimestamp1.subn(escrowEndTimestamp1.modn(DAY)).addn(escrowTimeSeconds);
         const cancelAfterTs2 = cancelAfterTs1.addn(DAY);
 
         // create two escrows
@@ -1235,7 +1235,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         });
         const currentTimestamp = await time.latest();
         const escrowEndTimestamp1 = currentTimestamp.addn(DAY);
-        let cancelAfterTs1 = escrowEndTimestamp1.subn(escrowEndTimestamp1.modn(DAY)).addn(escrowTimeSeconds);
+        const cancelAfterTs1 = escrowEndTimestamp1.subn(escrowEndTimestamp1.modn(DAY)).addn(escrowTimeSeconds);
         expectEvent(tx, "EscrowInstructions", {
           sequence: "2",
           preimageHash: preimageHash1,
@@ -1313,7 +1313,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         // first escrow expires
         const currentTimestamp = await time.latest();
         const escrowEndTimestamp1 = currentTimestamp.addn(DAY);
-        let cancelAfterTs1 = escrowEndTimestamp1.subn(escrowEndTimestamp1.modn(DAY)).addn(escrowTimeSeconds);
+        const cancelAfterTs1 = escrowEndTimestamp1.subn(escrowEndTimestamp1.modn(DAY)).addn(escrowTimeSeconds);
         await time.increaseTo(cancelAfterTs1.addn(1));
 
         // trigger instructions again
@@ -1378,7 +1378,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
 
         const currentTimestamp = await time.latest();
         const escrowEndTimestamp = currentTimestamp.addn(DAY);
-        let cancelAfterTs = escrowEndTimestamp.subn(escrowEndTimestamp.modn(DAY)).addn(escrowTimeSeconds);
+        const cancelAfterTs = escrowEndTimestamp.subn(escrowEndTimestamp.modn(DAY)).addn(escrowTimeSeconds);
         for (let i = 0; i < 50; i++) {
           const destinationAddress = web3.utils.keccak256("destinationAddress" + i);
           const amount = "100";
@@ -1511,7 +1511,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         // 200 should be released which is not enough to cover the requested amount
         const currentTimestamp = await time.latest();
         const escrowEndTimestamp1 = currentTimestamp.addn(DAY);
-        let cancelAfterTs1 = escrowEndTimestamp1.subn(escrowEndTimestamp1.modn(DAY)).addn(escrowTimeSeconds);
+        const cancelAfterTs1 = escrowEndTimestamp1.subn(escrowEndTimestamp1.modn(DAY)).addn(escrowTimeSeconds);
         await time.increaseTo(cancelAfterTs1.addn(1));
 
         // trigger instructions
@@ -1654,7 +1654,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
       it("should get escrows", async () => {
         assertWeb3Equal(await coreVaultManager.getEscrowsCount(), 0);
 
-        let escrows = await createEscrows();
+        const escrows = await createEscrows();
         assertWeb3DeepEqual(await coreVaultManager.getUnprocessedEscrows(), escrows.map(e => Object.values(e)));
 
         // move to the expiry of the first escrow
@@ -1665,7 +1665,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         assertWeb3Equal(await coreVaultManager.getEscrowsCount(), 2);
         const currentTimestamp = await time.latest();
         const escrowEndTimestamp1 = currentTimestamp.addn(DAY);
-        let cancelAfterTs1 = escrowEndTimestamp1.subn(escrowEndTimestamp1.modn(DAY)).addn(escrowTimeSeconds);
+        const cancelAfterTs1 = escrowEndTimestamp1.subn(escrowEndTimestamp1.modn(DAY)).addn(escrowTimeSeconds);
 
         // set escrow as finished
         await coreVaultManager.setEscrowsFinished([preimageHash2], { from: governance });
@@ -1859,7 +1859,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         assertWeb3Equal(await coreVaultManager.escrowedFunds(), 2 * 200);
         const currentTimestamp = await time.latest();
         const escrowEndTimestamp1 = currentTimestamp.addn(DAY);
-        let cancelAfterTs1 = escrowEndTimestamp1.subn(escrowEndTimestamp1.modn(DAY)).addn(escrowTimeSeconds);
+        const cancelAfterTs1 = escrowEndTimestamp1.subn(escrowEndTimestamp1.modn(DAY)).addn(escrowTimeSeconds);
         const cancelAfterTs2 = cancelAfterTs1.addn(DAY);
         expectEvent(tx, "EscrowInstructions", {
           sequence: "0",
@@ -1891,7 +1891,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         const currentTimestamp1 = await time.latest();
         let lastUnfinishedExpiry = cancelAfterTs2;
         const escrowEndTimestamp3 = lastUnfinishedExpiry.addn(DAY);
-        let cancelAfterTs3 = escrowEndTimestamp3.subn(escrowEndTimestamp3.modn(DAY)).addn(escrowTimeSeconds);
+        const cancelAfterTs3 = escrowEndTimestamp3.subn(escrowEndTimestamp3.modn(DAY)).addn(escrowTimeSeconds);
         expectEvent(tx1, "EscrowInstructions", {
           sequence: "2",
           preimageHash: preimageHash3,
@@ -1915,7 +1915,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         const tx2 = await coreVaultManager.triggerInstructions({ from: accounts[1] });
         lastUnfinishedExpiry = cancelAfterTs3;
         const escrowEndTimestamp4 = lastUnfinishedExpiry.addn(DAY);
-        let cancelAfterTs4 = escrowEndTimestamp4.subn(escrowEndTimestamp4.modn(DAY)).addn(escrowTimeSeconds);
+        const cancelAfterTs4 = escrowEndTimestamp4.subn(escrowEndTimestamp4.modn(DAY)).addn(escrowTimeSeconds);
         expectEvent(tx2, "EscrowInstructions", {
           sequence: "3",
           preimageHash: preimageHash4,

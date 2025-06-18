@@ -13,8 +13,8 @@ export class TransactionInterceptor {
     logger?: ILogger;
     eventHandlers: Map<string, EventHandler> = new Map();
     gasUsage: Map<string, Statistics> = new Map();
-    errorCounts: Map<String, number> = new Map();
-    eventCounts: Map<String, number> = new Map();
+    errorCounts: Map<string, number> = new Map();
+    eventCounts: Map<string, number> = new Map();
     unexpectedErrorCount: number = 0;
 
     log(text: string) {
@@ -172,7 +172,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
                 this.log(`INTERCEPT: item ${name} in contract ${this.eventDecoder.formatAddress(contract.address)} is not a method`);
                 continue;
             }
-            const subkeys = tryCatch(() => Object.keys(method as any)) ?? [];
+            const subkeys = tryCatch(() => Object.keys(method)) ?? [];
             const validMethod = (subkeys.includes('call') && subkeys.includes('sendTransaction') && subkeys.includes('estimateGas')) || (item.name === 'sendTransaction');
             if (!validMethod) {
                 this.log(`INTERCEPT: invalid method ${name} in contract ${this.eventDecoder.formatAddress(contract.address)}`);
@@ -183,7 +183,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             contractObject[name] = (...args: unknown[]) => this.callMethod(contract, name, method, args, item);
             // copy subkeys from method (call, sendTransaction, estimateGas)
             for (const key of subkeys) {
-                contractObject[name][key] = (method as any)[key];
+                contractObject[name][key] = (method)[key];
             }
         }
     }

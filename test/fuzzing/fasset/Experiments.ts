@@ -38,7 +38,7 @@ async function waitNewNonce(address: string) {
     }
 }
 
-contract(`Experiments; ${getTestFile(__filename)}`, async accounts => {
+contract(`Experiments; ${getTestFile(__filename)}`, accounts => {
     it("try load new account", async () => {
         const privateKey = '0x3c5237a289ca14d74a34778d757a437821dde826593cefcbab5d8bf23b8932c1';
         const account = web3.eth.accounts.privateKeyToAccount(privateKey);

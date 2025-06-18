@@ -1,7 +1,7 @@
-import { UnderlyingWithdrawalAnnounced, FullLiquidationStarted, RedemptionRequested, RedemptionPaymentFailed, RedemptionDefault } from "../../../typechain-truffle/IIAssetManager";
-import { checkEventNotEmited, eventArgs, findRequiredEvent, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { EventArgs } from "../../../lib/utils/events/common";
-import { BNish, MAX_BIPS, toBN, toBNExp } from "../../../lib/utils/helpers";
+import { checkEventNotEmited, eventArgs, findRequiredEvent, requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { BNish, MAX_BIPS, toBN } from "../../../lib/utils/helpers";
+import { FullLiquidationStarted, RedemptionDefault, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/IIAssetManager";
 import { Agent } from "./Agent";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 
@@ -15,7 +15,7 @@ export class Challenger extends AssetContextClient {
         super(context);
     }
 
-    static async create(ctx: AssetContext, address: string) {
+    static create(ctx: AssetContext, address: string) {
         // creater object
         return new Challenger(ctx, address);
     }

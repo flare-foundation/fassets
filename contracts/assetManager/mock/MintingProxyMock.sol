@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../../userInterfaces/IAssetManager.sol";
-import "../../userInterfaces/IFAsset.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
+import {IFAsset} from "../../userInterfaces/IFAsset.sol";
+import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {CollateralReservationInfo} from "../../userInterfaces/data/CollateralReservationInfo.sol";
+import {AgentInfo} from "../../userInterfaces/data/AgentInfo.sol";
 
 
 contract MintingProxyMock {

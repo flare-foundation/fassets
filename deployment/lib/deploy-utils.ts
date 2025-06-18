@@ -69,8 +69,8 @@ export async function waitFinalize<T>(hre: HardhatRuntimeEnvironment, address: s
     if (hre.network.name === 'local' || hre.network.name === 'hardhat') {
         return await func();
     }
-    let nonce = await hre.web3.eth.getTransactionCount(address);
-    let res = await func();
+    const nonce = await hre.web3.eth.getTransactionCount(address);
+    const res = await func();
     while (await hre.web3.eth.getTransactionCount(address) <= nonce) {
         await sleep(options.sleepMS);
     }

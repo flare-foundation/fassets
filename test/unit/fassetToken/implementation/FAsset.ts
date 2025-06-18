@@ -11,7 +11,7 @@ const FAsset = artifacts.require('FAsset');
 const FAssetProxy = artifacts.require('FAssetProxy');
 const MockContract = artifacts.require('MockContract');
 
-contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async accounts => {
+contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, accounts => {
     const governance = accounts[10];
     let fAsset: FAssetInstance;
     let assetManager: string;
@@ -93,7 +93,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
         it('only asset manager should be able to mint FAssets', async function () {
             await fAsset.setAssetManager(assetManager, { from: governance });
             const amount = 100;
-            let res = fAsset.mint(accounts[1], amount,{ from: accounts[5] });
+            const res = fAsset.mint(accounts[1], amount,{ from: accounts[5] });
             await expectRevert(res, "only asset manager");
         });
 
@@ -102,7 +102,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             const mint_amount = 100;
             const burn_amount = 20;
             await fAsset.mint(accounts[1], mint_amount,{ from: assetManager });
-            let res = fAsset.burn(accounts[1], burn_amount,{ from: accounts[5] } );
+            const res = fAsset.burn(accounts[1], burn_amount,{ from: accounts[5] } );
             await expectRevert(res, "only asset manager");
         });
 

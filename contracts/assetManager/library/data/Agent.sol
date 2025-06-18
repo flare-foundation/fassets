@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "../../../collateralPool/interfaces/IICollateralPool.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {IICollateralPool} from "../../../collateralPool/interfaces/IICollateralPool.sol";
 
 
 library Agent {

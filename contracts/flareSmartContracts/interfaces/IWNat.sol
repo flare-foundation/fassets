@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "@flarenetwork/flare-periphery-contracts/flare/IVPToken.sol";
-
+import {IVPToken} from "@flarenetwork/flare-periphery-contracts/flare/IVPToken.sol";
 
 /**
  * @title Wrapped Native token

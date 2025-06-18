@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../utils/library/SafePct.sol";
-import "./Globals.sol";
-import "./SettingsValidators.sol";
-import "./data/TransferFeeTracking.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
+import {Globals} from "./Globals.sol";
+import {SettingsValidators} from "./SettingsValidators.sol";
+import {TransferFeeTracking} from "./data/TransferFeeTracking.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 
 library SettingsInitializer {
     using SafePct for *;

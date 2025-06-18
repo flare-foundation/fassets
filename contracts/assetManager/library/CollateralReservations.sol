@@ -1,19 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
-import "../../agentVault/interfaces/IIAgentVault.sol";
-import "../../utils/library/SafeMath64.sol";
-import "../../utils/library/SafePct.sol";
-import "../../utils/library/Transfers.sol";
-import "../../utils/library/MerkleTree.sol";
-import "./data/AssetManagerState.sol";
-import "./Conversion.sol";
-import "./Agents.sol";
-import "./Minting.sol";
-import "./AgentCollateral.sol";
-import "./TransactionAttestation.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IIAgentVault} from "../../agentVault/interfaces/IIAgentVault.sol";
+import {SafeMath64} from "../../utils/library/SafeMath64.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
+import {Transfers} from "../../utils/library/Transfers.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {Conversion} from "./Conversion.sol";
+import {Agents} from "./Agents.sol";
+import {Minting} from "./Minting.sol";
+import {AgentCollateral} from "./AgentCollateral.sol";
+import {TransactionAttestation} from "./TransactionAttestation.sol";
+import {MerkleTree} from "../../utils/library/MerkleTree.sol";
+import {Collateral} from "./data/Collateral.sol";
+import {Agent} from "./data/Agent.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {IReferencedPaymentNonexistence, IConfirmedBlockHeightExists} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {CollateralReservation} from "./data/CollateralReservation.sol";
+import {PaymentReference} from "./data/PaymentReference.sol";
+import {Globals} from "./Globals.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+
 
 
 library CollateralReservations {

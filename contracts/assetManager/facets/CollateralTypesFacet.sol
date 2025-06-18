@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../library/CollateralTypes.sol";
-import "./AssetManagerBase.sol";
+import {CollateralTypes} from "../library/CollateralTypes.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 contract CollateralTypesFacet is AssetManagerBase {

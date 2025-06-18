@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@flarenetwork/flare-periphery-contracts/flare/IFtsoManager.sol";
+import {IFtsoManager} from "@flarenetwork/flare-periphery-contracts/flare/IFtsoManager.sol";
+import {IIFtso} from "@flarenetwork/flare-periphery-contracts/flare/ftso/interface/IIFtso.sol";
 
 
 contract FtsoManagerMock is IFtsoManager {

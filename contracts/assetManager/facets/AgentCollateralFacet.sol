@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../openzeppelin/security/ReentrancyGuard.sol";
-import "../library/AgentsExternal.sol";
-import "./AssetManagerBase.sol";
+import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
+import {AgentsExternal} from "../library/AgentsExternal.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Collateral} from "../library/data/Collateral.sol";
 
 
 contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
