@@ -831,6 +831,7 @@ contract CoreVaultManager is
      * Unused. just to present to satisfy UUPSUpgradeable requirement.
      * The real check is in onlyGovernance modifier on upgradeTo and upgradeToAndCall.
      */
+    // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override {}
 
     /**

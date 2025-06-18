@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable no-empty-blocks
 pragma solidity 0.8.23;
 
 import {IFtsoManager} from "@flarenetwork/flare-periphery-contracts/flare/IFtsoManager.sol";

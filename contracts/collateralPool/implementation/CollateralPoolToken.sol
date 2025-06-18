@@ -125,7 +125,7 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20, UUPSUpgradeable {
     )
         external
         onlyCollateralPool
-    {
+    { // solhint-disable-line no-empty-blocks
         // do nothing since selfdestruct is deprecated
     }
 

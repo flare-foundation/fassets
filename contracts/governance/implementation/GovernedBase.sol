@@ -47,6 +47,7 @@ abstract contract GovernedBase is IGoverned {
         _;
     }
 
+    // solhint-disable-next-line no-empty-blocks
     constructor() {
     }
 

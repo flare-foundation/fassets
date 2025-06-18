@@ -971,7 +971,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     function _authorizeUpgrade(address /* _newImplementation */)
         internal virtual override
         onlyAssetManager
-    {
+    { // solhint-disable-line no-empty-blocks
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

@@ -203,6 +203,6 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     function _authorizeUpgrade(address /* _newImplementation */)
         internal virtual override
         onlyAssetManager
-    {
+    { // solhint-disable-line no-empty-blocks
     }
 }
