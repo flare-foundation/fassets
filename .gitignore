@@ -69,3 +69,7 @@ deployments
 
 ## Airdrop transactions
 airdrop/files
+
+# Foundry
+cache-forge/
+artifacts-forge/

@@ -19,8 +19,15 @@ Two novel protocols, available on Flare and Songbird blockchains, enable the FAs
 
 1. Clone this repository.
 2. Run `yarn`.
-3. Compile the solidity code: `yarn c`.
-4. Run basic tests `yarn testHH`.
+3. Install Foundryup:
+   ```bash
+   curl -L https://foundry.paradigm.xyz | bash
+   foundryup
+   ```
+4. Run `git submodule update --init --recursive` to initialize the `forge-std` submodule.
+4. Compile the solidity code for forge: `forge build`.
+5. Compile the solidity code: `yarn c`.
+6. Run basic tests `yarn testHH`.
 
 #### Flare-smart-contracts dependency
 
