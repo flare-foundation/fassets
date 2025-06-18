@@ -9,21 +9,17 @@ import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
-import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
+import { TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
-const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
-const FtsoMock = artifacts.require('FtsoMock');
-
-contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`, async accounts => {
+contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`, accounts => {
     const governance = accounts[10];
-    let assetManagerController = accounts[11];
+    const assetManagerController = accounts[11];
     let contracts: TestSettingsContracts;
     let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;
-    let ftsos: TestFtsos;
     let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];
     let chain: MockChain;
@@ -91,8 +87,6 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         // save some contracts as globals
         ({ wNat } = contracts);
         usdc = contracts.stablecoins.USDC;
-        // create FTSOs for nat, stablecoins and asset and set some price
-        ftsos = await createTestFtsos(contracts.ftsoRegistry, ci);
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
@@ -102,11 +96,11 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
-        return { contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+        return { contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
+        ({ contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     it("should not liquidate if collateral ratio is ok", async () => {
@@ -145,11 +139,19 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         // init
         chain.mint(underlyingAgent1, 200);
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
         await mint(agentVault, underlyingMinter1, minterAddress1);
         // act
-        await ftsos.asset.setCurrentPrice(toBNExp(3521, 50), 0);
-        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(3521, 50), 0);
+        const assetName = await fAsset.symbol()
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPrice(assetName, 4294967295, 0); // Max unit32 price
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPriceFromTrustedProviders(assetName, 4294967295, 0);
+
         await assetManager.startLiquidation(agentVault.address);
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         const tx = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer1, 100, null);

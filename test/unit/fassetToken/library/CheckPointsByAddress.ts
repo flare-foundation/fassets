@@ -3,9 +3,9 @@ import { CheckPointsByAddressMockContract, CheckPointsByAddressMockInstance } fr
 import { getTestFile } from "../../../utils/test-helpers";
 import { ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 
-const CheckPointsByAddressMock = artifacts.require("CheckPointsByAddressMock") as CheckPointsByAddressMockContract;
+const CheckPointsByAddressMock = artifacts.require("CheckPointsByAddressMock");
 
-contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts => {
+contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, accounts => {
     // a fresh contract for each test
     let checkPointsByAddressMock: CheckPointsByAddressMockInstance;
 
@@ -18,7 +18,7 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
         // Assemble
         await checkPointsByAddressMock.writeValue(accounts[1], 10);
         // Act
-        let value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
+        const value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
         // Assert
         assert.equal(value as any, 10);
     });
@@ -32,7 +32,7 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
         // Act
         await checkPointsByAddressMock.writeValue(accounts[1], 20);
         // Assert
-        let value = await checkPointsByAddressMock.valueOfAt(accounts[1], b[0]);
+        const value = await checkPointsByAddressMock.valueOfAt(accounts[1], b[0]);
         assert.equal(value as any, 10);
     });
 
@@ -41,8 +41,8 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
         await checkPointsByAddressMock.writeValue(accounts[1], 10);
         await checkPointsByAddressMock.writeValue(accounts[2], 20);
         // Act
-        let address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
-        let address2Value = await checkPointsByAddressMock.valueOfAtNow(accounts[2]);
+        const address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
+        const address2Value = await checkPointsByAddressMock.valueOfAtNow(accounts[2]);
         // Assert
         assert.equal(address1Value as any, 10);
         assert.equal(address2Value as any, 20);
@@ -62,16 +62,16 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
         await checkPointsByAddressMock.writeValue(accounts[2], 40);
         b[4] = await web3.eth.getBlockNumber();
         // Act
-        let block0Address1Value = await checkPointsByAddressMock.valueOfAt(accounts[1], b[0]);
-        let block1Address1Value = await checkPointsByAddressMock.valueOfAt(accounts[1], b[1]);
-        let block2Address1Value = await checkPointsByAddressMock.valueOfAt(accounts[1], b[2]);
-        let block3Address1Value = await checkPointsByAddressMock.valueOfAt(accounts[1], b[3]);
-        let block4Address1Value = await checkPointsByAddressMock.valueOfAt(accounts[1], b[4]);
-        let block0Address2Value = await checkPointsByAddressMock.valueOfAt(accounts[2], b[0]);
-        let block1Address2Value = await checkPointsByAddressMock.valueOfAt(accounts[2], b[1]);
-        let block2Address2Value = await checkPointsByAddressMock.valueOfAt(accounts[2], b[2]);
-        let block3Address2Value = await checkPointsByAddressMock.valueOfAt(accounts[2], b[3]);
-        let block4Address2Value = await checkPointsByAddressMock.valueOfAt(accounts[2], b[4]);
+        const block0Address1Value = await checkPointsByAddressMock.valueOfAt(accounts[1], b[0]);
+        const block1Address1Value = await checkPointsByAddressMock.valueOfAt(accounts[1], b[1]);
+        const block2Address1Value = await checkPointsByAddressMock.valueOfAt(accounts[1], b[2]);
+        const block3Address1Value = await checkPointsByAddressMock.valueOfAt(accounts[1], b[3]);
+        const block4Address1Value = await checkPointsByAddressMock.valueOfAt(accounts[1], b[4]);
+        const block0Address2Value = await checkPointsByAddressMock.valueOfAt(accounts[2], b[0]);
+        const block1Address2Value = await checkPointsByAddressMock.valueOfAt(accounts[2], b[1]);
+        const block2Address2Value = await checkPointsByAddressMock.valueOfAt(accounts[2], b[2]);
+        const block3Address2Value = await checkPointsByAddressMock.valueOfAt(accounts[2], b[3]);
+        const block4Address2Value = await checkPointsByAddressMock.valueOfAt(accounts[2], b[4]);
         // Assert
         assert.equal(block0Address1Value as any, 0);
         assert.equal(block1Address1Value as any, 10);
@@ -93,8 +93,8 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
         await checkPointsByAddressMock.transmit(accounts[2], accounts[1], 20);
 
         // Assert
-        let address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
-        let address2Value = await checkPointsByAddressMock.valueOfAtNow(accounts[2]);
+        const address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
+        const address2Value = await checkPointsByAddressMock.valueOfAtNow(accounts[2]);
         assert.equal(address1Value as any, 30);
         assert.equal(address2Value as any, 0);
     });
@@ -106,8 +106,8 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
         // Act
         await checkPointsByAddressMock.transmit(accounts[2], accounts[1], 20);
         // Assert
-        let address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
-        let address2Value = await checkPointsByAddressMock.valueOfAtNow(accounts[2]);
+        const address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
+        const address2Value = await checkPointsByAddressMock.valueOfAtNow(accounts[2]);
         assert.equal(address1Value as any, 30);
         assert.equal(address2Value as any, 0);
     });
@@ -119,8 +119,8 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
         // Act
         await checkPointsByAddressMock.transmit(accounts[2], accounts[1], 0);
         // Assert
-        let address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
-        let address2Value = await checkPointsByAddressMock.valueOfAtNow(accounts[2]);
+        const address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
+        const address2Value = await checkPointsByAddressMock.valueOfAtNow(accounts[2]);
         assert.equal(address1Value as any, 10);
         assert.equal(address2Value as any, 20);
     });
@@ -132,8 +132,8 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
         // Act
         await checkPointsByAddressMock.transmit(accounts[2], accounts[1], 0);
         // Assert
-        let address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
-        let address2Value = await checkPointsByAddressMock.valueOfAtNow(accounts[2]);
+        const address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
+        const address2Value = await checkPointsByAddressMock.valueOfAtNow(accounts[2]);
         assert.equal(address1Value as any, 10);
         assert.equal(address2Value as any, 20);
     });
@@ -144,9 +144,9 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
         // Act
         await checkPointsByAddressMock.transmit(ZERO_ADDRESS, accounts[1], 10);
         // Assert
-        let address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
+        const address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
         assert.equal(address1Value.toNumber(), 30);
-        let address0Value = await checkPointsByAddressMock.valueOfAtNow(ZERO_ADDRESS);
+        const address0Value = await checkPointsByAddressMock.valueOfAtNow(ZERO_ADDRESS);
         assert.equal(address0Value.toNumber(), 0);
     });
 
@@ -156,9 +156,9 @@ contract(`CheckPointsByAddress.sol; ${getTestFile(__filename)}`, async accounts 
         // Act
         await checkPointsByAddressMock.transmit(accounts[1], ZERO_ADDRESS, 5);
         // Assert
-        let address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
+        const address1Value = await checkPointsByAddressMock.valueOfAtNow(accounts[1]);
         assert.equal(address1Value.toNumber(), 15);
-        let address0Value = await checkPointsByAddressMock.valueOfAtNow(ZERO_ADDRESS);
+        const address0Value = await checkPointsByAddressMock.valueOfAtNow(ZERO_ADDRESS);
         assert.equal(address0Value.toNumber(), 0);
     });
 

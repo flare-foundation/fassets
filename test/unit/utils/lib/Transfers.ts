@@ -7,7 +7,7 @@ import { assertWeb3Equal } from "../../../utils/web3assertions";
 const MathUtils = artifacts.require("MathUtilsMock");
 const Transfers = artifacts.require("TransfersMock");
 
-contract(`Transfers.sol; ${getTestFile(__filename)};  Transfers unit tests`, async accounts => {
+contract(`Transfers.sol; ${getTestFile(__filename)};  Transfers unit tests`, accounts => {
     let transfers: TransfersMockInstance;
     let mathUtils: MathUtilsMockInstance;
 

@@ -16,7 +16,7 @@ import { waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { requiredEventArgsFrom } from "../../utils/Web3EventDecoder";
 
-contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
+contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];
@@ -242,13 +242,13 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.confirmActiveRedemptionPayment(request, tx1Hash);
             await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: agentFeeShare.add(request.feeUBA), redeemingUBA: 0 });
             //Minter gets delisted from whitelist
-            let res = await context.whitelist?.revokeAddress(minter.address, { from: governance });
+            const res = await context.whitelist?.revokeAddress(minter.address, { from: governance });
             //Wait for timelock
             if (res !== undefined && context.whitelist !== undefined) {
                 await waitForTimelock(res, context.whitelist, governance);
             }
             //Minter tries to mint again by reserving collateral
-            let tx = minter.reserveCollateral(agent.vaultAddress, lots);
+            const tx = minter.reserveCollateral(agent.vaultAddress, lots);
             await expectRevert(tx, "not whitelisted");
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);

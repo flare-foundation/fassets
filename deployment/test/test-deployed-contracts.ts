@@ -15,7 +15,7 @@ const IAssetManagerController = artifacts.require('IAssetManagerController');
 const IIAssetManager = artifacts.require('IIAssetManager');
 const AgentOwnerRegistry = artifacts.require('AgentOwnerRegistry');
 
-contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, async accounts => {
+contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, accounts => {
     const networkConfig = networkConfigName(hre);
 
     let contracts: FAssetContractStore;

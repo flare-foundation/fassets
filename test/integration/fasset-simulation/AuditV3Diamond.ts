@@ -5,7 +5,7 @@ import { AssetContext } from "../utils/AssetContext";
 import { CommonContext } from "../utils/CommonContext";
 import { testChainInfo } from "../utils/TestChainInfo";
 
-contract(`AuditV3Diamond.ts; ${getTestFile(__filename)}; FAsset diamond design audit tests`, async accounts => {
+contract(`AuditV3Diamond.ts; ${getTestFile(__filename)}; FAsset diamond design audit tests`, accounts => {
     const governance = accounts[10];
     // addresses on mock underlying chain can be any string, as long as it is unique
 
@@ -51,7 +51,7 @@ contract(`AuditV3Diamond.ts; ${getTestFile(__filename)}; FAsset diamond design a
         let size = (bytecode.length - 2) / 2;
         // Call diamondCut passing no Facets, the suicidal contract and die() encoded
         console.log("[BEFORE] - AssetManagerDiamondCutFacet size (bytes):", size);
-        let res = await iDiamondCut.diamondCut([], suicidalContract.address, initParametersEncodedCall, { from: accounts[1], });
+        const res = await iDiamondCut.diamondCut([], suicidalContract.address, initParametersEncodedCall, { from: accounts[1], });
         // Fetch the contract's bytecode
         bytecode = await web3.eth.getCode(iGovernedBase.address);
         // Calculate the size of the bytecode

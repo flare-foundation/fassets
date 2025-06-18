@@ -18,7 +18,7 @@ import { ZERO_ADDRESS } from "../../../deployment/lib/deploy-utils";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 
 
-contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
+contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulations`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];
@@ -109,15 +109,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             request.lastUnderlyingBlock.toNumber(),
             request.lastUnderlyingTimestamp.toNumber());
 
-        let beforeBalance = await executorInstance.howMuchIsMyNativeBalance();
-        let vaultCollateralBalanceBefore = await agent.vaultCollateralToken().balanceOf(redeemerAddress1);
+        const beforeBalance = await executorInstance.howMuchIsMyNativeBalance();
+        const vaultCollateralBalanceBefore = await agent.vaultCollateralToken().balanceOf(redeemerAddress1);
 
         // FIX: did not revert before
         await expectRevert(executorInstance.defaulting(proof, request.requestId, 1),
             "transfer failed")
 
-        let afterBalance = await executorInstance.howMuchIsMyNativeBalance();
-        let vaultCollateralBalanceAfter = await agent.vaultCollateralToken().balanceOf(redeemerAddress1);
+        const afterBalance = await executorInstance.howMuchIsMyNativeBalance();
+        const vaultCollateralBalanceAfter = await agent.vaultCollateralToken().balanceOf(redeemerAddress1);
 
         console.log("Executor's native balance (executor fee)");
         console.log("before: ", beforeBalance.toString());
@@ -523,7 +523,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         underlyingMinter1: 1000
         redeemer: redemptionAmount
         */
-        let redeemPaymentTxHash = await agent.wallet.addMultiTransaction(
+        const redeemPaymentTxHash = await agent.wallet.addMultiTransaction(
             {
                 [underlyingMinter1]: context.underlyingAmount(1),
                 [underlyingMinter2]: context.underlyingAmount(1000).add(paymentAmount)
@@ -535,7 +535,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             PaymentReference.redemption(request.requestId)
         );
 
-        let underlyingBalanceBefore = (await agent.getAgentInfo()).underlyingBalanceUBA;
+        const underlyingBalanceBefore = (await agent.getAgentInfo()).underlyingBalanceUBA;
 
         console.log(">> Request proof, specifying underlyingMinter1 as source");
         const proof = await context.attestationProvider.provePayment(redeemPaymentTxHash, underlyingMinter1, request.paymentAddress);
@@ -546,7 +546,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         await expectRevert(context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress }),
             "source not agent's underlying address");
 
-        let underlyingBalanceAfter = (await agent.getAgentInfo()).underlyingBalanceUBA;
+        const underlyingBalanceAfter = (await agent.getAgentInfo()).underlyingBalanceUBA;
         console.log(">> underlyingBalance before: ", underlyingBalanceBefore);
         console.log(">> underlyingBalance after: ", underlyingBalanceAfter);
         console.log(">> underlyingBalance on underlying chain: ", (await context.chain.getBalance(agent.underlyingAddress)).toString());

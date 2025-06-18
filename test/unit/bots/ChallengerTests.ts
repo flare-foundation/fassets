@@ -23,7 +23,7 @@ import { getTestFile } from "../../utils/test-helpers";
 import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
 import { AgentVaultInstance, ERC20MockInstance } from "../../../typechain-truffle";
 
-contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit tests`, async accounts => {
+contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit tests`, accounts => {
     const governance = accounts[1];
 
     const agentOwner1 = accounts[20];

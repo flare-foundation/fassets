@@ -11,13 +11,13 @@ import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, w
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
-import { TestFtsos, TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
+import { TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings } from "../../../utils/test-settings";
 
 const Whitelist = artifacts.require('Whitelist');
 const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
 const AgentVault = artifacts.require('AgentVault');
 
-contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner registry tests`, async accounts => {
+contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner registry tests`, accounts => {
     const governance = accounts[10];
     const updateExecutor = accounts[11];
     let assetManagerController: IIAssetManagerControllerInstance;
@@ -26,7 +26,6 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
     let fAsset: FAssetInstance;
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;
-    let ftsos: TestFtsos;
     let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];
     let chain: MockChain;
@@ -60,8 +59,6 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         // save some contracts as globals
         ({ wNat } = contracts);
         usdc = contracts.stablecoins.USDC;
-        // create FTSOs for nat, stablecoins and asset and set some price
-        ftsos = await createTestFtsos(contracts.ftsoRegistry, ci);
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
@@ -84,11 +81,11 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
 
         const res = await assetManagerController.setAgentOwnerRegistry([assetManager.address], agentOwnerRegistry.address, { from: governance });
         await waitForTimelock(res, assetManagerController, updateExecutor);
-        return { contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry };
+        return { contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry };
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry } =
+        ({ contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry } =
             await loadFixtureCopyVars(initialize));
     });
 
@@ -104,7 +101,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const agentSettings = createTestAgentSettings(usdc.address);
 
             //Revoke address and wait for timelock
-            let rev = await agentOwnerRegistry.revokeAddress(agentOwner1, {from: governance});
+            const rev = await agentOwnerRegistry.revokeAddress(agentOwner1, {from: governance});
             await waitForTimelock(rev, agentOwnerRegistry, governance);
 
             //Try to create agent

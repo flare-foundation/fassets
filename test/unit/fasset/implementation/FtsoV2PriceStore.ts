@@ -9,7 +9,7 @@ import { ZERO_BYTES_20 } from "@flarenetwork/state-connector-protocol";
 const FtsoV2PriceStore = artifacts.require('FtsoV2PriceStore');
 const MockContract = artifacts.require('MockContract');
 
-contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore basic tests`, async accounts => {
+contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore basic tests`, accounts => {
     let contracts: TestSettingsContracts;
     let priceStore: FtsoV2PriceStoreInstance;
     let relayMock: MockContractInstance;
@@ -397,7 +397,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             assertWeb3Equal(decimals, 5);
 
             // update settings; change trusted decimals for USDC
-            let newUSDCDecimals = 4;
+            const newUSDCDecimals = 4;
             await priceStore.updateSettings(feedIds, feedSymbols, [feedDecimals[0], newUSDCDecimals], 50, { from: governance });
             var { 0: price, 1: timestamp, 2: decimals } = await priceStore.getPriceFromTrustedProviders("USDC");
             assertWeb3Equal(price, 0);
@@ -543,26 +543,26 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
         ////
         it("should get feed ids", async () => {
-            let feeds = await priceStore.getFeedIds();
+            const feeds = await priceStore.getFeedIds();
             expect(feeds.toString()).to.eq(feedIds.toString());
         });
 
         it("should get feed ids and decimals", async () => {
-            let {0: feeds, 1: decimals} = await priceStore.getFeedIdsWithDecimals();
+            const {0: feeds, 1: decimals} = await priceStore.getFeedIdsWithDecimals();
             expect(feeds.toString()).to.eq(feedIds.toString());
             expect(decimals.toString()).to.eq(feedDecimals.toString());
         });
 
         it("should get supported symbols", async () => {
-            let symbols = await priceStore.getSymbols();
+            const symbols = await priceStore.getSymbols();
             expect(symbols.toString()).to.eq(feedSymbols.toString());
         });
 
         it("should get feed id for symbol", async () => {
-            let flrFeed = await priceStore.getFeedId("FLR");
+            const flrFeed = await priceStore.getFeedId("FLR");
             expect(flrFeed).to.eq(feedIds[0]);
 
-            let usdcFeed = await priceStore.getFeedId("USDC");
+            const usdcFeed = await priceStore.getFeedId("USDC");
             expect(usdcFeed).to.eq(feedIds[1]);
 
             let xdcFeed = await priceStore.getFeedId("SGB");
@@ -648,7 +648,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             );
         }
 
-        let tx = await priceStore.publishPrices([{ proof: [leaf1], body: feed0 }, { proof: [leaf0], body: feed1 }]);
+        const tx = await priceStore.publishPrices([{ proof: [leaf1], body: feed0 }, { proof: [leaf0], body: feed1 }]);
         console.log(`publishPrices gas used: ${tx.receipt.gasUsed}`);
     }
 

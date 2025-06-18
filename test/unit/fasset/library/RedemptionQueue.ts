@@ -6,13 +6,13 @@ import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 const RedemptionQueue = artifacts.require("RedemptionQueueMock");
 
-contract(`RedemptionQueue.sol; ${getTestFile(__filename)};  RedemptionQueue unit tests`, async accounts => {
+contract(`RedemptionQueue.sol; ${getTestFile(__filename)};  RedemptionQueue unit tests`, accounts => {
     const agentVault1 = randomAddress();
     const agentVault2 = randomAddress();
     let redemptionQueue: RedemptionQueueMockInstance;
 
     async function createRedemptionTicket(agentVault: string, valueAMG: BNish) {
-        let ticketId = await redemptionQueue.createRedemptionTicket.call(agentVault, valueAMG);
+        const ticketId = await redemptionQueue.createRedemptionTicket.call(agentVault, valueAMG);
         await redemptionQueue.createRedemptionTicket(agentVault, valueAMG);
         return ticketId;
     }

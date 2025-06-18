@@ -44,7 +44,7 @@
 | [contracts/assetManager/implementation/CollateralPoolTokenFactory.sol](/contracts/assetManager/implementation/CollateralPoolTokenFactory.sol) | 34
 | [contracts/assetManager/implementation/CoreVaultManager.sol](/contracts/assetManager/implementation/CoreVaultManager.sol) | 620
 | [contracts/assetManager/implementation/CoreVaultManagerProxy.sol](/contracts/assetManager/implementation/CoreVaultManagerProxy.sol) | 26
-| [contracts/assetManager/implementation/FtsoV1PriceReader.sol](/contracts/assetManager/implementation/FtsoV1PriceReader.sol) | 50
+<!-- | [contracts/assetManager/implementation/FtsoV1PriceReader.sol](/contracts/assetManager/implementation/FtsoV1PriceReader.sol) | 50 -->
 | [contracts/assetManager/implementation/FtsoV2PriceStore.sol](/contracts/assetManager/implementation/FtsoV2PriceStore.sol) | 285
 | [contracts/assetManager/implementation/Whitelist.sol](/contracts/assetManager/implementation/Whitelist.sol) | 61
 | [contracts/assetManager/interfaces/IIAgentVaultFactory.sol](/contracts/assetManager/interfaces/IIAgentVaultFactory.sol) | 7

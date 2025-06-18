@@ -9,7 +9,7 @@ import { AssetManagerInitSettings, newAssetManager, newAssetManagerController } 
 import { MockChain } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
-import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
+import { TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { impersonateContract } from "../../../utils/contract-test-helpers";
 
@@ -21,16 +21,15 @@ const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 const CollateralPool = artifacts.require("CollateralPool");
 const FAsset = artifacts.require('FAsset');
 const FAssetProxy = artifacts.require('FAssetProxy');
-const DistributionToDelegatorsMock = artifacts.require('DistributionToDelegatorsMock');
+// const DistributionToDelegatorsMock = artifacts.require('DistributionToDelegatorsMock');
 const RewardManager = artifacts.require("RewardManagerMock");
 
-contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, async accounts => {
+contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, accounts => {
     let contracts: TestSettingsContracts;
     let wNat: WNatInstance;
     let stablecoins: Record<string, ERC20MockInstance>;
     let usdc: ERC20MockInstance;
     let assetManagerController: IIAssetManagerControllerInstance;
-    let ftsos: TestFtsos;
     let settings: AssetManagerInitSettings;
     let assetManager: IIAssetManagerInstance;
     let assetManagerMock: AssetManagerMockInstance;
@@ -74,8 +73,6 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         // save some contracts as globals
         ({ wNat, stablecoins } = contracts);
         usdc = stablecoins.USDC;
-        // create FTSOs for nat, stablecoins and asset and set some price
-        ftsos = await createTestFtsos(contracts.ftsoRegistry, ci);
         // create asset manager controller (don't switch to production)
         assetManagerController = await newAssetManagerController(contracts.governanceSettings.address, governance, contracts.addressUpdater.address);
         // create asset manager
@@ -90,14 +87,14 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         // create asset manager mock (for tests that use AgentVault.new)
         assetManagerMock = await AssetManagerMock.new(wNat.address);
         await assetManagerMock.setCommonOwner(owner);
-        return { contracts, wNat, stablecoins, usdc, ftsos, assetManagerController, collaterals, settings, assetManager, fAsset, assetManagerMock };
+        return { contracts, wNat, stablecoins, usdc, assetManagerController, collaterals, settings, assetManager, fAsset, assetManagerMock };
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, stablecoins, usdc, ftsos, assetManagerController, collaterals, settings, assetManager, fAsset, assetManagerMock } = await loadFixtureCopyVars(initialize));
+        ({ contracts, wNat, stablecoins, usdc, assetManagerController, collaterals, settings, assetManager, fAsset, assetManagerMock } = await loadFixtureCopyVars(initialize));
     });
 
-    describe("pool token methods", async () => {
+    describe("pool token methods", () => {
 
         it("should buy collateral pool tokens", async () => {
             const agentVault = await createAgentVault(owner, underlyingAgent1);
@@ -247,11 +244,11 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         const agentVault = await AgentVault.new(assetManagerMock.address);
         await agentVault.delegate(wNat.address, accounts[2], 50, { from: owner });
         await agentVault.delegate(wNat.address, accounts[3], 10, { from: owner });
-        let resDelegate = await wNat.delegatesOf(agentVault.address) as any;
+        const resDelegate = await wNat.delegatesOf(agentVault.address) as any;
         assertWeb3Equal(resDelegate._delegateAddresses.length, 2);
 
         await agentVault.undelegateAll(wNat.address, { from: owner });
-        let resUndelegate = await wNat.delegatesOf(agentVault.address) as any;
+        const resUndelegate = await wNat.delegatesOf(agentVault.address) as any;
         assertWeb3Equal(resUndelegate._delegateAddresses.length, 0);
     });
 
@@ -266,7 +263,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await agentVault.delegate(wNat.address, accounts[2], 50, { from: owner });
         const blockNumber = await web3.eth.getBlockNumber();
         await agentVault.revokeDelegationAt(wNat.address, accounts[2], blockNumber, { from: owner });
-        let votePower = await wNat.votePowerOfAt(accounts[2], blockNumber);
+        const votePower = await wNat.votePowerOfAt(accounts[2], blockNumber);
         assertWeb3Equal(votePower.toNumber(), 0);
     });
 
@@ -337,13 +334,13 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     it("should not transfer wnat tokens", async () => {
         const agentVault = await createAgentVault(owner, underlyingAgent1);
-        let res = agentVault.transferExternalToken(usdc.address, 1, { from: owner });
+        const res = agentVault.transferExternalToken(usdc.address, 1, { from: owner });
         await expectRevert(res, "only non-collateral tokens");
     });
 
     it("should not transfer if not owner", async () => {
         const agentVault = await createAgentVault(owner, underlyingAgent1);
-        let res = agentVault.transferExternalToken(wNat.address, 1);
+        const res = agentVault.transferExternalToken(wNat.address, 1);
         await expectRevert(res, "only owner");
     });
 
@@ -351,10 +348,10 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         const agentVault = await createAgentVault(owner, underlyingAgent1);
         const token = await ERC20Mock.new("XTOK", "XToken")
         await token.mintAmount(agentVault.address, 10);
-        let balance = (await token.balanceOf(agentVault.address)).toString();
+        const balance = (await token.balanceOf(agentVault.address)).toString();
         assert.equal(balance, "10");
         await agentVault.transferExternalToken(token.address, 3, { from: owner });
-        let balance2 = (await token.balanceOf(agentVault.address)).toString();
+        const balance2 = (await token.balanceOf(agentVault.address)).toString();
         assert.equal(balance2, "7");
     });
 

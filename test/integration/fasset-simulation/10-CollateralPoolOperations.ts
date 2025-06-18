@@ -18,7 +18,7 @@ import { assertApproximatelyEqual } from "../../utils/approximation";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 
 
-contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral pool operations`, async accounts => {
+contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral pool operations`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];
@@ -801,8 +801,8 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const user6FassetFee = await agent.collateralPool.fAssetFeesOf(user6);
         assertApproximatelyEqual(user6FassetFee, user4FassetFee.muln(10), 'relative', 1e-8);
         //User6 withdraws fasset fees
-        let poolVirtFassetFees = (await agent.collateralPool.totalFAssetFees()).add(await agent.collateralPool.totalFAssetFeeDebt());
-        let poolTokensTotal = await agent.collateralPoolToken.totalSupply();
+        const poolVirtFassetFees = (await agent.collateralPool.totalFAssetFees()).add(await agent.collateralPool.totalFAssetFeeDebt());
+        const poolTokensTotal = await agent.collateralPoolToken.totalSupply();
         const user6PoolTokenBalance = await agent.collateralPoolToken.balanceOf(user6);
         const virtualFassetUser6 = poolVirtFassetFees.mul(user6PoolTokenBalance).div(poolTokensTotal);
         const user6FassetDebt = await agent.collateralPool.fAssetFeeDebtOf(user6);

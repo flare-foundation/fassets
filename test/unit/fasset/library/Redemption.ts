@@ -3,7 +3,7 @@ import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManag
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BNish, HOURS, MAX_BIPS, randomAddress, toBIPS, toBN, toBNExp, toNumber, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
+import { BNish, MAX_BIPS, randomAddress, toBIPS, toBN, toBNExp, toNumber, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, CollateralPoolInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { impersonateContract, stopImpersonatingContract } from "../../../utils/contract-test-helpers";
@@ -11,21 +11,20 @@ import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
-import { TestFtsos, TestSettingsContracts, createFtsoMock, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
+import { TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 
 const CollateralPool = artifacts.require("CollateralPool");
 
-contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, async accounts => {
+contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, accounts => {
     const governance = accounts[10];
-    let assetManagerController = accounts[11];
+    const assetManagerController = accounts[11];
     let contracts: TestSettingsContracts;
     let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;
-    let ftsos: TestFtsos;
     let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];
     let chain: MockChain;
@@ -174,8 +173,6 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // save some contracts as globals
         ({ wNat } = contracts);
         usdc = contracts.stablecoins.USDC;
-        // create FTSOs for nat, stablecoins and asset and set some price
-        ftsos = await createTestFtsos(contracts.ftsoRegistry, ci);
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
@@ -185,11 +182,11 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
-        return { contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+        return { contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
+        ({ contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     it("should confirm redemption payment from agent vault owner", async () => {
@@ -201,7 +198,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const paymentAmt = request.valueUBA.sub(request.feeUBA);
         const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
         const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
-        let res = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
+        const res = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
         expectEvent(res, 'RedemptionPerformed');
     });
 
@@ -215,7 +212,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const paymentAmt = request.valueUBA.sub(request.feeUBA);
         const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
         const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
-        let res = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
+        const res = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
         expectEvent(res, 'RedemptionPerformed');
     });
 
@@ -242,7 +239,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         chain.mint(underlyingAgent2, paymentAmt);
         const tx1Hash = await wallet.addMultiTransaction({ [underlyingAgent2]: paymentAmt.subn(1), [underlyingAgent1]: 1 }, { [request.paymentAddress]: paymentAmt }, request.paymentReference);
         const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
-        let res = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
+        const res = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
         expectEvent(res, 'RedemptionPerformed');
     });
 
@@ -347,7 +344,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // perform self-minting
         const lots = 3;
         const randomAddr = randomAddress();
-        let val = toBNExp(10000, 18);
+        const val = toBNExp(10000, 18);
         chain.mint(randomAddr, val);
         const transactionHash = await wallet.addTransaction(randomAddr, underlyingAgent1, val, PaymentReference.selfMint(agentVault.address));
         const proof = await attestationProvider.provePayment(transactionHash, null, underlyingAgent1);
@@ -373,12 +370,12 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const agentPoolFees = await fAsset.balanceOf(await assetManager.getCollateralPool(agentVault.address));
         await agentVault.withdrawPoolFees(agentPoolFees, agentOwner1, { from: agentOwner1 });
         const agentFassetBalance = await fAsset.balanceOf(agentOwner1);
-        let res = await assetManager.selfClose(agentVault.address, agentFassetBalance, { from: agentOwner1 });
+        const res = await assetManager.selfClose(agentVault.address, agentFassetBalance, { from: agentOwner1 });
         expectEvent(res, "SelfClose")
     });
 
     it("should self close all but 1 amg and get agent info", async () => {
-        ftsos.nat = await createFtsoMock(contracts.ftsoRegistry, "NAT", 10000000000000.42)
+        // TODO: update NAT price to be higher than 1 amg, use 10000000000000.42
         const feeBIPS = toBIPS("10%");
         const poolFeeShareBIPS = toBIPS(0.4);
         const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
@@ -398,7 +395,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const granularity = toBN(settings.assetMintingGranularityUBA);
         await assetManager.selfClose(agentVault.address, toBN(agentInfo.mintedUBA).sub(granularity.muln(1)), { from: agentOwner1 });
         // should not revert
-        let info = await assetManager.getAgentInfo(agentVault.address);
+        const info = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(toBN(info.mintedUBA).div(granularity), 1);
     });
 
@@ -892,7 +889,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 25; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
-        let proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
             request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber(), web3.utils.soliditySha3Raw(underlyingMinter1));
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
         await expectRevert(res, 'source addresses not supported');
@@ -1098,8 +1095,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const agentInfo = await assetManager.getAgentInfo(agentVault1.address);
         const crFee = await assetManager.collateralReservationFee(lots);
         const resAg = await assetManager.reserveCollateral(agentVault1.address, lots, agentInfo.feeBIPS, ZERO_ADDRESS, [], { from: minterAddress1, value: crFee });
-        let crt;
-        crt = requiredEventArgs(resAg, 'CollateralReserved');
+        const crt = requiredEventArgs(resAg, 'CollateralReserved');
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
         const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);

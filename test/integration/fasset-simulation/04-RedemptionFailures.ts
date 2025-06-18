@@ -16,7 +16,7 @@ import { testChainInfo } from "../utils/TestChainInfo";
 import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 
 
-contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
+contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulations`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];

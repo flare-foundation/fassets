@@ -20,7 +20,7 @@ import { calculateReceivedNat } from "../../utils/eth";
 import { newAssetManager } from "../../utils/fasset/CreateAssetManager";
 import { Challenger } from "../utils/Challenger";
 
-contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
+contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];
@@ -920,7 +920,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const [minted2] = await minter.performMinting(agent2.vaultAddress, 200);
         await minter.transferFAsset(redeemer.address, toBN(minted1.mintedAmountUBA).add(toBN(minted2.mintedAmountUBA)));
         // skip time to 1am to make escrow time-based calclations deterministic
-        let newtime = await timestampAfterDaysAt(1, 1 * HOURS); // align to 1am
+        const newtime = await timestampAfterDaysAt(1, 1 * HOURS); // align to 1am
         await increaseTimeTo(newtime);
         // agent requests transfer for some backing to core vault
         const transferAmount = context.convertLotsToUBA(151);

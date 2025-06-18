@@ -11,17 +11,20 @@ import {
     AgentVaultFactoryInstance,
     CollateralPoolFactoryInstance,
     CollateralPoolTokenFactoryInstance,
-    ERC20MockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance,
+    ERC20MockInstance,
+    GovernanceSettingsInstance,
     IIAssetManagerInstance,
     IPriceReaderInstance,
     IWhitelistInstance,
     WNatInstance,
     IFdcVerificationInstance,
     RelayMockInstance,
-    FdcHubMockInstance
+    FdcHubMockInstance,
+    FtsoV2PriceStoreMockInstance
 } from "../../typechain-truffle";
+import { createMockFtsoV2PriceStore } from "../integration/utils/CommonContext";
 import { CoreVaultManagerSettings } from "../integration/utils/MockCoreVaultBot";
-import { TestChainInfo } from "../integration/utils/TestChainInfo";
+import { testChainInfo, TestChainInfo } from "../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";
 import { AssetManagerInitSettings, waitForTimelock } from "./fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "./fasset/MockChain";
@@ -31,9 +34,10 @@ const AgentVault = artifacts.require("AgentVault");
 const WNat = artifacts.require("WNat");
 const AddressUpdater = artifacts.require('AddressUpdater');
 const FdcVerification = artifacts.require('FdcVerificationMock');
-const PriceReader = artifacts.require('FtsoV1PriceReader');
-const FtsoMock = artifacts.require('FtsoMock');
-const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
+const PriceReader = artifacts.require('FtsoV2PriceStoreMock');
+const FtsoV2PriceStoreMock = artifacts.require('FtsoV2PriceStoreMock');
+// const FtsoMock = artifacts.require('FtsoMock');
+// const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const FdcHub = artifacts.require('FdcHubMock');
 const Relay = artifacts.require('RelayMock');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -70,8 +74,9 @@ export interface CoreVaultManagerInitSettings extends CoreVaultManagerSettings {
     triggeringAccounts: string[];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface TestSettingsContracts extends TestSettingsCommonContracts {
-    ftsoRegistry: FtsoRegistryMockInstance;
+    // ftsoRegistry: FtsoV2PriceStoreMockInstance;
 }
 
 export type TestSettingOptions = Partial<AssetManagerInitSettings>;
@@ -208,17 +213,6 @@ export function createTestCollaterals(contracts: TestSettingsCommonContracts, ci
     return [poolCollateral, usdcCollateral, usdtCollateral];
 }
 
-export type TestFtsos = Record<'nat' | 'usdc' | 'usdt' | 'asset', FtsoMockInstance>;
-
-export async function createTestFtsos(ftsoRegistry: FtsoRegistryMockInstance, assetChainInfo: TestChainInfo): Promise<TestFtsos> {
-    return {
-        nat: await createFtsoMock(ftsoRegistry, "NAT", 0.42),
-        usdc: await createFtsoMock(ftsoRegistry, "USDC", 1.01),
-        usdt: await createFtsoMock(ftsoRegistry, "USDT", 0.99),
-        asset: await createFtsoMock(ftsoRegistry, assetChainInfo.symbol, assetChainInfo.startPrice),
-    };
-}
-
 let poolTokenSymbolCounter = 0;
 
 export function createTestAgentSettings(vaultCollateralTokenAddress: string, options?: Partial<AgentSettings>): AgentSettings {
@@ -234,14 +228,6 @@ export function createTestAgentSettings(vaultCollateralTokenAddress: string, opt
         handshakeType: 0,
     };
     return { ...defaults, ...(options ?? {}) };
-}
-
-export async function createFtsoMock(ftsoRegistry: FtsoRegistryMockInstance, ftsoSymbol: string, initialPrice: number, decimals: number = 5): Promise<FtsoMockInstance> {
-    const ftso = await FtsoMock.new(ftsoSymbol, decimals);
-    await ftso.setCurrentPrice(toBNExp(initialPrice, decimals), 0);
-    await ftso.setCurrentPriceFromTrustedProviders(toBNExp(initialPrice, decimals), 0);
-    await ftsoRegistry.addFtso(ftso.address);
-    return ftso;
 }
 
 export async function createTestContracts(governance: string): Promise<TestSettingsContracts> {
@@ -264,15 +250,18 @@ export async function createTestContracts(governance: string): Promise<TestSetti
         USDC: await ERC20Mock.new("USDCoin", "USDC"),
         USDT: await ERC20Mock.new("Tether", "USDT"),
     };
-    // create ftso registry
-    const ftsoRegistry = await FtsoRegistryMock.new();
+
+
+    // create price reader
+    const priceReader = await createMockFtsoV2PriceStore(governanceSettings.address, governance, addressUpdater.address, {
+        ...testChainInfo})
+
     // add some addresses to address updater
     await addressUpdater.addOrUpdateContractNamesAndAddresses(
-        ["GovernanceSettings", "AddressUpdater", "FdcHub", "Relay", "FdcVerification", "FtsoRegistry", "WNat"],
-        [governanceSettings.address, addressUpdater.address, fdcHub.address, relay.address, fdcVerification.address, ftsoRegistry.address, wNat.address],
+        ["GovernanceSettings", "AddressUpdater", "FdcHub", "Relay", "FdcVerification", "WNat", "FtsoV2PriceStore"],
+        [governanceSettings.address, addressUpdater.address, fdcHub.address, relay.address, fdcVerification.address, wNat.address, priceReader.address],
         { from: governance });
-    // create price reader
-    const priceReader = await PriceReader.new(addressUpdater.address, ftsoRegistry.address);
+
     // create agent vault factory
     const agentVaultImplementation = await AgentVault.new(ZERO_ADDRESS);
     const agentVaultFactory = await AgentVaultFactory.new(agentVaultImplementation.address);
@@ -288,7 +277,7 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     //
     return {
         governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, collateralPoolTokenFactory, relay, fdcHub, fdcVerification,
-        priceReader, agentOwnerRegistry, ftsoRegistry, wNat, stablecoins };
+        priceReader, agentOwnerRegistry, wNat, stablecoins };
 }
 
 export async function createCoreVaultManager(assetManager: IIAssetManagerInstance, addressUpdater: AddressUpdaterInstance, settings: CoreVaultManagerInitSettings) {

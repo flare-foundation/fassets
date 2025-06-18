@@ -12,17 +12,16 @@ import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
-import { TestFtsos, TestSettingsContracts, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
+import { TestSettingsContracts, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings } from "../../../utils/test-settings";
 
-contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction attestation basic tests`, async accounts => {
+contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction attestation basic tests`, accounts => {
     const governance = accounts[10];
-    let assetManagerController = accounts[11];
+    const assetManagerController = accounts[11];
     let contracts: TestSettingsContracts;
     let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;
-    let ftsos: TestFtsos;
     let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];
     let chain: MockChain;
@@ -70,8 +69,6 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         // save some contracts as globals
         ({ wNat } = contracts);
         usdc = contracts.stablecoins.USDC;
-        // create FTSOs for nat, stablecoins and asset and set some price
-        ftsos = await createTestFtsos(contracts.ftsoRegistry, ci);
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
@@ -81,11 +78,11 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
-        return { contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+        return { contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
+        ({ contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     it("should not verify payment - legal payment not proved", async () => {
@@ -140,21 +137,21 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
 
     it("should not succeed challenging illegal payment - transaction not proved", async() => {
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        let txHash = await wallet.addTransaction(underlyingAgent1, randomAddress(), 1, PaymentReference.redemption(0));
-        let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
+        const txHash = await wallet.addTransaction(underlyingAgent1, randomAddress(), 1, PaymentReference.redemption(0));
+        const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
         proof.data.responseBody.spentAmount = toBN(proof.data.responseBody.spentAmount).addn(1).toString();
-        let res = assetManager.illegalPaymentChallenge(proof, agentVault.address);
+        const res = assetManager.illegalPaymentChallenge(proof, agentVault.address);
         await expectRevert(res, 'transaction not proved');
     });
 
     it("should not succeed challenging illegal payment - invalid chain", async () => {
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        let txHash = await wallet.addTransaction(underlyingAgent1, randomAddress(), 1, PaymentReference.redemption(0));
+        const txHash = await wallet.addTransaction(underlyingAgent1, randomAddress(), 1, PaymentReference.redemption(0));
         const chainId: SourceId = SourceId.DOGE;
         flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, chainId);
-        let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
-        let res = assetManager.illegalPaymentChallenge(proof, agentVault.address);
+        const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
+        const res = assetManager.illegalPaymentChallenge(proof, agentVault.address);
         await expectRevert(res, 'invalid chain');
     });
 
@@ -162,7 +159,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         await createAgent(agentOwner1, underlyingAgent1);
         const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
         proof.data.requestBody.blockNumber = toBN(proof.data.requestBody.blockNumber).addn(1).toString();
-        let res = assetManager.updateCurrentBlock(proof);
+        const res = assetManager.updateCurrentBlock(proof);
         await expectRevert(res, "block height not proved")
     });
 
@@ -172,7 +169,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, chainId);
         const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
-        let res = assetManager.updateCurrentBlock(proof);
+        const res = assetManager.updateCurrentBlock(proof);
         await expectRevert(res, "invalid chain")
     });
 

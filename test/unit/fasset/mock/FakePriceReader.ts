@@ -7,7 +7,7 @@ import { Web3EventDecoder } from "../../../utils/Web3EventDecoder";
 
 const FakePriceReader = artifacts.require('FakePriceReader');
 
-contract(`FakePriceReader.sol; ${getTestFile(__filename)}; FakePriceReader basic tests`, async accounts => {
+contract(`FakePriceReader.sol; ${getTestFile(__filename)}; FakePriceReader basic tests`, accounts => {
     let priceReader: FakePriceReaderInstance;
     const provider = accounts[11];
 

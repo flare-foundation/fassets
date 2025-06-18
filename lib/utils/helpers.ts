@@ -68,7 +68,7 @@ export function isNotNull<T>(x: T): x is NonNullable<T> {
  * Returns guaranteed non-null value.
  */
 export function requireNotNull<T>(x: T, errorMessage?: string): NonNullable<T> {
-    if (x != null) return x as NonNullable<T>;
+    if (x != null) return x;
     throw new Error(errorMessage ?? "Value is null or undefined");
 }
 
@@ -254,7 +254,7 @@ export function multimapAdd<K, V>(map: Map<K, Set<V>>, key: K, value: V) {
  * Remove a value from "multimap" - a map where there are several values for each key.
  */
 export function multimapDelete<K, V>(map: Map<K, Set<V>>, key: K, value: V) {
-    let set = map.get(key);
+    const set = map.get(key);
     if (set === undefined) return;
     set.delete(value);
     if (set.size === 0) {

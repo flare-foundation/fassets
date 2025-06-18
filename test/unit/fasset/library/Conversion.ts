@@ -2,27 +2,27 @@ import { toBN, toStringExp } from "../../../../lib/utils/helpers";
 import { ConversionMockContract, ConversionMockInstance } from "../../../../typechain-truffle/ConversionMock";
 import { getTestFile } from "../../../utils/test-helpers";
 
-const Conversion = artifacts.require("ConversionMock") as ConversionMockContract;
+const Conversion = artifacts.require("ConversionMock");
 
-contract(`Conversion.sol; ${getTestFile(__filename)};  Conversion unit tests`, async accounts => {
+contract(`Conversion.sol; ${getTestFile(__filename)};  Conversion unit tests`, accounts => {
     let conversion: ConversionMockInstance;
-    let amgToNATWeiPrice = 2;
+    const amgToNATWeiPrice = 2;
 
     before(async() => {
         conversion = await Conversion.new();
     });
 
     it("should convert correctly", async () => {
-        let amgValue = toStringExp(1, 9);
-        let res = await conversion.convertAmgToTokenWei(amgValue, amgToNATWeiPrice);
-        let expected = 2;
+        const amgValue = toStringExp(1, 9);
+        const res = await conversion.convertAmgToTokenWei(amgValue, amgToNATWeiPrice);
+        const expected = 2;
         expect(res).to.eql(toBN(expected));
     });
 
     it("should convert correctly - 2", async () => {
-        let natWeiValue = toStringExp(1, 18);
-        let res = await conversion.convertTokenWeiToAMG(natWeiValue, amgToNATWeiPrice);
-        let expected = toStringExp(5, 26);
+        const natWeiValue = toStringExp(1, 18);
+        const res = await conversion.convertTokenWeiToAMG(natWeiValue, amgToNATWeiPrice);
+        const expected = toStringExp(5, 26);
         expect(res).to.eql(toBN(expected));
     });
 

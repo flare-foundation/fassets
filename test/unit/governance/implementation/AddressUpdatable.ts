@@ -8,7 +8,7 @@ export function encodeContractNames(names: string[]): string[] {
   return names.map(name => web3.utils.keccak256(web3.eth.abi.encodeParameters(["string"], [name])));
 }
 
-contract(`AddressUpdatable.sol; ${getTestFile(__filename)}; AddressUpdatable contract unit tests`, async accounts => {
+contract(`AddressUpdatable.sol; ${getTestFile(__filename)}; AddressUpdatable contract unit tests`, accounts => {
   let addressUpdatable: AddressUpdatableMockInstance;
   const ADDRESS_UPDATER_ADDRESS = accounts[10];
 

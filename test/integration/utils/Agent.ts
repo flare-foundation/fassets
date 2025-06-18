@@ -21,7 +21,6 @@ import { Minter } from "./Minter";
 const AgentVault = artifacts.require('AgentVault');
 const CollateralPool = artifacts.require('CollateralPool');
 const CollateralPoolToken = artifacts.require('CollateralPoolToken');
-const Ftso = artifacts.require('FtsoMock');
 
 export type CheckAgentInfo = { [K in keyof AgentInfo]?: AgentInfo[K] extends BN ? BNish | Approximation : AgentInfo[K] }
     & { actualUnderlyingBalance?: BNish };
@@ -132,7 +131,7 @@ export class Agent extends AssetContextClient {
     }
 
     async changeSettings(changes: Partial<Record<AgentSetting, BNish>>) {
-        let validity: Array<[name: string, validAt: BN]> = [];
+        const validity: Array<[name: string, validAt: BN]> = [];
         for (const [name, value] of Object.entries(changes)) {
             const res = await this.assetManager.announceAgentSettingUpdate(this.vaultAddress, name, value, { from: this.ownerWorkAddress });
             const announcement = requiredEventArgs(res, 'AgentSettingChangeAnnounced');

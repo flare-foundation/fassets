@@ -26,7 +26,7 @@ task(TASK_TEST_GET_TEST_FILES, async ({ testFiles }: { testFiles: string[] }, { 
         const testPath = path.relative(cwd, config.paths.tests).replace(/\\/g, '/');    // glob doesn't work with windows paths
         testFiles = [testPath + '/**/*.{js,ts}'];
     }
-    return testFiles.flatMap(pattern => glob.sync(pattern) as string[])
+    return testFiles.flatMap(pattern => glob.sync(pattern))
         .map(fname => path.resolve(cwd, fname));
 });
 
