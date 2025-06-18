@@ -370,7 +370,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         }
         token.burn(msg.sender, tokenShare, false);
         _withdrawWNatTo(_recipient, natShare);
-        if (returnFunds && msg.value > 0) {
+        if (returnFunds) {
             // send any unused NAT to the recipient
             Transfers.transferNAT(_recipient, msg.value);
         }
@@ -825,8 +825,8 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     {
         require(token.totalSupply() == 0, "cannot destroy a pool with issued tokens");
         token.destroy(_recipient);
-        // transfer native balance, if any (used to be done by selfdestruct)
-        Transfers.transferNAT(_recipient, address(this).balance);
+        // transfer native balance as WNat, if any
+        Transfers.depositWNat(wNat, _recipient, address(this).balance);
         // transfer untracked f-assets and wNat, if any
         uint256 untrackedWNat = wNat.balanceOf(address(this));
         uint256 untrackedFAsset = fAsset.balanceOf(address(this));

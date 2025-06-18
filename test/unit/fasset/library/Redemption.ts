@@ -430,11 +430,14 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
             request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const executorBalanceStart = toBN(await web3.eth.getBalance(executorAddress1));
+        const executorWNatBalanceStart = await wNat.balanceOf(executorAddress1);
         const res = await assetManager.redemptionPaymentDefault(proof, request.requestId, { from: executorAddress1 });
         const executorBalanceEnd = toBN(await web3.eth.getBalance(executorAddress1));
+        const executorWNatBalanceEnd = await wNat.balanceOf(executorAddress1);
         const gasFee = toBN(res.receipt.gasUsed).mul(toBN(res.receipt.effectiveGasPrice));
         expectEvent(res, 'RedemptionDefault');
-        assertWeb3Equal(executorBalanceEnd.sub(executorBalanceStart), executorFee.sub(gasFee));
+        assertWeb3Equal(executorBalanceStart.sub(executorBalanceEnd), gasFee);
+        assertWeb3Equal(executorWNatBalanceEnd.sub(executorWNatBalanceStart), executorFee);
     });
 
     it("should execute redemption payment default - agent", async () => {
@@ -973,13 +976,16 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // try to perform rejected redemption default payment
         const burnAddressBalance = await web3.eth.getBalance(settings.burnAddress);
         const executorBalanceBefore = await web3.eth.getBalance(executorAddress1);
+        const executorWNatBalanceBefore = await wNat.balanceOf(executorAddress1);
         const tx = await assetManager.rejectedRedemptionPaymentDefault(request.requestId, { from: executorAddress1 });
         expectEvent(tx, 'RedemptionDefault');
         // executor fee should be sent to executor
         const burnAddressBalanceAfter = await web3.eth.getBalance(settings.burnAddress);
         assertWeb3Equal(toBN(burnAddressBalanceAfter).sub(toBN(burnAddressBalance)), 0);
         const executorBalanceAfter = await web3.eth.getBalance(executorAddress1);
-        assertWeb3Equal(toBN(executorBalanceAfter).sub(toBN(executorBalanceBefore)), request.executorFeeNatWei.sub(toBN(tx.receipt.gasUsed).mul(toBN(tx.receipt.effectiveGasPrice))));
+        const executorWNatBalanceAfter = await wNat.balanceOf(executorAddress1);
+        assertWeb3Equal(toBN(executorBalanceBefore).sub(toBN(executorBalanceAfter)), toBN(tx.receipt.gasUsed).mul(toBN(tx.receipt.effectiveGasPrice)));
+        assertWeb3Equal(executorWNatBalanceAfter.sub(executorWNatBalanceBefore), request.executorFeeNatWei);
         // redemption request should be deleted
         const promise = assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
         await expectRevert(promise, "invalid request id");

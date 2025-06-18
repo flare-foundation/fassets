@@ -108,7 +108,7 @@ library CollateralReservations {
 
         // if executor is not set, we return the change to the minter
         if (cr.executor == address(0) && msg.value > reservationFee) {
-            Transfers.transferNAT(payable(cr.minter), msg.value - reservationFee);
+            Transfers.transferNAT(payable(cr.minter), msg.value - reservationFee); // cr.minter = msg.sender
         }
         return crtId;
     }
@@ -240,7 +240,7 @@ library CollateralReservations {
         if (_fee == 0) return;
         uint256 poolFeeShare = _fee.mulBips(_agent.poolFeeShareBIPS);
         _agent.collateralPool.depositNat{value: poolFeeShare}();
-        Globals.getWNat().depositTo{value: _fee - poolFeeShare}(Agents.getOwnerPayAddress(_agent));
+        Transfers.depositWNat(Globals.getWNat(), Agents.getOwnerPayAddress(_agent), _fee - poolFeeShare);
     }
 
     function calculateReservationFee(
@@ -346,7 +346,8 @@ library CollateralReservations {
         releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
 
         // return the fee to the minter in WNat
-        Globals.getWNat().depositTo{value: returnFee}(minter);
+        Transfers.depositWNat(Globals.getWNat(), minter, returnFee);
+
         // burn the difference
         if (totalFee > returnFee) {
             Agents.burnDirectNAT(totalFee - returnFee);

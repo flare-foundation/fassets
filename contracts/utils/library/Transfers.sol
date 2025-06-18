@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {Reentrancy} from "../../openzeppelin/library/Reentrancy.sol";
 
 
@@ -34,6 +35,21 @@ library Transfers {
             (bool success, ) = _recipient.call{value: _amount, gas: TRANSFER_GAS_ALLOWANCE}("");
             /* solhint-enable avoid-low-level-calls */
             require(success, "transfer failed");
+        }
+    }
+
+    /**
+     * Deposits the given amount of NAT to recipient on WNat contract.
+     *
+     * @param _wNat the WNat contract address
+     * @param _recipient the recipient address
+     * @param _amount the amount in NAT Wei
+     */
+    function depositWNat(IWNat _wNat, address _recipient, uint256 _amount)
+        internal
+    {
+        if (_amount > 0) {
+            _wNat.depositTo{value: _amount}(_recipient);
         }
     }
 }

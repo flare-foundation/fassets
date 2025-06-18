@@ -200,10 +200,13 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const txHash = await performMintingPayment(crt);
         const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
         const executorBalanceStart = toBN(await web3.eth.getBalance(executorAddress1));
+        const executorWNatBalanceStart = await wNat.balanceOf(executorAddress1);
         const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: executorAddress1 });
         const executorBalanceEnd = toBN(await web3.eth.getBalance(executorAddress1));
+        const executorWNatBalanceEnd = await wNat.balanceOf(executorAddress1);
         const gasFee = toBN(res.receipt.gasUsed).mul(toBN(res.receipt.effectiveGasPrice));
-        assertWeb3Equal(executorBalanceEnd.sub(executorBalanceStart), toWei(0.1).sub(gasFee));
+        assertWeb3Equal(executorBalanceStart.sub(executorBalanceEnd), gasFee);
+        assertWeb3Equal(executorWNatBalanceEnd.sub(executorWNatBalanceStart), toWei(0.1));
         // assert
         const event = requiredEventArgs(res, 'MintingExecuted');
         assertWeb3Equal(event.agentVault, agentVault.address);

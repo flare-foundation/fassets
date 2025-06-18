@@ -94,8 +94,7 @@ library Redemptions {
         Globals.getFAsset().burn(_owner, _amountUBA);
     }
 
-    // WARNING: every call must be guarded for reentrancy (otherwise transfer will fail)
-    // pay executor for executor calls, otherwise burn executor fee
+    // pay executor for executor calls in WNat, otherwise burn executor fee
     function payOrBurnExecutorFee(
         Redemption.Request storage _request
     )
@@ -105,7 +104,7 @@ library Redemptions {
         if (executorFeeNatWei > 0) {
             _request.executorFeeNatGWei = 0;
             if (msg.sender == _request.executor) {
-                Transfers.transferNAT(_request.executor, executorFeeNatWei);
+                Transfers.depositWNat(Globals.getWNat(), _request.executor, executorFeeNatWei);
             } else {
                 Agents.burnDirectNAT(executorFeeNatWei);
             }

@@ -1397,12 +1397,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const proof = await attestationProvider.provePayment(txHash, "underlying_minter", underlyingAgent1);
             // execute f-asset minting
             const executorBalanceStart = toBN(await web3.eth.getBalance(executor));
+            const executorWNatBalanceStart = await wNat.balanceOf(executor);
             const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: executor });
             const executorBalanceEnd = toBN(await web3.eth.getBalance(executor));
+            const executorWNatBalanceEnd = await wNat.balanceOf(executor);
             const gasFee = toBN(res.receipt.gasUsed).mul(toBN(res.receipt.effectiveGasPrice));
             const fassets = await fAsset.balanceOf(minter);
             assertWeb3Equal(fassets, crt.valueUBA);
-            assertWeb3Equal(executorBalanceEnd.sub(executorBalanceStart), executorFee.sub(gasFee));
+            assertWeb3Equal(executorBalanceStart.sub(executorBalanceEnd), gasFee);
+            assertWeb3Equal(executorWNatBalanceEnd.sub(executorWNatBalanceStart), executorFee);
         });
 
         it("should do a minting payment default", async () => {
@@ -1593,15 +1596,18 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 PaymentReference.redemption(redemptionRequest.requestId), redemptionRequest.valueUBA.sub(redemptionRequest.feeUBA),
                 0, chain.blockHeight() - 1, chain.lastBlockTimestamp() - 1);
             const executorBalanceStart = toBN(await web3.eth.getBalance(executor));
+            const executorWNatBalanceStart = await wNat.balanceOf(executor);
             const redemptionDefaultTx = await assetManager.redemptionPaymentDefault(proof, redemptionRequest.requestId, { from: executor });
             const executorBalanceEnd = toBN(await web3.eth.getBalance(executor));
+            const executorWNatBalanceEnd = await wNat.balanceOf(executor);
             const gasFee = toBN(redemptionDefaultTx.receipt.gasUsed).mul(toBN(redemptionDefaultTx.receipt.effectiveGasPrice));
             // expect events
             const redemptionDefault = findRequiredEvent(redemptionDefaultTx, "RedemptionDefault").args;
             expect(redemptionDefault.agentVault).to.equal(agentVault.address);
             expect(redemptionDefault.redeemer).to.equal(redeemer);
             assertWeb3Equal(redemptionDefault.requestId, redemptionRequest.requestId);
-            assertWeb3Equal(executorBalanceEnd.sub(executorBalanceStart), executorFee.sub(gasFee));
+            assertWeb3Equal(executorBalanceStart.sub(executorBalanceEnd), gasFee);
+            assertWeb3Equal(executorWNatBalanceEnd.sub(executorWNatBalanceStart), executorFee);
             // expect usdc / wnat balance changes
             const redeemedAssetUSD = await ubaToUSDWei(redemptionRequest.valueUBA, ftsos.asset);
             const redeemerUSDCBalanceUSD = await ubaToUSDWei(await usdc.balanceOf(redeemer), ftsos.usdc);

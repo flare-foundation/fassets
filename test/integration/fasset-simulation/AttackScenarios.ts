@@ -112,9 +112,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         const beforeBalance = await executorInstance.howMuchIsMyNativeBalance();
         const vaultCollateralBalanceBefore = await agent.vaultCollateralToken().balanceOf(redeemerAddress1);
 
-        // FIX: did not revert before
-        await expectRevert(executorInstance.defaulting(proof, request.requestId, 1),
-            "transfer failed")
+        await executorInstance.defaulting(proof, request.requestId, 1);
+        // no reentrancy attack here, just a simple defaulting
+        assertWeb3Equal(await executorInstance.hit(), 0);
 
         const afterBalance = await executorInstance.howMuchIsMyNativeBalance();
         const vaultCollateralBalanceAfter = await agent.vaultCollateralToken().balanceOf(redeemerAddress1);
@@ -128,9 +128,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         console.log("before: ", vaultCollateralBalanceBefore.toString());
         console.log("after: ", vaultCollateralBalanceAfter.toString());
 
-        // FIX: must be zero
         assertWeb3Equal(afterBalance, 0);
-        assertWeb3Equal(vaultCollateralBalanceAfter, 0);
+        assert(vaultCollateralBalanceAfter.gtn(0));
     });
 
     it.skip("40203: force redemption default by redeeming to agent's underlying address - original", async () => {
@@ -890,7 +889,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         console.log("victim nat:", victimNatBefore.toString());
 
         // claim by using mock airdrop
-        const maliciousDistributionToDelegatorsMockFactory = artifacts.require('MaliciousDistributionToDelegatorsMock');
+        const maliciousDistributionToDelegatorsMockFactory = artifacts.require('MaliciousDistributionToDelegators');
         const maliciousDistributionToDelegatorsMock = await maliciousDistributionToDelegatorsMockFactory.new(toBNExp(1, 24));
         await agent.collateralPool.claimAirdropDistribution(maliciousDistributionToDelegatorsMock.address, 1,
             { from: agent.ownerWorkAddress });

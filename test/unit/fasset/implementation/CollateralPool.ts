@@ -1443,22 +1443,13 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // send nat to contract
             await transferWithSuicide(ETH(3), accounts[0], collateralPool.address);
             // destroy through asset manager
-            const natBefore = new BN(await web3.eth.getBalance(agent));
+            const wNatBefore = await wNat.balanceOf(agent);
             const payload = collateralPool.contract.methods.destroy(agent).encodeABI();
             await assetManager.callFunctionAt(collateralPool.address, payload);
-            const natAfter = new BN(await web3.eth.getBalance(agent));
+            const wNatAfter = await wNat.balanceOf(agent);
             // check that funds were transacted correctly
             assert.equal(await web3.eth.getBalance(collateralPool.address), "0");
-            assertEqualBN(natAfter.sub(natBefore), ETH(3));
-        });
-
-        it("should try destroying the pool, but fail because nat cannot be sent to receiver", async () => {
-            // send nat to contract
-            await transferWithSuicide(ETH(3), accounts[0], collateralPool.address);
-            // destroy through asset manager (note that collateral pool has receive fucntion disabled)
-            const payload = collateralPool.contract.methods.destroy(collateralPool.address).encodeABI();
-            const prms = assetManager.callFunctionAt(collateralPool.address, payload);
-            await expectRevert(prms, "transfer failed");
+            assertEqualBN(wNatAfter.sub(wNatBefore), ETH(3));
         });
 
         it("should payout collateral from collateral pool", async () => {
