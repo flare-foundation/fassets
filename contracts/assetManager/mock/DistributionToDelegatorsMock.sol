@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../interfaces/IWNat.sol";
+import "../../flareSmartContracts/interfaces/IWNat.sol";
 
-contract DistributionToDelegators {
+contract DistributionToDelegatorsMock {
     IWNat private wNat;
 
     event OptedOutOfAirdrop(address account);

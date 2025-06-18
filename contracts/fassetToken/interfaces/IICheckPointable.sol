@@ -2,7 +2,7 @@
 pragma solidity >=0.7.6 <0.9;
 
 
-interface ICheckPointable {
+interface IICheckPointable {
     /**
      * @notice Total amount of tokens at a specific `_blockNumber`.
      * @param _blockNumber The block number when the totalSupply is queried

@@ -3,7 +3,7 @@ pragma solidity 0.8.23;
 
 import "../../userInterfaces/IAssetManager.sol";
 
-contract MaliciousDistributionToDelegators {
+contract MaliciousDistributionToDelegatorsMock {
     uint256 public amount = 0;
 
     constructor (uint256 _claim) {

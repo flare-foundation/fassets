@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
+import "../../assetManager/interfaces/IIAssetManager.sol";
+import "../../utils/interfaces/IUpgradableContractFactory.sol";
 import "./IIAgentVault.sol";
-import "./IIAssetManager.sol";
-import "./IUpgradableContractFactory.sol";
 
 
 /**
  * @title Agent vault factory
  */
-interface IAgentVaultFactory is IUpgradableContractFactory {
+interface IIAgentVaultFactory is IUpgradableContractFactory {
     /**
      * @notice Creates new agent vault
      */

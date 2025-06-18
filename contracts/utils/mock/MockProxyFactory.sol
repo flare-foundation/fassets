@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../assetManager/interfaces/IUpgradableContractFactory.sol";
+import "../interfaces/IUpgradableContractFactory.sol";
 import "./TestUUPSProxyImpl.sol";
 
 

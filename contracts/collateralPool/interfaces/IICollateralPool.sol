@@ -4,8 +4,8 @@ pragma abicoder v2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../userInterfaces/ICollateralPool.sol";
-import "../interfaces/IIAssetManager.sol";
-import "./IWNat.sol";
+import "../../flareSmartContracts/interfaces/IWNat.sol";
+import "../../assetManager/interfaces/IIAssetManager.sol";
 
 /**
  * Collateral pool methods that are only callable by the asset manager or pool token.

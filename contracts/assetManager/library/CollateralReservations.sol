@@ -2,18 +2,18 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../interfaces/IIAgentVault.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
+import "../../agentVault/interfaces/IIAgentVault.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/Transfers.sol";
+import "../../utils/lib/MerkleTree.sol";
 import "./data/AssetManagerState.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Conversion.sol";
 import "./Agents.sol";
 import "./Minting.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
-import "./MerkleTree.sol";
 
 
 library CollateralReservations {

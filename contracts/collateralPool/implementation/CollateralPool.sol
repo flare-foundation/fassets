@@ -12,11 +12,11 @@ import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/Transfers.sol";
 import "../../utils/lib/MathUtils.sol";
 import "../../userInterfaces/IFAsset.sol";
-import "../interfaces/IWNat.sol";
-import "../interfaces/IIAssetManager.sol";
-import "../interfaces/IIAgentVault.sol";
-import "../interfaces/IICollateralPool.sol";
-import "../interfaces/IICollateralPoolToken.sol";
+import "../../flareSmartContracts/interfaces/IWNat.sol";
+import "../../assetManager/interfaces/IIAssetManager.sol";
+import "../../agentVault/interfaces/IIAgentVault.sol";
+import "../../collateralPool/interfaces/IICollateralPool.sol";
+import "../../collateralPool/interfaces/IICollateralPoolToken.sol";
 
 
 //slither-disable reentrancy    // all possible reentrancies guarded by nonReentrant

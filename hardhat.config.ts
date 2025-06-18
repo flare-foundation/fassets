@@ -123,7 +123,7 @@ const config: HardhatUserConfig = {
             }
         ],
         overrides: {
-            "contracts/utils/Imports.sol": {
+            "contracts/utils/Imports_Solidity_0_6.sol": {
                 version: "0.6.12",
                 settings: {}
             },

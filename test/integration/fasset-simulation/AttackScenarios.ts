@@ -890,9 +890,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
         console.log("victim nat:", victimNatBefore.toString());
 
         // claim by using mock airdrop
-        const maliciousDistributionToDelegatorsFactory = artifacts.require('MaliciousDistributionToDelegators');
-        const maliciousDistributionToDelegators = await maliciousDistributionToDelegatorsFactory.new(toBNExp(1, 24));
-        await agent.collateralPool.claimAirdropDistribution(maliciousDistributionToDelegators.address, 1,
+        const maliciousDistributionToDelegatorsMockFactory = artifacts.require('MaliciousDistributionToDelegatorsMock');
+        const maliciousDistributionToDelegatorsMock = await maliciousDistributionToDelegatorsMockFactory.new(toBNExp(1, 24));
+        await agent.collateralPool.claimAirdropDistribution(maliciousDistributionToDelegatorsMock.address, 1,
             { from: agent.ownerWorkAddress });
 
         // claim using mock delegation

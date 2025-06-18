@@ -3,7 +3,7 @@ pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
 import "../../userInterfaces/IAgentVault.sol";
-import "./IIAssetManager.sol";
+import "../../assetManager/interfaces/IIAssetManager.sol";
 
 
 interface IIAgentVault is IAgentVault {

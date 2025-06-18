@@ -3,7 +3,7 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../interfaces/IPriceReader.sol";
+import "../../ftso/interfaces/IPriceReader.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./Globals.sol";

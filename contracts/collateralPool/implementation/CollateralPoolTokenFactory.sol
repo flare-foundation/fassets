@@ -2,14 +2,14 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "../interfaces/ICollateralPoolFactory.sol";
-import "./CollateralPool.sol";
+import "../interfaces/IICollateralPoolTokenFactory.sol";
+import "./CollateralPoolToken.sol";
 
 
-contract CollateralPoolFactory is ICollateralPoolFactory, IERC165 {
-    using SafeCast for uint256;
+contract CollateralPoolTokenFactory is IICollateralPoolTokenFactory, IERC165 {
+    string internal constant TOKEN_NAME_PREFIX = "FAsset Collateral Pool Token ";
+    string internal constant TOKEN_SYMBOL_PREFIX = "FCPT-";
 
     address public implementation;
 
@@ -17,20 +17,16 @@ contract CollateralPoolFactory is ICollateralPoolFactory, IERC165 {
         implementation = _implementation;
     }
 
-    function create(
-        IIAssetManager _assetManager,
-        address _agentVault,
-        AgentSettings.Data memory _settings
-    )
+    function create(IICollateralPool _pool, string memory _systemSuffix, string memory _agentSuffix)
         external override
-        returns (IICollateralPool)
+        returns (address)
     {
-        address fAsset = address(_assetManager.fAsset());
+        string memory tokenName = string.concat(TOKEN_NAME_PREFIX, _systemSuffix, "-", _agentSuffix);
+        string memory tokenSymbol = string.concat(TOKEN_SYMBOL_PREFIX, _systemSuffix, "-", _agentSuffix);
         ERC1967Proxy proxy = new ERC1967Proxy(implementation, new bytes(0));
-        CollateralPool pool = CollateralPool(payable(address(proxy)));
-        pool.initialize(_agentVault, address(_assetManager), fAsset,
-            _settings.poolExitCollateralRatioBIPS.toUint32());
-        return pool;
+        CollateralPoolToken poolToken = CollateralPoolToken(address(proxy));
+        poolToken.initialize(address(_pool), tokenName, tokenSymbol);
+        return address(poolToken);
     }
 
     /**
@@ -50,6 +46,6 @@ contract CollateralPoolFactory is ICollateralPoolFactory, IERC165 {
         returns (bool)
     {
         return _interfaceId == type(IERC165).interfaceId
-            || _interfaceId == type(ICollateralPoolFactory).interfaceId;
+            || _interfaceId == type(IICollateralPoolTokenFactory).interfaceId;
     }
 }

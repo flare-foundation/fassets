@@ -4,7 +4,7 @@ pragma solidity 0.8.23;
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@flarenetwork/flare-periphery-contracts/flare/IFtsoRegistry.sol";
 import "../interfaces/IPriceReader.sol";
-import "../../governance/implementation/AddressUpdatable.sol";
+import "../../flareSmartContracts/implementation/AddressUpdatable.sol";
 
 
 contract FtsoV1PriceReader is IPriceReader, IERC165, AddressUpdatable {

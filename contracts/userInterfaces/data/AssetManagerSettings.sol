@@ -16,17 +16,17 @@ library AssetManagerSettings {
         address fAsset;
 
         // Factory for creating new agent vaults.
-        // Type: IAgentVaultFactory
+        // Type: IIAgentVaultFactory
         // timelocked
         address agentVaultFactory;
 
         // Factory for creating new agent collateral pools.
-        // Type: ICollateralPoolFactory
+        // Type: IICollateralPoolFactory
         // timelocked
         address collateralPoolFactory;
 
         // Factory for creating new agent collateral pool tokens.
-        // Type: ICollateralPoolTokenFactory
+        // Type: IICollateralPoolTokenFactory
         // timelocked
         address collateralPoolTokenFactory;
 

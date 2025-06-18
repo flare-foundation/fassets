@@ -4,7 +4,7 @@ pragma solidity >=0.7.6 <0.9;
 import "../../diamond/interfaces/IDiamondCut.sol";
 import "../../governance/interfaces/IGoverned.sol";
 import "../../userInterfaces/IAssetManager.sol";
-import "./IWNat.sol";
+import "../../flareSmartContracts/interfaces/IWNat.sol";
 import "./IISettingsManagement.sol";
 
 

@@ -6,7 +6,7 @@ import {
     AgentVaultMockInstance,
     AssetManagerMockInstance,
     CollateralPoolInstance, CollateralPoolTokenInstance,
-    DistributionToDelegatorsInstance,
+    DistributionToDelegatorsMockInstance,
     ERC20MockInstance,
     FAssetInstance,
     IERC165Contract
@@ -46,7 +46,7 @@ const AgentVaultMock = artifacts.require("AgentVaultMock");
 const AssetManager = artifacts.require("AssetManagerMock")
 const CollateralPool = artifacts.require("CollateralPool");
 const CollateralPoolToken = artifacts.require("CollateralPoolToken");
-const DistributionToDelegators = artifacts.require("DistributionToDelegators");
+const DistributionToDelegatorsMock = artifacts.require("DistributionToDelegatorsMock");
 const MockContract = artifacts.require('MockContract');
 const FAsset = artifacts.require('FAsset');
 const FAssetProxy = artifacts.require('FAssetProxy');
@@ -1480,13 +1480,13 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
     describe("distribution claiming and wnat delegation", async () => {
 
         it("should fail claiming airdropped distribution from non-agent address", async () => {
-            const distributionToDelegators: DistributionToDelegatorsInstance = await DistributionToDelegators.new(wNat.address);
+            const distributionToDelegators: DistributionToDelegatorsMockInstance = await DistributionToDelegatorsMock.new(wNat.address);
             const prms = collateralPool.claimAirdropDistribution(distributionToDelegators.address, 0, { from: accounts[0] });
             await expectRevert(prms, "only agent");
         });
 
         it("should claim airdropped distribution", async () => {
-            const distributionToDelegators: DistributionToDelegatorsInstance = await DistributionToDelegators.new(wNat.address);
+            const distributionToDelegators: DistributionToDelegatorsMockInstance = await DistributionToDelegatorsMock.new(wNat.address);
             await wNat.mintAmount(distributionToDelegators.address, ETH(1));
             const resp = await collateralPool.claimAirdropDistribution(distributionToDelegators.address, 0, { from: agent });
             await expectEvent.inTransaction(resp.tx, collateralPool, "ClaimedReward", { amountNatWei: ETH(1), rewardType: '0' });
@@ -1498,7 +1498,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // create fake distribution that will return large claimed amount but actually transfer 0
             const distributionToDelegatorsMock = await MockContract.new();
             await distributionToDelegatorsMock.givenAnyReturn(web3.eth.abi.encodeParameter("uint256", ETH(1)));
-            const distributionToDelegators: DistributionToDelegatorsInstance = await DistributionToDelegators.at(distributionToDelegatorsMock.address);
+            const distributionToDelegators: DistributionToDelegatorsMockInstance = await DistributionToDelegatorsMock.at(distributionToDelegatorsMock.address);
             assertEqualBN(await distributionToDelegators.claim.call(collateralPool.address, collateralPool.address, 5, true), ETH(1));
             // claim
             const resp = await collateralPool.claimAirdropDistribution(distributionToDelegators.address, 5, { from: agent });
@@ -1510,13 +1510,13 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
 
         it("should fail opting out of airdrop from non-agent address", async () => {
-            const distributionToDelegators: DistributionToDelegatorsInstance = await DistributionToDelegators.new(wNat.address);
+            const distributionToDelegators: DistributionToDelegatorsMockInstance = await DistributionToDelegatorsMock.new(wNat.address);
             const prms = collateralPool.optOutOfAirdrop(distributionToDelegators.address, { from: accounts[0] });
             await expectRevert(prms, "only agent");
         });
 
         it("should opt out of airdrop", async () => {
-            const distributionToDelegators: DistributionToDelegatorsInstance = await DistributionToDelegators.new(wNat.address);
+            const distributionToDelegators: DistributionToDelegatorsMockInstance = await DistributionToDelegatorsMock.new(wNat.address);
             const resp = await collateralPool.optOutOfAirdrop(distributionToDelegators.address, { from: agent });
             await expectEvent.inTransaction(resp.tx, distributionToDelegators, "OptedOutOfAirdrop", { account: collateralPool.address });
         });
@@ -1571,10 +1571,10 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
     describe("ERC-165 interface identification for CollateralPoolFactory", () => {
         it("should properly respond to supportsInterface", async () => {
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
-            const ICollateralPoolFactory = artifacts.require("ICollateralPoolFactory");
+            const IICollateralPoolFactory = artifacts.require("IICollateralPoolFactory");
             const IUpgradableContractFactory = artifacts.require("IUpgradableContractFactory");
             assert.isTrue(await contracts.collateralPoolFactory.supportsInterface(erc165InterfaceId(IERC165)));
-            assert.isTrue(await contracts.collateralPoolFactory.supportsInterface(erc165InterfaceId(ICollateralPoolFactory, [IUpgradableContractFactory])));
+            assert.isTrue(await contracts.collateralPoolFactory.supportsInterface(erc165InterfaceId(IICollateralPoolFactory, [IUpgradableContractFactory])));
             assert.isFalse(await contracts.collateralPoolFactory.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });
@@ -1582,10 +1582,10 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
     describe("ERC-165 interface identification for CollateralPoolTokenFactory", () => {
         it("should properly respond to supportsInterface", async () => {
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
-            const ICollateralPoolTokenFactory = artifacts.require("ICollateralPoolTokenFactory");
+            const IICollateralPoolTokenFactory = artifacts.require("IICollateralPoolTokenFactory");
             const IUpgradableContractFactory = artifacts.require("IUpgradableContractFactory");
             assert.isTrue(await contracts.collateralPoolTokenFactory.supportsInterface(erc165InterfaceId(IERC165)));
-            assert.isTrue(await contracts.collateralPoolTokenFactory.supportsInterface(erc165InterfaceId(ICollateralPoolTokenFactory, [IUpgradableContractFactory])));
+            assert.isTrue(await contracts.collateralPoolTokenFactory.supportsInterface(erc165InterfaceId(IICollateralPoolTokenFactory, [IUpgradableContractFactory])));
             assert.isFalse(await contracts.collateralPoolTokenFactory.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });
@@ -1646,7 +1646,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
 
         it("random address shouldn't be able to claim rewards from reward manager", async () => {
-            const distributionToDelegators: DistributionToDelegatorsInstance = await DistributionToDelegators.new(wNat.address);
+            const distributionToDelegators: DistributionToDelegatorsMockInstance = await DistributionToDelegatorsMock.new(wNat.address);
             await wNat.mintAmount(distributionToDelegators.address, ETH(1));
             let res = collateralPool.claimDelegationRewards(distributionToDelegators.address, 0, [], { from: accounts[5] });
             await expectRevert(res, "only agent");

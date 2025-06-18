@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../interfaces/IICoreVaultManager.sol";
+import "../../userInterfaces/ICoreVault.sol";
+import "../../coreVaultManager/interfaces/IICoreVaultManager.sol";
 import "../../utils/lib/MathUtils.sol";
 import "../../utils/lib/SafePct.sol";
-import "../../userInterfaces/ICoreVault.sol";
 import "./data/AssetManagerState.sol";
 import "./data/PaymentReference.sol";
 import "./AgentCollateral.sol";

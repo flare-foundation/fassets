@@ -3,16 +3,16 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../interfaces/IIAssetManager.sol";
-import "../interfaces/ICollateralPoolFactory.sol";
-import "../interfaces/ICollateralPoolTokenFactory.sol";
-import "../interfaces/IAgentVaultFactory.sol";
-import "../interfaces/IIAssetManagerController.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "../../utils/interfaces/IUpgradableProxy.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafePct.sol";
+import "../../assetManagerController/interfaces/IIAssetManagerController.sol";
+import "../../collateralPool/interfaces/IICollateralPoolFactory.sol";
+import "../../collateralPool/interfaces/IICollateralPoolTokenFactory.sol";
+import "../../agentVault/interfaces/IIAgentVaultFactory.sol";
+import "../interfaces/IIAssetManager.sol";
 import "./data/AssetManagerState.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Conversion.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
@@ -78,7 +78,7 @@ library AgentsCreateDestroy {
         IAddressValidity.ResponseBody memory avb = _addressProof.data.responseBody;
         require(avb.isValid, "address invalid");
         // create agent vault
-        IAgentVaultFactory agentVaultFactory = IAgentVaultFactory(Globals.getSettings().agentVaultFactory);
+        IIAgentVaultFactory agentVaultFactory = IIAgentVaultFactory(Globals.getSettings().agentVaultFactory);
         IIAgentVault agentVault = agentVaultFactory.create(_assetManager);
         // set initial status
         Agent.State storage agent = Agent.getWithoutCheck(address(agentVault));
@@ -180,10 +180,10 @@ library AgentsCreateDestroy {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         ICollateralPool collateralPool = Agent.get(_agentVault).collateralPool;
         ICollateralPoolToken collateralPoolToken = collateralPool.poolToken();
-        _upgradeContract(IAgentVaultFactory(settings.agentVaultFactory), _agentVault);
-        _upgradeContract(ICollateralPoolFactory(settings.collateralPoolFactory),
+        _upgradeContract(IIAgentVaultFactory(settings.agentVaultFactory), _agentVault);
+        _upgradeContract(IICollateralPoolFactory(settings.collateralPoolFactory),
             address(collateralPool));
-        _upgradeContract(ICollateralPoolTokenFactory(settings.collateralPoolTokenFactory),
+        _upgradeContract(IICollateralPoolTokenFactory(settings.collateralPoolTokenFactory),
             address(collateralPoolToken));
     }
 
@@ -223,10 +223,10 @@ library AgentsCreateDestroy {
         returns (IICollateralPool)
     {
         AssetManagerSettings.Data storage globalSettings = Globals.getSettings();
-        ICollateralPoolFactory collateralPoolFactory =
-            ICollateralPoolFactory(globalSettings.collateralPoolFactory);
-        ICollateralPoolTokenFactory poolTokenFactory =
-            ICollateralPoolTokenFactory(globalSettings.collateralPoolTokenFactory);
+        IICollateralPoolFactory collateralPoolFactory =
+            IICollateralPoolFactory(globalSettings.collateralPoolFactory);
+        IICollateralPoolTokenFactory poolTokenFactory =
+            IICollateralPoolTokenFactory(globalSettings.collateralPoolTokenFactory);
         IICollateralPool collateralPool = collateralPoolFactory.create(_assetManager, _agentVault, _settings);
         address poolToken =
             poolTokenFactory.create(collateralPool, globalSettings.poolTokenSuffix, _settings.poolTokenSuffix);

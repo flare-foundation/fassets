@@ -4,9 +4,9 @@ pragma abicoder v2;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "../../userInterfaces/IAssetManagerController.sol";
-import "../../governance/interfaces/IAddressUpdatable.sol";
+import "../../flareSmartContracts/interfaces/IAddressUpdatable.sol";
 import "../../utils/interfaces/IUUPSUpgradeable.sol";
-import "./IIAssetManager.sol";
+import "../../assetManager/interfaces/IIAssetManager.sol";
 
 
 interface IIAssetManagerController is

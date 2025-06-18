@@ -21,7 +21,7 @@ const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 const CollateralPool = artifacts.require("CollateralPool");
 const FAsset = artifacts.require('FAsset');
 const FAssetProxy = artifacts.require('FAssetProxy');
-const DistributionToDelegators = artifacts.require('DistributionToDelegators');
+const DistributionToDelegatorsMock = artifacts.require('DistributionToDelegatorsMock');
 const RewardManager = artifacts.require("RewardManagerMock");
 
 contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, async accounts => {
@@ -404,10 +404,10 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     describe("ERC-165 interface identification for Agent Vault Factory", () => {
         it("should properly respond to supportsInterface", async () => {
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
-            const IAgentVaultFactory = artifacts.require("IAgentVaultFactory");
+            const IIAgentVaultFactory = artifacts.require("IIAgentVaultFactory");
             const IUpgradableContractFactory = artifacts.require("IUpgradableContractFactory");
             assert.isTrue(await contracts.agentVaultFactory.supportsInterface(erc165InterfaceId(IERC165)));
-            assert.isTrue(await contracts.agentVaultFactory.supportsInterface(erc165InterfaceId(IAgentVaultFactory, [IUpgradableContractFactory])));
+            assert.isTrue(await contracts.agentVaultFactory.supportsInterface(erc165InterfaceId(IIAgentVaultFactory, [IUpgradableContractFactory])));
             assert.isFalse(await contracts.agentVaultFactory.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });

@@ -1,28 +1,36 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "../interfaces/IAgentVaultFactory.sol";
-import "./AgentVault.sol";
+import "../interfaces/IICollateralPoolFactory.sol";
+import "./CollateralPool.sol";
 
 
-contract AgentVaultFactory is IAgentVaultFactory, IERC165 {
+contract CollateralPoolFactory is IICollateralPoolFactory, IERC165 {
+    using SafeCast for uint256;
+
     address public implementation;
 
     constructor(address _implementation) {
         implementation = _implementation;
     }
 
-    /**
-     * @notice Creates new agent vault
-     */
-    function create(IIAssetManager _assetManager) external returns (IIAgentVault) {
+    function create(
+        IIAssetManager _assetManager,
+        address _agentVault,
+        AgentSettings.Data memory _settings
+    )
+        external override
+        returns (IICollateralPool)
+    {
+        address fAsset = address(_assetManager.fAsset());
         ERC1967Proxy proxy = new ERC1967Proxy(implementation, new bytes(0));
-        AgentVault agentVault = AgentVault(payable(address(proxy)));
-        agentVault.initialize(_assetManager);
-        return agentVault;
+        CollateralPool pool = CollateralPool(payable(address(proxy)));
+        pool.initialize(_agentVault, address(_assetManager), fAsset,
+            _settings.poolExitCollateralRatioBIPS.toUint32());
+        return pool;
     }
 
     /**
@@ -42,6 +50,6 @@ contract AgentVaultFactory is IAgentVaultFactory, IERC165 {
         returns (bool)
     {
         return _interfaceId == type(IERC165).interfaceId
-            || _interfaceId == type(IAgentVaultFactory).interfaceId;
+            || _interfaceId == type(IICollateralPoolFactory).interfaceId;
     }
 }

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
+import "../../assetManager/interfaces/IIAssetManager.sol";
+import "../../utils/interfaces/IUpgradableContractFactory.sol";
 import "./IICollateralPool.sol";
-import "./IIAssetManager.sol";
-import "./IUpgradableContractFactory.sol";
 
 
 /**
  * @title Collateral pool factory
  */
-interface ICollateralPoolFactory is IUpgradableContractFactory {
+interface IICollateralPoolFactory is IUpgradableContractFactory {
     /**
      * @notice Creates new collateral pool
      */

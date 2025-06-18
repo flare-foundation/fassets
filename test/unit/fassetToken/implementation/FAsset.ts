@@ -416,7 +416,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             const IERC20 = artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20" as "IERC20");
             const IERC20Metadata = artifacts.require("@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol:IERC20Metadata" as "IERC20Metadata");
             const IICleanable = artifacts.require("@flarenetwork/flare-periphery-contracts/flare/token/interface/IICleanable.sol:IICleanable" as "IICleanable");
-            const ICheckPointable = artifacts.require("ICheckPointable");
+            const IICheckPointable = artifacts.require("IICheckPointable");
             const IFasset = artifacts.require("IFAsset");
             const IIFasset = artifacts.require("IIFAsset");
             //
@@ -425,7 +425,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             const iERC20Metadata = await IERC20Metadata.at(fAsset.address);
             const iFasset = await IFasset.at(fAsset.address);
             const iiFasset = await IIFasset.at(fAsset.address);
-            const iCheckPointable = await ICheckPointable.at(fAsset.address);
+            const iCheckPointable = await IICheckPointable.at(fAsset.address);
             const iiCleanable = await IICleanable.at(fAsset.address);
             //
             assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iERC165.abi)));

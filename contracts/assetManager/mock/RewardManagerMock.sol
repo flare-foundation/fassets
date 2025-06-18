@@ -2,7 +2,7 @@
 pragma solidity 0.8.23;
 
 import "@flarenetwork/flare-periphery-contracts/flare/IRewardManager.sol";
-import "../interfaces/IWNat.sol";
+import "../../flareSmartContracts/interfaces/IWNat.sol";
 
 contract RewardManagerMock {
     IWNat private wNat;

@@ -5,11 +5,11 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdater.sol";
-import "../interfaces/IWNat.sol";
-import "../interfaces/IISettingsManagement.sol";
-import "../interfaces/IIAssetManagerController.sol";
+import "../../flareSmartContracts/interfaces/IWNat.sol";
 import "../../governance/implementation/GovernedProxyImplementation.sol";
-import "../../governance/implementation/AddressUpdatable.sol";
+import "../../flareSmartContracts/implementation/AddressUpdatable.sol";
+import "../../assetManager/interfaces/IISettingsManagement.sol";
+import "../interfaces/IIAssetManagerController.sol";
 
 
 contract AssetManagerController is

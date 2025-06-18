@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../governance/implementation/GovernedProxyImplementation.sol";
-import "../../governance/implementation/AddressUpdatable.sol";
+import "../../flareSmartContracts/implementation/AddressUpdatable.sol";
 import "../interfaces/IICoreVaultManager.sol";
 
 

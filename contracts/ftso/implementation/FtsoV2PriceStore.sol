@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
 import "../../governance/implementation/Governed.sol";
-import "../../governance/implementation/AddressUpdatable.sol";
+import "../../flareSmartContracts/implementation/AddressUpdatable.sol";
 import "../interfaces/IPriceReader.sol";
 import "../interfaces/IPricePublisher.sol";
 

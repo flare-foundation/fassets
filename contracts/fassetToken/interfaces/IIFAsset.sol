@@ -3,10 +3,10 @@ pragma solidity >=0.7.6 <0.9;
 
 import "@flarenetwork/flare-periphery-contracts/flare/token/interface/IICleanable.sol";
 import "../../userInterfaces/IFAsset.sol";
-import "./ICheckPointable.sol";
+import "./IICheckPointable.sol";
 
 
-interface IIFAsset is IFAsset, ICheckPointable, IICleanable {
+interface IIFAsset is IFAsset, IICheckPointable, IICleanable {
     /**
      * Mints `_amount` od fAsset.
      * Only the assetManager corresponding to this fAsset may call `mint()`.

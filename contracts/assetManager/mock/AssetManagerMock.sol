@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../interfaces/IWNat.sol";
-import "../interfaces/IIAgentVault.sol";
-import "../interfaces/IICollateralPool.sol";
+import "../../flareSmartContracts/interfaces/IWNat.sol";
 import "../../fassetToken/interfaces/IIFAsset.sol";
+import "../../agentVault/interfaces/IIAgentVault.sol";
+import "../../collateralPool/interfaces/IICollateralPool.sol";
 
 contract AssetManagerMock {
     IWNat private wNat;
