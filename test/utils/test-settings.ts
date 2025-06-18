@@ -1,9 +1,10 @@
+import { time } from "@openzeppelin/test-helpers";
 import { AgentSettings, AssetManagerSettings, CollateralClass, CollateralType } from "../../lib/fasset/AssetManagerTypes";
 import { ChainInfo } from "../../lib/fasset/ChainInfo";
 import { PaymentReference } from "../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../../lib/utils/events/truffle";
-import { BNish, DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBNExp, WEEKS, ZERO_ADDRESS } from "../../lib/utils/helpers";
+import { BNish, DAYS, HOURS, MAX_BIPS, MINUTES, requireNotNull, toBIPS, toBNExp, WEEKS, ZERO_ADDRESS } from "../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import {
     AddressUpdaterInstance,
@@ -22,7 +23,6 @@ import {
     FdcHubMockInstance,
     FtsoV2PriceStoreMockInstance
 } from "../../typechain-truffle";
-import { createMockFtsoV2PriceStore } from "../integration/utils/CommonContext";
 import { CoreVaultManagerSettings } from "../integration/utils/MockCoreVaultBot";
 import { testChainInfo, TestChainInfo } from "../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";
@@ -34,10 +34,7 @@ const AgentVault = artifacts.require("AgentVault");
 const WNat = artifacts.require("WNat");
 const AddressUpdater = artifacts.require('AddressUpdater');
 const FdcVerification = artifacts.require('FdcVerificationMock');
-const PriceReader = artifacts.require('FtsoV2PriceStoreMock');
 const FtsoV2PriceStoreMock = artifacts.require('FtsoV2PriceStoreMock');
-// const FtsoMock = artifacts.require('FtsoMock');
-// const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const FdcHub = artifacts.require('FdcHubMock');
 const Relay = artifacts.require('RelayMock');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -74,9 +71,8 @@ export interface CoreVaultManagerInitSettings extends CoreVaultManagerSettings {
     triggeringAccounts: string[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface TestSettingsContracts extends TestSettingsCommonContracts {
-    // ftsoRegistry: FtsoV2PriceStoreMockInstance;
+    priceStore: FtsoV2PriceStoreMockInstance;
 }
 
 export type TestSettingOptions = Partial<AssetManagerInitSettings>;
@@ -251,15 +247,13 @@ export async function createTestContracts(governance: string): Promise<TestSetti
         USDT: await ERC20Mock.new("Tether", "USDT"),
     };
 
-
-    // create price reader
-    const priceReader = await createMockFtsoV2PriceStore(governanceSettings.address, governance, addressUpdater.address, {
-        ...testChainInfo})
+    // create FTSOv2 price store
+    const priceStore = await createMockFtsoV2PriceStore(governanceSettings.address, governance, addressUpdater.address, {...testChainInfo});
 
     // add some addresses to address updater
     await addressUpdater.addOrUpdateContractNamesAndAddresses(
         ["GovernanceSettings", "AddressUpdater", "FdcHub", "Relay", "FdcVerification", "WNat", "FtsoV2PriceStore"],
-        [governanceSettings.address, addressUpdater.address, fdcHub.address, relay.address, fdcVerification.address, wNat.address, priceReader.address],
+        [governanceSettings.address, addressUpdater.address, fdcHub.address, relay.address, fdcVerification.address, wNat.address, priceStore.address],
         { from: governance });
 
     // create agent vault factory
@@ -277,7 +271,7 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     //
     return {
         governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, collateralPoolTokenFactory, relay, fdcHub, fdcVerification,
-        priceReader, agentOwnerRegistry, wNat, stablecoins };
+        priceStore, priceReader: priceStore, agentOwnerRegistry, wNat, stablecoins };
 }
 
 export async function createCoreVaultManager(assetManager: IIAssetManagerInstance, addressUpdater: AddressUpdaterInstance, settings: CoreVaultManagerInitSettings) {
@@ -330,4 +324,38 @@ export async function createTestAgent(deps: CreateTestAgentDeps, owner: string, 
     const agentVaultAddress = event.args.agentVault;
     // get vault contract at this address
     return await AgentVault.at(agentVaultAddress);
+}
+
+export async function createMockFtsoV2PriceStore(governanceSettingsAddress: string, initialGovernance: string, addressUpdater: string, assetChainInfos: Record<string, TestChainInfo>) {
+    const currentTime = await time.latest();
+    const votingEpochDurationSeconds = 90;
+    const firstVotingRoundStartTs = currentTime.toNumber() - 1 * WEEKS;
+    const ftsoScalingProtocolId = 100;
+    // create store
+    const priceStore = await FtsoV2PriceStoreMock.new(governanceSettingsAddress, initialGovernance, addressUpdater,
+        firstVotingRoundStartTs, votingEpochDurationSeconds, ftsoScalingProtocolId);
+    // setup
+    const feedIdArr = ["0xc1", "0xc2", "0xc3"];
+    const symbolArr = ["NAT", "USDC", "USDT"];
+    const decimalsArr = [5, 5, 5];
+    for (const [i, ci] of Object.values(assetChainInfos).entries()) {
+        feedIdArr.push(`0xa${i + 1}`);
+        symbolArr.push(ci.symbol);
+        decimalsArr.push(5);
+    }
+    await priceStore.updateSettings(feedIdArr, symbolArr, decimalsArr, 50, { from: initialGovernance });
+    // init prices
+    async function setInitPrice(symbol: string, price: number | string) {
+        const decimals = requireNotNull(decimalsArr[symbolArr.indexOf(symbol)]);
+        await priceStore.setCurrentPrice(symbol, toBNExp(price, decimals), 0);
+        await priceStore.setCurrentPriceFromTrustedProviders(symbol, toBNExp(price, decimals), 0);
+    }
+    await setInitPrice("NAT", 0.42);
+    await setInitPrice("USDC", 1.01);
+    await setInitPrice("USDT", 0.99);
+    for (const ci of Object.values(assetChainInfos)) {
+        await setInitPrice(ci.symbol, ci.startPrice);
+    }
+    //
+    return priceStore;
 }

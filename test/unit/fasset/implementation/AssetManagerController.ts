@@ -559,8 +559,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should change wnat contract", async () => {
             const newWNat = accounts[82];
-            const prms1 = contracts.addressUpdater.addOrUpdateContractNamesAndAddresses(["AssetManagerController", "FtsoRegistry", "WNat"],
-                [assetManagerController.address, contracts.ftsoRegistry.address, newWNat], { from: governance })
+            const prms1 = contracts.addressUpdater.addOrUpdateContractNamesAndAddresses(["AssetManagerController", "WNat"],
+                [assetManagerController.address, newWNat], { from: governance })
             await waitForTimelock(prms1, contracts.addressUpdater, updateExecutor);
             const prms2 = contracts.addressUpdater.updateContractAddresses([assetManagerController.address], { from: governance });
             await waitForTimelock(prms2, assetManagerController, updateExecutor);

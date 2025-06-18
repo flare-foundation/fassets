@@ -1,4 +1,3 @@
-import { time } from "@openzeppelin/test-helpers";
 import {
     AddressUpdaterEvents, AgentVaultFactoryEvents,
     CollateralPoolFactoryEvents, CollateralPoolTokenFactoryEvents, ERC20Events, FdcHubEvents,
@@ -6,7 +5,7 @@ import {
     IIAssetManagerControllerEvents, PriceReaderEvents, RelayEvents, WNatEvents
 } from "../../../lib/fasset/IAssetContext";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
-import { requireNotNull, toBNExp, WEEKS, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import {
     AddressUpdaterInstance, AgentVaultFactoryInstance, CollateralPoolFactoryInstance,
     CollateralPoolTokenFactoryInstance, ERC20MockInstance, FdcHubMockInstance, FdcVerificationMockInstance,
@@ -16,7 +15,8 @@ import {
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../utils/constants";
 import { newAssetManagerController } from "../../utils/fasset/CreateAssetManager";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
-import { TestChainInfo, testChainInfo, TestNatInfo, testNatInfo } from "./TestChainInfo";
+import { testChainInfo, TestNatInfo, testNatInfo } from "./TestChainInfo";
+import { createMockFtsoV2PriceStore } from "../../utils/test-settings";
 
 const AgentVault = artifacts.require("AgentVault");
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
@@ -25,7 +25,6 @@ const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
 const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
 const FdcVerification = artifacts.require('FdcVerificationMock');
-const FtsoV2PriceStoreMock = artifacts.require('FtsoV2PriceStoreMock');
 const AddressUpdater = artifacts.require('AddressUpdater');
 const WNat = artifacts.require('WNat');
 const ERC20Mock = artifacts.require("ERC20Mock");
@@ -100,38 +99,4 @@ export class CommonContext {
             agentVaultFactory, collateralPoolFactory, collateralPoolTokenFactory,
             fdcVerification, priceStore, priceStore, testNatInfo, wNat, stablecoins);
     }
-}
-
-export async function createMockFtsoV2PriceStore(governanceSettingsAddress: string, initialGovernance: string, addressUpdater: string, assetChainInfos: Record<string, TestChainInfo>) {
-    const currentTime = await time.latest();
-    const votingEpochDurationSeconds = 90;
-    const firstVotingRoundStartTs = currentTime.toNumber() - 1 * WEEKS;
-    const ftsoScalingProtocolId = 100;
-    // create store
-    const priceStore = await FtsoV2PriceStoreMock.new(governanceSettingsAddress, initialGovernance, addressUpdater,
-        firstVotingRoundStartTs, votingEpochDurationSeconds, ftsoScalingProtocolId);
-    // setup
-    const feedIdArr = ["0xc1", "0xc2", "0xc3"];
-    const symbolArr = ["NAT", "USDC", "USDT"];
-    const decimalsArr = [5, 5, 5];
-    for (const [i, ci] of Object.values(assetChainInfos).entries()) {
-        feedIdArr.push(`0xa${i + 1}`);
-        symbolArr.push(ci.symbol);
-        decimalsArr.push(5);
-    }
-    await priceStore.updateSettings(feedIdArr, symbolArr, decimalsArr, 50, { from: initialGovernance });
-    // init prices
-    async function setInitPrice(symbol: string, price: number | string) {
-        const decimals = requireNotNull(decimalsArr[symbolArr.indexOf(symbol)]);
-        await priceStore.setCurrentPrice(symbol, toBNExp(price, decimals), 0);
-        await priceStore.setCurrentPriceFromTrustedProviders(symbol, toBNExp(price, decimals), 0);
-}
-    await setInitPrice("NAT", 0.42);
-    await setInitPrice("USDC", 1.01);
-    await setInitPrice("USDT", 0.99);
-    for (const ci of Object.values(assetChainInfos)) {
-        await setInitPrice(ci.symbol, ci.startPrice);
-    }
-    //
-    return priceStore;
 }

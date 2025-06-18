@@ -54,6 +54,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let attestationProvider: AttestationHelper;
     let usdt: ERC20MockInstance;
 
+    let assetSymbol: string;
+    const natSymbol = "NAT";
+    const usdcSymbol = "USDC";
+    const usdtSymbol = "USDT";
+
     // addresses
     const underlyingBurnAddr = "Burn";
     const agentOwner1 = accounts[20];
@@ -73,13 +78,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     }
 
     // price of ftso-asset in uba/wei/base units
-    async function ubaToUSDWei(uba: BN, ftso: FtsoMockInstance) {
-        const { 0: assetPrice, 2: decimals } = await ftso.getCurrentPriceWithDecimals();
+    async function ubaToTokenWei(uba: BN, tokenSymbol: string) {
+        const { 0: assetPrice, 2: decimals } = await contracts.priceReader.getPrice(tokenSymbol);
         return uba.mul(assetPrice).div(toBN(10**decimals.toNumber()));
     }
     async function ubaToC1Wei(uba: BN) {
-        const { 0: assetPrice } = await ftsos.asset.getCurrentPrice();
-        const { 0: usdcPrice } = await ftsos.usdc.getCurrentPrice();
+        const { 0: assetPrice } = await contracts.priceReader.getPrice(assetSymbol);
+        const { 0: usdcPrice } = await contracts.priceReader.getPrice(usdcSymbol);
         return uba.mul(assetPrice).div(usdcPrice);
     }
     async function ubaToPoolWei(uba: BN) {
@@ -87,7 +92,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         return uba.mul(assetPriceMul).div(assetPriceDiv);
     }
     async function usd5ToVaultCollateralWei(usd5: BN) {
-        const { 0: usdcPrice, 2: usdcDecimals } = await ftsos.usdc.getCurrentPriceWithDecimals();
+        const { 0: usdcPrice, 2: usdcDecimals } = await contracts.priceReader.getPrice(usdcSymbol);
         return usd5.mul(toWei(10**usdcDecimals.toNumber()).divn(1e5)).div(usdcPrice);
     }
 
@@ -211,11 +216,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
-        return { contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
+        assetSymbol = ci.assetSymbol;
+        return { contracts, diamondCuts, assetManagerInit, wNat, usdc, assetSymbol, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
     }
 
     beforeEach(async () => {
-        ({ contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt } = await loadFixtureCopyVars(initialize));
+        ({ contracts, diamondCuts, assetManagerInit, wNat, usdc, assetSymbol, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt } = await loadFixtureCopyVars(initialize));
     });
 
     describe("set and update settings / properties", () => {
@@ -691,8 +697,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         it("should not switch vault collateral token", async () => {
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(50));
-            await ftsos.asset.setCurrentPrice(toBNExp(5, 10), 0);
-            await ftsos.usdc.setCurrentPriceFromTrustedProviders(toBNExp(5, 10), 0);
+            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(5, 10), 0);
+            await contracts.priceStore.setCurrentPriceFromTrustedProviders(usdcSymbol, toBNExp(5, 10), 0);
             //Can't switch vault collateral if it has not been deprecated
             let res = assetManager.switchVaultCollateral(agentVault.address,collaterals[2].token, { from: agentOwner1 });
             await expectRevert(res, "current collateral not deprecated");
@@ -1569,9 +1575,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             expect(redemptionDefault.redeemer).to.equal(redeemer);
             assertWeb3Equal(redemptionDefault.requestId, redemptionRequest.requestId);
             // expect usdc / wnat balance changes
-            const redeemedAssetUSD = await ubaToUSDWei(redemptionRequest.valueUBA, ftsos.asset);
-            const redeemerUSDCBalanceUSD = await ubaToUSDWei(await usdc.balanceOf(redeemer), ftsos.usdc);
-            const redeemerWNatBalanceUSD = await ubaToUSDWei(await wNat.balanceOf(redeemer), ftsos.nat);
+            const redeemedAssetUSD = await ubaToTokenWei(redemptionRequest.valueUBA, assetSymbol);
+            const redeemerUSDCBalanceUSD = await ubaToTokenWei(await usdc.balanceOf(redeemer), usdcSymbol);
+            const redeemerWNatBalanceUSD = await ubaToTokenWei(await wNat.balanceOf(redeemer), natSymbol);
             assertEqualWithNumError(redeemerUSDCBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorVaultCollateralBIPS)), toBN(10));
             assertEqualWithNumError(redeemerWNatBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorPoolBIPS)), toBN(10));
         });
@@ -1609,9 +1615,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assertWeb3Equal(executorBalanceStart.sub(executorBalanceEnd), gasFee);
             assertWeb3Equal(executorWNatBalanceEnd.sub(executorWNatBalanceStart), executorFee);
             // expect usdc / wnat balance changes
-            const redeemedAssetUSD = await ubaToUSDWei(redemptionRequest.valueUBA, ftsos.asset);
-            const redeemerUSDCBalanceUSD = await ubaToUSDWei(await usdc.balanceOf(redeemer), ftsos.usdc);
-            const redeemerWNatBalanceUSD = await ubaToUSDWei(await wNat.balanceOf(redeemer), ftsos.nat);
+            const redeemedAssetUSD = await ubaToTokenWei(redemptionRequest.valueUBA, assetSymbol);
+            const redeemerUSDCBalanceUSD = await ubaToTokenWei(await usdc.balanceOf(redeemer), usdcSymbol);
+            const redeemerWNatBalanceUSD = await ubaToTokenWei(await wNat.balanceOf(redeemer), natSymbol);
             assertEqualWithNumError(redeemerUSDCBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorVaultCollateralBIPS)), toBN(10));
             assertEqualWithNumError(redeemerWNatBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorPoolBIPS)), toBN(10));
         });
@@ -1882,8 +1888,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // mint some f-assets that require backing
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[82], toBN(1));
             // price change
-            await ftsos.asset.setCurrentPrice(toBNExp(3521, 50), 0);
-            await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(3521, 50), 0);
+            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(3521, 50), 0);
+            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, toBNExp(3521, 50), 0);
             // start liquidation
             const tx = await assetManager.startLiquidation(agentVault.address, { from: accounts[83] });
             expectEvent(tx, "LiquidationStarted");
@@ -1897,8 +1903,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e8), toWei(3e8))
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, liquidator, toBN(2));
             // simulate liquidation (set cr to eps > 0)
-            await ftsos.asset.setCurrentPrice(toBNExp(10, 12), 0);
-            await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(10, 12), 0);
+            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(10, 12), 0);
+            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, toBNExp(10, 12), 0);
             await assetManager.startLiquidation(agentVault.address, { from: liquidator });
             // calculate liquidation value and liquidate liquidate
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
@@ -1915,13 +1921,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e8), toWei(3e8))
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(2));
             // price change #1
-            await ftsos.asset.setCurrentPrice(toBNExp(3521, 50), 0);
-            await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(3521, 50), 0);
+            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(3521, 50), 0);
+            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, toBNExp(3521, 50), 0);
             // start liquidation
             await assetManager.startLiquidation(agentVault.address, { from: accounts[83] });
             // price change #2
-            await ftsos.asset.setCurrentPrice(testChainInfo.eth.startPrice, 0);
-            await ftsos.asset.setCurrentPriceFromTrustedProviders(testChainInfo.eth.startPrice, 0);
+            await contracts.priceStore.setCurrentPrice(assetSymbol, testChainInfo.eth.startPrice, 0);
+            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, testChainInfo.eth.startPrice, 0);
             // end liquidation
             const tx = await assetManager.endLiquidation(agentVault.address, { from: accounts[83] });
             expectEvent(tx, "LiquidationEnded");
@@ -2181,8 +2187,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // mint some f-assets that require backing
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[82], toBN(1));
             // price change
-            await ftsos.asset.setCurrentPrice(toBNExp(3521, 50), 0);
-            await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(3521, 50), 0);
+            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(3521, 50), 0);
+            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, toBNExp(3521, 50), 0);
             // start liquidation
             const governanceSettings = await GovernanceSettings.new();
             await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
@@ -2200,8 +2206,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e8), toWei(3e8))
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, liquidator, toBN(2));
             // simulate liquidation (set cr to eps > 0)
-            await ftsos.asset.setCurrentPrice(toBNExp(10, 12), 0);
-            await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(10, 12), 0);
+            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(10, 12), 0);
+            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, toBNExp(10, 12), 0);
             await assetManager.startLiquidation(agentVault.address, { from: liquidator });
             // calculate liquidation value and liquidate liquidate
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
