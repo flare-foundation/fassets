@@ -1551,7 +1551,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
     });
 
-    describe("proxy upgrade", async () => {
+    describe("proxy upgrade", () => {
         const TestUUPSProxyImpl = artifacts.require("TestUUPSProxyImpl");
         let newImplementation: TestUUPSProxyImplInstance;
 

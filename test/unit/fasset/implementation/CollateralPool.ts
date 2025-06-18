@@ -203,7 +203,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         }
     }
 
-    describe("setting contract variables", async () => {
+    describe("setting contract variables", () => {
 
         it("should fail at calling setPoolToken from non asset manager", async () => {
             const prms = collateralPool.setPoolToken(collateralPoolToken.address);
@@ -251,7 +251,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
     });
 
     // to test whether users can send debt tokens
-    describe("collateral pool token tests", async () => {
+    describe("collateral pool token tests", () => {
 
         it("should have correct name and symbol", async () => {
             expect(await collateralPoolToken.name()).to.equal("FAsset Collateral Pool Token BTC-AG1");
@@ -490,7 +490,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
     });
 
-    describe("entering collateral pool", async () => {
+    describe("entering collateral pool", () => {
 
         // collateral pool now tracks its balance, so sending nat directly (without enter) is not allowed,
         // thus this test is deprecated
@@ -611,7 +611,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
     });
 
-    describe("exiting collateral pool", async () => {
+    describe("exiting collateral pool", () => {
 
         it("should revert on exiting the pool with zero tokens", async () => {
             const prms = collateralPool.exit(0, TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
@@ -814,7 +814,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
     });
 
-    describe("self-close exits", async () => {
+    describe("self-close exits", () => {
 
         it("should require token share to be larger than 0", async () => {
             const prms = collateralPool.selfCloseExit(BN_ZERO, true, "", ZERO_ADDRESS);
@@ -1203,7 +1203,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
     });
 
-    describe("externally dealing with fasset debt", async () => {
+    describe("externally dealing with fasset debt", () => {
 
         it("should fail at trying to withdraw 0 fees", async () => {
             await expectRevert(collateralPool.withdrawFees(0), "trying to withdraw zero f-assets");
@@ -1280,7 +1280,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
     });
 
-    describe("scenarios", async () => {
+    describe("scenarios", () => {
 
         it("should yield no wei profit and at most 1wei loss to multiple people entering and exiting", async () => {
             const fassets = [ETH(10), ETH(100), ETH(1000)];
@@ -1392,7 +1392,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
     });
 
-    describe("methods for pool liquidation through asset manager", async () => {
+    describe("methods for pool liquidation through asset manager", () => {
 
         it("should not receive any collateral during internalWithdraw = false", async () => {
             const prms = collateralPool.send(ETH(1));
@@ -1468,7 +1468,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
     });
 
-    describe("distribution claiming and wnat delegation", async () => {
+    describe("distribution claiming and wnat delegation", () => {
 
         it("should fail claiming airdropped distribution from non-agent address", async () => {
             const distributionToDelegators: DistributionToDelegatorsMockInstance = await DistributionToDelegatorsMock.new(wNat.address);

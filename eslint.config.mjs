@@ -48,17 +48,19 @@ export default tseslint.config([
                 'error',
                 {
                     allow: [
-                        { name: "BN", from: "BN.js" },
-                        { name: "Error", from: "lib" },
+                        { from: "package", name: "BN", package: "bn.js" },
+                        { from: "lib", name: "Error" },
                     ]
                 }
             ],
             // Require for-in loops to include an if statement that checks hasOwnProperty.
-            'guard-for-in': 'warn',
+            'guard-for-in': 'error',
             // Errors when a case in a switch statement falls through to the next case without a break statement or other termination.
             'no-fallthrough': 'error',
             // Require the use of === and !== instead of == and != for equality checks.
             'eqeqeq': ['warn', 'always', { null: 'ignore' }],
+            // Disable async-without-await error
+            '@typescript-eslint/require-await': 'off',
         },
     },
     // Override rules for specific files
@@ -69,6 +71,7 @@ export default tseslint.config([
             'no-constant-condition': 'off',
             // Disables the rule that disallows non-null assertions using the ! postfix operator.
             '@typescript-eslint/no-non-null-assertion': 'off',
+            '@typescript-eslint/no-non-null-asserted-optional-chain': 'off',
             // Disables the rule that disallows unused variables.
             '@typescript-eslint/no-unused-vars': 'off',
             // Disables the rule that disallows unused expressions.

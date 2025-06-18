@@ -646,7 +646,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
       });
     });
 
-    describe("request and cancel transfers", async () => {
+    describe("request and cancel transfers", () => {
       it("should request transfer from core vault (cancelable)", async () => {
         const destinationAddress = "destinationAddress";
         const paymentReference = web3.utils.keccak256("paymentReference");
@@ -1115,7 +1115,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
       });
     });
 
-    describe("trigger instructions", async () => {
+    describe("trigger instructions", () => {
       const preimageHash1 = web3.utils.keccak256("hash1");
       const preimageHash2 = web3.utils.keccak256("hash2");
       const escrowTimeSeconds = 3600;
@@ -1987,7 +1987,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
     });
   });
 
-    describe("proxy upgrade", async () => {
+    describe("proxy upgrade", () => {
       it("should upgrade via upgradeTo", async () => {
         // pause the contract
         await coreVaultManager.pause({ from: governance });

@@ -135,7 +135,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, accounts 
         });
     });
 
-    describe("history cleanup", async function() {
+    describe("history cleanup", function() {
         beforeEach(async () => {
             await fAsset.setAssetManager(assetManager, { from: governance });
             await fAsset.setCleanupBlockNumberManager(accounts[8], { from: assetManager });

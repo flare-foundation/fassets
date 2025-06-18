@@ -285,7 +285,7 @@ export function reduce<T, R>(list: Iterable<T>, initialValue: R, operation: (a: 
  */
 export function sum<T>(list: Iterable<T>, elementValue: (x: T) => number): number;
 export function sum(list: Iterable<number>): number;
-export function sum<T>(list: Iterable<T>, elementValue: (x: T) => number = (x: any) => x) {
+export function sum<T>(list: Iterable<T>, elementValue: (x: T) => number = identity) {
     return reduce(list, 0, (a, x) => a + elementValue(x));
 }
 
@@ -294,7 +294,7 @@ export function sum<T>(list: Iterable<T>, elementValue: (x: T) => number = (x: a
  */
 export function sumBN<T>(list: Iterable<T>, elementValue: (x: T) => BN): BN;
 export function sumBN(list: Iterable<BN>): BN;
-export function sumBN<T>(list: Iterable<T>, elementValue: (x: T) => BN = (x: any) => x) {
+export function sumBN<T>(list: Iterable<T>, elementValue: (x: T) => BN = identity) {
     return reduce(list, BN_ZERO, (a, x) => a.add(elementValue(x)));
 }
 
@@ -325,7 +325,7 @@ export function minBN(first: BN, ...rest: BN[]) {
  */
 export class Future<T> {
     resolve!: (value: T | PromiseLike<T>) => void;
-    reject!: (error: any) => void;
+    reject!: (error: unknown) => void;
     promise = new Promise<T>((resolve, reject) => {
         this.resolve = resolve;
         this.reject = reject;
@@ -436,7 +436,7 @@ export function exp10(n: BNish) {
     return BN_TEN.pow(toBN(n));
 }
 
-export function isBNLike(value: any) {
+export function isBNLike(value: unknown): value is BNish {
     return BN.isBN(value) || (typeof value === 'string' && /^\d+$/.test(value));
 }
 
@@ -444,9 +444,9 @@ export function isBNLike(value: any) {
  * Some Web3 results are union of array and struct so console.log prints them as array.
  * This function converts it to struct nad also formats values.
  */
-export function deepFormat(value: any, options?: { allowNumericKeys?: boolean, maxDecimals?: number }): any {
+export function deepFormat(value: unknown, options?: { allowNumericKeys?: boolean, maxDecimals?: number }): any {
     const opts = { allowNumericKeys: false, maxDecimals: 3, ...options };
-    function isNumberLike(key: any) {
+    function isNumberLike(key: string | number) {
         return typeof key === 'number' || /^\d+$/.test(key);
     }
     if (isBNLike(value)) {

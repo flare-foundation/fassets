@@ -32,7 +32,7 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, accoun
         ({ governanceSettings, governed } = await loadFixtureCopyVars(initialize));
     });
 
-    describe("initialise", async () => {
+    describe("initialise", () => {
         it("Should only initialize with non-zero governance", async () => {
             // Assemble
             // Act
@@ -53,7 +53,7 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, accoun
         });
     });
 
-    describe("switch to production", async () => {
+    describe("switch to production", () => {
         it("Should switch to production", async () => {
             // Assemble
             // Act
