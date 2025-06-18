@@ -557,12 +557,6 @@ export interface AssetManagerParameters {
     coreVaultNativeAddress: string;
 
     /**
-     * The fee that the agent has to pay for transfer to core vault.
-     * The fee amount is proportional to the transfer amount and paid in FLR/SGB.
-     */
-    coreVaultTransferFeeBIPS: integer;
-
-    /**
      * Extra time that transfer to core vault redemption payments get compared
      * to ordinary redemptions.
      */

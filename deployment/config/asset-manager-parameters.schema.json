@@ -202,10 +202,6 @@
             "description": "The fee charged for direct redemption from the core vault.",
             "type": "integer"
         },
-        "coreVaultTransferFeeBIPS": {
-            "description": "The fee that the agent has to pay for transfer to core vault.\nThe fee amount is proportional to the transfer amount and paid in FLR/SGB.",
-            "type": "integer"
-        },
         "coreVaultTransferTimeExtensionSeconds": {
             "description": "Extra time that transfer to core vault redemption payments get compared\nto ordinary redemptions.",
             "type": "integer"
@@ -450,7 +446,6 @@
         "coreVaultMinimumRedeemLots",
         "coreVaultNativeAddress",
         "coreVaultRedemptionFeeBIPS",
-        "coreVaultTransferFeeBIPS",
         "coreVaultTransferTimeExtensionSeconds",
         "diamondCutMinTimelockSeconds",
         "emergencyPauseDurationResetAfterSeconds",

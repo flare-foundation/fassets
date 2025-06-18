@@ -41,7 +41,7 @@ library CoreVault {
         IICoreVaultManager coreVaultManager;
         uint64 transferTimeExtensionSeconds;
         address payable nativeAddress;
-        uint16 transferFeeBIPS;
+        uint16 __transferFeeBIPS; // only storage placeholder now
         uint16 redemptionFeeBIPS;
         uint16 minimumAmountLeftBIPS;
         uint64 minimumRedeemLots;
@@ -79,9 +79,6 @@ library CoreVault {
         // close agent's redemption tickets
         (uint64 transferredAMG,) = Redemptions.closeTickets(_agent, _amountAMG, false, false);
         require(transferredAMG > 0, "nothing minted");
-        // check the transfer fee
-        uint256 transferFeeWei = getTransferFee(transferredAMG);
-        require(msg.value >= transferFeeWei, "transfer fee payment too small");
         // check the remaining amount
         (uint256 maximumTransferAMG,) = getMaximumTransferToCoreVaultAMG(_agent);
         require(transferredAMG <= maximumTransferAMG, "too little minting left after transfer");
@@ -95,14 +92,6 @@ library CoreVault {
             state.transferTimeExtensionSeconds, true);
         // set the active request
         _agent.activeTransferToCoreVault = redemptionRequestId;
-        // pay the transfer fee and return overpaid transfer fee when the difference is larger than gas use
-        // (all transfers are guarded by nonReentrant in the facet)
-        if (msg.value > transferFeeWei + Transfers.TRANSFER_GAS_ALLOWANCE * tx.gasprice) {
-            Transfers.transferNAT(state.nativeAddress, transferFeeWei);
-            Transfers.transferNAT(payable(msg.sender), msg.value - transferFeeWei);
-        } else {
-            Transfers.transferNAT(state.nativeAddress, msg.value);
-        }
         // send event
         uint256 transferredUBA = Conversion.convertAmgToUBA(transferredAMG);
         emit ICoreVault.TransferToCoreVaultStarted(agentVault, redemptionRequestId, transferredUBA);
@@ -253,16 +242,6 @@ library CoreVault {
             _redeemerUnderlyingAddress, paymentReference, paymentUBA, false);
         emit ICoreVault.CoreVaultRedemptionRequested(msg.sender, _redeemerUnderlyingAddress, paymentReference,
             redeemedUBA, redemptionFeeUBA);
-    }
-
-    function getTransferFee(uint64 _amountAMG)
-        internal view
-        returns (uint256)
-    {
-        State storage state = getState();
-        uint256 amgToNatWeiPrice = Conversion.currentAmgPriceInTokenWei(Globals.getPoolCollateral());
-        uint256 transferAmountWei = Conversion.convertAmgToTokenWei(_amountAMG, amgToNatWeiPrice);
-        return transferAmountWei.mulBips(state.transferFeeBIPS);
     }
 
     function getMaximumTransferToCoreVaultAMG(

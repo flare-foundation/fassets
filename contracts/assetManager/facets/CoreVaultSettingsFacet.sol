@@ -27,7 +27,6 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
     function initCoreVaultFacet(
         IICoreVaultManager _coreVaultManager,
         address payable _nativeAddress,
-        uint256 _transferFeeBIPS,
         uint256 _transferTimeExtensionSeconds,
         uint256 _redemptionFeeBIPS,
         uint256 _minimumAmountLeftBIPS,
@@ -37,7 +36,6 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
     {
         updateInterfacesAtCoreVaultDeploy();
         // init settings
-        require(_transferFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_minimumAmountLeftBIPS <= SafePct.MAX_BIPS, "bips value too high");
         CoreVault.State storage state = CoreVault.getState();
@@ -45,7 +43,6 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         state.initialized = true;
         state.coreVaultManager = _coreVaultManager;
         state.nativeAddress = _nativeAddress;
-        state.transferFeeBIPS = _transferFeeBIPS.toUint16();
         state.transferTimeExtensionSeconds = _transferTimeExtensionSeconds.toUint64();
         state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint16();
         state.minimumAmountLeftBIPS = _minimumAmountLeftBIPS.toUint16();
@@ -94,18 +91,6 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         // not really a contract, but works for any address - event name is a bit unfortunate
         // but we don't want to change it now to keep backward compatibility
         emit IAssetManagerEvents.ContractChanged("coreVaultNativeAddress", _nativeAddress);
-    }
-
-    function setCoreVaultTransferFeeBIPS(
-        uint256 _transferFeeBIPS
-    )
-        external
-        onlyImmediateGovernance
-    {
-        require(_transferFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
-        CoreVault.State storage state = CoreVault.getState();
-        state.transferFeeBIPS = _transferFeeBIPS.toUint16();
-        emit IAssetManagerEvents.SettingChanged("coreVaultTransferFeeBIPS", _transferFeeBIPS);
     }
 
     function setCoreVaultTransferTimeExtensionSeconds(
@@ -169,14 +154,6 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
     {
         CoreVault.State storage state = CoreVault.getState();
         return state.nativeAddress;
-    }
-
-    function getCoreVaultTransferFeeBIPS()
-        external view
-        returns (uint256)
-    {
-        CoreVault.State storage state = CoreVault.getState();
-        return state.transferFeeBIPS;
     }
 
     function getCoreVaultTransferTimeExtensionSeconds()

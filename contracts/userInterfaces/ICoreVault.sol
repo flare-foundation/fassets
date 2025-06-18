@@ -78,7 +78,7 @@ interface ICoreVault {
      * @param _amountUBA the amount to transfer to the core vault
      */
     function transferToCoreVault(address _agentVault, uint256 _amountUBA)
-        external payable;
+        external;
 
     /**
      * Request that core vault transfers funds to the agent's underlying address,
@@ -120,16 +120,6 @@ interface ICoreVault {
      */
     function redeemFromCoreVault(uint64 _lots, string memory _redeemerUnderlyingAddress)
         external;
-
-    /**
-     * Return the amount of NAT that has to be paid in `transferToCoreVault` call.
-     * @param _amountUBA the amount to transfer to the core vault
-     * @return _transferFeeNatWei the amount that has to be included as `msg.value` and is paid to the core vault
-     */
-    function transferToCoreVaultFee(
-        uint256 _amountUBA
-    ) external view
-        returns (uint256 _transferFeeNatWei);
 
     /**
      * Return the maximum amount that can be transferred and the minimum amount that

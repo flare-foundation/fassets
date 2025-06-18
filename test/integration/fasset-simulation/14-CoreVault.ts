@@ -95,10 +95,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // agent requests transfer for all backing to core vault
         const info = await agent.getAgentInfo();
         const transferAmount = info.mintedUBA;
-        // calculate the transfer fee
-        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
         // transfer request
-        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
+        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
         expectEvent(res, "TransferToCoreVaultStarted", { agentVault: agent.vaultAddress, valueUBA: info.mintedUBA });
         const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
         assertWeb3Equal(rdreqs.length, 1);
@@ -123,33 +121,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             "redeem 0 lots");
     });
 
-    it("should return overpaid transfer fee", async () => {
-        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
-        // make agent available
-        await agent.depositCollateralLotsAndMakeAvailable(100);
-        // minter2 also deposits to pool (so some fasset fees will go to them)
-        await agent.collateralPool.enter(0, false, { from: minterAddress2, value: toWei(3e8) });
-        // mint
-        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
-        // update time
-        await context.updateUnderlyingBlock();
-        // agent requests transfer for all backing to core vault
-        const info = await agent.getAgentInfo();
-        const transferAmount = info.mintedUBA;
-        // calculate the transfer fee
-        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
-        // paid fee must be large enough, otherwise the request fails
-        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee.subn(1) }),
-            "transfer fee payment too small");
-        // overpay fee in transfer request
-        const payTransferFee = cbTransferFee.add(toWei(10));
-        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: payTransferFee });
-        const actuallyPaidFee = (await calculateReceivedNat(res)).neg();
-        assert.isTrue(actuallyPaidFee.lt(payTransferFee));
-        assertWeb3Equal(actuallyPaidFee, cbTransferFee);
-    });
-
     it("should transfer partial backing to core vault", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
@@ -161,14 +132,13 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // agent requests transfer for half backing to core vault
         const transferAmount = context.lotSize().muln(5);
         const remainingTicketAmount = context.lotSize().muln(5);
-        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
-        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
+        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
         const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
         assertWeb3Equal(rdreqs.length, 1);
         assertWeb3Equal(rdreqs[0].valueUBA, transferAmount);
         assertWeb3Equal(rdreqs[0].feeUBA, 0);
         // however, cannot transfer 0
-        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, 0, { from: agent.ownerWorkAddress, value: cbTransferFee }),
+        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, 0, { from: agent.ownerWorkAddress }),
             "zero transfer not allowed");
         // perform transfer of underlying
         await agent.performRedemptions(rdreqs);
@@ -204,8 +174,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
         // agent requests transfer for half backing to core vault
         const transferAmount = context.lotSize().muln(10);
-        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
-        const res = context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
+        const res = context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
         await expectRevert(res, "invalid agent status");
     });
 
@@ -227,8 +196,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
         // agent requests transfer for all backing to core vault
         const transferAmount = context.lotSize().muln(10);
-        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
-        const res = context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
+        const res = context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
         await expectRevert(res, "not enough underlying");
     });
 
@@ -241,11 +209,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         await minter.performMinting(agent.vaultAddress, 10);
         // agent requests transfer for half backing to core vault
         const transferAmount = context.lotSize().muln(5);
-        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
-        await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
+        await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
 
         // try to transfer again
-        const res = context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
+        const res = context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
         await expectRevert(res, "transfer already active");
     });
 
@@ -260,8 +227,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const redemptionRes = await context.assetManager.redeem(5, minter.underlyingAddress, ZERO_ADDRESS, { from: minter.address });
         // agent requests transfer for half backing to core vault
         const transferAmount = context.lotSize().muln(4);
-        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
-        const res = context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
+        const res = context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
         await expectRevert(res, "too little minting left after transfer");
     });
 
@@ -283,8 +249,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // agent requests transfer for half backing to core vault
         const totalMintedAmount = toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA));
         const transferAmount = context.lotSize().muln(5);
-        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
-        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
+        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
         const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
         assertWeb3Equal(rdreqs.length, 1);
         // agent now has approx half backing in redeeming state
@@ -329,8 +294,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // agent requests transfer for half backing to core vault
         const totalMintedAmount = toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA));
         const transferAmount = context.lotSize().muln(5);
-        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
-        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
+        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
         const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
         assertWeb3Equal(rdreqs.length, 1);
         // agent now has approx half backing in redeeming state
@@ -367,8 +331,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // agent requests transfer for half backing to core vault
         const totalMintedAmount = toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA));
         const transferAmount = context.lotSize().muln(5);
-        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
-        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee });
+        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
         const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
         assertWeb3Equal(rdreqs.length, 1);
         // agent now has approx half backing in redeeming state
@@ -410,9 +373,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // agent requests transfer for all backing to core vault
         const info = await agent.getAgentInfo();
         const mintedAmount = toBN(info.mintedUBA);
-        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(mintedAmount);
         // trying to transfer everything will fail
-        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, mintedAmount, { from: agent.ownerWorkAddress, value: cbTransferFee }),
+        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, mintedAmount, { from: agent.ownerWorkAddress }),
             "too little minting left after transfer");
         // check the maximum transfer amount, should be somewhere between 50% and 80%
         const { 0: maxTransferAmount, 1: minLeftAmount } = await context.assetManager.maximumTransferToCoreVault(agent.vaultAddress);
@@ -420,12 +382,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         assert.isTrue(maxTransferAmount.lte(mintedAmount.muln(80).divn(100)));
         assertWeb3Equal(minLeftAmount, mintedAmount.sub(maxTransferAmount));
         // trying to transfer above max transfer amount will fail
-        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, maxTransferAmount.addn(1), { from: agent.ownerWorkAddress, value: cbTransferFee }),
+        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, maxTransferAmount.addn(1), { from: agent.ownerWorkAddress }),
             "too little minting left after transfer");
         // the agent can transfer up to maxTransferAmount
         const transferAmount = maxTransferAmount;
-        const cbTransferFee2 = await context.assetManager.transferToCoreVaultFee(transferAmount);
-        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee2 });
+        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
         expectEvent(res, "TransferToCoreVaultStarted", { agentVault: agent.vaultAddress, valueUBA: transferAmount });
     });
 
@@ -768,10 +729,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         res = await context.assetManager.setCoreVaultNativeAddress(accounts[32], { from: context.governance });
         expectEvent(res, "ContractChanged", { name: "coreVaultNativeAddress", value: accounts[32] })
         assertWeb3Equal(await context.assetManager.getCoreVaultNativeAddress(), accounts[32]);
-        // update transfer-to-vault fee
-        res = await context.assetManager.setCoreVaultTransferFeeBIPS(123, { from: context.governance });
-        expectEvent(res, "SettingChanged", { name: "coreVaultTransferFeeBIPS", value: "123" })
-        assertWeb3Equal(await context.assetManager.getCoreVaultTransferFeeBIPS(), 123);
         // update transfer-to-vault payment time extension
         res = await context.assetManager.setCoreVaultTransferTimeExtensionSeconds(1800, { from: context.governance });
         expectEvent(res, "SettingChanged", { name: "coreVaultTransferTimeExtensionSeconds", value: "1800" })
@@ -792,7 +749,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
     it("revert if modifying core vault settings with invalid values", async () => {
         await expectRevert(context.assetManager.setCoreVaultManager(ZERO_ADDRESS, { from: context.governance }), "cannot disable");
-        await expectRevert(context.assetManager.setCoreVaultTransferFeeBIPS(MAX_BIPS + 1, { from: context.governance }), "bips value too high");
         await expectRevert(context.assetManager.setCoreVaultRedemptionFeeBIPS(MAX_BIPS + 1, { from: context.governance }), "bips value too high");
         await expectRevert(context.assetManager.setCoreVaultMinimumAmountLeftBIPS(MAX_BIPS + 1, { from: context.governance }), "bips value too high");
     });
@@ -807,7 +763,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     it("core vault setting modification requires governance call", async () => {
         await expectRevert(context.assetManager.setCoreVaultManager(accounts[31]), "only governance");
         await expectRevert(context.assetManager.setCoreVaultNativeAddress(accounts[32]), "only governance");
-        await expectRevert(context.assetManager.setCoreVaultTransferFeeBIPS(123), "only governance");
         await expectRevert(context.assetManager.setCoreVaultTransferTimeExtensionSeconds(1800), "only governance");
         await expectRevert(context.assetManager.setCoreVaultRedemptionFeeBIPS(211), "only governance");
         await expectRevert(context.assetManager.setCoreVaultMinimumAmountLeftBIPS(1000), "only governance");
@@ -825,10 +780,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // others aren't timelocked
         timelocked = await executeTimelockedGovernanceCall(context.assetManager,
             (governance) => context.assetManager.setCoreVaultNativeAddress(accounts[32], { from: governance }));
-        assert.equal(timelocked, false);
-        //
-        timelocked = await executeTimelockedGovernanceCall(context.assetManager,
-            (governance) => context.assetManager.setCoreVaultTransferFeeBIPS(123, { from: governance }));
         assert.equal(timelocked, false);
         //
         timelocked = await executeTimelockedGovernanceCall(context.assetManager,
@@ -1081,8 +1032,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const info = await agent.getAgentInfo();
         const transferAmount = info.mintedUBA;
         // transfer to core vault
-        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
-        const res = await context.assetManager.transferToCoreVault(agent.agentVault.address, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee })
+        const res = await context.assetManager.transferToCoreVault(agent.agentVault.address, transferAmount, { from: agent.ownerWorkAddress })
         // wait for proof unavailability
         const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
         const request = rdreqs[0];
@@ -1092,7 +1042,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         expectEvent(rdres, "RedemptionPaymentFailed");
         expectEvent(rdres, "TransferToCoreVaultDefaulted");
         // request transfer to core vault again
-        await context.assetManager.transferToCoreVault(agent.agentVault.address, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee })
+        await context.assetManager.transferToCoreVault(agent.agentVault.address, transferAmount, { from: agent.ownerWorkAddress })
     })
 
     it("let the agent transfer to core vault after after default the previous transfer", async () => {
@@ -1109,14 +1059,13 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const info = await agent.getAgentInfo();
         const transferAmount = info.mintedUBA;
         // transfer to core vault
-        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
-        const res = await context.assetManager.transferToCoreVault(agent.agentVault.address, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee })
+        const res = await context.assetManager.transferToCoreVault(agent.agentVault.address, transferAmount, { from: agent.ownerWorkAddress })
         // wait for proof unavailability
         const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
         context.skipToExpiration(rdreqs[0].lastUnderlyingBlock, rdreqs[0].lastUnderlyingTimestamp);
         await agent.transferToCoreVaultDefault(rdreqs[0]);
         // request transfer to core vault again
-        await context.assetManager.transferToCoreVault(agent.agentVault.address, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee })
+        await context.assetManager.transferToCoreVault(agent.agentVault.address, transferAmount, { from: agent.ownerWorkAddress })
     })
 
     it("let the agent transfer to core vault after after failure to perform or default the previous transfer", async () => {
@@ -1133,8 +1082,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const info = await agent.getAgentInfo();
         const transferAmount = info.mintedUBA;
         // transfer to core vault
-        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
-        const res = await context.assetManager.transferToCoreVault(agent.agentVault.address, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee })
+        const res = await context.assetManager.transferToCoreVault(agent.agentVault.address, transferAmount, { from: agent.ownerWorkAddress })
         // wait for proof unavailability
         const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
         context.skipToProofUnavailability(rdreqs[0].lastUnderlyingBlock, rdreqs[0].lastUnderlyingTimestamp)
@@ -1143,7 +1091,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         const proof = await context.attestationProvider.proveConfirmedBlockHeightExists(currentBlock.toNumber())
         await context.assetManager.finishRedemptionWithoutPayment(proof, rdreqs[0].requestId, { from: agent.ownerWorkAddress })
         // request transfer to core vault again
-        await context.assetManager.transferToCoreVault(agent.agentVault.address, transferAmount, { from: agent.ownerWorkAddress, value: cbTransferFee })
+        await context.assetManager.transferToCoreVault(agent.agentVault.address, transferAmount, { from: agent.ownerWorkAddress })
     })
 
     it("should allow transferring 70% of the backing to core vault at max recommended minting CR", async () => {
@@ -1234,9 +1182,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         await context.updateUnderlyingBlock();
         // agent requests transfer for half backing to core vault
         const transferAmount = context.lotSize().muln(5);
-        const cbTransferFee = await context.assetManager.transferToCoreVaultFee(transferAmount);
         const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount,
-            { from: agent.ownerWorkAddress, value: cbTransferFee });
+            { from: agent.ownerWorkAddress });
         const [request] = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
         // agent makes an illegal payment using the transfer to core vault reference
         const txHash = await agent.performPayment(agentOtherAddress, toBN(request.valueUBA), request.paymentReference);

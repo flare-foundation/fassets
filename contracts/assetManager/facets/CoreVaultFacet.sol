@@ -33,7 +33,7 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
         address _agentVault,
         uint256 _amountUBA
     )
-        external payable
+        external
         notEmergencyPaused
         nonReentrant
         onlyAgentVaultOwner(_agentVault)
@@ -117,21 +117,6 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
         nonReentrant
     {
         CoreVault.redeemFromCoreVault(_lots, _redeemerUnderlyingAddress);
-    }
-
-    /**
-     * Return the amount of NAT that has to be paid in `transferToCoreVault` call.
-     * @param _amountUBA the amount to transfer to the core vault
-     * @return _transferFeeNatWei the amount that has to be included as `msg.value` and is paid to the core vault
-     */
-    function transferToCoreVaultFee(
-        uint256 _amountUBA
-    )
-        external view
-        returns (uint256 _transferFeeNatWei)
-    {
-        uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        return CoreVault.getTransferFee(amountAMG);
     }
 
     function maximumTransferToCoreVault(

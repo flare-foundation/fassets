@@ -11,9 +11,6 @@ interface ICoreVaultSettings {
     function setCoreVaultNativeAddress(address payable _nativeAddress)
         external;
 
-    function setCoreVaultTransferFeeBIPS(uint256 _transferFeeBIPS)
-        external;
-
     function setCoreVaultTransferTimeExtensionSeconds(uint256 _transferTimeExtensionSeconds)
         external;
 
@@ -33,10 +30,6 @@ interface ICoreVaultSettings {
     function getCoreVaultNativeAddress()
         external view
         returns (address);
-
-    function getCoreVaultTransferFeeBIPS()
-        external view
-        returns (uint256);
 
     function getCoreVaultTransferTimeExtensionSeconds()
         external view

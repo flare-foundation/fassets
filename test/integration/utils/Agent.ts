@@ -545,8 +545,7 @@ export class Agent extends AssetContextClient {
     }
 
     async startTransferToCoreVault(transferAmount: BNish) {
-        const cbTransferFee = await this.assetManager.transferToCoreVaultFee(transferAmount);
-        const res = await this.assetManager.transferToCoreVault(this.vaultAddress, transferAmount, { from: this.ownerWorkAddress, value: cbTransferFee });
+        const res = await this.assetManager.transferToCoreVault(this.vaultAddress, transferAmount, { from: this.ownerWorkAddress });
         return filterEvents(res, "RedemptionRequested").map(evt => evt.args);
     }
 
