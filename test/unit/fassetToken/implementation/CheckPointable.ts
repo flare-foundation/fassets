@@ -1,7 +1,7 @@
 import { expectRevert, time } from '@openzeppelin/test-helpers';
 import { toBN } from '../../../../lib/utils/helpers';
 import { CheckPointableMockContract, CheckPointableMockInstance } from '../../../../typechain-truffle';
-import { getTestFile } from '../../../utils/test-helpers';
+import { getTestFile } from '../../../../lib/test-utils/test-helpers';
 
 const CheckPointable = artifacts.require("CheckPointableMock");
 

@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { MathUtilsMockInstance } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/test-helpers";
+import { getTestFile } from "../../../../lib/test-utils/test-helpers";
 
 const MathUtils = artifacts.require("MathUtilsMock");
 

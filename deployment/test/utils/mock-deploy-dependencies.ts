@@ -1,5 +1,5 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { testDeployGovernanceSettings } from "../../../test/utils/contract-test-helpers";
+import { testDeployGovernanceSettings } from "../../../lib/test-utils/contract-test-helpers";
 import { FAssetContractStore } from "../../lib/contracts";
 import { loadDeployAccounts, requiredEnvironmentVariable } from "../../lib/deploy-utils";
 

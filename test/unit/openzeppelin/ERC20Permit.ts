@@ -2,8 +2,8 @@ import { constants, expectRevert, time } from '@openzeppelin/test-helpers';
 import { expect } from 'chai';
 import { abiEncodeCall, toBN } from '../../../lib/utils/helpers';
 import { ERC20PermitMockInstance } from '../../../typechain-truffle';
-import { getChainId } from '../../utils/contract-test-helpers';
-import { assertWeb3DeepEqual, assertWeb3Equal } from '../../utils/web3assertions';
+import { getChainId } from '../../../lib/test-utils/contract-test-helpers';
+import { assertWeb3DeepEqual, assertWeb3Equal } from '../../../lib/test-utils/web3assertions';
 import { domainSeparator, getDomain } from '../../../lib/utils/eip712';
 import { Permit, signPermit } from '../../../lib/utils/erc20permits';
 

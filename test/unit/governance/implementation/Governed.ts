@@ -1,8 +1,8 @@
 import { GovernanceSettingsInstance, GovernedMockInstance } from "../../../../typechain-truffle";
 
 import { expectEvent, expectRevert } from '@openzeppelin/test-helpers';
-import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
-import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { GENESIS_GOVERNANCE_ADDRESS } from "../../../../lib/test-utils/constants";
+import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-helpers";
 import { ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 
 const Governed = artifacts.require("GovernedMock");

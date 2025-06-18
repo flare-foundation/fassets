@@ -2,9 +2,9 @@ import { stopImpersonatingAccount } from "@nomicfoundation/hardhat-network-helpe
 import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
 import { abiEncodeCall, BNish, erc165InterfaceId, toBN, toBNExp, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { FAssetInstance } from "../../../../typechain-truffle";
-import { impersonateContract } from "../../../utils/contract-test-helpers";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
-import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { impersonateContract } from "../../../../lib/test-utils/contract-test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-helpers";
+import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { Permit, signPermit } from "../../../../lib/utils/erc20permits";
 
 const FAsset = artifacts.require('FAsset');

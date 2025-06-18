@@ -1,6 +1,6 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
 import { CheckPointsByAddressMockContract, CheckPointsByAddressMockInstance } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/test-helpers";
+import { getTestFile } from "../../../../lib/test-utils/test-helpers";
 import { ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 
 const CheckPointsByAddressMock = artifacts.require("CheckPointsByAddressMock");

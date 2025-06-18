@@ -1,14 +1,14 @@
 import hre from "hardhat";
 import { requiredEventArgs } from "../../lib/utils/events/truffle";
-import { getTestFile, itSkipIf } from "../../test/utils/test-helpers";
-import { createTestAgent } from "../../test/utils/test-settings";
+import { getTestFile, itSkipIf } from "../../lib/test-utils/test-helpers";
+import { createTestAgent } from "../../lib/test-utils/test-settings";
 import { AgentOwnerRegistryInstance, IAssetManagerControllerInstance } from "../../typechain-truffle";
 import { FAssetContractStore } from "../lib/contracts";
 import { loadDeployAccounts, networkConfigName, requiredEnvironmentVariable } from "../lib/deploy-utils";
 import { SourceId } from "../../lib/underlying-chain/SourceId";
 import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
-import { MockFlareDataConnectorClient } from "../../test/utils/fasset/MockFlareDataConnectorClient";
-import { MockChain } from "../../test/utils/fasset/MockChain";
+import { MockFlareDataConnectorClient } from "../../lib/test-utils/fasset/MockFlareDataConnectorClient";
+import { MockChain } from "../../lib/test-utils/fasset/MockChain";
 import { latestBlockTimestamp, toBN, toBNExp } from "../../lib/utils/helpers";
 
 const IAssetManagerController = artifacts.require('IAssetManagerController');

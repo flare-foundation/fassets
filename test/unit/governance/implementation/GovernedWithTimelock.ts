@@ -1,9 +1,9 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
 import { GovernedWithTimelockMockInstance } from "../../../../typechain-truffle";
-import { testDeployGovernanceSettings } from "../../../utils/contract-test-helpers";
-import { deterministicTimeIncrease, getTestFile } from "../../../utils/test-helpers";
-import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { testDeployGovernanceSettings } from "../../../../lib/test-utils/contract-test-helpers";
+import { deterministicTimeIncrease, getTestFile } from "../../../../lib/test-utils/test-helpers";
+import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { abiEncodeCall } from "../../../../lib/utils/helpers";
 
 const GovernedWithTimelockMock = artifacts.require("GovernedWithTimelockMock");

@@ -1,5 +1,5 @@
 import { expectRevert } from '@openzeppelin/test-helpers';
-import { assertWeb3Equal } from "../../utils/web3assertions";
+import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { ReentrancyMockInstance } from '../../../typechain-truffle';
 
 const ReentrancyMock = artifacts.require('ReentrancyMock');

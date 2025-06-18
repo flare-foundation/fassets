@@ -1,6 +1,6 @@
 import { FAssetContractStore } from "../../lib/contracts";
 import { runAsyncMain } from "../../lib/deploy-utils";
-import { executeTimelockedGovernanceCall } from "../../../test/utils/contract-test-helpers";
+import { executeTimelockedGovernanceCall } from "../../../lib/test-utils/contract-test-helpers";
 
 const AddressUpdater = artifacts.require('AddressUpdater');
 

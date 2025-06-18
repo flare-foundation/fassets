@@ -2,7 +2,7 @@ import { expectRevert } from "@openzeppelin/test-helpers";
 import { expect } from "chai";
 import { toBN } from "../../../../lib/utils/helpers";
 import { SafePctMockInstance } from "../../../../typechain-truffle/SafePctMock";
-import { getTestFile } from "../../../utils/test-helpers";
+import { getTestFile } from "../../../../lib/test-utils/test-helpers";
 
 const SafePct = artifacts.require("SafePctMock");
 

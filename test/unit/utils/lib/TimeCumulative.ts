@@ -1,7 +1,7 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
 import { TimeCumulativeMockInstance } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/test-helpers";
-import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { getTestFile } from "../../../../lib/test-utils/test-helpers";
+import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 
 const TimeCumulative = artifacts.require("TimeCumulativeMock");
 

@@ -1,6 +1,6 @@
 import { expectRevert } from '@openzeppelin/test-helpers';
 import { AddressUpdatableMockInstance } from "../../../../typechain-truffle";
-import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-helpers";
 
 const AddressUpdatableMock = artifacts.require("AddressUpdatableMock");
 
