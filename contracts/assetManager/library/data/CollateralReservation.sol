@@ -15,7 +15,7 @@ library CollateralReservation {
         address minter;
         address payable executor;
         uint64 executorFeeNatGWei;
-        uint64 handshakeStartTimestamp;
-        bytes32 sourceAddressesRoot;
+        uint64 __handshakeStartTimestamp; // only storage placeholder
+        bytes32 __sourceAddressesRoot; // only storage placeholder
     }
 }

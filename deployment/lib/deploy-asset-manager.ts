@@ -277,12 +277,12 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         diamondCutMinTimelockSeconds: parameters.diamondCutMinTimelockSeconds,
         maxEmergencyPauseDurationSeconds: parameters.maxEmergencyPauseDurationSeconds,
         emergencyPauseDurationResetAfterSeconds: parameters.emergencyPauseDurationResetAfterSeconds,
-        cancelCollateralReservationAfterSeconds: parameters.cancelCollateralReservationAfterSeconds,
-        rejectOrCancelCollateralReservationReturnFactorBIPS: parameters.rejectOrCancelCollateralReservationReturnFactorBIPS,
-        rejectRedemptionRequestWindowSeconds: parameters.rejectRedemptionRequestWindowSeconds,
-        takeOverRedemptionRequestWindowSeconds: parameters.takeOverRedemptionRequestWindowSeconds,
-        rejectedRedemptionDefaultFactorVaultCollateralBIPS: parameters.rejectedRedemptionDefaultFactorVaultCollateralBIPS,
-        rejectedRedemptionDefaultFactorPoolBIPS: parameters.rejectedRedemptionDefaultFactorPoolBIPS,
+        __cancelCollateralReservationAfterSeconds: 0,
+        __rejectOrCancelCollateralReservationReturnFactorBIPS: 0,
+        __rejectRedemptionRequestWindowSeconds: 0,
+        __takeOverRedemptionRequestWindowSeconds: 0,
+        __rejectedRedemptionDefaultFactorVaultCollateralBIPS: 0,
+        __rejectedRedemptionDefaultFactorPoolBIPS: 0,
     };
 }
 

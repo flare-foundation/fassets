@@ -84,7 +84,6 @@ library FullAgentInfo {
         _info.announcedUnderlyingWithdrawalId = agent.announcedUnderlyingWithdrawalId;
         _info.buyFAssetByAgentFactorBIPS = agent.buyFAssetByAgentFactorBIPS;
         _info.poolExitCollateralRatioBIPS = agent.collateralPool.exitCollateralRatioBIPS();
-        _info.handshakeType = agent.handshakeType;
     }
 
     function getAgentStatus(

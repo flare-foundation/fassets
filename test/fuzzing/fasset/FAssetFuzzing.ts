@@ -309,7 +309,6 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             mintingPoolCollateralRatioBIPS: mintingPoolCollateralRatioBIPS,
             poolExitCollateralRatioBIPS: mulDecimal(mintingPoolCollateralRatioBIPS, randomNum(1, 1.25)),
             buyFAssetByAgentFactorBIPS: toBIPS(0.9),
-            handshakeType: 0,
         };
     }
 

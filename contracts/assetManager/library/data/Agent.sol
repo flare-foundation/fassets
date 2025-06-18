@@ -166,7 +166,7 @@ library Agent {
 
         // Agent's handshake type - minting or redeeming can be rejected.
         // 0 - no verification, 1 - manual verification, ...
-        uint32 handshakeType;
+        uint32 __handshakeType; // only storage placeholder
 
         // There can only be one transfer to core vault per agent active at any time.
         uint64 activeTransferToCoreVault;

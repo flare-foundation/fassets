@@ -395,7 +395,6 @@ export class FuzzingAgent extends FuzzingActor {
             mintingPoolCollateralRatioBIPS: agentState.mintingPoolCollateralRatioBIPS,
             buyFAssetByAgentFactorBIPS: agentState.buyFAssetByAgentFactorBIPS,
             poolExitCollateralRatioBIPS: agentState.poolExitCollateralRatioBIPS,
-            handshakeType: agentState.handshakeType,
         };
         const underlyingAddress = this.agent.underlyingAddress;
         // destroy old agent vault in parallel

@@ -59,7 +59,6 @@ library Challenges {
                 // delayed by arbitrary time due to high fees and cannot be canceled, which could lead to
                 // unnecessary full liquidations.
                 bool redemptionActive = redemption.agentVault == _agentVault
-                    && redemption.rejectionTimestamp == 0
                     && (redemption.status == Redemption.Status.ACTIVE ||
                         redemption.status == Redemption.Status.DEFAULTED);
                 require(!redemptionActive, "matching redemption active");

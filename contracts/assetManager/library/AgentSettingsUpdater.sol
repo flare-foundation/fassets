@@ -20,7 +20,6 @@ library AgentSettingsUpdater {
     bytes32 internal constant MINTING_POOL_COLLATERAL_RATIO_BIPS = keccak256("mintingPoolCollateralRatioBIPS");
     bytes32 internal constant BUY_FASSET_BY_AGENT_FACTOR_BIPS = keccak256("buyFAssetByAgentFactorBIPS");
     bytes32 internal constant POOL_EXIT_COLLATERAL_RATIO_BIPS = keccak256("poolExitCollateralRatioBIPS");
-    bytes32 internal constant HAND_SHAKE_TYPE = keccak256("handshakeType");
 
     function announceUpdate(
         address _agentVault,
@@ -74,7 +73,6 @@ library AgentSettingsUpdater {
         delete _agent.settingUpdates[MINTING_POOL_COLLATERAL_RATIO_BIPS];
         delete _agent.settingUpdates[BUY_FASSET_BY_AGENT_FACTOR_BIPS];
         delete _agent.settingUpdates[POOL_EXIT_COLLATERAL_RATIO_BIPS];
-        delete _agent.settingUpdates[HAND_SHAKE_TYPE];
     }
 
     function getSetting(
@@ -100,8 +98,6 @@ library AgentSettingsUpdater {
             return agent.buyFAssetByAgentFactorBIPS;
         } else if (hash == POOL_EXIT_COLLATERAL_RATIO_BIPS) {
             return agent.collateralPool.exitCollateralRatioBIPS();
-        } else if (hash == HAND_SHAKE_TYPE) {
-            return agent.handshakeType;
         } else {
             assert(false);
         }
@@ -128,8 +124,6 @@ library AgentSettingsUpdater {
             Agents.setBuyFAssetByAgentFactorBIPS(_agent, _value);
         } else if (_hash == POOL_EXIT_COLLATERAL_RATIO_BIPS) {
             Agents.setPoolExitCollateralRatioBIPS(_agent, _value);
-        } else if (_hash == HAND_SHAKE_TYPE) {
-            Agents.setHandshakeType(_agent, _value);
         } else {
             assert(false);
         }
@@ -138,7 +132,7 @@ library AgentSettingsUpdater {
     function _getTimelock(bytes32 _hash) private view returns (uint64) {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         if (_hash == FEE_BIPS || _hash == POOL_FEE_SHARE_BIPS || _hash == REDEMPTION_POOL_FEE_SHARE_BIPS ||
-            _hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS || _hash == HAND_SHAKE_TYPE) {
+            _hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS) {
             return settings.agentFeeChangeTimelockSeconds;
         } else if (_hash == MINTING_VAULT_COLLATERAL_RATIO_BIPS || _hash == MINTING_POOL_COLLATERAL_RATIO_BIPS) {
             return settings.agentMintingCRChangeTimelockSeconds;
@@ -156,8 +150,7 @@ library AgentSettingsUpdater {
             hash == MINTING_VAULT_COLLATERAL_RATIO_BIPS ||
             hash == MINTING_POOL_COLLATERAL_RATIO_BIPS ||
             hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS ||
-            hash == POOL_EXIT_COLLATERAL_RATIO_BIPS ||
-            hash == HAND_SHAKE_TYPE;
+            hash == POOL_EXIT_COLLATERAL_RATIO_BIPS;
         require(settingNameValid, "invalid setting name");
         return hash;
     }

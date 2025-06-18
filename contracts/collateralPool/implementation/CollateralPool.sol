@@ -53,9 +53,8 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     IWNat public wNat;
     uint32 public exitCollateralRatioBIPS;
 
-    // only storage placeholders now
-    uint32 private __topupCollateralRatioBIPS;
-    uint16 private __topupTokenPriceFactorBIPS;
+    uint32 private __topupCollateralRatioBIPS; // only storage placeholder
+    uint16 private __topupTokenPriceFactorBIPS; // only storage placeholder
 
     bool private internalWithdrawal;
     bool private initialized;

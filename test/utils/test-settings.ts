@@ -134,12 +134,12 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         maxEmergencyPauseDurationSeconds: 1 * DAYS,
         emergencyPauseDurationResetAfterSeconds: 7 * DAYS,
         redemptionPaymentExtensionSeconds: 10,
-        cancelCollateralReservationAfterSeconds: 30,
-        rejectOrCancelCollateralReservationReturnFactorBIPS: toBIPS(0.95),
-        rejectRedemptionRequestWindowSeconds: 120,
-        takeOverRedemptionRequestWindowSeconds: 120,
-        rejectedRedemptionDefaultFactorVaultCollateralBIPS: toBIPS(1.05),
-        rejectedRedemptionDefaultFactorPoolBIPS: toBIPS(0.05),
+        __cancelCollateralReservationAfterSeconds: 0,
+        __rejectOrCancelCollateralReservationReturnFactorBIPS: 0,
+        __rejectRedemptionRequestWindowSeconds: 0,
+        __takeOverRedemptionRequestWindowSeconds: 0,
+        __rejectedRedemptionDefaultFactorVaultCollateralBIPS: 0,
+        __rejectedRedemptionDefaultFactorPoolBIPS: 0,
         transferFeeMillionths: 0,
         transferFeeClaimFirstEpochStartTs: Math.floor(new Date("2024-09-01").getTime() / 1000),
         transferFeeClaimEpochDurationSeconds: 1 * WEEKS,
@@ -219,8 +219,7 @@ export function createTestAgentSettings(vaultCollateralTokenAddress: string, opt
         mintingVaultCollateralRatioBIPS: toBIPS(1.6),
         mintingPoolCollateralRatioBIPS: toBIPS(2.5),
         poolExitCollateralRatioBIPS: toBIPS(2.6),
-        buyFAssetByAgentFactorBIPS: toBIPS(0.9),
-        handshakeType: 0,
+        buyFAssetByAgentFactorBIPS: toBIPS(0.9)
     };
     return { ...defaults, ...(options ?? {}) };
 }

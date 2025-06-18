@@ -23,8 +23,8 @@ library Redemption {
         bool poolSelfClose;
         address payable executor;
         uint64 executorFeeNatGWei;
-        uint64 rejectionTimestamp;
-        uint64 takeOverTimestamp;
+        uint64 __rejectionTimestamp; // only storage placeholder
+        uint64 __takeOverTimestamp; // only storage placeholder
         string redeemerUnderlyingAddressString;
         bool transferToCoreVault;
         uint16 poolFeeShareBIPS;

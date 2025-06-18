@@ -507,62 +507,6 @@ contract AssetManagerController is
                 (_paymentFactors, _vaultCollateralFactors)));
     }
 
-    function setCancelCollateralReservationAfterSeconds(
-        IIAssetManager[] memory _assetManagers,
-        uint256 _value
-    )
-        external
-        onlyImmediateGovernance
-    {
-        _setValueOnManagers(_assetManagers,
-            IISettingsManagement.setCancelCollateralReservationAfterSeconds.selector, _value);
-    }
-
-    function setRejectOrCancelCollateralReservationReturnFactorBIPS(
-        IIAssetManager[] memory _assetManagers,
-        uint256 _value
-    )
-        external
-        onlyImmediateGovernance
-    {
-        _setValueOnManagers(_assetManagers,
-            IISettingsManagement.setRejectOrCancelCollateralReservationReturnFactorBIPS.selector, _value);
-    }
-
-    function setRejectRedemptionRequestWindowSeconds(
-        IIAssetManager[] memory _assetManagers,
-        uint256 _value
-    )
-        external
-        onlyImmediateGovernance
-    {
-        _setValueOnManagers(_assetManagers,
-            IISettingsManagement.setRejectRedemptionRequestWindowSeconds.selector, _value);
-    }
-
-    function setTakeOverRedemptionRequestWindowSeconds(
-        IIAssetManager[] memory _assetManagers,
-        uint256 _value
-    )
-        external
-        onlyImmediateGovernance
-    {
-        _setValueOnManagers(_assetManagers,
-            IISettingsManagement.setTakeOverRedemptionRequestWindowSeconds.selector, _value);
-    }
-
-    function setRejectedRedemptionDefaultFactorBips(
-        IIAssetManager[] memory _assetManagers,
-        uint256 _vaultF,
-        uint256 _poolF
-    )
-        external
-        onlyImmediateGovernance
-    {
-        _callOnManagers(_assetManagers,
-            abi.encodeCall(IISettingsManagement.setRejectedRedemptionDefaultFactorBips, (_vaultF, _poolF)));
-    }
-
     function setRedemptionPaymentExtensionSeconds(
         IIAssetManager[] memory _assetManagers,
         uint256 _value

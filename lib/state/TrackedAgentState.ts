@@ -43,7 +43,6 @@ export class TrackedAgentState {
         this.mintingPoolCollateralRatioBIPS = toBN(data.creationData.mintingPoolCollateralRatioBIPS);
         this.buyFAssetByAgentFactorBIPS = toBN(data.creationData.buyFAssetByAgentFactorBIPS);
         this.poolExitCollateralRatioBIPS = toBN(data.creationData.poolExitCollateralRatioBIPS);
-        this.handshakeType = toBN(data.creationData.handshakeType);
     }
 
     // identifying addresses
@@ -63,7 +62,6 @@ export class TrackedAgentState {
     mintingPoolCollateralRatioBIPS: BN;
     buyFAssetByAgentFactorBIPS: BN;
     poolExitCollateralRatioBIPS: BN;
-    handshakeType: BN;
 
     // status
     status: AgentStatus = AgentStatus.NORMAL;
@@ -132,7 +130,7 @@ export class TrackedAgentState {
 
     handleSettingChanged(name: string, value: BNish) {
         const settings = ["feeBIPS", "poolFeeShareBIPS", "redemptionPoolFeeShareBIPS", "mintingVaultCollateralRatioBIPS", "mintingPoolCollateralRatioBIPS",
-            "buyFAssetByAgentFactorBIPS", "poolExitCollateralRatioBIPS", "handshakeType"];
+            "buyFAssetByAgentFactorBIPS", "poolExitCollateralRatioBIPS"];
         if (!settings.includes(name)) return;
         this[name as AgentSetting] = toBN(value);
     }

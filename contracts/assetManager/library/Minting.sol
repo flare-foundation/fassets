@@ -40,7 +40,6 @@ library Minting {
         internal
     {
         CollateralReservation.Data storage crt = CollateralReservations.getCollateralReservation(_crtId);
-        require(crt.handshakeStartTimestamp == 0, "collateral reservation not approved");
         Agent.State storage agent = Agent.get(crt.agentVault);
         // verify transaction
         TransactionAttestation.verifyPaymentSuccess(_payment);
@@ -52,9 +51,6 @@ library Minting {
             "invalid minting reference");
         require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
             "not minting agent's address");
-        require(crt.sourceAddressesRoot == bytes32(0) ||
-                crt.sourceAddressesRoot == _payment.data.responseBody.sourceAddressesRoot, // handshake was required
-            "invalid minter underlying addresses root");
         uint256 mintValueUBA = Conversion.convertAmgToUBA(crt.valueAMG);
         require(_payment.data.responseBody.receivedAmount >= SafeCast.toInt256(mintValueUBA + crt.underlyingFeeUBA),
             "minting payment too small");

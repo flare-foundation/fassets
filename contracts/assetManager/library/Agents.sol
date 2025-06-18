@@ -116,16 +116,6 @@ library Agents {
         _agent.collateralPool.setExitCollateralRatioBIPS(_poolExitCollateralRatioBIPS);
     }
 
-    function setHandshakeType(
-        Agent.State storage _agent,
-        uint256 _handshakeType
-    )
-        internal
-    {
-        require(_handshakeType <= 1, "invalid handshake type");
-        _agent.handshakeType = _handshakeType.toUint32();
-    }
-
     function allocateMintedAssets(
         Agent.State storage _agent,
         uint64 _valueAMG

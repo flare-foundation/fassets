@@ -21,10 +21,9 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
 
     bool private initialized;
 
-    // only storage placeholders now
-    IERC20[] private __usedTokens;
-    mapping(IERC20 => uint256) private __tokenUseFlags;
-    bool private __internalWithdrawal;
+    IERC20[] private __usedTokens; // only storage placeholder
+    mapping(IERC20 => uint256) private __tokenUseFlags; // only storage placeholder
+    bool private __internalWithdrawal; // only storage placeholder
 
     bool private destroyed;
     address private ownerAfterDestroy;

@@ -142,11 +142,6 @@
             "minimum": 0,
             "type": "integer"
         },
-        "cancelCollateralReservationAfterSeconds": {
-            "description": "The amount of time after which the collateral reservation can be canceled if the\nhandshake is not completed.",
-            "minimum": 1,
-            "type": "integer"
-        },
         "ccbTimeSeconds": {
             "description": "Agent can remain in CCB for this much time, after that liquidation starts automatically.",
             "minimum": 0,
@@ -334,35 +329,9 @@
             "description": "When there are many redemption requests in short time, agent gets\nup to this amount of extra payment time per redemption.",
             "type": "integer"
         },
-        "rejectOrCancelCollateralReservationReturnFactorBIPS": {
-            "description": "The amount of collateral reservation fee returned to the minter in case of rejection or cancellation.\nExpressed in BIPS, e.g. 9500 for factor of 0.95.",
-            "maximum": 10000,
-            "minimum": 0,
-            "type": "integer"
-        },
-        "rejectRedemptionRequestWindowSeconds": {
-            "description": "Time window inside which the agent can reject the redemption request.",
-            "minimum": 1,
-            "type": "integer"
-        },
-        "rejectedRedemptionDefaultFactorPoolBIPS": {
-            "description": "This is the part of rejected redemption factor paid from agent's pool collateral.",
-            "minimum": 0,
-            "type": "integer"
-        },
-        "rejectedRedemptionDefaultFactorVaultCollateralBIPS": {
-            "description": "On redemption rejection, without take over, redeemer is compensated with\nredemption value recalculated in flare/sgb times redemption failure factor.\nExpressed in BIPS, e.g. 12000 for factor of 1.2.\nThis is the part of factor paid from agent's vault collateral.",
-            "minimum": 0,
-            "type": "integer"
-        },
         "requireEOAAddressProof": {
             "description": "For some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address.\nThis must be done by presenting a payment proof from that address.",
             "type": "boolean"
-        },
-        "takeOverRedemptionRequestWindowSeconds": {
-            "description": "Time window inside which the agent can take over the redemption request from another agent\nthat has rejected it.",
-            "minimum": 1,
-            "type": "integer"
         },
         "tokenInvalidationTimeMinSeconds": {
             "description": "Minimum time from the moment token is deprecated to when it becomes invalid and agents still using\nit as vault collateral get liquidated.",
@@ -435,7 +404,6 @@
         "averageBlockTimeMS",
         "burnAddress",
         "buybackCollateralFactorBIPS",
-        "cancelCollateralReservationAfterSeconds",
         "ccbTimeSeconds",
         "chainName",
         "collateralPoolTokenTimelockSeconds",
@@ -471,12 +439,7 @@
         "redemptionDefaultFactorVaultCollateralBIPS",
         "redemptionFeeBIPS",
         "redemptionPaymentExtensionSeconds",
-        "rejectOrCancelCollateralReservationReturnFactorBIPS",
-        "rejectRedemptionRequestWindowSeconds",
-        "rejectedRedemptionDefaultFactorPoolBIPS",
-        "rejectedRedemptionDefaultFactorVaultCollateralBIPS",
         "requireEOAAddressProof",
-        "takeOverRedemptionRequestWindowSeconds",
         "tokenInvalidationTimeMinSeconds",
         "transferFeeClaimEpochDurationSeconds",
         "transferFeeClaimFirstEpochStartTs",

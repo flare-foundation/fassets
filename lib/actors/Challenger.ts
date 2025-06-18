@@ -1,4 +1,4 @@
-import { RedemptionRequested, RedemptionRequestRejected } from "../../typechain-truffle/IIAssetManager";
+import { RedemptionRequested } from "../../typechain-truffle/IIAssetManager";
 import { AgentStatus } from "../fasset/AssetManagerTypes";
 import { PaymentReference } from "../fasset/PaymentReference";
 import { TrackedAgentState } from "../state/TrackedAgentState";
@@ -19,7 +19,6 @@ interface ActiveRedemption {
     // underlying block and timestamp after which the redemption payment is invalid and can be challenged
     validUntilBlock: BN;
     validUntilTimestamp: BN;
-    rejected: boolean;
 };
 
 export class Challenger extends ActorBase {
@@ -40,7 +39,6 @@ export class Challenger extends ActorBase {
     registerForEvents() {
         this.chainEvents.transactionEvent().subscribe(transaction => this.handleUnderlyingTransaction(transaction));
         this.assetManagerEvent('RedemptionRequested').subscribe(args => this.handleRedemptionRequested(args));
-        this.assetManagerEvent('RedemptionRequestRejected').subscribe(args => this.handleRedemptionRejected(args));
         this.assetManagerEvent('RedemptionPerformed').subscribe(args => this.handleRedemptionFinished(args));
         this.assetManagerEvent('RedemptionPaymentBlocked').subscribe(args => this.handleRedemptionFinished(args));
         this.assetManagerEvent('RedemptionPaymentFailed').subscribe(args => this.handleRedemptionFinished(args));
@@ -77,25 +75,7 @@ export class Challenger extends ActorBase {
             // see Challenges.sol for this calculation
             validUntilBlock: toBN(args.lastUnderlyingBlock).add(toBN(this.state.settings.underlyingBlocksForPayment)),
             validUntilTimestamp: toBN(args.lastUnderlyingTimestamp).add(toBN(this.state.settings.underlyingSecondsForPayment)),
-            rejected: false,
         });
-    }
-
-    handleRedemptionRejected(args: EvmEventArgs<RedemptionRequestRejected>): void {
-        const reference = PaymentReference.redemption(args.requestId);
-        const redemption = this.activeRedemptions.get(reference);
-        if (redemption == null) return;
-        // mark as rejected
-        redemption.rejected = true;
-        // check if there was a payment for this redemption
-        const txHash = this.transactionForPaymentReference.get(reference);
-        if (txHash) {
-            // illegal transaction challenge
-            const agent = this.state.agentsByUnderlying.get(redemption.agentAddress);
-            if (agent && agent.status !== AgentStatus.FULL_LIQUIDATION) {
-                this.runner.startThread((scope) => this.illegalTransactionChallenge(scope, txHash, agent));
-            }
-        }
     }
 
     handleRedemptionFinished(args: { requestId: BN; agentVault: string; transactionHash: string; }): void {
@@ -202,7 +182,7 @@ export class Challenger extends ActorBase {
     isValidRedemptionReference(agent: TrackedAgentState, reference: string) {
         const redemption = this.activeRedemptions.get(reference);
         if (redemption == null) return false;
-        return agent.address === redemption.agentAddress && !redemption.rejected;
+        return agent.address === redemption.agentAddress;
     }
 
     isValidAnnouncedPaymentReference(agent: TrackedAgentState, reference: string) {

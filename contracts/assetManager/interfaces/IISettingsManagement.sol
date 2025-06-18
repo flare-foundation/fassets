@@ -133,19 +133,4 @@ interface IISettingsManagement {
 
     function setEmergencyPauseDurationResetAfterSeconds(uint256 _value)
         external;
-
-    function setCancelCollateralReservationAfterSeconds(uint256 _value)
-        external;
-
-    function setRejectOrCancelCollateralReservationReturnFactorBIPS(uint256 _value)
-        external;
-
-    function setRejectRedemptionRequestWindowSeconds(uint256 _value)
-        external;
-
-    function setTakeOverRedemptionRequestWindowSeconds(uint256 _value)
-        external;
-
-    function setRejectedRedemptionDefaultFactorBips(uint256 _vaultF, uint256 _poolF)
-        external;
 }

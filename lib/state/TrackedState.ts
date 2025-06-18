@@ -280,7 +280,6 @@ export class TrackedState {
                 mintingPoolCollateralRatioBIPS: agentInfo.mintingPoolCollateralRatioBIPS,
                 buyFAssetByAgentFactorBIPS: agentInfo.buyFAssetByAgentFactorBIPS,
                 poolExitCollateralRatioBIPS: agentInfo.poolExitCollateralRatioBIPS,
-                handshakeType: agentInfo.handshakeType,
             }
         });
         agent.initializeState(agentInfo);

@@ -62,11 +62,5 @@ library RedemptionRequestInfo {
 
         // The fee in NAT that the executor receives if they successfully call default.
         uint256 executorFeeNatWei;
-
-        // If non-zero, request was rejected in handshake process.
-        uint64 rejectionTimestamp;
-
-        // If non-zero, handshake-rejected request was taken over by another agent.
-        uint64 takeOverTimestamp;
     }
 }

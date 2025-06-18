@@ -68,33 +68,6 @@ library RedemptionFailures {
         request.status = Redemption.Status.DEFAULTED;
     }
 
-     function rejectedRedemptionPaymentDefault(
-        uint64 _redemptionRequestId
-    )
-        internal
-    {
-        Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
-        Agent.State storage agent = Agent.get(request.agentVault);
-        require(request.status == Redemption.Status.ACTIVE, "invalid redemption status");
-        require(request.rejectionTimestamp != 0, "only rejected redemption");
-        assert(!request.transferToCoreVault);   // transfer to core vault cannot be rejected
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        require(request.rejectionTimestamp + settings.takeOverRedemptionRequestWindowSeconds <= block.timestamp,
-            "rejected redemption default too early");
-        // We allow only redeemers or agents to trigger rejected redemption default, since they may want
-        // to do it at some particular time. (Agent might want to call default to unstick redemption when
-        // the redeemer is unresponsive.)
-        require(msg.sender == request.redeemer || msg.sender == request.executor || Agents.isOwner(agent, msg.sender),
-            "only redeemer, executor or agent");
-        // pay redeemer in collateral
-        executeDefaultOrCancel(agent, request, _redemptionRequestId);
-        // pay the executor if the executor called this
-        // guarded against reentrancy in RedemptionDefaultsFacet
-        Redemptions.payOrBurnExecutorFee(request);
-        // delete redemption request at end
-        Redemptions.deleteRedemptionRequest(_redemptionRequestId);
-    }
-
     function finishRedemptionWithoutPayment(
         IConfirmedBlockHeightExists.Proof calldata _proof,
         uint64 _redemptionRequestId
@@ -236,15 +209,12 @@ library RedemptionFailures {
             // if there is not enough vault collateral, just reduce the payment
             _vaultCollateralWei = Math.min(_vaultCollateralWei, maxVaultCollateralWei);
         } else {
-            bool isRejection = _request.rejectionTimestamp != 0;
             _vaultCollateralWei = Conversion.convertAmgToTokenWei(_request.valueAMG, cdAgent.amgToTokenWeiPrice)
-                .mulBips(isRejection ? settings.rejectedRedemptionDefaultFactorVaultCollateralBIPS :
-                    settings.redemptionDefaultFactorVaultCollateralBIPS);
+                .mulBips(settings.redemptionDefaultFactorVaultCollateralBIPS);
             // calculate paid amount and max available amount from the pool
             Collateral.Data memory cdPool = AgentCollateral.poolCollateralData(_agent);
             _poolWei = Conversion.convertAmgToTokenWei(_request.valueAMG, cdPool.amgToTokenWeiPrice)
-                .mulBips(isRejection ? settings.rejectedRedemptionDefaultFactorPoolBIPS :
-                    settings.redemptionDefaultFactorPoolBIPS);
+                .mulBips(settings.redemptionDefaultFactorPoolBIPS);
             uint256 maxPoolWei = cdPool.maxRedemptionCollateral(_agent, _request.valueAMG);
             // if there is not enough collateral held by agent, pay more from the pool
             if (_vaultCollateralWei > maxVaultCollateralWei) {

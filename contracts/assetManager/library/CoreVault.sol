@@ -41,7 +41,7 @@ library CoreVault {
         IICoreVaultManager coreVaultManager;
         uint64 transferTimeExtensionSeconds;
         address payable nativeAddress;
-        uint16 __transferFeeBIPS; // only storage placeholder now
+        uint16 __transferFeeBIPS; // only storage placeholder
         uint16 redemptionFeeBIPS;
         uint16 minimumAmountLeftBIPS;
         uint64 minimumRedeemLots;

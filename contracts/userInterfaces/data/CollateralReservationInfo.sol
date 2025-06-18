@@ -47,12 +47,5 @@ library CollateralReservationInfo {
 
         // The fee in NAT that the executor receives if they successfully execute the minting.
         uint256 executorFeeNatWei;
-
-        // If non-zero, the agent has started the handshake process.
-        uint64 handshakeStartTimestamp;
-
-        // Merkle root of the list of addresses from which the minter is going to deposit the underlying assets
-        // (only needed when handshake is enabled for the agent).
-        bytes32 sourceAddressesRoot;
     }
 }

@@ -476,7 +476,7 @@ interface IAssetManager is
      * @param _agentVault agent vault address
      * @param _name setting name, one of: `feeBIPS`, `poolFeeShareBIPS`, `redemptionPoolFeeShareBIPS`,
      *  `mintingVaultCollateralRatioBIPS`, `mintingPoolCollateralRatioBIPS`,`buyFAssetByAgentFactorBIPS`,
-     *  `poolExitCollateralRatioBIPS`, `handshakeType`
+     *  `poolExitCollateralRatioBIPS`
      */
     function getAgentSetting(address _agentVault, string memory _name)
         external view
@@ -606,14 +606,11 @@ interface IAssetManager is
      * Before paying underlying assets for minting, minter has to reserve collateral and
      * pay collateral reservation fee. Collateral is reserved at ratio of agent's agentMinCollateralRatio
      * to requested lots NAT market price.
-     * If the agent requires handshake, then HandshakeRequired event is emitted and
-     * the minter has to wait for the agent to approve or reject the reservation. If there is no response within
-     * the `cancelCollateralReservationAfterSeconds`, the minter can cancel the reservation and get the fee back.
-     * If handshake is not required, the minter receives instructions for underlying payment
+     * The minter receives instructions for underlying payment
      * (value, fee and payment reference) in event CollateralReserved.
      * Then the minter has to pay `value + fee` on the underlying chain.
-     * If the minter pays the underlying amount, the collateral reservation fee is burned and minter obtains
-     * f-assets. Otherwise the agent collects the collateral reservation fee.
+     * If the minter pays the underlying amount, minter obtains f-assets.
+     * The collateral reservation fee is split between the agent and the collateral pool.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * NOTE: the owner of the agent vault must be in the AgentOwnerRegistry.
      * @param _agentVault agent vault address
@@ -623,46 +620,14 @@ interface IAssetManager is
      *      and increasing fee (that would mean that the minter would have to pay raised fee or forfeit
      *      collateral reservation fee)
      * @param _executor the account that is allowed to execute minting (besides minter and agent)
-     * @param _minterUnderlyingAddresses array of minter's underlying addresses - needed only if handshake is required
      */
     function reserveCollateral(
         address _agentVault,
         uint256 _lots,
         uint256 _maxMintingFeeBIPS,
-        address payable _executor,
-        string[] calldata _minterUnderlyingAddresses
+        address payable _executor
     ) external payable
         returns (uint256 _collateralReservationId);
-
-    /**
-     * Agent approves the collateral reservation request after checking the minter's identity.
-     * NOTE: may only be called by the agent vault owner.
-     * @param _collateralReservationId collateral reservation id
-     */
-    function approveCollateralReservation(
-        uint256 _collateralReservationId
-    ) external;
-
-    /**
-     * Agent rejects the collateral reservation request after checking the minter's identity.
-     * The collateral reservation fee is returned to the minter.
-     * NOTE: may only be called by the agent vault owner.
-     * @param _collateralReservationId collateral reservation id
-     */
-    function rejectCollateralReservation(
-        uint256 _collateralReservationId
-    ) external;
-
-    /**
-     * Minter cancels the collateral reservation request if the agent didn't respond in time.
-     * The collateral reservation fee is returned to the minter.
-     * It can only be called after `cancelCollateralReservationAfterSeconds` from the collateral reservation request.
-     * NOTE: may only be called by the minter.
-     * @param _collateralReservationId collateral reservation id
-     */
-    function cancelCollateralReservation(
-        uint256 _collateralReservationId
-    ) external;
 
     /**
      * Return the collateral reservation fee amount that has to be passed to the `reserveCollateral` method.
@@ -689,8 +654,6 @@ interface IAssetManager is
     /**
      * After obtaining proof of underlying payment, the minter calls this method to finish the minting
      * and collect the minted f-assets.
-     * NOTE: In case handshake was required, the payment must be done using only all provided addresses,
-     * so `sourceAddressesRoot` matches the calculated Merkle root, otherwise the proof will be rejected.
      * NOTE: may only be called by the minter (= creator of CR, the collateral reservation request),
      *   the executor appointed by the minter, or the agent owner (= owner of the agent vault in CR).
      * @param _payment proof of the underlying payment (must contain exact `value + fee` amount and correct
@@ -706,9 +669,7 @@ interface IAssetManager is
      * When the time for the minter to pay the underlying amount is over (i.e. the last underlying block has passed),
      * the agent can declare payment default. Then the agent collects the collateral reservation fee
      * (it goes directly to the vault), and the reserved collateral is unlocked.
-     * NOTE: In case handshake was required, the attestation request must be done using `checkSourceAddresses=true`
-     * and correct `sourceAddressesRoot`, otherwise the proof will be rejected. If there was no handshake required,
-     * the attestation request must be done with `checkSourceAddresses=false`.
+     * NOTE: The attestation request must be done with `checkSourceAddresses=false`.
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
      * @param _proof proof that the minter didn't pay with correct payment reference on the underlying chain
      * @param _collateralReservationId id of a collateral reservation created by the minter
@@ -795,28 +756,6 @@ interface IAssetManager is
         returns (uint256 _redeemedAmountUBA);
 
     /**
-     * In case agent requires handshake the redemption request can be rejected by the agent.
-     * Any other agent can take over the redemption request.
-     * If no agent takes over the redemption, the redeemer can request the default payment.
-     * NOTE: may only be called by the owner of the agent vault in the redemption request
-     * @param _redemptionRequestId id of an existing redemption request
-     */
-    function rejectRedemptionRequest(
-        uint256 _redemptionRequestId
-    ) external;
-
-    /**
-     * The agent can take over the rejected redemption request - it cannot be rejected again.
-     * NOTE: may only be called by the owner of the agent vault
-     * @param _agentVault agent vault address
-     * @param _redemptionRequestId id of an existing redemption request
-     */
-    function takeOverRedemptionRequest(
-        address _agentVault,
-        uint256 _redemptionRequestId
-    ) external;
-
-    /**
      * If the redeemer provides invalid address, the agent should provide the proof of address invalidity from the
      * Flare data connector. With this, the agent's obligations are fulfilled and they can keep the underlying.
      * NOTE: may only be called by the owner of the agent vault in the redemption request
@@ -864,20 +803,6 @@ interface IAssetManager is
      */
     function redemptionPaymentDefault(
         IReferencedPaymentNonexistence.Proof calldata _proof,
-        uint256 _redemptionRequestId
-    ) external;
-
-    /**
-     * If the agent rejected the redemption request and no other agent took over the redemption,
-     * the redeemer calls this method and receives payment in collateral (with some extra).
-     * The agent can also call default if the redeemer is unresponsive, to payout the redeemer and free the
-     * remaining collateral.
-     * NOTE: may only be called by the redeemer (= creator of the redemption request),
-     *   the executor appointed by the redeemer,
-     *   or the agent owner (= owner of the agent vault in the redemption request)
-     * @param _redemptionRequestId id of an existing redemption request
-     */
-    function rejectedRedemptionPaymentDefault(
         uint256 _redemptionRequestId
     ) external;
 

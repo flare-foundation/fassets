@@ -18,7 +18,6 @@ interface IAssetManagerEvents {
         uint256 mintingPoolCollateralRatioBIPS;
         uint256 buyFAssetByAgentFactorBIPS;
         uint256 poolExitCollateralRatioBIPS;
-        uint256 handshakeType;
     }
 
     /**
@@ -114,18 +113,6 @@ interface IAssetManagerEvents {
         address token);
 
     /**
-     * Minter reserved collateral, paid the reservation fee. Agent's collateral was reserved.
-     * Agent needs to approve or reject the reservation according to the minter's identity.
-     */
-    event HandshakeRequired(
-        address indexed agentVault,
-        address indexed minter,
-        uint256 indexed collateralReservationId,
-        string[] minterUnderlyingAddresses,
-        uint256 valueUBA,
-        uint256 feeUBA);
-
-    /**
      * Minter reserved collateral, paid the reservation fee, and is expected to pay the underlying funds.
      * Agent's collateral was reserved.
      */
@@ -142,24 +129,6 @@ interface IAssetManagerEvents {
         bytes32 paymentReference,
         address executor,
         uint256 executorFeeNatWei);
-
-    /**
-     * Agent rejected the collateral reservation request because of the minter's identity.
-     * Reserved collateral was released.
-     */
-    event CollateralReservationRejected(
-        address indexed agentVault,
-        address indexed minter,
-        uint256 indexed collateralReservationId);
-
-    /**
-     * Minter cancelled the collateral reservation request because of the agent's inactivity.
-     * Reserved collateral was released.
-     */
-    event CollateralReservationCancelled(
-        address indexed agentVault,
-        address indexed minter,
-        uint256 indexed collateralReservationId);
 
     /**
      * Minter paid underlying funds in time and received the fassets.
@@ -224,27 +193,6 @@ interface IAssetManagerEvents {
         bytes32 paymentReference,
         address executor,
         uint256 executorFeeNatWei);
-
-    /**
-     * Agent rejected the redemption request because of the redeemer's identity.
-     */
-    event RedemptionRequestRejected(
-        address indexed agentVault,
-        address indexed redeemer,
-        uint64 indexed requestId,
-        string paymentAddress,
-        uint256 valueUBA);
-
-    /**
-     * Agent's rejected redemption request was taken over by another agent.
-     */
-    event RedemptionRequestTakenOver(
-        address indexed agentVault,
-        address indexed redeemer,
-        uint64 indexed requestId,
-        uint256 valueTakenOverUBA,
-        address newAgentVault,
-        uint64 newRequestId);
 
     /**
      * Agent rejected the redemption payment because the redeemer's address is invalid.

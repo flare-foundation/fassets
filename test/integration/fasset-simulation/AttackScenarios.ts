@@ -552,55 +552,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
 
     });
 
-    it("41764: agent can circumvent double payment challenge by reusing rejected redemption's payment reference", async () => {
-        // Prelim setup
-        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
-        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
-        const challenger = await Challenger.create(context, challengerAddress1);
-
-        // Make agent available and deposit some collateral
-        const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-        // update block, passing agent creation block
-        await context.updateUnderlyingBlock();
-
-        // Perform minting
-        const lots = 3;
-        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
-        const txHash = await minter.performMintingPayment(crt);
-        const minted = await minter.executeMinting(crt, txHash);
-
-        await context.assetManager.announceAgentSettingUpdate(agent.agentVault.address, "handshakeType", 1, { from: agentOwner1 });
-        // agentFeeChangeTimelockSeconds: 21600
-        // skip time to execute change of setting
-        await deterministicTimeIncrease(6 * 3600 + 1);
-        mockChain.skipTime(6 * 3600 + 12);
-        mockChain.mine((6 * 3600 / 12) + 1);
-        await context.assetManager.executeAgentSettingUpdate(agent.agentVault.address, "handshakeType", { from: agentOwner1 });
-
-        // Make a redemption request to agent's owned address
-        await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
-        const [redemptionRequests, , ,] = await redeemer.requestRedemption(lots);
-        const request = redemptionRequests[0];
-
-        // Reject redemption so that it cannot be confirmed by any proof of payment
-        await context.assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
-
-        // Assume no one is taking over
-
-        // Perform the payment
-        const paymentAmount = request.valueUBA.sub(request.feeUBA);
-        const tx1Hash = await agent.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
-
-        await deterministicTimeIncrease((await context.assetManager.getSettings()).confirmationByOthersAfterSeconds);
-        // No one can confirm this payment because this redemption is already rejected
-        await expectRevert(agent.confirmActiveRedemptionPayment(request, tx1Hash), 'rejected redemption cannot be confirmed');
-
-        // but the transaction can be challenged since the redemption request was rejected
-        await challenger.illegalPaymentChallenge(agent, tx1Hash);
-    });
-
     it.skip("43711: vault CR too low but cannot liquidate", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -868,7 +819,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             "0x0000000000000000000000000000000000000000000000000000000000000000");
         // The proof is generated, and indication that FDC doesn't find matching transaction despite the fact that there is one
         // Malicious agent cannot invoke `mintingPaymentDefault` anymore
-        await expectRevert(context.assetManager.mintingPaymentDefault(proof, crt.collateralReservationId, { from: agent.ownerWorkAddress }), "invalid check or source addresses root");
+        await expectRevert(context.assetManager.mintingPaymentDefault(proof, crt.collateralReservationId, { from: agent.ownerWorkAddress }), "source addresses not supported");
     });
 
     it("45893: agent steals collateral pool NAT with malicious distribution to delegators / reward manager", async () => {

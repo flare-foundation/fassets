@@ -40,7 +40,7 @@ contract MintingProxyMock {
         external
     {
         uint256 reservationId = assetManager.reserveCollateral(agentVault, _lots, _maxMintingFeeBIPS,
-            payable(address(0)), new string[](0));
+            payable(address(0)));
         reservations[reservationId] = msg.sender;
     }
 

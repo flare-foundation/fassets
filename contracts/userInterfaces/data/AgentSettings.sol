@@ -37,8 +37,5 @@ library AgentSettings {
         // (this is CR that must be left after exit).
         // Must be higher than system minimum collateral ratio for pool collateral.
         uint256 poolExitCollateralRatioBIPS;
-        // Agent's handshake type - minting or redeeming can be rejected.
-        // 0 - no verification, 1 - manual verification, ...
-        uint256 handshakeType;
     }
 }

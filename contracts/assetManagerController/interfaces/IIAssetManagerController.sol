@@ -181,32 +181,6 @@ interface IIAssetManagerController is
         uint256[] memory _vaultCollateralFactors
     ) external;
 
-    function setCancelCollateralReservationAfterSeconds(
-        IIAssetManager[] memory _assetManagers,
-        uint256 _value
-    ) external;
-
-    function setRejectOrCancelCollateralReservationReturnFactorBIPS(
-        IIAssetManager[] memory _assetManagers,
-        uint256 _value
-    ) external;
-
-    function setRejectRedemptionRequestWindowSeconds(
-        IIAssetManager[] memory _assetManagers,
-        uint256 _value
-    ) external;
-
-    function setTakeOverRedemptionRequestWindowSeconds(
-        IIAssetManager[] memory _assetManagers,
-        uint256 _value
-    ) external;
-
-    function setRejectedRedemptionDefaultFactorBips(
-        IIAssetManager[] memory _assetManagers,
-        uint256 _vaultF,
-        uint256 _poolF
-    ) external;
-
     function setRedemptionPaymentExtensionSeconds(
         IIAssetManager[] memory _assetManagers,
         uint256 _value

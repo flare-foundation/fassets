@@ -787,20 +787,20 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(minter.reserveCollateral(agent.vaultAddress, 1), "agent not in mint queue");
             // allowed minter can mint without paying collateral reservation fee
             const agentInfo = await agent.getAgentInfo();
-            const mintingRes = await context.assetManager.reserveCollateral(agent.vaultAddress, 1, agentInfo.feeBIPS, ZERO_ADDRESS, [], { from: allowedMinter.address });
+            const mintingRes = await context.assetManager.reserveCollateral(agent.vaultAddress, 1, agentInfo.feeBIPS, ZERO_ADDRESS, { from: allowedMinter.address });
             const minting = requiredEventArgs(mintingRes, "CollateralReserved");
             const txhash = await allowedMinter.performMintingPayment(minting);
             await allowedMinter.executeMinting(minting, txhash);
             // however, if the agent becomes public, everybody has to pay collateral reservation fee
             await agent.makeAvailable();
-            await expectRevert(context.assetManager.reserveCollateral(agent.vaultAddress, 1, agentInfo.feeBIPS, ZERO_ADDRESS, [], { from: allowedMinter.address }),
+            await expectRevert(context.assetManager.reserveCollateral(agent.vaultAddress, 1, agentInfo.feeBIPS, ZERO_ADDRESS, { from: allowedMinter.address }),
                 "inappropriate fee amount");
             await agent.exitAvailable();
             // allowed minter can be removed and then it cannot mint on non-pubic agent anymore
             await context.assetManager.removeAlwaysAllowedMinterForAgent(agent.vaultAddress, allowedMinter.address, { from: agent.ownerWorkAddress });
             assertWeb3DeepEqual(await context.assetManager.alwaysAllowedMintersForAgent(agent.vaultAddress), []);
             // now allowedMinter cannot mint
-            await expectRevert(context.assetManager.reserveCollateral(agent.vaultAddress, 1, agentInfo.feeBIPS, ZERO_ADDRESS, [], { from: allowedMinter.address }),
+            await expectRevert(context.assetManager.reserveCollateral(agent.vaultAddress, 1, agentInfo.feeBIPS, ZERO_ADDRESS, { from: allowedMinter.address }),
                 "agent not in mint queue")
         });
 
@@ -885,8 +885,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(crInfo.poolFeeShareBIPS, agentInfo.poolFeeShareBIPS);
             assertWeb3Equal(crInfo.executor, mintReq.executor);
             assertWeb3Equal(crInfo.executorFeeNatWei, mintReq.executorFeeNatWei);
-            assertWeb3Equal(crInfo.handshakeStartTimestamp, 0);
-            assertWeb3Equal(crInfo.sourceAddressesRoot, ZERO_BYTES32);
             // execute mint
             const mintTxHash = await minter.performMintingPayment(mintReq);
             const minted = await minter.executeMinting(mintReq, mintTxHash);
@@ -912,8 +910,6 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(redeemInfo.status, 0);
             assertWeb3Equal(redeemInfo.poolSelfClose, false);
             assertWeb3Equal(redeemInfo.transferToCoreVault, false);
-            assertWeb3Equal(redeemInfo.rejectionTimestamp, 0);
-            assertWeb3Equal(redeemInfo.takeOverTimestamp, 0);
             // default
             context.skipToExpiration(redeemReq.lastUnderlyingBlock, redeemReq.lastUnderlyingTimestamp);
             await redeemer.redemptionPaymentDefault(redeemReq);

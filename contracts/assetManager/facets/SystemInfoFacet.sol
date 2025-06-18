@@ -108,9 +108,7 @@ contract SystemInfoFacet is AssetManagerBase {
             lastUnderlyingBlock: crt.lastUnderlyingBlock,
             lastUnderlyingTimestamp: crt.lastUnderlyingTimestamp,
             executor: crt.executor,
-            executorFeeNatWei: crt.executorFeeNatGWei * Conversion.GWEI,
-            handshakeStartTimestamp: crt.handshakeStartTimestamp,
-            sourceAddressesRoot: crt.sourceAddressesRoot
+            executorFeeNatWei: crt.executorFeeNatGWei * Conversion.GWEI
         });
     }
 
@@ -141,9 +139,7 @@ contract SystemInfoFacet is AssetManagerBase {
             poolSelfClose: request.poolSelfClose,
             transferToCoreVault: request.transferToCoreVault,
             executor: request.executor,
-            executorFeeNatWei: request.executorFeeNatGWei * Conversion.GWEI,
-            rejectionTimestamp: request.rejectionTimestamp,
-            takeOverTimestamp: request.takeOverTimestamp
+            executorFeeNatWei: request.executorFeeNatGWei * Conversion.GWEI
         });
     }
 }

@@ -62,11 +62,11 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         await assetManager.makeAgentAvailable(agentVault.address, { from: owner });
     }
 
-    async function reserveCollateral(agentVault: string, lots: BNish, underlyingAddresses?: string[]) {
+    async function reserveCollateral(agentVault: string, lots: BNish) {
         const agentInfo = await assetManager.getAgentInfo(agentVault);
         const crFee = await assetManager.collateralReservationFee(lots);
         const totalNatFee = crFee.add(toWei(0.1));
-        const res = await assetManager.reserveCollateral(agentVault, lots, agentInfo.feeBIPS, executorAddress1, underlyingAddresses ?? [],
+        const res = await assetManager.reserveCollateral(agentVault, lots, agentInfo.feeBIPS, executorAddress1,
             { from: minterAddress1, value: totalNatFee });
         return requiredEventArgs(res, 'CollateralReserved');
     }
@@ -306,52 +306,6 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const promise = assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
         // assert
         await expectRevert(promise, "minting payment too small");
-    });
-
-    it("should not execute minting if collateral reservation is not approved", async () => {
-        // init
-        const feeBIPS = toBIPS("50%");
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        const agentVault1 = await createAgent(accounts[123], accounts[234], { feeBIPS: feeBIPS, handshakeType: 0 });
-        await depositAndMakeAgentAvailable(agentVault1, accounts[123]);
-        // act
-        const lots = 1;
-        const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, ZERO_ADDRESS, [underlyingAgent1], { from: minterAddress1, value: crFee });
-        const args = requiredEventArgs(tx, "HandshakeRequired");
-        const crt = await reserveCollateral(agentVault1.address, 1);
-        const paymentAmount = crt.valueUBA.add(crt.feeUBA).subn(1);
-        chain.mint(underlyingMinter1, paymentAmount);
-        const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
-        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
-        // it doesn't matter what kind of proof we provide, the transaction should fail
-        const promise = assetManager.executeMinting(proof, args.collateralReservationId, { from: minterAddress1 });
-        // assert
-        await expectRevert(promise, "collateral reservation not approved");
-    });
-
-    it("should not execute minting if invalid minter underlying addresses root", async () => {
-        // init
-        const feeBIPS = toBIPS("50%");
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        const agentVault2 = await createAgent(agentOwner2, underlyingAgent2, { feeBIPS: feeBIPS, handshakeType: 0 });
-        await depositAndMakeAgentAvailable(agentVault2, agentOwner2);
-        // act
-        const lots = 1;
-        const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, ZERO_ADDRESS, [underlyingAgent1], { from: minterAddress1, value: crFee });
-        const args = requiredEventArgs(tx, "HandshakeRequired");
-        const tx1 = await assetManager.approveCollateralReservation(args.collateralReservationId, { from: agentOwner1 });
-        const crt = requiredEventArgs(tx1, "CollateralReserved");
-        const paymentAmount = crt.valueUBA.add(crt.feeUBA).subn(1);
-        chain.mint("wrongUnderlyingMinter", paymentAmount);
-        const txHash = await wallet.addTransaction("wrongUnderlyingMinter", crt.paymentAddress, paymentAmount, crt.paymentReference);
-        const proof = await attestationProvider.provePayment(txHash, "wrongUnderlyingMinter", crt.paymentAddress);
-        const promise = assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
-        // assert
-        await expectRevert(promise, "invalid minter underlying addresses root");
     });
 
     it("should unstick minting", async () => {

@@ -85,15 +85,13 @@ library SettingsInitializer {
         require(_settings.agentTimelockedOperationWindowSeconds >= 1 hours, "value too small");
         require(_settings.collateralPoolTokenTimelockSeconds >= 1 minutes, "value too small");
         require(_settings.liquidationStepSeconds > 0, "cannot be zero");
-        require(_settings.cancelCollateralReservationAfterSeconds > 0, "cannot be zero");
-        require(_settings.rejectOrCancelCollateralReservationReturnFactorBIPS <= SafePct.MAX_BIPS,
-            "bips value too high");
-        require(_settings.rejectRedemptionRequestWindowSeconds > 0, "cannot be zero");
-        require(_settings.takeOverRedemptionRequestWindowSeconds > 0, "cannot be zero");
-        uint256 rejectedRedemptionFactorBIPS = _settings.rejectedRedemptionDefaultFactorVaultCollateralBIPS +
-            _settings.rejectedRedemptionDefaultFactorPoolBIPS;
-        require(rejectedRedemptionFactorBIPS >= SafePct.MAX_BIPS, "bips value too low");
         SettingsValidators.validateLiquidationFactors(_settings.liquidationCollateralFactorBIPS,
             _settings.liquidationFactorVaultCollateralBIPS);
+        require(_settings.__cancelCollateralReservationAfterSeconds == 0, "must be zero");
+        require(_settings.__rejectOrCancelCollateralReservationReturnFactorBIPS == 0, "must be zero");
+        require(_settings.__rejectRedemptionRequestWindowSeconds == 0, "must be zero");
+        require(_settings.__takeOverRedemptionRequestWindowSeconds == 0, "must be zero");
+        require(_settings.__rejectedRedemptionDefaultFactorVaultCollateralBIPS == 0, "must be zero");
+        require(_settings.__rejectedRedemptionDefaultFactorPoolBIPS == 0, "must be zero");
     }
 }
