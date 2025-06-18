@@ -142,15 +142,15 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
         await mint(agentVault, underlyingMinter1, minterAddress1);
         // act
-        const assetName = await fAsset.symbol()
+        const assetName = await fAsset.symbol();
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        await contracts.priceReader.setCurrentPrice(assetName, 4294967295, 0); // Max unit32 price
+        await contracts.priceReader.setCurrentPrice(assetName, 2**32-1, 0); // Max unit32 price
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        await contracts.priceReader.setCurrentPriceFromTrustedProviders(assetName, 4294967295, 0);
+        await contracts.priceReader.setCurrentPriceFromTrustedProviders(assetName, 2**32-1, 0);
 
         await assetManager.startLiquidation(agentVault.address);
         const info1 = await assetManager.getAgentInfo(agentVault.address);
@@ -172,17 +172,29 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
     it("should revert if callig startLiquidation twice", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
         const minted = await mint(agentVault, underlyingMinter1, minterAddress1);
+        const assetName = await fAsset.symbol();
         // act
-        await ftsos.asset.setCurrentPrice(toBNExp(3521, 50), 0);
-        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(3521, 50), 0);
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPrice(assetName, 2**32-1, 0); // Max unit32 price
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPriceFromTrustedProviders(assetName, 2**32-1, 0);
+
         await assetManager.startLiquidation(agentVault.address);
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         // liquidator "buys" f-assets
         await fAsset.transfer(liquidatorAddress1, minted.mintedAmountUBA.divn(2), { from: minterAddress1 });
         await assetManager.liquidate(agentVault.address, minted.mintedAmountUBA.divn(2), { from: liquidatorAddress1 });
-        await ftsos.asset.setCurrentPrice(toBNExp(3521, 5), 0);
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPrice(assetName, 2**8-1, 0); // Max unit32 price
+
         await expectRevert(assetManager.startLiquidation(agentVault.address), "liquidation not started");
         const info2 = await assetManager.getAgentInfo(agentVault.address);
         await assetManager.endLiquidation(agentVault.address);
@@ -204,14 +216,31 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         await expectRevert(assetManager.startLiquidation(agentVault.address), "liquidation not started");
         const info = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info.status, 0);
+        const assetName = await fAsset.symbol();
         // act
-        await ftsos.asset.setCurrentPrice(toBNExp(7, 10), 0);
-        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(7, 10), 0);
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPrice(assetName, 7**10, 0); // Max unit32 price
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPriceFromTrustedProviders(assetName, 7**10, 0);
+        // await ftsos.asset.setCurrentPrice(toBNExp(7, 10), 0);
+        // await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(7, 10), 0);
         await assetManager.startLiquidation(agentVault.address);
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         chain.skipTimeTo(toBN(info1.ccbStartTimestamp).toNumber());
-        await ftsos.asset.setCurrentPrice(toBNExp(8, 10), 0);
-        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(8, 10), 0);
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPrice(assetName, 8**10, 0); // Max unit32 price
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPriceFromTrustedProviders(assetName, 8**10, 0);
+        // await ftsos.asset.setCurrentPrice(toBNExp(8, 10), 0);
+        // await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(8, 10), 0);
         await assetManager.startLiquidation(agentVault.address);
         const info2 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info1.status, 1);
@@ -224,9 +253,16 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         await mint(agentVault, underlyingMinter1, minterAddress1);
+        const assetName = await fAsset.symbol();
         // act
-        await ftsos.asset.setCurrentPrice(toBNExp(7, 10), 0);
-        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(7, 10), 0);
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPrice(assetName, 7**10, 0); // Max unit32 price
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPriceFromTrustedProviders(assetName, 7**10, 0);
         await assetManager.startLiquidation(agentVault.address);
         const info1 = await assetManager.getAgentInfo(agentVault.address);
 
@@ -244,17 +280,32 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         await mint(agentVault, underlyingMinter1, minterAddress1);
-        const initial_price = await ftsos.asset.getCurrentPrice();
+        const assetName = await fAsset.symbol();
+        const initial_price = await contracts.priceReader.getPrice(assetName);
         const price = initial_price[0];
         // Change price to put agent in ccb
-        await ftsos.asset.setCurrentPrice(toBNExp(7, 10), 0);
-        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(7, 10), 0);
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPrice(assetName, 7**10, 0); // Max unit32 price
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPriceFromTrustedProviders(assetName, 7**10, 0);
+
         //Change phase to ccb
         await assetManager.startLiquidation(agentVault.address);
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         //Set price back to initial value
-        await ftsos.asset.setCurrentPrice(price, 0);
-        await ftsos.asset.setCurrentPriceFromTrustedProviders(price, 0);
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPrice(assetName, initial_price, 0); // Max unit32 price
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPriceFromTrustedProviders(assetName, initial_price, 0);
+
         await assetManager.endLiquidation(agentVault.address);
         const info2 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info1.status, 1);
@@ -267,18 +318,32 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         await mint(agentVault, underlyingMinter1, minterAddress1);
-        const initial_price = await ftsos.asset.getCurrentPrice();
+        const assetName = await fAsset.symbol();
+        const initial_price = await contracts.priceReader.getPrice(assetName);
         const price = initial_price[0];
         // Change price to put agent in ccb
-        await ftsos.asset.setCurrentPrice(toBNExp(7, 10), 0);
-        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(7, 10), 0);
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPrice(assetName, 7**10, 0); // Max unit32 price
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPriceFromTrustedProviders(assetName, 7**10, 0);
         //Change phase to ccb
         await assetManager.startLiquidation(agentVault.address);
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info1.status, 1);
         //Price falls event lower
-        await ftsos.asset.setCurrentPrice(toBNExp(7, 12), 0);
-        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(7,12), 0);
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPrice(assetName, 7**12, 0); // Max unit32 price
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPriceFromTrustedProviders(assetName, 7**12, 0);
+
         //Getting agent info should still show status CCB
         const info2 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info2.status, 1);
@@ -295,11 +360,18 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         await mint(agentVault, underlyingMinter1, minterAddress1);
-        const initial_price = await ftsos.asset.getCurrentPrice();
+        const assetName = await fAsset.symbol();
+        const initial_price = await contracts.priceReader.getPrice(assetName);
         const price = initial_price[0];
         // Change price to put agent in ccb
-        await ftsos.asset.setCurrentPrice(toBNExp(7, 10), 0);
-        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(7, 10), 0);
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPrice(assetName, 7**10, 0); // Max unit32 price
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPriceFromTrustedProviders(assetName, 7**10, 0);
         //Change phase to ccb
         await assetManager.startLiquidation(agentVault.address);
         const info1 = await assetManager.getAgentInfo(agentVault.address);
@@ -316,9 +388,17 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         const minted = await mint(agentVault, underlyingMinter1, minterAddress1);
+        const assetName = await fAsset.symbol();
         // act
-        await ftsos.asset.setCurrentPrice(toBNExp(8, 12), 0);
-        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(5, 10), 0);
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPrice(assetName, 8**12, 0); // Max unit32 price
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPriceFromTrustedProviders(assetName, 5**10, 0);
+
         await expectRevert(assetManager.startLiquidation(agentVault.address), "liquidation not started");
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         // liquidator "buys" f-assets
@@ -330,9 +410,16 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         const minted = await mint(agentVault, underlyingMinter1, minterAddress1);
+        const assetName = await fAsset.symbol();
         // act
-        await ftsos.asset.setCurrentPrice(toBNExp(8, 12), 0);
-        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(5, 10), 1000);
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPrice(assetName, 8**12, 0); // Max unit32 price
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await contracts.priceReader.setCurrentPriceFromTrustedProviders(assetName, 5**10, 0);
         await assetManager.startLiquidation(agentVault.address);
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         // liquidator "buys" f-assets
