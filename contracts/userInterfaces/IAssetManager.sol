@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import {IConfirmedBlockHeightExists, IPayment, IAddressValidity, IReferencedPaymentNonexistence, IBalanceDecreasingTransaction} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IConfirmedBlockHeightExists, IPayment, IAddressValidity, IReferencedPaymentNonexistence,
+        IBalanceDecreasingTransaction}
+    from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IDiamondLoupe} from "../diamond/interfaces/IDiamondLoupe.sol";
 import {AssetManagerSettings} from "./data/AssetManagerSettings.sol";

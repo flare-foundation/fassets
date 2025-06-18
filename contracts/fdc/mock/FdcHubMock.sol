@@ -3,8 +3,10 @@ pragma solidity 0.8.23;
 
 import {IFdcHub} from "@flarenetwork/flare-periphery-contracts/flare/IFdcHub.sol";
 import {FdcRequestFeeConfigurationsMock} from "./FdcRequestFeeConfigurationsMock.sol";
-import {IFdcRequestFeeConfigurations} from "@flarenetwork/flare-periphery-contracts/flare/IFdcRequestFeeConfigurations.sol";
-import {IFdcInflationConfigurations} from "@flarenetwork/flare-periphery-contracts/flare/IFdcInflationConfigurations.sol";
+import {IFdcRequestFeeConfigurations}
+    from "@flarenetwork/flare-periphery-contracts/flare/IFdcRequestFeeConfigurations.sol";
+import {IFdcInflationConfigurations}
+    from "@flarenetwork/flare-periphery-contracts/flare/IFdcInflationConfigurations.sol";
 
 contract FdcHubMock is IFdcHub {
     /// The FDC request fee configurations contract.

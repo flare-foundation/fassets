@@ -11,6 +11,7 @@
       "check-send-result": "error",
       "compiler-version": ["off", "0.8.23"],
       "const-name-snakecase": "error",
+      "immutable-vars-naming": "off",
       "func-name-mixedcase": "error",
       "ordering": "off",
       "imports-on-top": "error",

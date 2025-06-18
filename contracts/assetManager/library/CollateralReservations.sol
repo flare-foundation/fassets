@@ -17,7 +17,8 @@ import {MerkleTree} from "../../utils/library/MerkleTree.sol";
 import {Collateral} from "./data/Collateral.sol";
 import {Agent} from "./data/Agent.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {IReferencedPaymentNonexistence, IConfirmedBlockHeightExists} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IReferencedPaymentNonexistence, IConfirmedBlockHeightExists}
+    from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {CollateralReservation} from "./data/CollateralReservation.sol";
 import {PaymentReference} from "./data/PaymentReference.sol";
 import {Globals} from "./Globals.sol";

@@ -4,6 +4,7 @@ pragma solidity 0.8.23;
 import {IICoreVaultManager} from "../../coreVaultManager/interfaces/IICoreVaultManager.sol";
 import {MathUtils} from "../../utils/library/MathUtils.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ICoreVault} from "../../userInterfaces/ICoreVault.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
@@ -19,7 +20,6 @@ import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerifi
 import {Redemption} from "./data/Redemption.sol";
 import {Agents} from "./Agents.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol"; // TODO: Is this the correct library to use? - one is already in the flattened contracts
 import {Globals} from "./Globals.sol";
 import {Conversion} from "./Conversion.sol";
 import {SafeMath64} from "../../utils/library/SafeMath64.sol";

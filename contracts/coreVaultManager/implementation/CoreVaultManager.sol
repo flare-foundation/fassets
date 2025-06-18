@@ -12,7 +12,8 @@ import {IFdcVerification, IPayment} from "@flarenetwork/flare-periphery-contract
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 import {ICoreVaultManager} from "../../userInterfaces/ICoreVaultManager.sol";
 import {GovernedBase} from "../../governance/implementation/GovernedBase.sol";
-import {IIAddressUpdatable} from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdatable.sol";
+import {IIAddressUpdatable}
+    from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdatable.sol";
 
 //solhint-disable-next-line max-states-count
 contract CoreVaultManager is

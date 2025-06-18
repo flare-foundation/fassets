@@ -5,7 +5,8 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
 import {RedemptionFailures} from "../library/RedemptionFailures.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
-import {IReferencedPaymentNonexistence, IConfirmedBlockHeightExists} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IReferencedPaymentNonexistence, IConfirmedBlockHeightExists}
+    from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 
 
 contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {

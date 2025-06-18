@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import {IReferencedPaymentNonexistence, IConfirmedBlockHeightExists} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {IReferencedPaymentNonexistence, IConfirmedBlockHeightExists}
+    from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
@@ -17,7 +19,6 @@ import {Redemption} from "./data/Redemption.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {PaymentReference} from "./data/PaymentReference.sol";
 import {Globals} from "./Globals.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol"; // TODO: Is this the correct library to use? - one is already in the flattened contracts
 
 library RedemptionFailures {
     using SafePct for *;

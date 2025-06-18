@@ -4,7 +4,8 @@ pragma solidity 0.8.23;
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {IIAddressUpdater} from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdater.sol";
+import {IIAddressUpdater}
+    from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdater.sol";
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {IISettingsManagement} from "../../assetManager/interfaces/IISettingsManagement.sol";
 import {IIAssetManagerController} from "../interfaces/IIAssetManagerController.sol";
@@ -19,7 +20,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IGoverned} from "../../governance/interfaces/IGoverned.sol";
 import {IAssetManagerController} from "../../userInterfaces/IAssetManagerController.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import {IIAddressUpdatable} from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdatable.sol";
+import {IIAddressUpdatable}
+    from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdatable.sol";
 import {IAddressUpdatable} from "../../flareSmartContracts/interfaces/IAddressUpdatable.sol";
 import {ITransferFees} from "../../userInterfaces/ITransferFees.sol";
 import {IRedemptionTimeExtension} from "../../userInterfaces/IRedemptionTimeExtension.sol";

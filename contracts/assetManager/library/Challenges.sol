@@ -13,7 +13,8 @@ import {AgentCollateral} from "./AgentCollateral.sol";
 import {TransactionAttestation} from "./TransactionAttestation.sol";
 import {UnderlyingBalance} from "./UnderlyingBalance.sol";
 import {PaymentConfirmations} from "./data/PaymentConfirmations.sol";
-import {IFdcVerification, IBalanceDecreasingTransaction} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IFdcVerification, IBalanceDecreasingTransaction}
+    from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {PaymentReference} from "./data/PaymentReference.sol";
 import {Agent} from "./data/Agent.sol";
 import {Redemption} from "./data/Redemption.sol";
