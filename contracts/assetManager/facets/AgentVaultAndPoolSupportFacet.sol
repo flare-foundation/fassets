@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 import {AgentsExternal} from "../library/AgentsExternal.sol";
 import {Agents} from "../library/Agents.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";

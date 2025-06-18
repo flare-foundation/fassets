@@ -2,7 +2,6 @@
 pragma solidity 0.8.23;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {IFdcVerification} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
@@ -13,7 +12,7 @@ import {AgentCollateral} from "./AgentCollateral.sol";
 import {TransactionAttestation} from "./TransactionAttestation.sol";
 import {UnderlyingBalance} from "./UnderlyingBalance.sol";
 import {PaymentConfirmations} from "./data/PaymentConfirmations.sol";
-import {IFdcVerification, IBalanceDecreasingTransaction}
+import {IBalanceDecreasingTransaction}
     from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {PaymentReference} from "./data/PaymentReference.sol";
 import {Agent} from "./data/Agent.sol";

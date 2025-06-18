@@ -2,19 +2,15 @@
 pragma solidity 0.8.23;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
 import {IICollateralPoolFactory} from "../../collateralPool/interfaces/IICollateralPoolFactory.sol";
 import {IICollateralPoolTokenFactory} from "../../collateralPool/interfaces/IICollateralPoolTokenFactory.sol";
 import {IIAgentVaultFactory} from "../../agentVault/interfaces/IIAgentVaultFactory.sol";
-import {IIAssetManagerController} from "../../assetManagerController/interfaces/IIAssetManagerController.sol";
 import {IUpgradableProxy} from "../../utils/interfaces/IUpgradableProxy.sol";
 import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
-import {Conversion} from "./Conversion.sol";
-import {AgentCollateral} from "./AgentCollateral.sol";
 import {TransactionAttestation} from "./TransactionAttestation.sol";
 import {AgentSettingsUpdater} from "./AgentSettingsUpdater.sol";
 import {StateUpdater} from "./StateUpdater.sol";

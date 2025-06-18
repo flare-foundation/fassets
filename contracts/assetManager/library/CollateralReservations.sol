@@ -2,7 +2,6 @@
 pragma solidity 0.8.23;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {IIAgentVault} from "../../agentVault/interfaces/IIAgentVault.sol";
 import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {Transfers} from "../../utils/library/Transfers.sol";

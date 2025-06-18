@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IPriceReader} from "../../ftso/interfaces/IPriceReader.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";

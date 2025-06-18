@@ -8,7 +8,6 @@ import {GovernedProxyImplementation} from "../../governance/implementation/Gover
 import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
 import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
 import {LibDiamond} from "../../diamond/library/LibDiamond.sol";
-import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 import {SettingsInitializer} from "../library/SettingsInitializer.sol";
 import {CollateralTypes} from "../library/CollateralTypes.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";

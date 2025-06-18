@@ -7,7 +7,6 @@ import {CollateralReservations} from "../library/CollateralReservations.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {IReferencedPaymentNonexistence, IConfirmedBlockHeightExists}
     from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
-import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
 
 contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
     using SafeCast for uint256;

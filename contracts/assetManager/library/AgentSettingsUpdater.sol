@@ -2,7 +2,6 @@
 pragma solidity >=0.7.6 <0.9;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {Agents} from "./Agents.sol";
 import {Agent} from "./data/Agent.sol";

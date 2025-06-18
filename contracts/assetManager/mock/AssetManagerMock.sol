@@ -2,8 +2,6 @@
 pragma solidity 0.8.23;
 
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
-import {IIAgentVault} from "../../agentVault/interfaces/IIAgentVault.sol";
-import {IICollateralPool} from "../../collateralPool/interfaces/IICollateralPool.sol";
 import {IIFAsset} from "../../fassetToken/interfaces/IIFAsset.sol";
 
 contract AssetManagerMock {

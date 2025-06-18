@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IAgentPing} from "../../userInterfaces/IAgentPing.sol";
 import {Agents} from "../library/Agents.sol";
-import {LibDiamond} from "../../diamond/library/LibDiamond.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {Agent} from "../../assetManager/library/data/Agent.sol";
 

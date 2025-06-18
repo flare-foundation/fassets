@@ -5,7 +5,6 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AgentInfo} from "../../userInterfaces/data/AgentInfo.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
-import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {Conversion} from "./Conversion.sol";
 import {Agents} from "./Agents.sol";
 import {Agent} from "./data/Agent.sol";

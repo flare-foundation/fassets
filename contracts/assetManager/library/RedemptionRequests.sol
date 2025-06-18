@@ -2,14 +2,12 @@
 pragma solidity 0.8.23;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {RedemptionTimeExtension} from "./data/RedemptionTimeExtension.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {Conversion} from "./Conversion.sol";
 import {Redemptions} from "./Redemptions.sol";
-import {RedemptionFailures} from "./RedemptionFailures.sol";
 import {Liquidation} from "./Liquidation.sol";
 import {TransactionAttestation} from "./TransactionAttestation.sol";
 import {RedemptionQueue} from "./data/RedemptionQueue.sol";

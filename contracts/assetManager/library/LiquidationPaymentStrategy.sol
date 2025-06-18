@@ -2,14 +2,12 @@
 pragma solidity 0.8.23;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {Agents} from "./Agents.sol";
 import {CollateralTypes} from "./CollateralTypes.sol";
 import {Agent} from "./data/Agent.sol";
 import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {Globals} from "./Globals.sol";
-import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 
 library LiquidationPaymentStrategy {
     using Agent for Agent.State;

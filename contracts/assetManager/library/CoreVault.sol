@@ -23,7 +23,6 @@ import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettin
 import {Globals} from "./Globals.sol";
 import {Conversion} from "./Conversion.sol";
 import {SafeMath64} from "../../utils/library/SafeMath64.sol";
-import {Transfers} from "../../utils/library/Transfers.sol";
 import {TransactionAttestation} from "./TransactionAttestation.sol";
 import {ICoreVault} from "../../userInterfaces/ICoreVault.sol";
 

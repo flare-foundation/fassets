@@ -2,10 +2,8 @@
 pragma solidity 0.8.23;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {MathUtils} from "../../utils/library/MathUtils.sol";
-import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {Collateral} from "./data/Collateral.sol";
 import {Conversion} from "./Conversion.sol";
 import {Agents} from "./Agents.sol";

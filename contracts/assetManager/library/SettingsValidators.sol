@@ -2,7 +2,6 @@
 pragma solidity 0.8.23;
 
 import {SafePct} from "../../utils/library/SafePct.sol";
-import {Globals} from "./Globals.sol";
 
 library SettingsValidators {
     using SafePct for *;

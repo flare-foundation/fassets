@@ -2,7 +2,6 @@
 pragma solidity 0.8.23;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {AssetManagerState} from "../data/AssetManagerState.sol";
 import {Conversion} from "../Conversion.sol";
 import {AssetManagerSettings} from "../../../userInterfaces/data/AssetManagerSettings.sol";
 import {Globals} from "../Globals.sol";

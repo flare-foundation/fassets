@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: MIT
+
+// solhint-disable no-unused-import
 pragma solidity ^0.6.0;
 
 // We import the contract so MockContract gets compiled, and we have the ABI
