@@ -2,7 +2,7 @@
 pragma solidity 0.8.23;
 
 import "../../openzeppelin/security/ReentrancyGuard.sol";
-import { Transfers } from "../../utils/lib/Transfers.sol";
+import { Transfers } from "../library/Transfers.sol";
 
 
 contract TransfersMock is ReentrancyGuard {

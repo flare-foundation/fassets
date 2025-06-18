@@ -3,8 +3,8 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../utils/lib/SafePct.sol";
-import "../../utils/lib/MathUtils.sol";
+import "../../utils/library/SafePct.sol";
+import "../../utils/library/MathUtils.sol";
 import "./data/AssetManagerState.sol";
 import "./data/Collateral.sol";
 import "./Conversion.sol";

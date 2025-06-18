@@ -2,7 +2,7 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../utils/lib/SafePct.sol";
+import "../../utils/library/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./Globals.sol";
 import "./SettingsUpdater.sol";

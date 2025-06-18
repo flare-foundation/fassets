@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../utils/lib/SafePct.sol";
+import "../../utils/library/SafePct.sol";
 import "./Globals.sol";
 
 library SettingsValidators {

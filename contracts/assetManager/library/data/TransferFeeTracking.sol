@@ -3,8 +3,8 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../../utils/lib/SafePct.sol";
-import "../../../utils/lib/TimeCumulative.sol";
+import "../../../utils/library/SafePct.sol";
+import "../../../utils/library/TimeCumulative.sol";
 
 
 library TransferFeeTracking {

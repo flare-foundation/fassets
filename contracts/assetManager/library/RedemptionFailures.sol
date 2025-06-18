@@ -2,7 +2,7 @@
 pragma solidity 0.8.23;
 
 import "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
-import "../../utils/lib/SafePct.sol";
+import "../../utils/library/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Redemptions.sol";

@@ -2,7 +2,7 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../lib/TimeCumulative.sol";
+import "../library/TimeCumulative.sol";
 
 
 contract TimeCumulativeMock {

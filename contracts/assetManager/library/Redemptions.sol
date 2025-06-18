@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../utils/lib/SafeMath64.sol";
-import "../../utils/lib/Transfers.sol";
+import "../../utils/library/SafeMath64.sol";
+import "../../utils/library/Transfers.sol";
 import "./data/AssetManagerState.sol";
 import "./Conversion.sol";
 import "./Agents.sol";

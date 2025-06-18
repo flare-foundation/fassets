@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "../interfaces/IIFAsset.sol";
-import "../../utils/lib/SafePct.sol";
+import "../../utils/library/SafePct.sol";
 import "../../assetManager/interfaces/IIAssetManager.sol";
 import "../../openzeppelin/token/ERC20Permit.sol";
 import "./CheckPointable.sol";

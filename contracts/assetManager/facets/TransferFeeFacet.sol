@@ -7,7 +7,7 @@ import "./AssetManagerBase.sol";
 import "../../diamond/library/LibDiamond.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
 import "../../userInterfaces/ITransferFees.sol";
-import "../../utils/lib/SafePct.sol";
+import "../../utils/library/SafePct.sol";
 import "../library/SettingsUpdater.sol";
 import "../library/data/TransferFeeTracking.sol";
 import "../library/TransferFees.sol";

@@ -3,8 +3,8 @@ pragma solidity 0.8.23;
 
 import "../../userInterfaces/ICoreVault.sol";
 import "../../coreVaultManager/interfaces/IICoreVaultManager.sol";
-import "../../utils/lib/MathUtils.sol";
-import "../../utils/lib/SafePct.sol";
+import "../../utils/library/MathUtils.sol";
+import "../../utils/library/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./data/PaymentReference.sol";
 import "./AgentCollateral.sol";

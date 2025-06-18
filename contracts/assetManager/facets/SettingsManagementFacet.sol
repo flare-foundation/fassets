@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
 import "../../utils/interfaces/IUpgradableProxy.sol";
-import "../../utils/lib/SafePct.sol";
+import "../../utils/library/SafePct.sol";
 import "../interfaces/IISettingsManagement.sol";
 import "../library/Globals.sol";
 import "../library/CollateralTypes.sol";

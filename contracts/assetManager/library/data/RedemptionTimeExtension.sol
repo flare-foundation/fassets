@@ -2,7 +2,7 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../../utils/lib/SafeMath64.sol";
+import "../../../utils/library/SafeMath64.sol";
 
 
 library RedemptionTimeExtension {

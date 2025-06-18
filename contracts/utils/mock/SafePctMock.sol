@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import {SafePct} from "../../utils/lib/SafePct.sol";
+import {SafePct} from "../library/SafePct.sol";
 
 
 /**
