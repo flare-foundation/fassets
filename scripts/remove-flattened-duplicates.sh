@@ -7,7 +7,7 @@ mkdir -p artifacts/flare-sc
 cp artifacts/flattened/**/*.json artifacts/flare-sc
 
 # duplicated files in flare-smart-contracts
-duplicates=$(find artifacts/ -name '*.json' -not -path 'artifacts/flattened/*/*' -not -path 'artifacts/flare-sc/*' -printf '%f ')
+duplicates=$(find artifacts/ -name '*.json' -not -path 'artifacts/flattened/*/*' -not -path 'artifacts/flare-sc/*' | awk -F/ '{print $NF}')
 
 # remove duplicates
 cd artifacts/flare-sc
