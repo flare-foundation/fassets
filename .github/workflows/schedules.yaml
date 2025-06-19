@@ -25,7 +25,7 @@ jobs:
     - name: Compile contracts
       run: yarn run compile
     - name: Run the test
-      run: yarn run cov
+      run: yarn run test-with-coverage
 
 
   schedule-fuzzer:

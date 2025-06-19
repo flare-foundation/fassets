@@ -13,12 +13,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - TEST_PATH: ./test/unit/fasset/library
-        - TEST_PATH: ./test/unit/fasset/mock
-        - TEST_PATH: ./test/unit/bots
-        - TEST_PATH: ./test/unit/governance
-        - TEST_PATH: ./test/unit/utils
-        - TEST_PATH: ./test/unit/fasset/implementation
+        - TEST_PATH: ./test/unit/assetManager/implementation
+        - TEST_PATH: ./test/unit/assetManager/library
+        - TEST_PATH: ./test/unit/!(assetManager)
         - TEST_ARG: test/unit/gasReport/GasReport.ts
     steps:
     - uses: actions/checkout@v4

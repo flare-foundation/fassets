@@ -33,7 +33,7 @@ yarn test_unit_hh
 yarn test_integration_hh
 
 # generate coverage report
-yarn cov
+yarn test-with-coverage
 ```
 
 ## Using Foundry
