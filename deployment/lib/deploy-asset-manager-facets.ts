@@ -38,7 +38,6 @@ export const assetManagerFacets = [
 
 export const assetManagerFacetsDeployedByDiamondCut = [
     'RedemptionTimeExtensionFacet',
-    'TransferFeeFacet',
     'CoreVaultFacet',
     'CoreVaultSettingsFacet',
 ]

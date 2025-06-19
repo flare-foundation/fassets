@@ -10,11 +10,6 @@ import { GovernanceCallTimelocked } from "../../../typechain-truffle/AssetManage
 export interface AssetManagerInitSettings extends AssetManagerSettings {
     // redemption time extension
     redemptionPaymentExtensionSeconds: BNish;
-    // transer fee
-    transferFeeMillionths: BNish;
-    transferFeeClaimFirstEpochStartTs: BNish;
-    transferFeeClaimEpochDurationSeconds: BNish;
-    transferFeeClaimMaxUnexpiredEpochs: BNish;
     // core vault
     coreVaultNativeAddress: string;
     coreVaultTransferTimeExtensionSeconds: BNish;
@@ -74,9 +69,6 @@ export async function newAssetManager(
     // extra facets
     await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("RedemptionTimeExtensionFacet"), ["IRedemptionTimeExtension"],
         (c) => c.initRedemptionTimeExtensionFacet(assetManagerSettings.redemptionPaymentExtensionSeconds));
-    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("TransferFeeFacet"), ["ITransferFees"],
-        (c) => c.initTransferFeeFacet(assetManagerSettings.transferFeeMillionths, assetManagerSettings.transferFeeClaimFirstEpochStartTs,
-            assetManagerSettings.transferFeeClaimEpochDurationSeconds, assetManagerSettings.transferFeeClaimMaxUnexpiredEpochs));
     await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("CoreVaultFacet"), ["ICoreVault"]);
     await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("CoreVaultSettingsFacet"), ["ICoreVaultSettings"],
         (c) => c.initCoreVaultFacet(ZERO_ADDRESS, assetManagerSettings.coreVaultNativeAddress,

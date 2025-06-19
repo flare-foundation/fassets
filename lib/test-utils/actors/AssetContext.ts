@@ -10,7 +10,7 @@ import { UnderlyingChainEvents } from "../../underlying-chain/UnderlyingChainEve
 import { IBlockChain } from "../../underlying-chain/interfaces/IBlockChain";
 import { IFlareDataConnectorClient } from "../../underlying-chain/interfaces/IFlareDataConnectorClient";
 import { EventScope } from "../../utils/events/ScopedEvents";
-import { ContractWithEvents, filterEvents } from "../../utils/events/truffle";
+import { ContractWithEvents, filterEvents, requiredEventArgs } from "../../utils/events/truffle";
 import { BN_ZERO, BNish, sorted, toBN, toBNExp, toNumber } from "../../utils/helpers";
 import { AgentOwnerRegistryInstance, CoreVaultManagerInstance, FAssetInstance, IIAssetManagerInstance, WhitelistInstance } from "../../../typechain-truffle";
 import { AssetManagerInitSettings, newAssetManager, waitForTimelock } from "../fasset/CreateAssetManager";
@@ -162,13 +162,9 @@ export class AssetContext implements IAssetContext {
         return toNumber(proof.data.requestBody.blockNumber) + toNumber(proof.data.responseBody.numberOfConfirmations);
     }
 
-    async transferFAsset(from: string, to: string, amount: BNish, addFee: boolean = false) {
-        const res = addFee
-            ? await this.fAsset.transferExactDest(to, amount, { from })
-            : await this.fAsset.transfer(to, amount, { from });
-        const transferEvents = sorted(filterEvents(res, "Transfer"), ev => toBN(ev.args.value), (x, y) => -x.cmp(y));
-        assert.isAtLeast(transferEvents.length, 1, "Missing event Transfer");
-        return { ...transferEvents[0].args, fee: transferEvents[1]?.args.value };
+    async transferFAsset(from: string, to: string, amount: BNish) {
+        const res = await this.fAsset.transfer(to, amount, { from });
+        return requiredEventArgs(res, 'Transfer');
     }
 
     attestationWindowSeconds() {

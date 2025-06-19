@@ -91,17 +91,6 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     await deployCutsOnDiamond(hre, contracts,
         {
             diamond: assetManager.address,
-            facets: [{ contract: "TransferFeeFacet", exposedInterfaces: ["ITransferFees"] }],
-            init: {
-                contract: "TransferFeeFacet",
-                method: "initTransferFeeFacet",
-                args: [parameters.transferFeeMillionths, parameters.transferFeeClaimFirstEpochStartTs, parameters.transferFeeClaimEpochDurationSeconds, parameters.transferFeeClaimMaxUnexpiredEpochs]
-            },
-        },
-        { execute: true, verbose: false });
-    await deployCutsOnDiamond(hre, contracts,
-        {
-            diamond: assetManager.address,
             facets: [
                 { contract: "CoreVaultFacet", exposedInterfaces: ["ICoreVault"] },
                 { contract: "CoreVaultSettingsFacet", exposedInterfaces: ["ICoreVaultSettings"] }

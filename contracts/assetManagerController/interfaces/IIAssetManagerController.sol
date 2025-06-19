@@ -186,12 +186,6 @@ interface IIAssetManagerController is
         uint256 _value
     ) external;
 
-    function setTransferFeeMillionths(
-        IIAssetManager[] memory _assetManagers,
-        uint256 _value,
-        uint256 _scheduledAt
-    ) external;
-
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Collateral tokens
 

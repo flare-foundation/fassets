@@ -13,7 +13,6 @@ import {Globals} from "./Globals.sol";
 import {Conversion} from "./Conversion.sol";
 import {CollateralTypes} from "./CollateralTypes.sol";
 import {AgentCollateral} from "./AgentCollateral.sol";
-import {TransferFees} from "./TransferFees.sol";
 import {Agent} from "./data/Agent.sol";
 import {RedemptionQueue} from "./data/RedemptionQueue.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -115,16 +114,6 @@ library Agents {
         _agent.collateralPool.setExitCollateralRatioBIPS(_poolExitCollateralRatioBIPS);
     }
 
-    function allocateMintedAssets(
-        Agent.State storage _agent,
-        uint64 _valueAMG
-    )
-        internal
-    {
-        _agent.mintedAMG = _agent.mintedAMG + _valueAMG;
-        TransferFees.updateMintingHistory(_agent.vaultAddress(), _agent.mintedAMG);
-    }
-
     function releaseMintedAssets(
         Agent.State storage _agent,
         uint64 _valueAMG
@@ -132,7 +121,6 @@ library Agents {
         internal
     {
         _agent.mintedAMG = SafeMath64.sub64(_agent.mintedAMG, _valueAMG, "not enough minted");
-        TransferFees.updateMintingHistory(_agent.vaultAddress(), _agent.mintedAMG);
     }
 
     function startRedeemingAssets(
@@ -168,6 +156,9 @@ library Agents {
     )
         internal
     {
+        // allocate minted assets
+        _agent.mintedAMG += _valueAMG;
+
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // Add value with dust, then take the whole number of lots from it to create the new ticket,
         // and the remainder as new dust. At the end, there will always be less than 1 lot of dust left.
@@ -175,7 +166,6 @@ library Agents {
         uint64 newDustAMG = valueWithDustAMG % settings.lotSizeAMG;
         uint64 ticketValueAMG = valueWithDustAMG - newDustAMG;
         // create ticket and change dust
-        allocateMintedAssets(_agent, _valueAMG);
         if (ticketValueAMG > 0) {
             createRedemptionTicket(_agent, ticketValueAMG);
         }

@@ -23,7 +23,6 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IIAddressUpdatable}
     from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdatable.sol";
 import {IAddressUpdatable} from "../../flareSmartContracts/interfaces/IAddressUpdatable.sol";
-import {ITransferFees} from "../../userInterfaces/ITransferFees.sol";
 import {IRedemptionTimeExtension} from "../../userInterfaces/IRedemptionTimeExtension.sol";
 import {GovernedBase} from "../../governance/implementation/GovernedBase.sol";
 
@@ -517,18 +516,6 @@ contract AssetManagerController is
     {
         _setValueOnManagers(_assetManagers,
             IRedemptionTimeExtension.setRedemptionPaymentExtensionSeconds.selector, _value);
-    }
-
-    function setTransferFeeMillionths(
-        IIAssetManager[] memory _assetManagers,
-        uint256 _value,
-        uint256 _scheduledAt
-    )
-        external
-        onlyImmediateGovernance
-    {
-        _callOnManagers(_assetManagers,
-            abi.encodeCall(ITransferFees.setTransferFeeMillionths, (_value, _scheduledAt)));
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////

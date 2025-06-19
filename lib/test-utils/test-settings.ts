@@ -140,10 +140,6 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         __takeOverRedemptionRequestWindowSeconds: 0,
         __rejectedRedemptionDefaultFactorVaultCollateralBIPS: 0,
         __rejectedRedemptionDefaultFactorPoolBIPS: 0,
-        transferFeeMillionths: 0,
-        transferFeeClaimFirstEpochStartTs: Math.floor(new Date("2024-09-01").getTime() / 1000),
-        transferFeeClaimEpochDurationSeconds: 1 * WEEKS,
-        transferFeeClaimMaxUnexpiredEpochs: 12,
         coreVaultNativeAddress: "0xfa3BdC8709226Da0dA13A4d904c8b66f16c3c8BA",     // one of test accounts [9]
         coreVaultTransferTimeExtensionSeconds: 2 * HOURS,
         coreVaultRedemptionFeeBIPS: toBIPS("1%"),

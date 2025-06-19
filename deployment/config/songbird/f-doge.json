@@ -78,9 +78,5 @@
     "collateralPoolTokenTimelockSeconds": 60,
     "diamondCutMinTimelockSeconds": 3600,
     "maxEmergencyPauseDurationSeconds": 259200,
-    "emergencyPauseDurationResetAfterSeconds": 604800,
-    "transferFeeMillionths": 0,
-    "transferFeeClaimFirstEpochStartTs": 1733122800,
-    "transferFeeClaimEpochDurationSeconds": 302400,
-    "transferFeeClaimMaxUnexpiredEpochs": 30
+    "emergencyPauseDurationResetAfterSeconds": 604800
 }

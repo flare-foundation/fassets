@@ -127,10 +127,8 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
             await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.fAssetFeeDeposited(toWei(1000)).encodeABI());
             // withdraw pool fees
             await agentVault.withdrawPoolFees(toWei(10), owner, { from: owner });
-            const transferFeeMillionths = await assetManagerMock.transferFeeMillionths();
-            const transferFee = toWei(10).mul(transferFeeMillionths).divn(1e6);
             const ownerFassets = await fAsset.balanceOf(owner);
-            assertWeb3Equal(ownerFassets, toWei(10).sub(transferFee));
+            assertWeb3Equal(ownerFassets, toWei(10));
         });
 
         it("should redeem collateral from pool", async () => {

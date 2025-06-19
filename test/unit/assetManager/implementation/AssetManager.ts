@@ -244,12 +244,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             settings.assetManagerController = assetManagerController;
             // add RedemptionTimeExtensionFacet settings
             resInitSettings.redemptionPaymentExtensionSeconds = await assetManager.redemptionPaymentExtensionSeconds();
-            // add TransferFeeFacet settings
-            const tfSettings = await assetManager.transferFeeSettings();
-            resInitSettings.transferFeeMillionths = tfSettings.transferFeeMillionths;
-            resInitSettings.transferFeeClaimFirstEpochStartTs = tfSettings.firstEpochStartTs;
-            resInitSettings.transferFeeClaimEpochDurationSeconds = tfSettings.epochDuration;
-            resInitSettings.transferFeeClaimMaxUnexpiredEpochs = tfSettings.maxUnexpiredEpochs;
             // add CoreVault settings
             resInitSettings.coreVaultNativeAddress = await assetManager.getCoreVaultNativeAddress();
             resInitSettings.coreVaultTransferTimeExtensionSeconds = await assetManager.getCoreVaultTransferTimeExtensionSeconds();
@@ -1980,7 +1974,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const IGoverned = artifacts.require("IGoverned");
             const IAgentPing = artifacts.require("IAgentPing");
             const IRedemptionTimeExtension = artifacts.require("IRedemptionTimeExtension");
-            const ITransferFees = artifacts.require("ITransferFees");
             const ICoreVault = artifacts.require("ICoreVault");
             const ICoreVaultSettings = artifacts.require("ICoreVaultSettings");
             const IISettingsManagement = artifacts.require("IISettingsManagement");
@@ -1991,11 +1984,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IGoverned)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IAgentPing)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IRedemptionTimeExtension)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, ITransferFees)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, ICoreVault)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, ICoreVaultSettings)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IAssetManager,
-                [IERC165, IDiamondLoupe, IAgentPing, IRedemptionTimeExtension, ITransferFees, ICoreVault, ICoreVaultSettings, IAgentAlwaysAllowedMinters])));
+                [IERC165, IDiamondLoupe, IAgentPing, IRedemptionTimeExtension, ICoreVault, ICoreVaultSettings, IAgentAlwaysAllowedMinters])));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IIAssetManager,
                 [IAssetManager, IGoverned, IDiamondCut, IISettingsManagement])));
             assert.isFalse(await assetManager.supportsInterface('0xFFFFFFFF'));     // must not support invalid interface
@@ -3124,42 +3116,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(promise, "too close to previous update");
             await deterministicTimeIncrease(1);
             await assetManager.setEmergencyPauseDurationResetAfterSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
-        });
-
-        it("should not set transfer fee millionths - only asset manager controller", async () => {
-            const transferFeeMillionths = await assetManager.transferFeeMillionths();
-            const transferFeeMillionths_new = transferFeeMillionths.muln(2);
-            const ts = await latestBlockTimestamp();
-            const promise = assetManager.setTransferFeeMillionths(transferFeeMillionths_new, ts + 3600);
-            await expectRevert(promise, "only asset manager controller");
-        });
-
-        it("should not set transfer fee millionths - millionths value too high", async () => {
-            const ts = await latestBlockTimestamp();
-            const promise = assetManager.setTransferFeeMillionths(1e6, ts + 3600, { from: assetManagerController });
-            await expectRevert(promise, "millionths value too high");
-        });
-
-        it("should not set transfer fee millionths - increase too big", async () => {
-            const ts = await latestBlockTimestamp();
-            await assetManager.setTransferFeeMillionths(10, ts + 1, { from: assetManagerController });
-            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
-            // skip time
-            await deterministicTimeIncrease(toBN(minUpdateTime));
-            const transferFeeMillionths = await assetManager.transferFeeMillionths();
-            const transferFeeMillionths_new = transferFeeMillionths.muln(5).addn(1000);
-            const promise = assetManager.setTransferFeeMillionths(transferFeeMillionths_new, ts + 3600, { from: assetManagerController });
-            await expectRevert(promise, "increase too big");
-        });
-
-        it("should not set transfer fee millionths - decrease too big", async () => {
-            const ts = await latestBlockTimestamp();
-            await assetManager.setTransferFeeMillionths(10, ts + 1, { from: assetManagerController });
-            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
-            // skip time
-            await deterministicTimeIncrease(toBN(minUpdateTime));
-            const promise = assetManager.setTransferFeeMillionths(0, ts + 3600, { from: assetManagerController });
-            await expectRevert(promise, "decrease too big");
         });
     });
 

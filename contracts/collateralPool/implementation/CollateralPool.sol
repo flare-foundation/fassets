@@ -150,9 +150,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         uint256 depositedFAsset = _enterWithFullFAssets ? fAssetShare : Math.min(_fAssets, fAssetShare);
         // transfer/mint calculated assets
         if (depositedFAsset > 0) {
-            (, uint256 transferFee) = fAsset.getSendAmount(msg.sender, address(this), depositedFAsset);
-            require(fAsset.allowance(msg.sender, address(this)) >= depositedFAsset + transferFee,
-                "f-asset allowance too small");
+            require(fAsset.allowance(msg.sender, address(this)) >= depositedFAsset, "f-asset allowance too small");
             _transferFAsset(msg.sender, address(this), depositedFAsset);
         }
         _mintFAssetFeeDebt(msg.sender, fAssetShare - depositedFAsset);
@@ -324,12 +322,9 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
             assetData, msg.sender, _tokenShare, TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
         // if owner f-asset fees do not cover the required f-assets, require additional f-assets
         if (fAssetFees < requiredFAssets) {
-            uint256 additionallyRequiredFAssets = requiredFAssets - fAssetFees;
-            (, uint256 transferFee) = fAsset.getSendAmount(msg.sender, address(this), additionallyRequiredFAssets);
-            require(fAsset.allowance(msg.sender, address(this)) >= additionallyRequiredFAssets + transferFee,
-                "f-asset allowance too small");
-            bool success = fAsset.transferExactDestFrom(msg.sender, address(this), additionallyRequiredFAssets);
-            require(success, "f-asset transfer failed");
+            uint256 addRequiredFAssets = requiredFAssets - fAssetFees;
+            require(fAsset.allowance(msg.sender, address(this)) >= addRequiredFAssets, "f-asset allowance too small");
+            fAsset.safeTransferFrom(msg.sender, address(this), addRequiredFAssets);
         }
         // redeem f-assets if necessary
         bool returnFunds = true;
@@ -444,9 +439,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     {
         require(_fAssets != 0, "zero f-asset debt payment");
         require(_fAssets <= _fAssetFeeDebtOf[msg.sender], "debt f-asset balance too small");
-        (, uint256 transferFee) = fAsset.getSendAmount(msg.sender, address(this), _fAssets);
-        require(fAsset.allowance(msg.sender, address(this)) >= _fAssets + transferFee,
-            "f-asset allowance too small");
+        require(fAsset.allowance(msg.sender, address(this)) >= _fAssets, "f-asset allowance too small");
         _burnFAssetFeeDebt(msg.sender, _fAssets);
         _transferFAsset(msg.sender, address(this), _fAssets);
         // emit event
@@ -703,11 +696,11 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
             if (_from == address(this)) {
                 totalFAssetFees -= _amount;
                 fAsset.safeTransfer(_to, _amount);
-            } else { // if (_to == address(this)) {
-                /* solhint-disable reentrancy */
+            } else if (_to == address(this)) {
                 totalFAssetFees += _amount;
-                bool success = fAsset.transferExactDestFrom(_from, _to, _amount);
-                require(success, "f-asset transfer failed");
+                fAsset.safeTransferFrom(_from, _to, _amount);
+            } else {
+                assert(false); // should never happen
             }
         }
     }

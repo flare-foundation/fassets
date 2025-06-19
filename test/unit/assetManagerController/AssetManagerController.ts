@@ -1097,22 +1097,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(res, "only governance");
         });
 
-        it("should set transfer fee millionths with schedule", async () => {
-            const transferFeeMillionths = await assetManager.transferFeeMillionths();
-            const transferFeeMillionths_new = transferFeeMillionths.muln(2);
-            const ts = await latestBlockTimestamp();
-            const res = await assetManagerController.setTransferFeeMillionths([assetManager.address], transferFeeMillionths_new, ts + 3600, { from: governance });
-            await expectEvent.inTransaction(res.tx, assetManager, "TransferFeeChangeScheduled", { nextTransferFeeMillionths: String(transferFeeMillionths_new), scheduledAt: String(ts + 3600) });
-            // should not take effect immediately
-            assertWeb3Equal(await assetManager.transferFeeMillionths(), transferFeeMillionths);
-            await deterministicTimeIncrease(3600);
-            assertWeb3Equal(await assetManager.transferFeeMillionths(), transferFeeMillionths_new);
-        });
-
-        it("should not set transfer fee millionths if not from governance", async () => {
-            await expectRevert(assetManagerController.setTransferFeeMillionths([assetManager.address], 1000, 0, { from: accounts[12] }), "only governance");
-        });
-
         // emergency pause
 
         // reset

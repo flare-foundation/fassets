@@ -122,17 +122,6 @@ contract AssetManagerMock {
         return minPoolCollateralRatioBIPS;
     }
 
-    function transferFeeMillionths() public pure returns (uint256) {
-        return 200;
-    }
-
-    function fassetTransferFeePaid(uint256 _fee)
-        external
-    {
-        // TransferFeeTracking.Data storage data = _getTransferFeeData();
-        // data.addFees(_fee);
-    }
-
     /////////////////////////////////////////////////////////////////////////////
     // artificial setters for testing
 
