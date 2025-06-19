@@ -20,12 +20,7 @@ import "./type-extensions";
 
 const FASSETS_LIST = "fassets.json";
 
-interface linkCotractsArguments {
-    contracts: string[];
-    mapfile?: string | null;
-}
-
-task<linkCotractsArguments>("link-contracts", "Link contracts with external libraries")
+task("link-contracts", "Link contracts with external libraries")
     .addVariadicPositionalParam("contracts", "The contract names to link")
     .addOptionalParam("mapfile", "Name for the map file with deployed library mapping addresses; if omitted, no map file is read or created")
     .setAction(async ({ contracts, mapfile }, hre) => {
