@@ -1617,14 +1617,6 @@
   dependencies:
     lodash "^4.17.15"
 
-"@typechain/web3-v1@6.0.7":
-  version "6.0.7"
-  resolved "https://registry.yarnpkg.com/@typechain/web3-v1/-/web3-v1-6.0.7.tgz#7da0b3bcdb16a173b73f9e3c9d5a47daffe65138"
-  integrity sha512-HWkGplyPL3eWiP0sszqKZh6Bjrdm23srtirUdKp/4BEWKp/o6zofLt8lDn468bRQlQdHaobrbfEeT+3gf/r4eg==
-  dependencies:
-    lodash "^4.17.15"
-    ts-essentials "^7.0.1"
-
 "@types/bn.js@^4.11.3", "@types/bn.js@^4.11.5":
   version "4.11.6"
   resolved "https://registry.yarnpkg.com/@types/bn.js/-/bn.js-4.11.6.tgz#c306c70d9358aaea33cd4eda092a742b9505967c"
