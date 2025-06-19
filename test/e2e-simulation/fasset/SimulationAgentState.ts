@@ -14,7 +14,7 @@ import { openNewFile } from "../../../lib/utils/file-utils";
 import { BN_ZERO, expectErrors, formatBN, latestBlockTimestamp, sumBN, toBN, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
 import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
-import { Entered, Exited } from "../../../typechain-truffle/CollateralPool";
+import { CPEntered, CPExited } from "../../../typechain-truffle/CollateralPool";
 import {
     AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionPoolFeeMinted, RedemptionRequested, RedemptionTicketCreated,
@@ -122,8 +122,8 @@ export class SimulationAgentState extends TrackedAgentState {
         const collateralPool: ContractWithEvents<CollateralPoolInstance, CollateralPoolEvents> = await CollateralPool.at(this.collateralPoolAddress);
         const collateralPoolToken: ContractWithEvents<CollateralPoolTokenInstance, CollateralPoolTokenEvents> = await CollateralPoolToken.at(this.collateralPoolTokenAddress);
         // pool eneter and exit event
-        this.parent.truffleEvents.event(collateralPool, 'Entered').immediate().subscribe(args => this.handlePoolEnter(args));
-        this.parent.truffleEvents.event(collateralPool, 'Exited').immediate().subscribe(args => this.handlePoolExit(args));
+        this.parent.truffleEvents.event(collateralPool, 'CPEntered').immediate().subscribe(args => this.handlePoolEnter(args));
+        this.parent.truffleEvents.event(collateralPool, 'CPExited').immediate().subscribe(args => this.handlePoolExit(args));
         // pool token transfer event
         this.parent.truffleEvents.event(collateralPoolToken, 'Transfer').immediate().subscribe(args => {
             this.handlePoolTokenTransfer(args.from, args.to, toBN(args.value));
@@ -364,13 +364,13 @@ export class SimulationAgentState extends TrackedAgentState {
 
     // handlers: pool enter and exit
 
-    handlePoolEnter(args: EvmEventArgs<Entered>): void {
+    handlePoolEnter(args: EvmEventArgs<CPEntered>): void {
         // const debtChange = this.calculatePoolFeeDebtChange(toBN(args.receivedTokensWei), toBN(args.addedFAssetFeesUBA));
         // this.poolFeeDebt.addTo(args.tokenHolder, debtChange);
         this.poolFeeDebt.set(args.tokenHolder, toBN(args.newFAssetFeeDebt));
     }
 
-    handlePoolExit(args: EvmEventArgs<Exited>): void {
+    handlePoolExit(args: EvmEventArgs<CPExited>): void {
         // const debtChange = this.calculatePoolFeeDebtChange(toBN(args.burnedTokensWei).neg(), toBN(args.receviedFAssetFeesUBA).neg());
         // this.poolFeeDebt.addTo(args.tokenHolder, debtChange);
         this.poolFeeDebt.set(args.tokenHolder, toBN(args.newFAssetFeeDebt));

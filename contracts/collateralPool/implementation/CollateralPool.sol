@@ -24,6 +24,7 @@ import {ICollateralPool} from "../../userInterfaces/ICollateralPool.sol";
 //slither-disable reentrancy    // all possible reentrancies guarded by nonReentrant
 contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, IERC165 {
     using SafeCast for uint256;
+    using SafeCast for int256;
     using SafePct for uint256;
     using SafeERC20 for IFAsset;
     using SafeERC20 for IWNat;
@@ -57,8 +58,8 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     bool private internalWithdrawal;
     bool private initialized;
 
-    mapping(address => uint256) private _fAssetFeeDebtOf;
-    uint256 public totalFAssetFeeDebt;
+    mapping(address => int256) private _fAssetFeeDebtOf;
+    int256 public totalFAssetFeeDebt;
     uint256 public totalFAssetFees;
     uint256 public totalCollateral;
 
@@ -124,11 +125,9 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
 
     /**
      * @notice Enters the collateral pool by depositing some NAT
-     * @param _fAssets                 Number of f-assets sent along the deposited NAT (not all may be used)
-     * @param _enterWithFullFAssets    Specifies whether "required" f-assets should be calculated automatically
      */
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
-    function enter(uint256 _fAssets, bool _enterWithFullFAssets)
+    function enter()
         external payable
         nonReentrant
         returns (uint256, uint256)
@@ -145,19 +144,16 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         // calculate obtained pool tokens and free f-assets
         uint256 tokenShare = _collateralToTokenShare(assetData, msg.value);
         require(tokenShare > 0, "deposited amount results in zero received tokens");
-        uint256 fAssetShare = assetData.poolTokenSupply > 0 ?
+        // calculate and create fee debt
+        uint256 feeDebt = assetData.poolTokenSupply > 0 ?
             assetData.poolVirtualFAssetFees.mulDiv(tokenShare, assetData.poolTokenSupply) : 0;
-        uint256 depositedFAsset = _enterWithFullFAssets ? fAssetShare : Math.min(_fAssets, fAssetShare);
-        // transfer/mint calculated assets
-        if (depositedFAsset > 0) {
-            require(fAsset.allowance(msg.sender, address(this)) >= depositedFAsset, "f-asset allowance too small");
-            _transferFAsset(msg.sender, address(this), depositedFAsset);
-        }
-        _mintFAssetFeeDebt(msg.sender, fAssetShare - depositedFAsset);
+        _createFAssetFeeDebt(msg.sender, feeDebt);
+        // deposit collateral
         _depositWNat();
+        // mint pool tokens to the sender
         uint256 timelockExp = token.mint(msg.sender, tokenShare);
         // emit event
-        emit Entered(msg.sender, msg.value, tokenShare, depositedFAsset, _fAssetFeeDebtOf[msg.sender], timelockExp);
+        emit CPEntered(msg.sender, msg.value, tokenShare, _fAssetFeeDebtOf[msg.sender], timelockExp);
         return (tokenShare, timelockExp);
     }
 
@@ -165,15 +161,14 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
      * @notice Exits the pool by liquidating the given amount of pool tokens
      * @param _tokenShare   The amount of pool tokens to be liquidated
      *                      Must be positive and smaller or equal to the sender's token balance
-     * @param _exitType     An enum describing the ratio used to liquidate debt and free tokens
      */
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
-    function exit(uint256 _tokenShare, TokenExitType _exitType)
+    function exit(uint256 _tokenShare)
         external
         nonReentrant
-        returns (uint256, uint256)
+        returns (uint256)
     {
-        return _exitTo(_tokenShare, payable(msg.sender), _exitType);
+        return _exitTo(_tokenShare, payable(msg.sender));
     }
 
     /**
@@ -181,21 +176,20 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
      * @param _tokenShare   The amount of pool tokens to be liquidated
      *                      Must be positive and smaller or equal to the sender's token balance
      * @param _recipient    The address to which NATs and FAsset fees will be transferred
-     * @param _exitType     An enum describing the ratio used to liquidate debt and free tokens
      */
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
-    function exitTo(uint256 _tokenShare, address payable _recipient, TokenExitType _exitType)
+    function exitTo(uint256 _tokenShare, address payable _recipient)
         external
         nonReentrant
-        returns (uint256, uint256)
+        returns (uint256)
     {
-        return _exitTo(_tokenShare, _recipient, _exitType);
+        return _exitTo(_tokenShare, _recipient);
     }
 
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
-    function _exitTo(uint256 _tokenShare, address payable _recipient, TokenExitType _exitType)
+    function _exitTo(uint256 _tokenShare, address payable _recipient)
         private
-        returns (uint256, uint256)
+        returns (uint256)
     {
         require(_tokenShare > 0, "token share is zero");
         require(_tokenShare <= token.balanceOf(msg.sender), "token balance too low");
@@ -209,23 +203,19 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         if (fAsset.terminated()) {
             token.burn(msg.sender, _tokenShare, true); // when f-asset is terminated all tokens are free tokens
             _withdrawWNatTo(_recipient, natShare);
-            return (natShare, 0);
+            return natShare;
         }
         require(_staysAboveCR(assetData, natShare, assetData.exitCR), "collateral ratio falls below exitCR");
-        (uint256 debtFAssetFeeShare, uint256 freeFAssetFeeShare) = _getDebtAndFreeFAssetFeesFromTokenShare(
-            assetData, msg.sender, _tokenShare, _exitType);
-        // transfer/burn assets
-        if (freeFAssetFeeShare > 0) {
-            _transferFAsset(address(this), _recipient, freeFAssetFeeShare);
-        }
+        // update the fasset fee debt
+        uint256 debtFAssetFeeShare = _tokensToVirtualFeeShare(assetData, _tokenShare);
         if (debtFAssetFeeShare > 0) {
-            _burnFAssetFeeDebt(msg.sender, debtFAssetFeeShare);
+            _deleteFAssetFeeDebt(msg.sender, debtFAssetFeeShare);
         }
         token.burn(msg.sender, _tokenShare, false);
         _withdrawWNatTo(_recipient, natShare);
         // emit event
-        emit Exited(msg.sender, _tokenShare, natShare, freeFAssetFeeShare, 0, _fAssetFeeDebtOf[msg.sender]);
-        return (natShare, freeFAssetFeeShare);
+        emit CPExited(msg.sender, _tokenShare, natShare, 0, _fAssetFeeDebtOf[msg.sender]);
+        return natShare;
     }
 
     /**
@@ -302,36 +292,22 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         require(natShare > 0, "amount of sent tokens is too small");
         uint256 maxAgentRedemption = assetManager.maxRedemptionFromAgent(agentVault);
         uint256 requiredFAssets = _getFAssetRequiredToNotSpoilCR(assetData, natShare);
-        // rare case: if agent has too many low-valued open tickets they can't redeem the requiredFAssets
-        // in one transaction. In that case we lower/correct the amount of spent tokens and nat share.
-        if (maxAgentRedemption < requiredFAssets) {
-            // natShare and _tokenShare decrease!
-            requiredFAssets = maxAgentRedemption;
-            natShare = _getNatRequiredToNotSpoilCR(assetData, requiredFAssets);
-            require(natShare > 0, "amount of sent tokens is too small after agent max redemption correction");
-            // poolNatBalance >= previous natShare > 0
-            _tokenShare = assetData.poolTokenSupply.mulDiv(natShare, assetData.poolNatBalance);
-            emit IncompleteSelfCloseExit(_tokenShare, requiredFAssets);
-        }
+        // Rare case: if agent has too many low-valued open tickets they can't redeem the requiredFAssets
+        // in one transaction. In that case, we revert and the user should retry with lower amount.
+        require(maxAgentRedemption > requiredFAssets, "redemption requires closing too many tickets");
         // require here in case above block changed nat and token share
         _requireMinNatSupplyAfterExit(assetData, natShare);
         _requireMinTokenSupplyAfterExit(assetData, _tokenShare);
         // get owner f-asset fees to be spent (maximize fee withdrawal to cover the potentially necessary f-assets)
-        uint256 fAssetFees = _fAssetFeesOf(assetData, msg.sender);
-        (uint256 debtFAssetFeeShare, uint256 freeFAssetFeeShare) = _getDebtAndFreeFAssetFeesFromTokenShare(
-            assetData, msg.sender, _tokenShare, TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
-        // if owner f-asset fees do not cover the required f-assets, require additional f-assets
-        if (fAssetFees < requiredFAssets) {
-            uint256 addRequiredFAssets = requiredFAssets - fAssetFees;
-            require(fAsset.allowance(msg.sender, address(this)) >= addRequiredFAssets, "f-asset allowance too small");
-            fAsset.safeTransferFrom(msg.sender, address(this), addRequiredFAssets);
-        }
+        uint256 debtFAssetFeeShare = _tokensToVirtualFeeShare(assetData, _tokenShare);
+        // transfer the owner's fassets that will be redeemed
+        require(fAsset.allowance(msg.sender, address(this)) >= requiredFAssets, "f-asset allowance too small");
+        fAsset.safeTransferFrom(msg.sender, address(this), requiredFAssets);
         // redeem f-assets if necessary
         bool returnFunds = true;
         if (requiredFAssets > 0) {
             if (requiredFAssets < assetManager.lotSize() || _redeemToCollateral) {
-                assetManager.redeemFromAgentInCollateral(
-                    agentVault, _recipient, requiredFAssets);
+                assetManager.redeemFromAgentInCollateral(agentVault, _recipient, requiredFAssets);
             } else {
                 returnFunds = _executor == address(0);
                 // pass `msg.value` to `redeemFromAgent` for the executor fee if `_executor` is set
@@ -339,35 +315,17 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
                     agentVault, _recipient, requiredFAssets, _redeemerUnderlyingAddress, _executor);
             }
         }
-        uint256 tokenShare = _tokenShare; // copy to new variable to avoid stack too deep error
-        // sort out the sender's f-asset fees that were spent on redemption
-        uint256 spentFAssetFees = Math.min(requiredFAssets, fAssetFees);
-        if (spentFAssetFees > 0) {
-            // fAssetFees consumed by requiredFAssets become debt
-            // solhint-disable reentrancy (is non-reentrant)
-            totalFAssetFees -= spentFAssetFees;
-            _mintFAssetFeeDebt(msg.sender, spentFAssetFees);
-            uint256 spentFreeFAssetFeeShare = Math.min(spentFAssetFees, freeFAssetFeeShare);
-            // move spent free f-asset share to debt f-asset share
-            // (spentFreeFAssetFeeShare > 0 as TokenExitType.MAXIMIZE_FEE_WITHDRAWAL was used)
-            freeFAssetFeeShare -= spentFreeFAssetFeeShare;
-            debtFAssetFeeShare += spentFreeFAssetFeeShare;
-        }
-        // transfer/burn tokens
-        if (freeFAssetFeeShare > 0) {
-            _transferFAsset(address(this), _recipient, freeFAssetFeeShare);
-        }
         if (debtFAssetFeeShare > 0) {
-            _burnFAssetFeeDebt(msg.sender, debtFAssetFeeShare);
+            _deleteFAssetFeeDebt(msg.sender, debtFAssetFeeShare);
         }
-        token.burn(msg.sender, tokenShare, false);
+        token.burn(msg.sender, _tokenShare, false);
         _withdrawWNatTo(_recipient, natShare);
         if (returnFunds) {
-            // send any unused NAT to the recipient
-            Transfers.transferNAT(_recipient, msg.value);
+            // return any NAT included by mistake back to the sender
+            Transfers.transferNAT(payable(msg.sender), msg.value);
         }
         // emit event
-        emit Exited(msg.sender, tokenShare, natShare, spentFAssetFees, requiredFAssets, _fAssetFeeDebtOf[msg.sender]);
+        emit CPExited(msg.sender, _tokenShare, natShare, requiredFAssets, _fAssetFeeDebtOf[msg.sender]);
     }
 
     /**
@@ -379,9 +337,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     {
         AssetData memory assetData = _getAssetData();
         uint256 natWei = assetData.poolNatBalance.mulDiv(_tokenAmountWei, assetData.poolTokenSupply);
-        uint256 requiredFAssets = _getFAssetRequiredToNotSpoilCR(assetData, natWei);
-        uint256 fAssetFees = _fAssetFeesOf(assetData, msg.sender);
-        return MathUtils.subOrZero(requiredFAssets, fAssetFees);
+        return _getFAssetRequiredToNotSpoilCR(assetData, natWei);
     }
 
     /**
@@ -422,10 +378,10 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         AssetData memory assetData = _getAssetData();
         uint256 freeFAssetFeeShare = _fAssetFeesOf(assetData, msg.sender);
         require(_fAssets <= freeFAssetFeeShare, "free f-asset balance too small");
-        _mintFAssetFeeDebt(msg.sender, _fAssets);
-        _transferFAsset(address(this), _recipient, _fAssets);
+        _createFAssetFeeDebt(msg.sender, _fAssets);
+        _transferFAssetTo(_recipient, _fAssets);
         // emit event
-        emit Exited(msg.sender, 0, 0, _fAssets, 0, _fAssetFeeDebtOf[msg.sender]);
+        emit CPFeesWithdrawn(msg.sender, _fAssets, _fAssetFeeDebtOf[msg.sender]);
     }
 
     /**
@@ -438,12 +394,12 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         nonReentrant
     {
         require(_fAssets != 0, "zero f-asset debt payment");
-        require(_fAssets <= _fAssetFeeDebtOf[msg.sender], "debt f-asset balance too small");
+        require(_fAssets.toInt256() <= _fAssetFeeDebtOf[msg.sender], "payment larger than fee debt");
         require(fAsset.allowance(msg.sender, address(this)) >= _fAssets, "f-asset allowance too small");
-        _burnFAssetFeeDebt(msg.sender, _fAssets);
-        _transferFAsset(msg.sender, address(this), _fAssets);
+        _deleteFAssetFeeDebt(msg.sender, _fAssets);
+        _transferFAssetFrom(msg.sender, _fAssets);
         // emit event
-        emit Entered(msg.sender, 0, 0, _fAssets, _fAssetFeeDebtOf[msg.sender], 0);
+        emit CPFeeDebtPaid(msg.sender, _fAssets, _fAssetFeeDebtOf[msg.sender]);
     }
 
     /**
@@ -466,41 +422,18 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         return _assetData.poolTokenSupply.mulDiv(_collateral, _assetData.poolNatBalance);
     }
 
-    // _tokenShare is assumed to be smaller or equal to _account's token balance
-    // this is implied in all methods calling the internal method, but not checked explicitly
-    function _getDebtAndFreeFAssetFeesFromTokenShare(
+    // _tokens is assumed to be smaller or equal to _account's token balance
+    function _tokensToVirtualFeeShare(
         AssetData memory _assetData,
-        address _account,
-        uint256 _tokenShare,
-        TokenExitType _exitType
+        uint256 _tokens
     )
-        internal view
-        returns (uint256 debtFAssetFeeShare, uint256 freeFAssetFeeShare)
+        internal pure
+        returns (uint256)
     {
-        uint256 tokens = token.balanceOf(_account);
-        if (tokens == 0) return (0, 0); // never happens in this contract
-        // poolTokenSupply >= tokens > 0
-        uint256 virtualFAsset = _assetData.poolVirtualFAssetFees.mulDiv(tokens, _assetData.poolTokenSupply);
-        uint256 debtFAsset = _fAssetFeeDebtOf[_account];
-        uint256 fAssetShare = _assetData.poolVirtualFAssetFees.mulDiv(_tokenShare, _assetData.poolTokenSupply);
-        // note: rounding errors can be responsible for:
-        // - debtFAsset > virtualFAsset
-        // - freeFAsset > totalFAssetFees
-        // errors should be small
-        if (_exitType == TokenExitType.MAXIMIZE_FEE_WITHDRAWAL) {
-            uint256 freeFAsset = MathUtils.subOrZero(virtualFAsset, debtFAsset);
-            freeFAssetFeeShare = Math.min(fAssetShare, freeFAsset);
-            debtFAssetFeeShare = fAssetShare - freeFAssetFeeShare;
-        } else if (_exitType == TokenExitType.MINIMIZE_FEE_DEBT) {
-            debtFAssetFeeShare = Math.min(fAssetShare, debtFAsset);
-            freeFAssetFeeShare = fAssetShare - debtFAssetFeeShare;
-        } else { // KEEP_RATIO
-            debtFAssetFeeShare = debtFAsset.mulDiv(_tokenShare, tokens);
-            freeFAssetFeeShare = MathUtils.subOrZero(fAssetShare, debtFAssetFeeShare);
-        }
-        // cap the fee shares in case of rounding errors
-        freeFAssetFeeShare = Math.min(freeFAssetFeeShare, totalFAssetFees);
-        debtFAssetFeeShare = Math.min(debtFAssetFeeShare, totalFAssetFeeDebt);
+        if (_tokens == 0) return 0;
+        assert(_tokens <= _assetData.poolTokenSupply);
+        // poolTokenSupply >= _tokens AND _tokens > 0 together imply poolTokenSupply != 0
+        return _assetData.poolVirtualFAssetFees.mulDiv(_tokens, _assetData.poolTokenSupply);
     }
 
     function _getFAssetRequiredToNotSpoilCR(
@@ -527,29 +460,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         }
     }
 
-    function _getNatRequiredToNotSpoilCR(
-        AssetData memory _assetData,
-        uint256 _fAssetShare
-    )
-        internal pure
-        returns (uint256)
-    {
-        // calculate nat required to keep CR above min(exitCR, poolCR) when taking out _fAssetShare
-        // if pool is below exitCR, we shouldn't require it be increased above exitCR, only preserved
-        // if pool is above exitCR, we require only for it to stay that way (like in the normal exit)
-        if (_staysAboveCR(_assetData, 0, _assetData.exitCR)) {
-            // nat required for CR to stay above exitCR (might not be needed)
-            // solve (N - n) / (p / q (F - f)) >= cr get n = max(0, N - p (F - f) cr / q)
-            return MathUtils.subOrZero(_assetData.poolNatBalance,
-                (_assetData.assetPriceMul * (_assetData.agentBackedFAsset - _fAssetShare))
-                .mulBips(_assetData.exitCR) / _assetData.assetPriceDiv);
-        } else {
-            // nat that preserves pool CR (agentBackedFAsset > 0 otherwise else path not taken)
-            // solve (N - n) / (F - f) = N / F get n = N f / F
-            return _assetData.poolNatBalance.mulDiv(_fAssetShare, _assetData.agentBackedFAsset);
-        }
-    }
-
     function _staysAboveCR(
         AssetData memory _assetData,
         uint256 _withdrawnNat,
@@ -571,9 +481,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         returns (uint256)
     {
         uint256 tokens = token.balanceOf(_account);
-        if (tokens == 0) return 0; // prevents poolTokenSupply = 0
-        return _assetData.poolVirtualFAssetFees.mulDiv(
-            tokens, _assetData.poolTokenSupply);
+        return _tokensToVirtualFeeShare(_assetData, tokens);
     }
 
     function _fAssetFeesOf(
@@ -583,13 +491,14 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         internal view
         returns (uint256)
     {
-        uint256 virtualFAssetFees = _virtualFAssetFeesOf(_assetData, _account);
-        uint256 debtFAssetFees = _fAssetFeeDebtOf[_account];
+        int256 virtualFAssetFees = _virtualFAssetFeesOf(_assetData, _account).toInt256();
+        int256 accountFeeDebt = _fAssetFeeDebtOf[_account];
+        int256 userFees = virtualFAssetFees - accountFeeDebt;
         // note: rounding errors can make debtFassets larger than virtualFassets by at most one
         // this can happen only when user has no free f-assets (that is why MathUtils.subOrZero)
         // note: rounding errors can make freeFassets larger than total pool f-asset fees by small amounts
-        // (that is why Math.min)
-        return Math.min(MathUtils.subOrZero(virtualFAssetFees, debtFAssetFees), _assetData.poolFAssetFees);
+        // (The reason for Math.min and Math.positivePart is to restrict to interval [0, poolFAssetFees])
+        return Math.min(MathUtils.positivePart(userFees), _assetData.poolFAssetFees);
     }
 
     function _debtFreeTokensOf(
@@ -599,12 +508,17 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         internal view
         returns (uint256)
     {
-        uint256 tokens = token.balanceOf(_account);
-        if (tokens == 0) return 0; // prevents poolTokenSupply = 0
-        uint256 debtFassets = _fAssetFeeDebtOf[_account];
-        if (debtFassets == 0) return tokens; // prevents poolVirtualFAssetFees = 0
-        uint256 virtualFassets = _assetData.poolVirtualFAssetFees.mulDiv(tokens, _assetData.poolTokenSupply);
-        uint256 freeFassets = MathUtils.subOrZero(virtualFassets, debtFassets);
+        int256 accountFeeDebt = _fAssetFeeDebtOf[_account];
+        if (accountFeeDebt <= 0) {
+            // with no debt, all tokens are free
+            // this avoids the case where freeFassets == poolVirtualFAssetFees == 0
+            return token.balanceOf(_account);
+        }
+        uint256 virtualFassets = _virtualFAssetFeesOf(_assetData, _account);
+        assert(virtualFassets <= _assetData.poolVirtualFAssetFees);
+        uint256 freeFassets = MathUtils.positivePart(virtualFassets.toInt256() - accountFeeDebt);
+        if (freeFassets == 0) return 0;
+        // nonzero divisor: _assetData.poolVirtualFAssetFees >= virtualFassets >= freeFassets > 0
         return _assetData.poolTokenSupply.mulDiv(freeFassets, _assetData.poolVirtualFAssetFees);
     }
 
@@ -612,18 +526,34 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         internal view
         returns (AssetData memory)
     {
-        uint256 _totalFAssetFees = totalFAssetFees;
         (uint256 assetPriceMul, uint256 assetPriceDiv) = assetManager.assetPriceNatWei();
         return AssetData({
             exitCR: _safeExitCollateralRatioBIPS(),
             poolTokenSupply: token.totalSupply(),
             agentBackedFAsset: assetManager.getFAssetsBackedByPool(agentVault),
             poolNatBalance: totalCollateral,
-            poolFAssetFees: _totalFAssetFees,
-            poolVirtualFAssetFees: _totalFAssetFees + totalFAssetFeeDebt,
+            poolFAssetFees: totalFAssetFees,
+            poolVirtualFAssetFees: _totalVirtualFees(),
             assetPriceMul: assetPriceMul,
             assetPriceDiv: assetPriceDiv
         });
+    }
+
+    function _totalVirtualFees()
+        internal view
+        returns (uint256)
+    {
+        int256 virtualFees = totalFAssetFees.toInt256() + totalFAssetFeeDebt;
+        // Invariant: virtualFees >= 0 always (otherwise the following line will revert).
+        // Proof: the places where `totalFAssetFees` and `totalFAssetFeeDebt` change are: `enter`,
+        // `exit`/`selfCloseExit`, `withdrawFees` and `payFAssetFeeDebt`.
+        // In `withdrawFees` and `payFAssetFeeDebt`, amounts of `totalFAssetFees` and `totalFAssetFeeDebt`
+        // change with oposite sign, so virtualFees is unchanged.
+        // In `enter`, the `totalFAssetFeeDebt` increases and the other is unchanged, so virtualFees increases.
+        // Thus the only place where `totalFAssetFeeDebt` and thus virtualFees decreases is in`exit`/`selfCloseExit`.
+        // The decrease there is by `_tokensToVirtualFeeShare()`, which is virtualFees times a factor
+        // `tokenShare/totalTokens`, which is checked to be at most 1.
+        return virtualFees.toUint256();
     }
 
     // if governance changes `minPoolCollateralRatioBIPS` it can be higher than `exitCollateralRatioBIPS`
@@ -670,42 +600,48 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         totalFAssetFees += _amount;
     }
 
-    function _mintFAssetFeeDebt(address _account, uint256 _fAssets)
+    function _createFAssetFeeDebt(address _account, uint256 _fAssets)
         internal
     {
-        _fAssetFeeDebtOf[_account] += _fAssets;
-        totalFAssetFeeDebt += _fAssets;
+        int256 fAssets = _fAssets.toInt256();
+        _fAssetFeeDebtOf[_account] += fAssets;
+        totalFAssetFeeDebt += fAssets;
     }
 
     // _fAssets should be smaller or equal to _account's f-asset debt
-    function _burnFAssetFeeDebt(address _account, uint256 _fAssets)
+    function _deleteFAssetFeeDebt(address _account, uint256 _fAssets)
         internal
     {
-        _fAssetFeeDebtOf[_account] -= _fAssets;
-        totalFAssetFeeDebt -= _fAssets;
+        int256 fAssets = _fAssets.toInt256();
+        _fAssetFeeDebtOf[_account] -= fAssets;
+        totalFAssetFeeDebt -= fAssets;
     }
 
-    function _transferFAsset(
+    function _transferFAssetFrom(
         address _from,
+        uint256 _amount
+    )
+        internal
+    {
+        if (_amount > 0) {
+            totalFAssetFees += _amount;
+            fAsset.safeTransferFrom(_from, address(this), _amount);
+        }
+    }
+
+    function _transferFAssetTo(
         address _to,
         uint256 _amount
     )
         internal
     {
         if (_amount > 0) {
-            if (_from == address(this)) {
-                totalFAssetFees -= _amount;
-                fAsset.safeTransfer(_to, _amount);
-            } else if (_to == address(this)) {
-                totalFAssetFees += _amount;
-                fAsset.safeTransferFrom(_from, _to, _amount);
-            } else {
-                assert(false); // should never happen
-            }
+            totalFAssetFees -= _amount;
+            fAsset.safeTransfer(_to, _amount);
         }
     }
 
-    function _transferWNat(
+    function _transferWNatTo(
         address _to,
         uint256 _amount
     )
@@ -776,7 +712,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
      */
     function fAssetFeeDebtOf(address _account)
         external view
-        returns (uint256)
+        returns (int256)
     {
         return _fAssetFeeDebtOf[_account];
     }
@@ -846,20 +782,19 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         nonReentrant
     {
         AssetData memory assetData = _getAssetData();
-        _transferWNat(_recipient, _amount);
+        _transferWNatTo(_recipient, _amount);
         // slash agent vault's pool tokens worth _agentResponsibilityWei in FLR (or less if there is not enough)
         uint256 agentTokenBalance = token.balanceOf(agentVault);
-        uint256 toSlashTokenMax = assetData.poolNatBalance > 0 ?
+        uint256 maxSlashedTokens = assetData.poolNatBalance > 0 ?
              assetData.poolTokenSupply.mulDiv(_agentResponsibilityWei, assetData.poolNatBalance) : agentTokenBalance;
-        uint256 toSlashToken = Math.min(toSlashTokenMax, agentTokenBalance);
-        if (toSlashToken > 0) {
-            (uint256 debtFAssetFeeShare,) = _getDebtAndFreeFAssetFeesFromTokenShare(
-                assetData, agentVault, toSlashToken, TokenExitType.KEEP_RATIO);
-            _burnFAssetFeeDebt(agentVault, debtFAssetFeeShare);
-            token.burn(agentVault, toSlashToken, true);
-            emit Exited(agentVault, toSlashToken, 0, 0, 0, _fAssetFeeDebtOf[agentVault]);
+        uint256 slashedTokens = Math.min(maxSlashedTokens, agentTokenBalance);
+        if (slashedTokens > 0) {
+            uint256 debtFAssetFeeShare = _tokensToVirtualFeeShare(assetData, slashedTokens);
+            _deleteFAssetFeeDebt(agentVault, debtFAssetFeeShare);
+            token.burn(agentVault, slashedTokens, true);
+            emit CPExited(agentVault, slashedTokens, 0, 0, _fAssetFeeDebtOf[agentVault]);
         }
-        emit PaidOut(_recipient, _amount, toSlashToken);
+        emit CPPaidOut(_recipient, _amount, slashedTokens);
     }
 
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
@@ -914,7 +849,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         uint256 balanceAfter = wNat.balanceOf(address(this));
         uint256 claimed = balanceAfter - balanceBefore;
         totalCollateral += claimed;
-        emit ClaimedReward(claimed, 1);
+        emit CPClaimedReward(claimed, 1);
         return claimed;
     }
 
@@ -932,7 +867,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         uint256 balanceAfter = wNat.balanceOf(address(this));
         uint256 claimed = balanceAfter - balanceBefore;
         totalCollateral += claimed;
-        emit ClaimedReward(claimed, 0);
+        emit CPClaimedReward(claimed, 0);
         return claimed;
     }
 

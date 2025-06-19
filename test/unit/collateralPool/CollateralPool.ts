@@ -2,6 +2,7 @@ import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
 import { eventArgs } from "../../../lib/utils/events/truffle";
 import { MAX_BIPS, ZERO_ADDRESS, erc165InterfaceId, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+
 import {
     AgentVaultMockInstance,
     AssetManagerMockInstance,
@@ -11,19 +12,18 @@ import {
     FAssetInstance,
     IERC165Contract
 } from "../../../typechain-truffle";
-import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
 import { impersonateContract, transferWithSuicide } from "../../../lib/test-utils/contract-test-helpers";
 import { calcGasCost, calculateReceivedNat } from "../../../lib/test-utils/eth";
 import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestContracts } from "../../../lib/test-utils/test-settings";
+import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
 
 function assertEqualBN(a: BN, b: BN, message?: string) {
     assert.equal(a.toString(), b.toString(), message);
 }
 
 function assertEqualBNWithError(a: BN, b: BN, err: BN, message?: string) {
-    const appendMessage = `expected ${a.toString()} to equal to ${b.toString()} with error ${err.toString()}`;
-    assert.isTrue(a.sub(b).abs().lte(err), (message ? message + "\n" : "") + appendMessage);
+    assertApproximatelyEqual(a, b, 'absolute', err, message);
 }
 
 function maxBN(x: BN, y: BN) {
@@ -157,7 +157,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         return fassetSupply.mul(natShare).div(collateral);
     }
 
-    async function getPoolAboveCR(account: string, withFassets: boolean, cr: number) {
+    async function getPoolAboveCR(account: string, cr: number) {
         const natToTopup = await getNatRequiredToGetPoolCRAbove(cr);
         const poolTokenSupply = await collateralPoolToken.totalSupply();
         let collateral = maxBN(natToTopup, MIN_NAT_TO_ENTER);
@@ -166,7 +166,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const natToCoverCollateral = await collateralPool.totalCollateral();
             collateral = maxBN(collateral, maxBN(natToCoverCollateral, natToCoverFAsset));
         }
-        await collateralPool.enter(0, withFassets, { value: collateral, from: account });
+        await collateralPool.enter({ value: collateral, from: account });
     }
 
     // n = N - r f p / q
@@ -203,6 +203,16 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         }
     }
 
+    async function enterAndPayFeeDebt(collateralPool: CollateralPoolInstance, value: BN, debtPayment: number | BN | 'full', account: string = accounts[0]) {
+        const debtBefore = await collateralPool.fAssetFeeDebtOf(account);
+        await collateralPool.enter({ value: value, from: account });
+        const debtAfter = await collateralPool.fAssetFeeDebtOf(account);
+        const debtPayAmount = debtPayment === 'full' ? debtAfter.sub(debtBefore) : toBN(debtPayment);
+        if (debtPayAmount.gt(BN_ZERO)) {
+            await collateralPool.payFAssetFeeDebt(debtPayAmount, { from: account });
+        }
+    }
+
     describe("setting contract variables", () => {
 
         it("should fail at calling setPoolToken from non asset manager", async () => {
@@ -226,7 +236,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         it("should upgrade wnat contract", async () => {
             // get some wnat to the collateral pool
-            await collateralPool.enter(0, false, { value: ETH(100) });
+            await collateralPool.enter({ value: ETH(100) });
             // upgrade the wnat contract
             const newWNat: ERC20MockInstance = await ERC20Mock.new("new wnat", "WNat");
             const payload = collateralPool.contract.methods.upgradeWNatContract(newWNat.address).encodeABI();
@@ -269,13 +279,13 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         it("should not be able to send debt tokens", async () => {
             // account0 enters the pool
-            await collateralPool.enter(0, true, { value: ETH(100) });
+            await collateralPool.enter({ value: ETH(100) });
             // pool gets fees
             await givePoolFAssetFees(ETH(10));
             // account1 enters the pool with some debt
             await fAsset.mint(accounts[1], ETH(1), { from: assetManager.address });
             await fAsset.approve(collateralPool.address, ETH(1), { from: accounts[1] });
-            await collateralPool.enter(ETH(1), false, { value: ETH(100), from: accounts[1] });
+            await enterAndPayFeeDebt(collateralPool, ETH(100), ETH(1), accounts[1]);
             // account1 tries to send too many tokens to another account
             const tokens = await collateralPoolToken.balanceOf(accounts[1]);
             const prms = collateralPoolToken.transfer(accounts[2], tokens, { from: accounts[1] });
@@ -284,13 +294,13 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         it("should transfer free tokens between users", async () => {
             // account0 enters the pool
-            await collateralPool.enter(0, true, { value: ETH(100) });
+            await collateralPool.enter({ value: ETH(100) });
             // pool gets fees
             await fAsset.mint(collateralPool.address, ETH(10), { from: assetManager.address });
             // account1 enters the pool with some debt
             await fAsset.mint(accounts[1], ETH(1), { from: assetManager.address });
             await fAsset.approve(collateralPool.address, ETH(1), { from: accounts[1] });
-            await collateralPool.enter(ETH(1), false, { value: ETH(100), from: accounts[1] });
+            await enterAndPayFeeDebt(collateralPool, ETH(100), "full", accounts[1]);
             // account1 sends all his free tokens to another account
             const freeTokensOfUser1 = await collateralPoolToken.debtFreeBalanceOf(accounts[1]);
             await collateralPoolToken.transfer(accounts[2], freeTokensOfUser1, { from: accounts[1] });
@@ -308,14 +318,14 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 // set timelock to 1 day
                 await assetManager.setTimelockDuration(time.duration.days(1));
                 // account0 obtains some pool tokens
-                await collateralPool.enter(0, true, { value: ETH(100) });
+                await collateralPool.enter({ value: ETH(100) });
                 const timelockedTokens1 = await collateralPoolToken.timelockedBalanceOf(accounts[0]);
                 assertEqualBN(timelockedTokens1, ETH(100));
                 const transferableTokens1 = await collateralPoolToken.transferableBalanceOf(accounts[0]);
                 assertEqualBN(transferableTokens1, BN_ZERO);
                 const prms1 = collateralPoolToken.transfer(accounts[1], ETH(1));
                 await expectRevert(prms1, "insufficient non-timelocked balance");
-                const prms2 = collateralPool.exit(ETH(1), TokenExitType.KEEP_RATIO);
+                const prms2 = collateralPool.exit(ETH(1));
                 await expectRevert(prms2, "insufficient non-timelocked balance");
                 // increase time by 1 day
                 await deterministicTimeIncrease(time.duration.days(1));
@@ -326,7 +336,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 assertEqualBN(tokenBalanceAcc0, ETH(1));
                 // exit
                 const natAcc0Before = toBN(await web3.eth.getBalance(accounts[0]));
-                const receipt = await collateralPool.exit(ETH(99), TokenExitType.KEEP_RATIO);
+                const receipt = await collateralPool.exit(ETH(99));
                 const gas = calcGasCost(receipt);
                 const natAcc0After = toBN(await web3.eth.getBalance(accounts[0]));
                 assertEqualBN(natAcc0After, natAcc0Before.sub(gas).add(ETH(99)));
@@ -336,10 +346,10 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 // set timelock to 1 day
                 await assetManager.setTimelockDuration(time.duration.days(1));
                 // account0 obtains some pool tokens
-                await collateralPool.enter(0, true, { value: ETH(100) });
+                await collateralPool.enter({ value: ETH(100) });
                 // increase time by half a day
                 await deterministicTimeIncrease(time.duration.hours(12));
-                await collateralPool.enter(0, true, { value: ETH(200) });
+                await collateralPool.enter({ value: ETH(200) });
                 const timelockedTokens1 = await collateralPoolToken.timelockedBalanceOf(accounts[0]);
                 assertEqualBN(timelockedTokens1, ETH(300));
                 // increase time by half a day
@@ -355,7 +365,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 const timelockedBalanceAfterTransferAcc01 = await collateralPoolToken.timelockedBalanceOf(accounts[0]);
                 assertEqualBN(timelockedBalanceAfterTransferAcc01, ETH(200));
                 const natBalanceAcc00 = toBN(await web3.eth.getBalance(accounts[0]));
-                const receipt1 = await collateralPool.exit(ETH(90), TokenExitType.KEEP_RATIO);
+                const receipt1 = await collateralPool.exit(ETH(90));
                 const gas1 = calcGasCost(receipt1);
                 const natBalanceAcc01 = toBN(await web3.eth.getBalance(accounts[0]));
                 assertEqualBN(natBalanceAcc01, natBalanceAcc00.sub(gas1).add(ETH(90)));
@@ -368,7 +378,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 const gas2 = calcGasCost(receipt2);
                 const tokenBalanceAcc02 = await collateralPoolToken.balanceOf(accounts[0]);
                 assertEqualBN(tokenBalanceAcc02, ETH(100));
-                const receipt3 = await collateralPool.exit(ETH(100), TokenExitType.KEEP_RATIO);
+                const receipt3 = await collateralPool.exit(ETH(100));
                 const gas3 = calcGasCost(receipt3)
                 const natBalanceAcc02 = toBN(await web3.eth.getBalance(accounts[0]));
                 assertEqualBN(natBalanceAcc02, natBalanceAcc01.sub(gas2).sub(gas3).add(ETH(100)));
@@ -382,7 +392,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 await assetManager.setTimelockDuration(time.duration.hours(1));
                 // account0 obtains some pool tokens
                 for (let i = 0; i < 100; i++) {
-                    await collateralPool.enter(0, true, { value: ETH(1) });
+                    await collateralPool.enter({ value: ETH(1) });
                 }
                 const timelockedTokens1 = await collateralPoolToken.timelockedBalanceOf(accounts[0]);
                 assertEqualBN(timelockedTokens1, ETH(100));
@@ -409,7 +419,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 }
                 // exit with all tokens
                 const natBalanceAcc00 = toBN(await web3.eth.getBalance(accounts[0]));
-                const receipt = await collateralPool.exit(ETH(100), TokenExitType.KEEP_RATIO);
+                const receipt = await collateralPool.exit(ETH(100));
                 const gas = calcGasCost(receipt);
                 const natBalanceAcc0 = toBN(await web3.eth.getBalance(accounts[0]));
                 assertEqualBN(natBalanceAcc0, natBalanceAcc00.sub(gas).add(ETH(100)));
@@ -419,13 +429,13 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 // set timelock to 1 day
                 await assetManager.setTimelockDuration(time.duration.hours(1));
                 // account0 obtains enters the pool
-                await collateralPool.enter(0, true, { value: ETH(1000) });
+                await collateralPool.enter({ value: ETH(1000) });
                 // pool gets fees
                 await givePoolFAssetFees(ETH(10));
                 // account1 enters the pool with some debt
                 await fAsset.mint(accounts[1], ETH(1000), { from: assetManager.address });
                 await fAsset.approve(collateralPool.address, ETH(1000), { from: accounts[1] });
-                await collateralPool.enter(ETH(1), false, { value: ETH(1000), from: accounts[1] });
+                await enterAndPayFeeDebt(collateralPool, ETH(1000), ETH(1), accounts[1]);
                 const transferableTokensAcc11 = await collateralPoolToken.debtFreeBalanceOf(accounts[1]);
                 const timelockedTokensAcc11 = await collateralPoolToken.timelockedBalanceOf(accounts[1]);
                 // account1 can't send his transferable tokens because of timelock
@@ -435,11 +445,11 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 const prms2 = collateralPoolToken.transfer(accounts[2], transferableTokensAcc11.addn(1), { from: accounts[1] });
                 await expectRevert(prms2, "insufficient transferable balance");
                 // account1 can't exit with his timelocked tokens
-                const prms3 = collateralPool.exit(transferableTokensAcc11, TokenExitType.KEEP_RATIO, { from: accounts[1] });
+                const prms3 = collateralPool.exit(transferableTokensAcc11, { from: accounts[1] });
                 await expectRevert(prms3, "insufficient non-timelocked balance");
                 // account1 gets new timelocked tokens after a while and no new transferable tokens
                 await deterministicTimeIncrease(time.duration.minutes(30));
-                await collateralPool.enter(0, false, { value: ETH(1000), from: accounts[1] });
+                await collateralPool.enter({ value: ETH(1000), from: accounts[1] });
                 const transferableTokensAcc12 = await collateralPoolToken.debtFreeBalanceOf(accounts[1]);
                 assertEqualBN(transferableTokensAcc11, transferableTokensAcc12); // just so we are aware of this
                 // first enter tokens get unlocked after 30 minutes
@@ -453,13 +463,13 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 // account1 tries to send non-transferable tokens
                 const prms4 = collateralPoolToken.transfer(accounts[2], BN_ONE, { from: accounts[1] });
                 await expectRevert(prms4, "insufficient transferable balance");
-                await collateralPool.exit(nonTimelockedTokensAcc12.sub(transferableTokensAcc12), TokenExitType.KEEP_RATIO, { from: accounts[1] });
+                await collateralPool.exit(nonTimelockedTokensAcc12.sub(transferableTokensAcc12), { from: accounts[1] });
                 const nonTimelockedTokensAcc13 = await collateralPoolToken.nonTimelockedBalanceOf(accounts[1]);
                 assertEqualBN(nonTimelockedTokensAcc13, BN_ZERO);
                 // after 30 minutes user can exit with the remaining tokens
                 await deterministicTimeIncrease(time.duration.minutes(30));
                 const remainingTokensAcc11 = await collateralPoolToken.balanceOf(accounts[1]);
-                await collateralPool.exit(remainingTokensAcc11, TokenExitType.KEEP_RATIO, { from: accounts[1] });
+                await collateralPool.exit(remainingTokensAcc11, { from: accounts[1] });
                 const remainingTokensAcc12 = await collateralPoolToken.balanceOf(accounts[1]);
                 assertEqualBN(remainingTokensAcc12, BN_ZERO);
             });
@@ -468,12 +478,12 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 // set timelock to 1 hour
                 await assetManager.setTimelockDuration(time.duration.hours(1));
                 // agent enters the pool
-                const payload1 = collateralPool.contract.methods.enter(0, true).encodeABI();
+                const payload1 = collateralPool.contract.methods.enter().encodeABI();
                 await agentVault.callFunctionAt(collateralPool.address, payload1, ETH(100), { value: ETH(100) });
                 // agent is forced to payout by the asset manager
                 const payload2 = collateralPool.contract.methods.payout(accounts[1], ETH(80), ETH(40)).encodeABI();
                 const resp = await assetManager.callFunctionAt(collateralPool.address, payload2);
-                await expectEvent.inTransaction(resp.tx, collateralPool, "PaidOut", {
+                await expectEvent.inTransaction(resp.tx, collateralPool, "CPPaidOut", {
                     recipient: accounts[1], paidNatWei: ETH(80), burnedTokensWei: ETH(40)
                 });
                 // check that agent has no tokens left and that wNat was transferred to acc1
@@ -495,38 +505,28 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         // thus this test is deprecated
         it.skip("should lock entering if pool token supply is much larger than pool collateral", async () => {
             // enter the pool
-            await collateralPool.enter(0, true, { value: ETH(1001) });
+            await collateralPool.enter({ value: ETH(1001) });
             // artificially burn pool collateral
             await wNat.burnAmount(collateralPool.address, ETH(1000));
             // check that entering is disabled
-            const prms = collateralPool.enter(0, true, { value: MIN_NAT_TO_ENTER, from: accounts[1] });
+            const prms = collateralPool.enter({ value: MIN_NAT_TO_ENTER, from: accounts[1] });
             await expectRevert(prms, "pool nat balance too small");
         });
 
         it("should fail entering the pool with too little funds", async () => {
-            const prms = collateralPool.enter(0, true, { value: MIN_NAT_TO_ENTER.sub(BN_ONE) });
+            const prms = collateralPool.enter({ value: MIN_NAT_TO_ENTER.sub(BN_ONE) });
             await expectRevert(prms, "amount of nat sent is too low");
         });
 
         it("should fail entering with f-assets that don't cover the one in a tokenless pool", async () => {
             await givePoolFAssetFees(ETH(10));
-            const prms = collateralPool.enter(ETH(5), false, { value: MIN_NAT_TO_ENTER });
+            const prms = collateralPool.enter({ value: MIN_NAT_TO_ENTER });
             await expectRevert(prms,
                 "If pool has no tokens, but holds f-asset, you need to send at least f-asset worth of collateral");
         });
 
-        it("should not enter the pool (with f-assets) with f-asset allowance set too small", async () => {
-            // mint some tokens by accounts[1] entering the pool
-            await collateralPool.enter(0, true, { value: ETH(10), from: accounts[1] });
-            // pool gets f-asset fees
-            await givePoolFAssetFees(ETH(10));
-            // accounts[0] has to enter with some f-assets as there are tokens in the pool
-            const prms = collateralPool.enter(0, true, { value: ETH(5), from: accounts[0] });
-            await expectRevert(prms, "f-asset allowance too small");
-        });
-
         it("should enter tokenless, f-assetless and natless pool", async () => {
-            await collateralPool.enter(0, true, { value: ETH(10) });
+            await collateralPool.enter({ value: ETH(10) });
             const tokens = await collateralPoolToken.debtFreeBalanceOf(accounts[0]);
             assertEqualBN(tokens, ETH(10));
             const tokenSupply = await collateralPoolToken.totalSupply();
@@ -543,34 +543,14 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(await collateralPoolToken.totalSupply(), BN_ZERO);
             assertEqualBN(await wNat.balanceOf(collateralPool.address), ETH(10));
             await wNat.mintAmount(accounts[0], ETH(10));
-            const prms = collateralPool.enter(0, true, { value: ETH(10).subn(1) });
+            const prms = collateralPool.enter({ value: ETH(10).subn(1) });
             await expectRevert(prms,
                 "if pool has no tokens, but holds collateral, you need to send at least that amount of collateral");
-            await collateralPool.enter(0, true, { value: ETH(10) });
+            await collateralPool.enter({ value: ETH(10) });
             assertEqualBN(await collateralPoolToken.debtFreeBalanceOf(accounts[0]), ETH(10));
             assertEqualBN(await collateralPoolToken.totalSupply(), ETH(10));
             assertEqualBN(await wNat.balanceOf(collateralPool.address), ETH(20));
             assertEqualBN(await collateralPool.totalCollateral(), ETH(20));
-        });
-
-        it("should enter tokenless, collateralless pool holding some f-assets", async () => {
-            await givePoolFAssetFees(ETH(10));
-            // calculate the amount of nat to send
-            const { 0: assetPriceMul, 1: assetPriceDiv } = await assetManager.assetPriceNatWei();
-            const natToEnter = ETH(10).mul(assetPriceMul).div(assetPriceDiv);
-            // try to enter the pool with too little nat
-            const prms = collateralPool.enter(0, true, { value: natToEnter.subn(1) });
-            await expectRevert(prms, "If pool has no tokens, but holds f-asset, you need to send at least f-asset worth of collateral");
-            // enter the pool
-            await collateralPool.enter(0, true, { value: natToEnter });
-            assertEqualBN(await collateralPool.fAssetFeesOf(accounts[0]), ETH(10));
-        });
-
-        it("should not require f-assets from users when entering f-assetless pool in any way", async () => {
-            await collateralPool.enter(0, true, { value: ETH(1) });
-            await collateralPool.enter(0, false, { value: ETH(1) });
-            await collateralPool.enter(ETH(1), true, { value: ETH(1) });
-            await collateralPool.enter(ETH(1), false, { value: ETH(1) });
         });
 
         it("should enter the topuped pool without f-assets, then pay off the debt", async () => {
@@ -581,12 +561,12 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await fAsset.mint(accounts[0], fassets, { from: assetManager.address });
             await fAsset.approve(collateralPool.address, fassets);
             // externally topup the pool
-            await getPoolAboveCR(accounts[1], false, exitCR);
+            await getPoolAboveCR(accounts[1], exitCR);
             const initialTokens = await collateralPoolToken.balanceOf(accounts[1]);
             const initialNat = await wNat.balanceOf(collateralPool.address);
             // enter collateral pool without f-assets
             const nat = initialNat.muln(2);
-            await collateralPool.enter(0, false, { value: nat });
+            await collateralPool.enter({ value: nat });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             assertEqualBN(tokens, initialTokens.mul(nat).div(initialNat));
             const liquidTokens = await collateralPoolToken.debtFreeBalanceOf(accounts[0]);
@@ -612,38 +592,37 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
     describe("exiting collateral pool", () => {
 
         it("should revert on exiting the pool with zero tokens", async () => {
-            const prms = collateralPool.exit(0, TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
+            const prms = collateralPool.exit(0);
             await expectRevert(prms, "token share is zero");
         });
 
         it("should revert on user not having enough tokens", async () => {
-            await collateralPool.enter(0, true, { value: ETH(10) });
+            await collateralPool.enter({ value: ETH(10) });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
-            const prms = collateralPool.exit(tokens.add(BN_ONE), TokenExitType.MINIMIZE_FEE_DEBT);
+            const prms = collateralPool.exit(tokens.add(BN_ONE));
             await expectRevert(prms, "token balance too low");
         });
 
         it("should require that amount of tokens left after exit is large enough", async () => {
-            await collateralPool.enter(0, true, { value: MIN_TOKEN_SUPPLY_AFTER_EXIT });
+            await collateralPool.enter({ value: MIN_TOKEN_SUPPLY_AFTER_EXIT });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
-            const prms = collateralPool.exit(tokens.sub(MIN_TOKEN_SUPPLY_AFTER_EXIT).add(BN_ONE),
-                TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
+            const prms = collateralPool.exit(tokens.sub(MIN_TOKEN_SUPPLY_AFTER_EXIT).add(BN_ONE));
             await expectRevert(prms, "token supply left after exit is too low and non-zero");
         });
 
         it("should require nat share to be larger than 0", async () => {
             await fAsset.mint(collateralPool.address, ETH(1), { from: assetManager.address });
-            await collateralPool.enter(0, false, { value: ETH(10) });
+            await collateralPool.enter({ value: ETH(10) });
             await collateralPool.payout(accounts[0], ETH(1), 0, { from: assetManager.address });
-            const prms = collateralPool.exit(BN_ONE, TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
+            const prms = collateralPool.exit(BN_ONE);
             await expectRevert(prms, "amount of sent tokens is too small");
         });
 
         it("should require nat share to leave enough pool non-zero collateral", async () => {
             await fAsset.mint(collateralPool.address, ETH(10), { from: assetManager.address });
-            await collateralPool.enter(0, false, { value: MIN_TOKEN_SUPPLY_AFTER_EXIT.addn(2) });
+            await collateralPool.enter({ value: MIN_TOKEN_SUPPLY_AFTER_EXIT.addn(2) });
             await collateralPool.payout(accounts[0], MIN_TOKEN_SUPPLY_AFTER_EXIT.divn(2), 0, { from: assetManager.address });
-            const prms = collateralPool.exit(new BN(2), TokenExitType.KEEP_RATIO);
+            const prms = collateralPool.exit(new BN(2));
             await expectRevert(prms, "collateral left after exit is too low and non-zero");
         });
 
@@ -651,25 +630,19 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const fassets = ETH(10);
             await fAsset.mint(accounts[0], fassets, { from: assetManager.address });
             const natToExit = await getNatRequiredToGetPoolCRAbove(exitCR);
-            await collateralPool.enter(0, true, { value: natToExit });
+            await collateralPool.enter({ value: natToExit });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
-            await expectRevert(collateralPool.exit(10, TokenExitType.MINIMIZE_FEE_DEBT),
-                "collateral ratio falls below exitCR");
-            await expectRevert(collateralPool.exit(10, TokenExitType.MAXIMIZE_FEE_WITHDRAWAL),
-                "collateral ratio falls below exitCR");
-            await expectRevert(collateralPool.exit(tokens, TokenExitType.KEEP_RATIO),
-                "collateral ratio falls below exitCR");
-            await expectRevert(collateralPool.exit(tokens, TokenExitType.MINIMIZE_FEE_DEBT),
-                "collateral ratio falls below exitCR")
+            await expectRevert(collateralPool.exit(10), "collateral ratio falls below exitCR");
+            await expectRevert(collateralPool.exit(tokens), "collateral ratio falls below exitCR");
         });
 
         it("should enter and exit correctly when f-asset supply is zero", async () => {
             const collateral = ETH(1);
-            await collateralPool.enter(0, false, { value: collateral });
+            await collateralPool.enter({ value: collateral });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             assertEqualBN(tokens, collateral);
             const natAcc0Before = toBN(await web3.eth.getBalance(accounts[0]));
-            const receipt = await collateralPool.exit(tokens, TokenExitType.MINIMIZE_FEE_DEBT);
+            const receipt = await collateralPool.exit(tokens);
             const gas = calcGasCost(receipt);
             const natAcc0After = toBN(await web3.eth.getBalance(accounts[0]));
             assertEqualBN(natAcc0After, natAcc0Before.sub(gas).add(collateral));
@@ -682,27 +655,25 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await fAsset.mint(accounts[0], initialFassets, { from: assetManager.address });
             // get f-assets into the pool and get collateral above exitCR
             const natToGetAboveExitCR = maxBN(await getNatRequiredToGetPoolCRAbove(exitCR), ETH(1));
-            await collateralPool.enter(0, true, { value: natToGetAboveExitCR, from: accounts[1] });
+            await collateralPool.enter({ value: natToGetAboveExitCR, from: accounts[1] });
             // user enters the pool
-            await collateralPool.enter(0, true, { value: collateral });
+            await collateralPool.enter({ value: collateral });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             // exit
             const natAcc0Before = toBN(await web3.eth.getBalance(accounts[0]));
-            const receipt = await collateralPool.exit(tokens, TokenExitType.MINIMIZE_FEE_DEBT);
+            const receipt = await collateralPool.exit(tokens);
             const gas = calcGasCost(receipt);
             const natAcc1After = toBN(await web3.eth.getBalance(accounts[0]));
-            const fassets = await fAsset.balanceOf(accounts[0]);
-            assertEqualBNWithError(fassets, initialFassets, BN_ONE);
             assertEqualBNWithError(natAcc1After, natAcc0Before.sub(gas).add(collateral), BN_ONE);
         });
 
-        it("should collect all fees using the MAXIMIZE_FEE_WITHDRAWAL token exit type", async () => {
+        it("should collect all fees after exiting", async () => {
             // account0 enters the pool
-            await collateralPool.enter(0, true, { value: ETH(10), from: accounts[0] });
+            await collateralPool.enter({ value: ETH(10), from: accounts[0] });
             // collateral pool collects fees
             await givePoolFAssetFees(ETH(10));
             // account1 enters the pool with no f-assets
-            await collateralPool.enter(0, false, { value: ETH(10), from: accounts[1] });
+            await collateralPool.enter({ value: ETH(10), from: accounts[1] });
             // collateral pool collects additional fees
             await givePoolFAssetFees(ETH(10));
             // account1 exits with fees using MAXIMIZE_FEE_WITHDRAWAL token exit type
@@ -711,9 +682,12 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const virtualFassets = await getPoolVirtualFassets();
             const poolNatBalance = await wNat.balanceOf(collateralPool.address);
             const natAcc1Before = toBN(await web3.eth.getBalance(accounts[1]));
-            const receipt = await collateralPool.exit(freeTokens, TokenExitType.MAXIMIZE_FEE_WITHDRAWAL, { from: accounts[1] });
+            const receipt = await collateralPool.exit(freeTokens, { from: accounts[1] });
             const gas = calcGasCost(receipt);
             const natAcc1After = toBN(await web3.eth.getBalance(accounts[1]));
+            // collect fees
+            const remainingFees = await collateralPool.fAssetFeesOf(accounts[1]);
+            await collateralPool.withdrawFees(remainingFees, { from: accounts[1] });
             // account1 should have earned nat and all his f-asset fees
             // amount that is transferred when exiting the pool
             // fee is paid from that amount
@@ -724,13 +698,13 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(earnedNat, poolNatBalance.mul(freeTokens).div(allTokens));
         });
 
-        it("should eliminate all debt tokens using the MINIMIZE_FEE_DEBT token exit type", async () => {
+        it("should eliminate all debt tokens after exit", async () => {
             // account0 enters the pool
-            await collateralPool.enter(0, true, { value: ETH(10), from: accounts[0] });
+            await collateralPool.enter({ value: ETH(10), from: accounts[0] });
             // collateral pool collects fees
             await givePoolFAssetFees(ETH(10));
             // account1 enters the pool with no f-assets
-            await collateralPool.enter(0, false, { value: ETH(10), from: accounts[1] });
+            await collateralPool.enter({ value: ETH(10), from: accounts[1] });
             // collateral pool collects additional fees
             await givePoolFAssetFees(ETH(10));
             // account1 exits with fees using MINIMIZE_FEE_DEBT token exit type
@@ -738,7 +712,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const debtTokens = await collateralPoolToken.debtLockedBalanceOf(accounts[1]);
             const poolNatBalance = await wNat.balanceOf(collateralPool.address);
             const natAcc1Before = toBN(await web3.eth.getBalance(accounts[1]));
-            const receipt = await collateralPool.exit(debtTokens, TokenExitType.MINIMIZE_FEE_DEBT, { from: accounts[1] });
+            const receipt = await collateralPool.exit(debtTokens, { from: accounts[1] });
             const gas = calcGasCost(receipt);
             const natAcc1After = toBN(await web3.eth.getBalance(accounts[1]));
             // account1 should have 0 f-asset debt and earn appropriate wnat
@@ -748,54 +722,21 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(earnedWnat, poolNatBalance.mul(debtTokens).div(allTokens));
         });
 
-        it("should collect rewards while keeping debt/free token ratio the same using KEEP_RATIO token exit type", async () => {
+        it("should exit with recipient", async () => {
             // account0 enters the pool
-            await collateralPool.enter(0, true, { value: ETH(10), from: accounts[0] });
-            // collateral pool collects fees
-            await fAsset.mint(collateralPool.address, ETH(10), { from: assetManager.address });
-            // account1 enters the pool with no f-assets
-            await collateralPool.enter(0, false, { value: ETH(10), from: accounts[1] });
-            // collateral pool collects additional fees
-            await fAsset.mint(collateralPool.address, ETH(10), { from: assetManager.address });
-            // account1 exits with fees using KEEP_RATIO token exit type
-            const tokenBalance = await collateralPoolToken.balanceOf(accounts[1]);
-            const debtTokensBefore = await collateralPoolToken.debtLockedBalanceOf(accounts[1]);
-            const freeTokensBefore = await collateralPoolToken.debtFreeBalanceOf(accounts[1]);
-            await collateralPool.exit(tokenBalance.div(new BN(2)), TokenExitType.KEEP_RATIO, { from: accounts[1] });
-            // account1 should have kept the ratio between debt and free tokens
-            const debtTokensAfter = await collateralPoolToken.debtLockedBalanceOf(accounts[1]);
-            const freeTokensAfter = await collateralPoolToken.debtFreeBalanceOf(accounts[1]);
-            // tokenBalance is a strictly maximum numeric error for below expression
-            // this means that the ratio freeTokensBefore/debtTokensBefore is preserved
-            // with error smaller than tokenBalance / (debtTokensBefore * debtTokensAfter)!
-            // this is not a problem as debtTokensBefore + freeTokensBefore = tokenBalance,
-            // so one of them must be >= tokenBalance / 2, thus worst case is one ratio
-            // doubling and its inverse halving.
-            assertEqualBNWithError(debtTokensBefore.mul(freeTokensAfter), debtTokensAfter.mul(freeTokensBefore), tokenBalance.sub(BN_ONE));
-        });
-
-        it("should exit and collect fees with recipient", async () => {
-            // account0 enters the pool
-            await collateralPool.enter(0, true, { value: ETH(20), from: accounts[0] });
-            // collateral pool collects fees
-            await givePoolFAssetFees(ETH(10));
+            await collateralPool.enter({ value: ETH(20), from: accounts[0] });
             // account1 exits with fees using MAXIMIZE_FEE_WITHDRAWAL token exit type
             const exitTokens = ETH(10);
-            const poolFees = await collateralPool.totalFAssetFees();
-            const receipt = await collateralPool.exitTo(exitTokens, accounts[2], TokenExitType.MAXIMIZE_FEE_WITHDRAWAL, { from: accounts[0] });
+            const receipt = await collateralPool.exitTo(exitTokens, accounts[2], { from: accounts[0] });
             const holderReceivedNat = await calculateReceivedNat(receipt, accounts[0]);
             const receiverReceivedNat = await calculateReceivedNat(receipt, accounts[2]);
-            const holderReceivedFAssets = await fAsset.balanceOf(accounts[0]);
-            const receiverReceivedFAssets = await fAsset.balanceOf(accounts[2]);
             assertEqualBN(holderReceivedNat, BN_ZERO);
             assertEqualBN(receiverReceivedNat, exitTokens);
-            assertEqualBN(holderReceivedFAssets, BN_ZERO);
-            assertEqualBN(receiverReceivedFAssets, poolFees.divn(2));   // since half tokens are redeemed, expect half fees
         });
 
         it("should withdraw fees with recipient", async () => {
             // account0 enters the pool
-            await collateralPool.enter(0, true, { value: ETH(20), from: accounts[0] });
+            await collateralPool.enter({ value: ETH(20), from: accounts[0] });
             // collateral pool collects fees
             await givePoolFAssetFees(ETH(10));
             // account1 exits with fees using MAXIMIZE_FEE_WITHDRAWAL token exit type
@@ -817,14 +758,14 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
 
         it("should require that the token balance is large enough", async () => {
-            await collateralPool.enter(0, false, { value: ETH(10) });
+            await collateralPool.enter({ value: ETH(10) });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             const prms = collateralPool.selfCloseExit(tokens.add(BN_ONE), true, "", ZERO_ADDRESS);
             await expectRevert(prms, "token balance too low");
         });
 
         it("should require that amount of tokens left after exit is large enough", async () => {
-            await collateralPool.enter(0, true, { value: MIN_TOKEN_SUPPLY_AFTER_EXIT });
+            await collateralPool.enter({ value: MIN_TOKEN_SUPPLY_AFTER_EXIT });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             await collateralPool.depositNat({ from: assetManager.address, value: ETH(1) })
             const prms = collateralPool.selfCloseExit(tokens.sub(MIN_TOKEN_SUPPLY_AFTER_EXIT).add(BN_ONE), true, "", ZERO_ADDRESS);
@@ -833,7 +774,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         it("should require nat share to be larger than 0", async () => {
             await fAsset.mint(collateralPool.address, ETH(1), { from: assetManager.address });
-            await collateralPool.enter(0, false, { value: ETH(10) });
+            await collateralPool.enter({ value: ETH(10) });
             await collateralPool.payout(accounts[0], ETH(1), 0, { from: assetManager.address });
             const prms = collateralPool.selfCloseExit(BN_ONE, true, "", ZERO_ADDRESS);
             await expectRevert(prms, "amount of sent tokens is too small");
@@ -841,25 +782,16 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         it("should require nat share to leave enough pool non-zero collateral", async () => {
             await fAsset.mint(collateralPool.address, ETH(10), { from: assetManager.address });
-            await collateralPool.enter(0, false, { value: MIN_NAT_BALANCE_AFTER_EXIT });
+            await collateralPool.enter({ value: MIN_NAT_BALANCE_AFTER_EXIT });
             const prms = collateralPool.selfCloseExit(new BN(2), true, "", ZERO_ADDRESS);
             await expectRevert(prms, "collateral left after exit is too low and non-zero");
         });
 
-        it("should do a self-close exit where additional f-assets are not required", async () => {
-            await givePoolFAssetFees(ETH(10));
-            const natToEnter = await poolFAssetFeeNatValue();
-            await collateralPool.enter(0, true, { value: natToEnter });
-            const tokens = await collateralPoolToken.balanceOf(accounts[0]);
-            const resp = await collateralPool.selfCloseExit(tokens, true, "", ZERO_ADDRESS);
-            await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemptionInCollateral");
-        });
-
-        it("should do a self-close exit where additional f-assets are required", async () => {
+        it("should do a self-close exit where f-assets are required", async () => {
             await fAsset.mint(accounts[0], ETH(100), { from: assetManager.address });
             await fAsset.approve(collateralPool.address, ETH(100));
-            await collateralPool.enter(0, false, { value: ETH(10) });
-            await collateralPool.enter(0, false, { value: ETH(1), from: accounts[1] });
+            await collateralPool.enter({ value: ETH(10) });
+            await collateralPool.enter({ value: ETH(1), from: accounts[1] });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             const resp = await collateralPool.selfCloseExit(tokens, true, "", ZERO_ADDRESS);
             await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemptionInCollateral");
@@ -868,14 +800,14 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         it("should not do a self-close exit where additional f-assets are required and the allowance is not high enough", async () => {
             await fAsset.mint(accounts[0], ETH(100), { from: assetManager.address });
             await fAsset.approve(collateralPool.address, ETH(99));
-            await collateralPool.enter(0, false, { value: ETH(10) });
+            await collateralPool.enter({ value: ETH(10) });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             const prms = collateralPool.selfCloseExit(tokens, true, "", ZERO_ADDRESS);
             await expectRevert(prms, "allowance too small");
         });
 
         it("should do a self-close exit where there are no f-assets to redeem", async () => {
-            await collateralPool.enter(0, true, { value: ETH(10) });
+            await collateralPool.enter({ value: ETH(10) });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             const resp = await collateralPool.selfCloseExit(tokens, true, "", ZERO_ADDRESS);
             await expectEvent.notEmitted.inTransaction(resp.tx, assetManager, "AgentRedemptionInCollateral");
@@ -885,8 +817,10 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         it("should do a self-close exit where redemption is done in underlying asset", async () => {
             await givePoolFAssetFees(ETH(100));
             const natToEnter = await poolFAssetFeeNatValue();
-            await collateralPool.enter(0, true, { value: natToEnter });
+            await collateralPool.enter({ value: natToEnter });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
+            await collateralPool.withdrawFees(ETH(100), { from: accounts[0] });
+            await fAsset.approve(collateralPool.address, ETH(100), { from: accounts[0] });
             const resp = await collateralPool.selfCloseExit(tokens, false, "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2", ZERO_ADDRESS);
             await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemption");
             assert((await getPoolCRBIPS()).gten(exitCR * MAX_BIPS))
@@ -895,8 +829,10 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         it("should do a self-close exit where redemption is done in underlying asset with executor", async () => {
             await givePoolFAssetFees(ETH(100));
             const natToEnter = await poolFAssetFeeNatValue();
-            await collateralPool.enter(0, true, { value: natToEnter });
+            await collateralPool.enter({ value: natToEnter });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
+            await collateralPool.withdrawFees(ETH(100), { from: accounts[0] });
+            await fAsset.approve(collateralPool.address, ETH(100), { from: accounts[0] });
             const resp = await collateralPool.selfCloseExit(tokens, false, "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2", accounts[5], { value: ETH(1) });
             await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemption", { _executor: accounts[5] });
             assert((await getPoolCRBIPS()).gten(exitCR * MAX_BIPS))
@@ -906,7 +842,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await assetManager.setLotSize(ETH(100));
             await fAsset.mint(accounts[0], ETH(100), { from: assetManager.address });
             await fAsset.increaseAllowance(collateralPool.address, ETH(100));
-            await getPoolAboveCR(accounts[0], false, exitCR);
+            await getPoolAboveCR(accounts[0], exitCR);
             const requiredFAssets = await collateralPool.fAssetRequiredForSelfCloseExit(ETH(1));
             const resp = await collateralPool.selfCloseExit(ETH(1), false, "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2", ZERO_ADDRESS);
             await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemptionInCollateral");
@@ -915,25 +851,12 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(ETH(100).sub(fAssetBalance), requiredFAssets);
         });
 
-        it("should do a self-close exit where some of the free f-assets are sent back", async () => {
-            await givePoolFAssetFees(ETH(100));
-            await getPoolAboveCR(accounts[0], false, exitCR + 1);
-            const tokens = await collateralPoolToken.balanceOf(accounts[0]);
-            const collateral = await collateralPool.totalCollateral();
-            const fAssetRequired = await getFAssetRequiredToNotSpoilCR(collateral.divn(2));
-            const resp = await collateralPool.selfCloseExit(tokens.divn(2), true, "", ZERO_ADDRESS);
-            await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemptionInCollateral");
-            assert((await getPoolCRBIPS()).gten(exitCR * MAX_BIPS))
-            const fAssetBalance = await fAsset.balanceOf(accounts[0]);
-            assertEqualBNWithError(fAssetBalance, ETH(50).sub(fAssetRequired), BN_ONE);
-        });
-
         it("should do a simple self-close exit with one user who has no f-asset debt", async () => {
             const collateral = ETH(100);
             const fassetBalanceBefore = ETH(100);
             await fAsset.mint(accounts[0], fassetBalanceBefore, { from: assetManager.address });
             await fAsset.approve(collateralPool.address, fassetBalanceBefore);
-            await collateralPool.enter(0, true, { value: collateral });
+            await collateralPool.enter({ value: collateral });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             const natBefore = toBN(await web3.eth.getBalance(accounts[0]));
             const fAssetRequired = await getFAssetRequiredToNotSpoilCR(ETH(100));
@@ -950,11 +873,11 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         it("should do a simple self-close exit with one user who has f-asset debt", async () => {
             const collateral = ETH(1);
             // account1 enters the pool
-            await collateralPool.enter(0, true, { value: ETH(1000), from: accounts[1] });
+            await collateralPool.enter({ value: ETH(1000), from: accounts[1] });
             // pool gets fees
             await fAsset.mint(collateralPool.address, ETH(1), { from: assetManager.address });
             // account0 enters the pool with f-asset debt
-            await collateralPool.enter(0, false, { value: collateral });
+            await collateralPool.enter({ value: collateral });
             await fAsset.mint(accounts[0], ETH(10), { from: assetManager.address });
             await fAsset.approve(collateralPool.address, ETH(10));
             // account0 does self-close exit
@@ -967,202 +890,76 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(natAfter, natBefore.sub(gas).add(collateral));
         });
 
-        it("should do an incomplete self-close exit (agent's max redeeemed f-assets is zero)", async () => {
+        it("should fail self close exit because because agent's max redeeemed f-assets is zero", async () => {
             // mint some f-assets for minter to be able to do redemption
             await fAsset.mint(accounts[0], ETH(100), { from: assetManager.address });
             await fAsset.approve(collateralPool.address, ETH(100));
             // user enters the pool
-            await collateralPool.enter(0, false, { value: ETH(100), from: accounts[0] });
+            await collateralPool.enter({ value: ETH(100), from: accounts[0] });
             // agent can only redeem 1 f-asset at a time
             await assetManager.setMaxRedemptionFromAgent(ETH(0));
             // user wants to redeem all tokens, which means he would need to
             // take all 100 f-assets out of circulation
             const exitCRBIPS = await collateralPool.exitCollateralRatioBIPS();
             const exitCR = exitCRBIPS.toNumber() / MAX_BIPS;
-            const natToGetCRToExitCR = await getNatRequiredToGetPoolCRBelow(exitCR);
-            const natBefore = toBN(await web3.eth.getBalance(accounts[0]));
-            const fAssetBefore = await fAsset.balanceOf(accounts[0]);
             const tokensBefore = await collateralPoolToken.balanceOf(accounts[0]);
-            const receipt = await collateralPool.selfCloseExit(tokensBefore, true, "", ZERO_ADDRESS);
-            const gas = calcGasCost(receipt);
-            const natAfter = toBN(await web3.eth.getBalance(accounts[0]));
-            const fAssetAfter = await fAsset.balanceOf(accounts[0]);
-            const tokensAfter = await collateralPoolToken.balanceOf(accounts[0]);
-            expectEvent(receipt, "IncompleteSelfCloseExit");
-            assert((await getPoolCRBIPS()).gten(exitCR * MAX_BIPS))
-            // account had been taken one f-asset
-            assertEqualBN(fAssetBefore.sub(fAssetAfter), ETH(0));
-            assertEqualBN(tokensBefore.sub(tokensAfter), await natToTokens(natToGetCRToExitCR));
-            // user's withdrawal would leave pool's CR at 0, so he was only
-            // allowed to withdraw the collateral that gets pool at exitCR
-            assertEqualBN(await getPoolCRBIPS(), exitCRBIPS);
-            const earnedNat = natAfter.sub(natBefore).add(gas);
-            assertEqualBN(earnedNat, natToGetCRToExitCR);
+            const promise = collateralPool.selfCloseExit(tokensBefore, true, "", ZERO_ADDRESS);
+            await expectRevert(promise, "redemption requires closing too many tickets");
         });
 
-        it("should do an incomplete self-close exit, where agent's max redemption value is 0", async () => {
-            // mint some f-assets for minter to be able to do redemption
-            await fAsset.mint(accounts[0], ETH(100), { from: assetManager.address });
-            await fAsset.approve(collateralPool.address, ETH(100));
-            // account0 enters the pool
-            await collateralPool.enter(0, false, { value: ETH(100), from: accounts[0] });
-            // agent cannot redeem any f-assets
-            await assetManager.setMaxRedemptionFromAgent(ETH(0));
-            // account0 wants to redeem all tokens, which means he would need to take all 100 f-assets out of circulation
-            const exitCRBIPS = await collateralPool.exitCollateralRatioBIPS();
-            const exitCR = exitCRBIPS.toNumber() / MAX_BIPS;
-            const natToGetCRToExitCR = await getNatRequiredToGetPoolCRBelow(exitCR);
-            const natBefore = toBN(await web3.eth.getBalance(accounts[0]));
-            const fAssetBefore = await fAsset.balanceOf(accounts[0]);
-            const tokensBefore = await collateralPoolToken.balanceOf(accounts[0]);
-            const receipt = await collateralPool.selfCloseExit(tokensBefore, true, "", ZERO_ADDRESS);
-            const gas = calcGasCost(receipt);
-            const natAfter = toBN(await web3.eth.getBalance(accounts[0]));
-            const tokensAfter = await collateralPoolToken.balanceOf(accounts[0]);
-            const fAssetAfter = await fAsset.balanceOf(accounts[0]);
-            expectEvent(receipt, "IncompleteSelfCloseExit");
-            // account had not been taken any f-assets
-            assertEqualBN(fAssetBefore, fAssetAfter);
-            // user's withdrawal leaves pool's CR at exitCR as beyond that f-assets would need to get burned/redeemed
-            assertEqualBN(await getPoolCRBIPS(), exitCRBIPS);
-            // user could withdraw only the collateral that gets pool at exitCR
-            const earnedNat = natAfter.sub(natBefore).add(gas);
-            assertEqualBN(earnedNat, natToGetCRToExitCR);
-            // check that user's pool tokens evaluate to correct amount of collateral
-            const userPoolNatBalance = await tokensToNat(tokensAfter);
-            assertEqualBN(userPoolNatBalance, ETH(100).sub(natToGetCRToExitCR));
-        });
-
-        it("should fail self-close exit because agent's max redemption allows for too few f-assets to be redeemed", async () => {
-            // mint some f-assets for minter to be able to do redemption
-            await fAsset.mint(accounts[0], ETH(100), { from: assetManager.address });
-            await fAsset.approve(collateralPool.address, ETH(100));
-            // account0 enters the pool
-            await collateralPool.enter(0, false, { value: ETH(100), from: accounts[0] });
-            // agent can redeem no f-assets in one transaction (this can actually never happen)
-            await assetManager.setMaxRedemptionFromAgent(ETH(0));
-            // pool's cr goes to exitCR (we should raise prices but we raise exitCR instead)
-            const payload = await collateralPool.contract.methods.setExitCollateralRatioBIPS(await getPoolCRBIPS()).encodeABI();
-            await assetManager.callFunctionAt(collateralPool.address, payload);
-            // user wants to redeem all tokens, which means he would need to take all 100 f-assets out of circulation
-            const account0Tokens = await collateralPoolToken.balanceOf(accounts[0]);
-            // user cannot self-exit because pool being at exitCR requires redeemed f-assets, which agent cannot redeem,
-            // as his max redemption is 0
-            const prms = collateralPool.selfCloseExit(account0Tokens, true, "", ZERO_ADDRESS);
-            await expectRevert(prms, "amount of sent tokens is too small after agent max redemption correction");
-        });
-
-        it("should do an incomplete self-close exit, where agent's max redeemed f-assets is non-zero but less than required", async () => {
+        it("should fail self close exit because agent's max redeemed f-assets is non-zero but less than required", async () => {
             // mint some f-assets for minter to be able to do redemption
             await fAsset.mint(accounts[0], ETH(100), { from: assetManager.address });
             await fAsset.approve(collateralPool.address, ETH(100));
             // user enters the pool
-            await collateralPool.enter(0, false, { value: ETH(100), from: accounts[0] });
+            await collateralPool.enter({ value: ETH(100), from: accounts[0] });
             // agent can only redeem 1 f-asset at a time
             await assetManager.setMaxRedemptionFromAgent(ETH(1));
             // user wants to redeem all tokens, which means he would need to take all 100 f-assets out of circulation
             const exitCRBIPS = await collateralPool.exitCollateralRatioBIPS();
             const natToGetCRToExitCR = await getNatRequiredToGetPoolCRBelow(exitCRBIPS.toNumber() / MAX_BIPS);
             console.log("natToGetCRToExitCR", natToGetCRToExitCR.toString());
-            const natBefore = toBN(await web3.eth.getBalance(accounts[0]));
-            const fAssetBefore = await fAsset.balanceOf(accounts[0]);
+            // try self close exit
             const userTokens = await collateralPoolToken.balanceOf(accounts[0]);
-            const receipt = await collateralPool.selfCloseExit(userTokens, true, "", ZERO_ADDRESS);
-            const gas = calcGasCost(receipt);
-            const natAfter = toBN(await web3.eth.getBalance(accounts[0]));
-            const fAssetAfter = await fAsset.balanceOf(accounts[0]);
-            expectEvent(receipt, "IncompleteSelfCloseExit");
-            // account had been taken one f-asset
-            assertEqualBN(fAssetBefore.sub(fAssetAfter), ETH(1));
-            // user's withdrawal would leave pool's CR at 0, so he was only allowed to withdraw the collateral that
-            // gets pool at exitCR and a bit more that was covered by the 1 redeemed f-asset
-            assertEqualBN(await getPoolCRBIPS(), exitCRBIPS);
-            // burning one f-asset gives user additional (exitCR * priceMul / priceDiv) released nat
-            const { 0: assetPriceMul, 1: assetPriceDiv } = await assetManager.assetPriceNatWei();
-            const natCoveringOneFAsset = ETH(1).mul(assetPriceMul).mul(exitCRBIPS).divn(MAX_BIPS).div(assetPriceDiv);
-            const earnedNat = natAfter.sub(natBefore).add(gas);
-            assertEqualBN(earnedNat, natToGetCRToExitCR.add(natCoveringOneFAsset));
-        });
-
-        // this test describes a problem when agent's max redemption can cause a very unexpected error to a
-        // user that tries to self-close exit with ALL of their collateral. This is a very unlikely scenario though
-        it("should fail at doing an incomplete self-close exit, where agent's max redeemed f-assets reduce user's withdrawal by a microscopic amount", async () => {
-            // mint some f-assets for minter to be able to do redemption
-            await fAsset.mint(accounts[0], ETH(100), { from: assetManager.address });
-            await fAsset.approve(collateralPool.address, ETH(100));
-            // user enters the pool
-            await collateralPool.enter(0, false, { value: ETH(100), from: accounts[0] });
-            // agent should be able to redeem a an amount of f-assets that is just a bit lower than required to
-            const requiredFAssets = await getFAssetRequiredToNotSpoilCR(ETH(100));
-            await assetManager.setMaxRedemptionFromAgent(requiredFAssets.subn(10));
-            // user wants to redeem all tokens, but agent's max redemption forces him to leave a tiny amount of collateral
-            const userTokens = await collateralPoolToken.balanceOf(accounts[0]);
-            const tx = collateralPool.selfCloseExit(userTokens, true, "", ZERO_ADDRESS);
-            await expectRevert(tx, "collateral left after exit is too low and non-zero");
-        });
-
-        it("should simulate a situation where agent's max redemption is lower than required but does not effect the spent collateral", async () => {
-            // make f-asset cheaper than nat (it is required by this test)
-            await assetManager.setAssetPriceNatWei(1, 100);
-            // mint some f-assets for minter to be able to do redemption
-            await fAsset.mint(accounts[0], ETH(100), { from: assetManager.address });
-            await fAsset.approve(collateralPool.address, ETH(100));
-            // user enters the pool
-            await collateralPool.enter(0, false, { value: ETH(100), from: accounts[0] });
-            await collateralPool.enter(0, false, { value: ETH(1), from: accounts[1] });
-            // agent should be able to redeem a an amount of f-assets that is just a bit lower than required to
-            const requiredFAssets = await getFAssetRequiredToNotSpoilCR(ETH(100));
-            await assetManager.setMaxRedemptionFromAgent(requiredFAssets.subn(1));
-            // user can redeem all tokens, as agent's max redemption forces him to leave a tiny amount of collateral
-            const userTokensBefore = await collateralPoolToken.balanceOf(accounts[0]);
-            const totalPoolSupply = await collateralPoolToken.totalSupply();
-            const poolNatBalance = await collateralPool.totalCollateral();
-            const natShare = ETH(100);
-            const resp = await collateralPool.selfCloseExit(userTokensBefore, true, "", ZERO_ADDRESS);
-            const userTokensAfter = await collateralPoolToken.balanceOf(accounts[0]);
-            expectEvent(resp, "IncompleteSelfCloseExit");
-            await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemptionInCollateral");
-            // check that all user's tokens were spent
-            const incompleteSelfCloseExit = eventArgs(resp, "IncompleteSelfCloseExit");
-            const newTokenShare = natShare.mul(totalPoolSupply).div(poolNatBalance);
-            assertEqualBN(incompleteSelfCloseExit.burnedTokensWei, newTokenShare);
-            assertEqualBN(incompleteSelfCloseExit.redeemedFAssetUBA, requiredFAssets.subn(1));
-            assertEqualBN(userTokensAfter, userTokensBefore.sub(incompleteSelfCloseExit.burnedTokensWei));
-            const agentRedemption = requiredEventArgsFrom(resp, assetManager, "AgentRedemptionInCollateral");
-            // @ts-ignore
-            assertEqualBN(agentRedemption._amountUBA, requiredFAssets.subn(1));
+            const promise = collateralPool.selfCloseExit(userTokens, true, "", ZERO_ADDRESS);
+            await expectRevert(promise, "redemption requires closing too many tickets");
         });
 
         it("should self-close exit and collect fees with recipient", async () => {
             // account0 enters the pool
-            await collateralPool.enter(0, true, { value: ETH(10), from: accounts[0] });
+            await collateralPool.enter({ value: ETH(10), from: accounts[0] });
             // collateral pool collects fees
             await givePoolFAssetFees(ETH(10));
             // someone else add some backing
-            await collateralPool.enter(0, false, { value: ETH(3), from: accounts[0] });
+            await collateralPool.enter({ value: ETH(3), from: accounts[0] });
             // account1 exits with fees using MAXIMIZE_FEE_WITHDRAWAL token exit type
             const exitTokens = ETH(10);
             // const receipt = await collateralPool.exitTo(exitTokens, accounts[2], TokenExitType.MAXIMIZE_FEE_WITHDRAWAL, { from: accounts[0] });
+            await collateralPool.withdrawFees(await collateralPool.fAssetFeesOf(accounts[0]), { from: accounts[0] });
+            const holderWithdrawnFAssets = await fAsset.balanceOf(accounts[0]);
+            //
+            await fAsset.approve(collateralPool.address, ETH(10), { from: accounts[0] });
             const receipt = await collateralPool.selfCloseExitTo(exitTokens, true, accounts[2], "underlying_1", ZERO_ADDRESS, { from: accounts[0], value: ETH(1) });
             await expectEvent.inTransaction(receipt.tx, assetManager, "AgentRedemptionInCollateral", { _recipient: accounts[2], _amountUBA: ETH(5) });
             const holderReceivedNat = await calculateReceivedNat(receipt, accounts[0]);
             const receiverReceivedNat = await calculateReceivedNat(receipt, accounts[2]);
-            const holderReceivedFAssets = await fAsset.balanceOf(accounts[0]);
+            const holderFAssetsLeftAfterSelfClose = await fAsset.balanceOf(accounts[0]);
             const receiverReceivedFAssets = await fAsset.balanceOf(accounts[2]);
-            assertEqualBN(holderReceivedNat, ETH(-1));
-            assertEqualBN(receiverReceivedNat, exitTokens.add(ETH(1))); // get back msg.value
-            assertEqualBN(holderReceivedFAssets, BN_ZERO);
-            assertEqualBN(receiverReceivedFAssets, ETH(5));   // half fees get redeemed, so expect half fees to be paid out
+            assertEqualBN(holderReceivedNat, BN_ZERO); // msg.value is returned to sender
+            assertEqualBN(receiverReceivedNat, exitTokens);
+            assertEqualBN(holderWithdrawnFAssets, ETH(10));
+            assertEqualBN(holderFAssetsLeftAfterSelfClose, ETH(5));
+            assertEqualBN(receiverReceivedFAssets, BN_ZERO);   // half fees get redeemed, so expect half fees to be paid out
             // on half of the fees that were paid out transfer fee is paid
         });
 
         it("self-close exit recipient should be valid", async () => {
             // account0 enters the pool
-            await collateralPool.enter(0, true, { value: ETH(10), from: accounts[0] });
+            await collateralPool.enter({ value: ETH(10), from: accounts[0] });
             // collateral pool collects fees
             await givePoolFAssetFees(ETH(10));
             // someone else add some backing
-            await collateralPool.enter(0, false, { value: ETH(3), from: accounts[0] });
+            await collateralPool.enter({ value: ETH(3), from: accounts[0] });
             // account1 exits with fees using MAXIMIZE_FEE_WITHDRAWAL token exit type
             const exitTokens = ETH(10);
             //
@@ -1180,14 +977,14 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
 
         it("should fail at trying to withdraw too many f-asset fees", async () => {
-            await collateralPool.enter(0, true, { value: ETH(10), from: accounts[0] });
+            await collateralPool.enter({ value: ETH(10), from: accounts[0] });
             await fAsset.mint(collateralPool.address, ETH(10), { from: assetManager.address });
             const prms = collateralPool.withdrawFees(ETH(10).add(BN_ONE));
             await expectRevert(prms, "f-asset balance too small");
         });
 
         it("should fail at trying to pay too much f-asset debt", async () => {
-            await expectRevert(collateralPool.payFAssetFeeDebt(BN_ONE), "debt f-asset balance too small");
+            await expectRevert(collateralPool.payFAssetFeeDebt(BN_ONE), "payment larger than fee debt");
         });
 
         it("should fail at trying to pay zero f-asset debt", async () => {
@@ -1197,8 +994,8 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         it("should fail at trying to pay f-asset debt with too low f-asset allowance", async () => {
             await givePoolFAssetFees(ETH(10));
             const natToEnterEmptyPool = await poolFAssetFeeNatValue();
-            await collateralPool.enter(0, false, { value: natToEnterEmptyPool, from: accounts[0] });
-            await collateralPool.enter(0, false, { value: MIN_NAT_TO_ENTER, from: accounts[1] });
+            await collateralPool.enter({ value: natToEnterEmptyPool, from: accounts[0] });
+            await collateralPool.enter({ value: MIN_NAT_TO_ENTER, from: accounts[1] });
             const debt = await collateralPool.fAssetFeeDebtOf(accounts[1]);
             await fAsset.mint(accounts[1], debt, { from: assetManager.address });
             await fAsset.approve(collateralPool.address, debt.sub(BN_ONE), { from: accounts[1] });
@@ -1208,11 +1005,11 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         it("should enter the pool accruing debt, then mint new debt to collect f-asset rewards", async () => {
             // first user enters pool
-            await collateralPool.enter(0, true, { value: ETH(10), from: accounts[0] });
+            await collateralPool.enter({ value: ETH(10), from: accounts[0] });
             // pool gets initial f-asset fees
             await givePoolFAssetFees(ETH(1));
             // second user enters pool
-            await collateralPool.enter(0, false, { value: ETH(10), from: accounts[1] });
+            await collateralPool.enter({ value: ETH(10), from: accounts[1] });
             // pool gets additional f-asset fees
             await givePoolFAssetFees(ETH(1));
             // account1 withdraws his share of fees from the pool
@@ -1231,11 +1028,11 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await fAsset.mint(accounts[1], ETH(10), { from: assetManager.address });
             await fAsset.approve(collateralPool.address, ETH(10), { from: accounts[1] });
             // first user enters pool
-            await collateralPool.enter(0, true, { value: ETH(10) });
+            await collateralPool.enter({ value: ETH(10) });
             // pool gets initial f-asset fees
             await givePoolFAssetFees(ETH(1));
             // second user enters pool
-            await collateralPool.enter(0, false, { value: ETH(10), from: accounts[1] });
+            await collateralPool.enter({ value: ETH(10), from: accounts[1] });
             // accounts[1] pays off the debt
             const debt = await collateralPool.fAssetFeeDebtOf(accounts[1]);
             await collateralPool.payFAssetFeeDebt(debt, { from: accounts[1] });
@@ -1254,18 +1051,20 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         it("should yield no wei profit and at most 1wei loss to multiple people entering and exiting", async () => {
             const fassets = [ETH(10), ETH(100), ETH(1000)];
             const nats = [ETH(10), ETH(10), ETH(100000)];
-            for (let i = 0; i < fassets.length; i++)
+            for (let i = 0; i < fassets.length; i++) {
                 await fAsset.mint(accounts[i], fassets[i], { from: assetManager.address });
+            }
             // get pool above exitCR (by non-included account)
-            await getPoolAboveCR(accounts[10], false, exitCR);
+            await getPoolAboveCR(accounts[10], exitCR);
             // users enter the pool
-            for (let i = 0; i < fassets.length; i++)
-                await collateralPool.enter(0, true, { value: nats[i], from: accounts[i] });
+            for (let i = 0; i < fassets.length; i++) {
+                await collateralPool.enter({ value: nats[i], from: accounts[i] });
+            }
             // users exit the pool (in reverse order)
             for (let i = fassets.length - 1; i >= 0; i--) {
                 const tokens = await collateralPoolToken.balanceOf(accounts[i]);
                 const natBefore = toBN(await web3.eth.getBalance(accounts[i]));
-                const receipt = await collateralPool.exit(tokens, TokenExitType.MINIMIZE_FEE_DEBT, { from: accounts[i] });
+                const receipt = await collateralPool.exit(tokens, { from: accounts[i] });
                 const gas = calcGasCost(receipt);
                 const natAfter = toBN(await web3.eth.getBalance(accounts[i]));
                 assertEqualBNWithError(natAfter, natBefore.sub(gas).add(nats[i]), BN_ONE);
@@ -1282,8 +1081,8 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await fAsset.approve(collateralPool.address, fassetBalanceOfAccount0, { from: accounts[0] });
             await fAsset.approve(collateralPool.address, fassetBalanceOfAccount1, { from: accounts[1] });
             // users enter the pool
-            await collateralPool.enter(0, false, { value: ETH(100), from: accounts[0] });
-            await collateralPool.enter(0, false, { value: ETH(100), from: accounts[1] });
+            await collateralPool.enter({ value: ETH(100), from: accounts[0] });
+            await collateralPool.enter({ value: ETH(100), from: accounts[1] });
             // account1 does self-close exit with all his tokens
             const cr0 = await getPoolCollaterals();
             const tokenShareOfAccount0 = await collateralPoolToken.balanceOf(accounts[0]);
@@ -1312,19 +1111,19 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         it("should show that token value price drop via topup discount does not effect users' free f-assets", async () => {
             // account0 enters the pool
-            await collateralPool.enter(0, true, { value: ETH(20), from: accounts[0] });
+            await collateralPool.enter({ value: ETH(20), from: accounts[0] });
             // pool gets rewards (CR doesn't drop below topupCR)
             await fAsset.mint(collateralPool.address, ETH(10), { from: assetManager.address });
             // account1 enters the pool with ETH(10) f-assets
             await fAsset.mint(accounts[1], ETH(10), { from: assetManager.address });
             await fAsset.approve(collateralPool.address, ETH(10), { from: accounts[1] });
-            await collateralPool.enter(ETH(10), false, { value: ETH(10), from: accounts[1] });
+            await enterAndPayFeeDebt(collateralPool, ETH(10), "full", accounts[1]);
             const account1FreeFassetBefore = await collateralPool.fAssetFeesOf(accounts[1]);
             // a lot of f-assets get minted, dropping pool CR well below topupCR
             await fAsset.mint(accounts[2], ETH(10000), { from: assetManager.address });
             // account2 enters the pool buying up many tokens at topup discount (simulate pool token price drop)
             await fAsset.approve(collateralPool.address, ETH(10000), { from: accounts[2] });
-            await collateralPool.enter(0, true, { value: ETH(1000), from: accounts[2] });
+            await enterAndPayFeeDebt(collateralPool, ETH(1000), 'full', accounts[2]);
             // check how much (free) f-assets does account1 have
             const account1FreeFassetAfter = await collateralPool.fAssetFeesOf(accounts[1]);
             assertEqualBNWithError(account1FreeFassetAfter, account1FreeFassetBefore, BN_ONE);
@@ -1369,7 +1168,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
 
         it("should fail destroying a pool with issued tokens", async () => {
-            await collateralPool.enter(0, false, { value: ETH(1) });
+            await collateralPool.enter({ value: ETH(1) });
             const payload = collateralPool.contract.methods.destroy(agent).encodeABI();
             const prms = assetManager.callFunctionAt(collateralPool.address, payload);
             await expectRevert(prms, "cannot destroy a pool with issued tokens");
@@ -1448,7 +1247,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const distributionToDelegators: DistributionToDelegatorsMockInstance = await DistributionToDelegatorsMock.new(wNat.address);
             await wNat.mintAmount(distributionToDelegators.address, ETH(1));
             const resp = await collateralPool.claimAirdropDistribution(distributionToDelegators.address, 0, { from: agent });
-            await expectEvent.inTransaction(resp.tx, collateralPool, "ClaimedReward", { amountNatWei: ETH(1), rewardType: '0' });
+            await expectEvent.inTransaction(resp.tx, collateralPool, "CPClaimedReward", { amountNatWei: ETH(1), rewardType: '0' });
             const collateralPoolBalance = await wNat.balanceOf(collateralPool.address);
             assertEqualBN(collateralPoolBalance, ETH(1));
         });
@@ -1464,7 +1263,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // nothing was transferred
             assertEqualBN(await wNat.balanceOf(collateralPool.address), toBN(0));
             // event and total collateral should reflect the actually transferred amount
-            await expectEvent.inTransaction(resp.tx, collateralPool, "ClaimedReward", { amountNatWei: "0", rewardType: '0' });
+            await expectEvent.inTransaction(resp.tx, collateralPool, "CPClaimedReward", { amountNatWei: "0", rewardType: '0' });
             assertEqualBN(await collateralPool.totalCollateral(), toBN(0));
         });
 
@@ -1506,7 +1305,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // nothing was transferred
             assertEqualBN(await wNat.balanceOf(collateralPool.address), toBN(0));
             // event and total collateral should reflect the actually transferred amount
-            await expectEvent.inTransaction(resp.tx, collateralPool, "ClaimedReward", { amountNatWei: "0", rewardType: '1' });
+            await expectEvent.inTransaction(resp.tx, collateralPool, "CPClaimedReward", { amountNatWei: "0", rewardType: '1' });
             assertEqualBN(await collateralPool.totalCollateral(), toBN(0));
         });
 

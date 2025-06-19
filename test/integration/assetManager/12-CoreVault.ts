@@ -16,7 +16,6 @@ import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder"
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { MockCoreVaultBot } from "../../../lib/test-utils/actors/MockCoreVaultBot";
 import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
-import { calculateReceivedNat } from "../../../lib/test-utils/eth";
 import { newAssetManager } from "../../../lib/test-utils/fasset/CreateAssetManager";
 import { Challenger } from "../../../lib/test-utils/actors/Challenger";
 
@@ -86,7 +85,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // make agent available
         await agent.depositCollateralLotsAndMakeAvailable(100);
         // minter2 also deposits to pool (so some fasset fees will go to them)
-        await agent.collateralPool.enter(0, false, { from: minterAddress2, value: toWei(3e8) });
+        await agent.collateralPool.enter({ from: minterAddress2, value: toWei(3e8) });
         // mint
         const [minted] = await minter.performMinting(agent.vaultAddress, 10);
         // update time

@@ -22,6 +22,6 @@ contract AgentVaultMock {
     }
 
     function enterPool(IICollateralPool _collateralPool) external payable {
-        _collateralPool.enter{value: msg.value}(0, false);
+        _collateralPool.enter{value: msg.value}();
     }
 }

@@ -1,7 +1,7 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { eventArgs, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { DAYS, deepFormat, MAX_BIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { DAYS, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
@@ -631,7 +631,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const requiredCollateral = await agent.requiredCollateralForLots(10);
             await agent.depositCollateralsAndMakeAvailable(requiredCollateral.vault, requiredCollateral.agentPoolTokens);
             const poolProvider = accounts[15];
-            await agent.collateralPool.enter(0, false, { from: poolProvider, value: requiredCollateral.pool.sub(requiredCollateral.agentPoolTokens) });
+            await agent.collateralPool.enter({ from: poolProvider, value: requiredCollateral.pool.sub(requiredCollateral.agentPoolTokens) });
             // mint
             await minter.performMinting(agent.vaultAddress, 10);
             await minter.transferFAsset(redeemer.address, context.convertLotsToUBA(10));
@@ -662,7 +662,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const requiredCollateral = await agent.requiredCollateralForLots(10);
             await agent.depositCollateralsAndMakeAvailable(requiredCollateral.vault, requiredCollateral.agentPoolTokens);
             const poolProvider = accounts[15];
-            await agent.collateralPool.enter(0, false, { from: poolProvider, value: requiredCollateral.pool.sub(requiredCollateral.agentPoolTokens) });
+            await agent.collateralPool.enter({ from: poolProvider, value: requiredCollateral.pool.sub(requiredCollateral.agentPoolTokens) });
             // mint
             await minter.performMinting(agent.vaultAddress, 10);
             await minter.transferFAsset(redeemer.address, context.convertLotsToUBA(10));

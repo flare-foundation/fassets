@@ -17,4 +17,18 @@ library MathUtils {
     function subOrZero(uint256 _a, uint256 _b) internal pure returns (uint256) {
         return _a > _b ? _a - _b : 0;
     }
+
+    /**
+     * Returns _x if it is positive, otherwise 0.
+     */
+    function positivePart(int256 _x) internal pure returns (uint256) {
+        return _x >= 0 ? uint256(_x) : 0;
+    }
+
+    /**
+     * Returns `_a <= _b`; works correctly when `_b` is any signed value.
+     */
+    function lte(uint256 _a, int256 _b) internal pure returns (bool) {
+        return _b >= 0 && _a <= uint256(_b);
+    }
 }

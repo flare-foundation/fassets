@@ -102,7 +102,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
     async function depositPoolTokens(agentVault: AgentVaultInstance, owner: string, tokens: BN) {
         const pool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
         const poolToken = await CollateralPoolToken.at(await pool.poolToken());
-        await pool.enter(0, false, { value: tokens, from: owner }); // owner will get at least `tokens` of tokens
+        await pool.enter({ value: tokens, from: owner }); // owner will get at least `tokens` of tokens
         await deterministicTimeIncrease(await assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock
         await poolToken.transfer(agentVault.address, tokens, { from: owner });
     }
