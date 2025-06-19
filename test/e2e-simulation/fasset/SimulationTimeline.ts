@@ -3,7 +3,7 @@ import { ClearableSubscription, EventEmitter, EventExecutionQueue, EventHandler,
 import { latestBlockTimestamp, runAsync } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
-import { randomShuffle } from "../../../lib/test-utils/fuzzing-utils";
+import { randomShuffle } from "../../../lib/test-utils/simulation-utils";
 import { ITimer } from "./Timer";
 
 type TimelineEventType = 'FlareTime' | 'UnderlyingBlock' | 'UnderlyingTime';
@@ -63,11 +63,11 @@ export class TriggerList {
     }
 }
 
-class FuzzingTimelineTimerId {
+class SimulationTimelineTimerId {
     subscription?: EventSubscription;
 }
 
-export class FuzzingTimelineTimer implements ITimer<FuzzingTimelineTimerId> {
+export class SimulationTimelineTimer implements ITimer<SimulationTimelineTimerId> {
     constructor(
         private timeline: TriggerList,
         private getCurrentTime: () => Promise<number>,
@@ -77,8 +77,8 @@ export class FuzzingTimelineTimer implements ITimer<FuzzingTimelineTimerId> {
         return this.getCurrentTime();
     }
 
-    after(seconds: number, handler: () => void): FuzzingTimelineTimerId {
-        const timerId = new FuzzingTimelineTimerId();
+    after(seconds: number, handler: () => void): SimulationTimelineTimerId {
+        const timerId = new SimulationTimelineTimerId();
         runAsync(async () => {
             const timestamp = await this.getCurrentTime();
             timerId.subscription = this.timeline.event(timestamp + seconds).subscribe(handler);
@@ -86,8 +86,8 @@ export class FuzzingTimelineTimer implements ITimer<FuzzingTimelineTimerId> {
         return timerId;
     }
 
-    every(seconds: number, handler: () => void): FuzzingTimelineTimerId {
-        const timerId = new FuzzingTimelineTimerId();
+    every(seconds: number, handler: () => void): SimulationTimelineTimerId {
+        const timerId = new SimulationTimelineTimerId();
         runAsync(async () => {
             const timestamp = await this.getCurrentTime();
             let stopTime = timestamp + seconds;
@@ -101,12 +101,12 @@ export class FuzzingTimelineTimer implements ITimer<FuzzingTimelineTimerId> {
         return timerId;
     }
 
-    cancel(timerId: FuzzingTimelineTimerId): void {
+    cancel(timerId: SimulationTimelineTimerId): void {
         timerId.subscription?.unsubscribe();
     }
 }
 
-export class FuzzingTimeline {
+export class SimulationTimeline {
     constructor(
         public chain: MockChain,
         public eventQueue: EventExecutionQueue,
@@ -153,7 +153,7 @@ export class FuzzingTimeline {
     }
 
     flareTimer() {
-        return new FuzzingTimelineTimer(this.flareTimeTriggers, latestBlockTimestamp);
+        return new SimulationTimelineTimer(this.flareTimeTriggers, latestBlockTimestamp);
     }
 
     // Skip `seconds` of time unless a triggger is reached before.

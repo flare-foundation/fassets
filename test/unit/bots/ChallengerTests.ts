@@ -35,7 +35,6 @@ contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit te
 
     let commonContext: CommonContext;
     let context: AssetContext;
-    // let timeline: FuzzingTimeline;
     let chainInfo: TestChainInfo;
     let chain: MockChain;
     let eventDecoder: Web3EventDecoder;
@@ -93,7 +92,6 @@ contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit te
         context.chainEvents.executionQueue = eventQueue;
         truffleEvents = new InterceptorEvmEvents(interceptor, eventQueue);
         chainEvents = context.chainEvents;
-        // timeline = new FuzzingTimeline(chain, eventQueue);
         // state checker
         trackedState = new TrackedState(context, truffleEvents, chainEvents, eventDecoder, eventQueue);
         await trackedState.initialize();

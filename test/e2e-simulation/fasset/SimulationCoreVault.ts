@@ -1,10 +1,10 @@
 import { MockCoreVaultBot } from "../../../lib/test-utils/actors/MockCoreVaultBot";
-import { FuzzingActor } from "./FuzzingActor";
-import { FuzzingRunner } from "./FuzzingRunner";
+import { SimulationActor } from "./SimulationActor";
+import { SimulationRunner } from "./SimulationRunner";
 
-export class FuzzingCoreVault extends FuzzingActor {
+export class SimulationCoreVault extends SimulationActor {
     constructor(
-        runner: FuzzingRunner,
+        runner: SimulationRunner,
         public bot: MockCoreVaultBot,
 
     ) {
@@ -15,11 +15,11 @@ export class FuzzingCoreVault extends FuzzingActor {
     chain = this.context.chain;
     coreVaultManager = this.bot.coreVaultManager;
 
-    static async create(runner: FuzzingRunner, triggerAddress: string) {
+    static async create(runner: SimulationRunner, triggerAddress: string) {
         const bot = new MockCoreVaultBot(runner.context, triggerAddress);
         runner.interceptor.captureEvents({ coreVaultManager: bot.coreVaultManager });
         runner.eventDecoder.addAddress(`CORE_VAULT_TRIGGERING_ACCOUNT`, triggerAddress);
-        return new FuzzingCoreVault(runner, bot);
+        return new SimulationCoreVault(runner, bot);
     }
 
     async triggerAndPerformActions() {

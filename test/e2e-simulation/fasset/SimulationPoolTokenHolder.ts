@@ -1,10 +1,10 @@
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { BN_ZERO, ZERO_ADDRESS, formatBN, toWei } from "../../../lib/utils/helpers";
 import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
-import { AsyncLock, coinFlip, randomBN, randomChoice } from "../../../lib/test-utils/fuzzing-utils";
-import { FuzzingActor } from "./FuzzingActor";
-import { RedemptionPaymentReceiver } from "./FuzzingCustomer";
-import { FuzzingRunner } from "./FuzzingRunner";
+import { AsyncLock, coinFlip, randomBN, randomChoice } from "../../../lib/test-utils/simulation-utils";
+import { SimulationActor } from "./SimulationActor";
+import { RedemptionPaymentReceiver } from "./SimulationCustomer";
+import { SimulationRunner } from "./SimulationRunner";
 
 const MIN_POOL_ENTER_EXIT = toWei(1);
 
@@ -15,9 +15,9 @@ interface PoolInfo {
     poolToken: CollateralPoolTokenInstance;
 }
 
-export class FuzzingPoolTokenHolder extends FuzzingActor {
+export class SimulationPoolTokenHolder extends SimulationActor {
     constructor(
-        public runner: FuzzingRunner,
+        public runner: SimulationRunner,
         public address: string,
         public underlyingAddress: string,
     ) {

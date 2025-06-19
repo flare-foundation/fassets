@@ -16,7 +16,7 @@ import { waitForTimelock } from "../../../lib/test-utils/fasset/CreateAssetManag
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
 
-contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, accounts => {
+contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];

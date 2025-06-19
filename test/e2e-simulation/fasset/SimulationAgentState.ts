@@ -22,8 +22,8 @@ import {
 } from "../../../typechain-truffle/IIAssetManager";
 import { SparseArray } from "../../../lib/test-utils/SparseMatrix";
 import { BalanceTrackingList, BalanceTrackingRow } from "./AgentBalanceTracking";
-import { FuzzingState, FuzzingStateLogRecord } from "./FuzzingState";
-import { FuzzingStateComparator } from "./FuzzingStateComparator";
+import { SimulationState, SimulationStateLogRecord } from "./SimulationState";
+import { SimulationStateComparator } from "./SimulationStateComparator";
 
 export interface CollateralReservation {
     id: number;
@@ -74,16 +74,16 @@ export interface UnderlyingBalanceChange {
 const CollateralPool = artifacts.require("CollateralPool");
 const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 
-export class FuzzingAgentState extends TrackedAgentState {
+export class SimulationAgentState extends TrackedAgentState {
     constructor(
-        parent: FuzzingState,
+        parent: SimulationState,
         data: InitialAgentData,
     ) {
         super(parent, data);
         void this.initializePoolState();    // must be called async
     }
 
-    override parent!: FuzzingState;
+    override parent!: SimulationState;
 
     // collections
     collateralReservations: Map<number, CollateralReservation> = new Map();
@@ -98,7 +98,7 @@ export class FuzzingAgentState extends TrackedAgentState {
     poolFeeDebt = new SparseArray();
 
     // log
-    actionLog: FuzzingStateLogRecord[] = [];
+    actionLog: SimulationStateLogRecord[] = [];
     balanceTrackingList = new BalanceTrackingList();
 
     // getters
@@ -626,7 +626,7 @@ export class FuzzingAgentState extends TrackedAgentState {
 
     // checking
 
-    async checkInvariants(checker: FuzzingStateComparator) {
+    async checkInvariants(checker: SimulationStateComparator) {
         const agentName = this.name();
         // get actual agent state
         // this.parent.logger?.log(`STARTING DIFFERENCE CHECK FOR ${agentName} - GET INFO`);

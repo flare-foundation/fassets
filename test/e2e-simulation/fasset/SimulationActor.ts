@@ -1,10 +1,10 @@
 import { AssetManagerEvents } from "../../../lib/fasset/IAssetContext";
 import { ExtractedEventArgs } from "../../../lib/utils/events/common";
-import { FuzzingRunner } from "./FuzzingRunner";
+import { SimulationRunner } from "./SimulationRunner";
 
-export class FuzzingActor {
+export class SimulationActor {
     constructor(
-        public runner: FuzzingRunner,
+        public runner: SimulationRunner,
     ) { }
 
     context = this.runner.context;

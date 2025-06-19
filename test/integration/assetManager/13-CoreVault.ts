@@ -20,7 +20,7 @@ import { calculateReceivedNat } from "../../../lib/test-utils/eth";
 import { newAssetManager } from "../../../lib/test-utils/fasset/CreateAssetManager";
 import { Challenger } from "../../../lib/test-utils/actors/Challenger";
 
-contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, accounts => {
+contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];

@@ -49,9 +49,9 @@ jobs:
     - name: Compile contracts
       run: yarn run compile
     - name: Run the test
-      run: yarn run fuzzing_fasset
+      run: yarn run fasset_simulation
     - name: Archive fuzzer log
       uses: actions/upload-artifact@v4
       with:
         name: fuzzer-log
-        path: test_logs/fasset-fuzzing.log
+        path: test_logs/fasset-simulation.log

@@ -12,21 +12,21 @@ import { TestChainInfo, testChainInfo } from "../../../lib/test-utils/actors/Tes
 import { Web3EventDecoder } from "../../../lib/test-utils/Web3EventDecoder";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { InclusionIterable, coinFlip, currentRealTime, getEnv, randomChoice, randomInt, randomNum, range, weightedRandomChoice } from "../../../lib/test-utils/fuzzing-utils";
+import { InclusionIterable, coinFlip, currentRealTime, getEnv, randomChoice, randomInt, randomNum, range, weightedRandomChoice } from "../../../lib/test-utils/simulation-utils";
 import { getTestFile } from "../../../lib/test-utils/test-helpers";
-import { FuzzingAgent } from "./FuzzingAgent";
-import { FuzzingCoreVault } from "./FuzzingCoreVault";
-import { FuzzingCustomer } from "./FuzzingCustomer";
-import { FuzzingKeeper } from "./FuzzingKeeper";
-import { FuzzingPoolTokenHolder } from "./FuzzingPoolTokenHolder";
-import { FuzzingRunner } from "./FuzzingRunner";
-import { FuzzingState } from "./FuzzingState";
-import { FuzzingTimeline } from "./FuzzingTimeline";
+import { SimulationAgent } from "./SimulationAgent";
+import { SimulationCoreVault } from "./SimulationCoreVault";
+import { SimulationCustomer } from "./SimulationCustomer";
+import { SimulationKeeper } from "./SimulationKeeper";
+import { SimulationPoolTokenHolder } from "./SimulationPoolTokenHolder";
+import { SimulationRunner } from "./SimulationRunner";
+import { SimulationState } from "./SimulationState";
+import { SimulationTimeline } from "./SimulationTimeline";
 import { InterceptorEvmEvents } from "./InterceptorEvmEvents";
 import { MultiStateLock } from "./MultiStateLock";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
 
-contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
+contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulation tests`, accounts => {
     const startTimestamp = systemTimestamp();
     const governance = accounts[1];
 
@@ -48,13 +48,13 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
 
     let commonContext: CommonContext;
     let context: AssetContext;
-    let timeline: FuzzingTimeline;
-    const agents: FuzzingAgent[] = [];
-    const customers: FuzzingCustomer[] = [];
-    const keepers: FuzzingKeeper[] = [];
-    const poolTokenHolders: FuzzingPoolTokenHolder[] = [];
+    let timeline: SimulationTimeline;
+    const agents: SimulationAgent[] = [];
+    const customers: SimulationCustomer[] = [];
+    const keepers: SimulationKeeper[] = [];
+    const poolTokenHolders: SimulationPoolTokenHolder[] = [];
     let challenger: Challenger;
-    let coreVault: FuzzingCoreVault;
+    let coreVault: SimulationCoreVault;
     let chainInfo: TestChainInfo;
     let chain: MockChain;
     let eventDecoder: Web3EventDecoder;
@@ -63,9 +63,9 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let truffleEvents: InterceptorEvmEvents;
     let eventQueue: EventExecutionQueue;
     let chainEvents: UnderlyingChainEvents;
-    let fuzzingState: FuzzingState;
+    let simulationState: SimulationState;
     let logger: LogFile;
-    let runner: FuzzingRunner;
+    let runner: SimulationRunner;
     let checkedInvariants = false;
 
     before(async () => {
@@ -94,38 +94,38 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         context.chainEvents.executionQueue = eventQueue;
         truffleEvents = new InterceptorEvmEvents(interceptor, eventQueue);
         chainEvents = context.chainEvents;
-        timeline = new FuzzingTimeline(chain, eventQueue);
+        timeline = new SimulationTimeline(chain, eventQueue);
         // state checker
-        fuzzingState = new FuzzingState(context, truffleEvents, chainEvents, eventDecoder, eventQueue);
-        fuzzingState.deleteDestroyedAgents = false;
-        await fuzzingState.initialize();
+        simulationState = new SimulationState(context, truffleEvents, chainEvents, eventDecoder, eventQueue);
+        simulationState.deleteDestroyedAgents = false;
+        await simulationState.initialize();
         // runner
-        runner = new FuzzingRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, fuzzingState, AVOID_ERRORS);
+        runner = new SimulationRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, simulationState, AVOID_ERRORS);
         // logging
-        logger = new LogFile("test_logs/fasset-fuzzing.log");
+        logger = new LogFile("test_logs/fasset-simulation.log");
         interceptor.logger = logger;
         chain.logger = logger;
         timeline.logger = logger;
         (context.flareDataConnectorClient as MockFlareDataConnectorClient).logger = logger;
-        fuzzingState.logger = logger;
+        simulationState.logger = logger;
     });
 
     after(async () => {
-        // fuzzingState.logAllAgentActions();
+        // simulationState.logAllAgentActions();
         if (!checkedInvariants) {
             await checkInvariants(false).catch(e => {});
         }
-        fuzzingState.logProblemTotals();
-        fuzzingState.logAllAgentSummaries();
-        fuzzingState.logAllPoolSummaries();
-        fuzzingState.logExpectationFailures();
+        simulationState.logProblemTotals();
+        simulationState.logAllAgentSummaries();
+        simulationState.logAllPoolSummaries();
+        simulationState.logExpectationFailures();
         interceptor.logGasUsage();
         logger.close();
-        fuzzingState.withLogFile("test_logs/fasset-fuzzing-actions.log", () => fuzzingState.logAllAgentActions());
-        fuzzingState.writeBalanceTrackingList("test_logs/agents-csv");
+        simulationState.withLogFile("test_logs/fasset-simulation-actions.log", () => simulationState.logAllAgentActions());
+        simulationState.writeBalanceTrackingList("test_logs/agents-csv");
     });
 
-    it("f-asset fuzzing test", async () => {
+    it("f-asset simulation test", async () => {
         // create agents
         const firstAgentAddress = 10;
         const settingThreads: number[] = [];
@@ -140,13 +140,13 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             await Agent.changeWorkAddress(context, ownerManagementAddress, ownerWorkAddress);
             const options = createAgentVaultOptions();
             const ownerAddress = coinFlip() ? ownerWorkAddress : ownerManagementAddress;
-            const fuzzingAgent = await FuzzingAgent.createTest(runner, ownerAddress, underlyingAddress, ownerUnderlyingAddress, options);
+            const simulationAgent = await SimulationAgent.createTest(runner, ownerAddress, underlyingAddress, ownerUnderlyingAddress, options);
             settingThreads.push(
-                runner.startThread(scope => fuzzingAgent.changeSetting(scope, "redemptionPoolFeeShareBIPS", options.redemptionPoolFeeShareBIPS))
+                runner.startThread(scope => simulationAgent.changeSetting(scope, "redemptionPoolFeeShareBIPS", options.redemptionPoolFeeShareBIPS))
             );
-            fuzzingAgent.capturePerAgentContractEvents(`AGENT_${i}`);
-            await fuzzingAgent.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));
-            agents.push(fuzzingAgent);
+            simulationAgent.capturePerAgentContractEvents(`AGENT_${i}`);
+            await simulationAgent.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));
+            agents.push(simulationAgent);
         }
         runner.comment(`Waiting for setting threads to finish`);
         await runner.waitForThreadsToFinish(settingThreads, 1000, true);
@@ -155,7 +155,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         const firstCustomerAddress = firstAgentAddress + 3 * N_AGENTS;
         for (let i = 0; i < N_CUSTOMERS; i++) {
             const underlyingAddress = "underlying_customer_" + i;
-            const customer = await FuzzingCustomer.createTest(runner, accounts[firstCustomerAddress + i], underlyingAddress, CUSTOMER_BALANCE);
+            const customer = await SimulationCustomer.createTest(runner, accounts[firstCustomerAddress + i], underlyingAddress, CUSTOMER_BALANCE);
             chain.mint(underlyingAddress, 1_000_000);
             customers.push(customer);
             eventDecoder.addAddress(`CUSTOMER_${i}`, customer.address);
@@ -166,21 +166,21 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         runner.comment(`Initializing ${N_KEEPERS} system keepers / liquidators`);
         const firstKeeperAddress = firstCustomerAddress + N_CUSTOMERS;
         for (let i = 0; i < N_KEEPERS; i++) {
-            const keeper = new FuzzingKeeper(runner, accounts[firstKeeperAddress + i]);
+            const keeper = new SimulationKeeper(runner, accounts[firstKeeperAddress + i]);
             keepers.push(keeper);
             eventDecoder.addAddress(`KEEPER_${i}`, keeper.address);
         }
         // create challenger
         runner.comment(`Initializing challenger`);
         const challengerAddress = accounts[firstKeeperAddress + N_KEEPERS];
-        challenger = new Challenger(runner, fuzzingState, challengerAddress);
+        challenger = new Challenger(runner, simulationState, challengerAddress);
         eventDecoder.addAddress(`CHALLENGER`, challenger.address);
         // create pool token holders
         runner.comment(`Initializing ${N_POOL_TOKEN_HOLDERS} pool token holders`);
         const firstPoolTokenHolderAddress = firstKeeperAddress + N_KEEPERS + 1;
         for (let i = 0; i < N_POOL_TOKEN_HOLDERS; i++) {
             const underlyingAddress = "underlying_pool_token_holder_" + i;
-            const tokenHolder = new FuzzingPoolTokenHolder(runner, accounts[firstPoolTokenHolderAddress + i], underlyingAddress);
+            const tokenHolder = new SimulationPoolTokenHolder(runner, accounts[firstPoolTokenHolderAddress + i], underlyingAddress);
             poolTokenHolders.push(tokenHolder);
             eventDecoder.addAddress(`POOL_TOKEN_HOLDER_${i}`, tokenHolder.address);
         }
@@ -192,7 +192,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             triggeringAccounts: [coreVaultTriggeringAccountAddress],
         });
         await context.coreVaultManager!.addAllowedDestinationAddresses(agents.map(agent => agent.agent.underlyingAddress), { from: governance });
-        coreVault = await FuzzingCoreVault.create(runner, coreVaultTriggeringAccountAddress);
+        coreVault = await SimulationCoreVault.create(runner, coreVaultTriggeringAccountAddress);
         // await context.wnat.send("1000", { from: governance });
         await interceptor.allHandled();
         // init some state
@@ -292,7 +292,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         }
         checkedInvariants = true;
         await checkInvariants(true);  // all events are flushed, state must match
-        assert.isTrue(fuzzingState.failedExpectations.length === 0, "fuzzing state has expectation failures");
+        assert.isTrue(simulationState.failedExpectations.length === 0, "simulation state has expectation failures");
     });
 
     function createAgentVaultOptions(): AgentCreateOptions & { redemptionPoolFeeShareBIPS: BN } {
@@ -363,7 +363,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     }
 
     async function testDoublePayment() {
-        const agentsWithRedemptions = agents.filter(agent => (fuzzingState.agents.get(agent.agent.vaultAddress)?.redemptionRequests?.size ?? 0) > 0);
+        const agentsWithRedemptions = agents.filter(agent => (simulationState.agents.get(agent.agent.vaultAddress)?.redemptionRequests?.size ?? 0) > 0);
         if (agentsWithRedemptions.length === 0) return;
         const agent = randomChoice(agentsWithRedemptions);
         runner.startThread((scope) => agent.makeDoublePayment(scope));
@@ -400,7 +400,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     }
 
     async function testChangeLotSize(index: number) {
-        const lotSizeAMG = toBN(fuzzingState.settings.lotSizeAMG);
+        const lotSizeAMG = toBN(simulationState.settings.lotSizeAMG);
         const factor = CHANGE_LOT_SIZE_FACTOR.length > 0 ? CHANGE_LOT_SIZE_FACTOR[index % CHANGE_LOT_SIZE_FACTOR.length] : randomNum(0.5, 2);
         const newLotSizeAMG = mulDecimal(lotSizeAMG, factor);
         interceptor.comment(`Changing lot size by factor ${factor}, old=${formatBN(lotSizeAMG)}, new=${formatBN(newLotSizeAMG)}`);
@@ -427,7 +427,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
 
     async function checkInvariants(failOnProblems: boolean) {
         await runnerLock.runLocked("check", async () => {
-            await fuzzingState.checkInvariants(failOnProblems);
+            await simulationState.checkInvariants(failOnProblems);
         });
     }
 });

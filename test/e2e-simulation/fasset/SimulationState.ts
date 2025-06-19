@@ -9,15 +9,15 @@ import { EvmEvent } from "../../../lib/utils/events/common";
 import { sumBN, toBN, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { LogFile } from "../../../lib/utils/logging";
 import { SparseArray } from "../../../lib/test-utils/SparseMatrix";
-import { FuzzingAgentState } from "./FuzzingAgentState";
-import { FuzzingStateComparator } from "./FuzzingStateComparator";
+import { SimulationAgentState } from "./SimulationAgentState";
+import { SimulationStateComparator } from "./SimulationStateComparator";
 
-export type FuzzingStateLogRecord = {
+export type SimulationStateLogRecord = {
     text: string;
     event: EvmEvent | string;
 };
 
-export class FuzzingState extends TrackedState {
+export class SimulationState extends TrackedState {
     constructor(
         context: IAssetContext,
         truffleEvents: IEvmEvents,
@@ -32,12 +32,12 @@ export class FuzzingState extends TrackedState {
     fAssetBalance = new SparseArray();
 
     // override agent state type (initialized in AssetState)
-    override agents!: Map<string, FuzzingAgentState>;
-    override agentsByUnderlying!: Map<string, FuzzingAgentState>;
-    override agentsByPool!: Map<string, FuzzingAgentState>;
+    override agents!: Map<string, SimulationAgentState>;
+    override agentsByUnderlying!: Map<string, SimulationAgentState>;
+    override agentsByPool!: Map<string, SimulationAgentState>;
 
     // logs
-    failedExpectations: FuzzingStateLogRecord[] = [];
+    failedExpectations: SimulationStateLogRecord[] = [];
 
     override registerHandlers() {
         super.registerHandlers();
@@ -64,12 +64,12 @@ export class FuzzingState extends TrackedState {
     }
 
     // override with correct state
-    override getAgent(address: string): FuzzingAgentState | undefined {
+    override getAgent(address: string): SimulationAgentState | undefined {
         return this.agents.get(address);
     }
 
     protected override newAgent(data: InitialAgentData) {
-        return new FuzzingAgentState(this, data);
+        return new SimulationAgentState(this, data);
     }
 
     totalChecks = 0;
@@ -77,7 +77,7 @@ export class FuzzingState extends TrackedState {
     totalProblems = 0;
 
     async checkInvariants(failOnProblems: boolean) {
-        const checker = new FuzzingStateComparator();
+        const checker = new SimulationStateComparator();
         // total supply
         const fAssetSupply = await this.context.fAsset.totalSupply();
         checker.checkEquality('fAsset supply', fAssetSupply, this.totalFAssetSupply(), { logOn: 'always' });

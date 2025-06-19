@@ -2,7 +2,7 @@ import { network } from "hardhat";
 import { TransactionReceipt } from "web3-core";
 import { Web3EventDecoder } from "../../../lib/test-utils/Web3EventDecoder";
 import { EvmEvent } from "../../../lib/utils/events/common";
-import { currentRealTime, Statistics, truffleResultAsJson } from "../../../lib/test-utils/fuzzing-utils";
+import { currentRealTime, Statistics, truffleResultAsJson } from "../../../lib/test-utils/simulation-utils";
 import { filterStackTrace, getOrCreate, reportError, sorted, sum, tryCatch } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
 import { MultiStateLock } from "./MultiStateLock";

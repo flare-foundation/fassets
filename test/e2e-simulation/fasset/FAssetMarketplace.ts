@@ -1,6 +1,6 @@
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { BN_ZERO } from "../../../lib/utils/helpers";
-import { randomShuffled } from "../../../lib/test-utils/fuzzing-utils";
+import { randomShuffled } from "../../../lib/test-utils/simulation-utils";
 
 export interface FAssetSeller {
     buyFAssetsFrom(scope: EventScope, receiverAddress: string, amount: BN): Promise<BN>;

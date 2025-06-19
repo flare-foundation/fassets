@@ -16,7 +16,7 @@ import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { calculateReceivedNat } from "../../../lib/test-utils/eth";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 
-contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations - transfer fees`, accounts => {
+contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests - transfer fees`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];

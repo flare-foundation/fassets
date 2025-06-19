@@ -10,13 +10,13 @@ import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
 import { Agent, AgentCreateOptions } from "../../../lib/test-utils/actors/Agent";
 import { SparseArray } from "../../../lib/test-utils/SparseMatrix";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
-import { coinFlip, randomBN, randomChoice, randomInt } from "../../../lib/test-utils/fuzzing-utils";
-import { FuzzingActor } from "./FuzzingActor";
-import { FuzzingRunner } from "./FuzzingRunner";
+import { coinFlip, randomBN, randomChoice, randomInt } from "../../../lib/test-utils/simulation-utils";
+import { SimulationActor } from "./SimulationActor";
+import { SimulationRunner } from "./SimulationRunner";
 
-export class FuzzingAgent extends FuzzingActor {
+export class SimulationAgent extends SimulationActor {
     constructor(
-        public runner: FuzzingRunner,
+        public runner: SimulationRunner,
         public agent: Agent,
         public ownerManagementAddress: string,
         public ownerUnderlyingAddress: string,
@@ -43,9 +43,9 @@ export class FuzzingAgent extends FuzzingActor {
         return this.state.getAgent(address) ?? assert.fail(`Invalid agent address ${address}`);
     }
 
-    static async createTest(runner: FuzzingRunner, ownerAddress: string, underlyingAddress: string, ownerUnderlyingAddress: string, options?: AgentCreateOptions) {
+    static async createTest(runner: SimulationRunner, ownerAddress: string, underlyingAddress: string, ownerUnderlyingAddress: string, options?: AgentCreateOptions) {
         const agent = await Agent.createTest(runner.context, ownerAddress, underlyingAddress, options);
-        return new FuzzingAgent(runner, agent, agent.ownerManagementAddress, ownerUnderlyingAddress, options ?? {});
+        return new SimulationAgent(runner, agent, agent.ownerManagementAddress, ownerUnderlyingAddress, options ?? {});
     }
 
     unaccountedSpentFreeBalance = new SparseArray();

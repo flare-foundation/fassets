@@ -2,7 +2,7 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { BN_ZERO, maxBN, toBN, WEEKS } from "../../../../lib/utils/helpers";
 import { TransferFeeTrackingMockInstance } from "../../../../typechain-truffle";
 import { deterministicTimeIncrease, getTestFile } from "../../../../lib/test-utils/test-helpers";
-import { coinFlip, randomBN, randomChoice } from "../../../../lib/test-utils/fuzzing-utils";
+import { coinFlip, randomBN, randomChoice } from "../../../../lib/test-utils/simulation-utils";
 import { SparseArray } from "../../../../lib/test-utils/SparseMatrix";
 import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { expectRevert } from "@openzeppelin/test-helpers";

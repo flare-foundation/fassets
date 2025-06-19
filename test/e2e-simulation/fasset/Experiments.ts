@@ -2,7 +2,7 @@ import { time } from "@openzeppelin/test-helpers";
 import { network } from "hardhat";
 import { Future, formatBN, sleep, toBN, toBNExp, toStringExp } from "../../../lib/utils/helpers";
 import { WNatInstance } from "../../../typechain-truffle";
-import { currentRealTime, elapsedTime } from "../../../lib/test-utils/fuzzing-utils";
+import { currentRealTime, elapsedTime } from "../../../lib/test-utils/simulation-utils";
 import { deterministicTimeIncrease, getTestFile } from "../../../lib/test-utils/test-helpers";
 import { setDefaultVPContract } from "../../../lib/test-utils/token-test-helpers";
 

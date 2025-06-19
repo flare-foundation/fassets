@@ -2,13 +2,13 @@ import { time } from "@openzeppelin/test-helpers";
 import { EvmEventArgs } from "../../../lib/utils/events/IEvmEvents";
 import { expectErrors } from "../../../lib/utils/helpers";
 import { MintingExecuted, SelfMint } from "../../../typechain-truffle/IIAssetManager";
-import { FuzzingActor } from "./FuzzingActor";
-import { FuzzingRunner } from "./FuzzingRunner";
-import { FuzzingAgentState } from "./FuzzingAgentState";
+import { SimulationActor } from "./SimulationActor";
+import { SimulationRunner } from "./SimulationRunner";
+import { SimulationAgentState } from "./SimulationAgentState";
 
-export class FuzzingKeeper extends FuzzingActor {
+export class SimulationKeeper extends SimulationActor {
     constructor(
-        public runner: FuzzingRunner,
+        public runner: SimulationRunner,
         public address: string,
     ) {
         super(runner);
@@ -46,7 +46,7 @@ export class FuzzingKeeper extends FuzzingActor {
         })
     }
 
-    private async checkAgentForLiquidation(agent: FuzzingAgentState) {
+    private async checkAgentForLiquidation(agent: SimulationAgentState) {
         const timestamp = await time.latest();
         const newStatus = agent.possibleLiquidationTransition(timestamp);
         if (newStatus > agent.status) {

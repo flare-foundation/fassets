@@ -7,23 +7,23 @@ import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
-import { foreachAsyncParallel, randomChoice, randomInt } from "../../../lib/test-utils/fuzzing-utils";
+import { foreachAsyncParallel, randomChoice, randomInt } from "../../../lib/test-utils/simulation-utils";
 import { FAssetSeller } from "./FAssetMarketplace";
-import { FuzzingActor } from "./FuzzingActor";
-import { FuzzingRunner } from "./FuzzingRunner";
+import { SimulationActor } from "./SimulationActor";
+import { SimulationRunner } from "./SimulationRunner";
 
 // debug state
 let mintedLots = 0;
 
-export class RedemptionPaymentReceiver extends FuzzingActor {
+export class RedemptionPaymentReceiver extends SimulationActor {
     constructor(
-        runner: FuzzingRunner,
+        runner: SimulationRunner,
         public redeemer: Redeemer,
     ) {
         super(runner);
     }
 
-    static create(runner: FuzzingRunner, address: string, underlyingAddress: string) {
+    static create(runner: SimulationRunner, address: string, underlyingAddress: string) {
         const redeemer = new Redeemer(runner.context, address, underlyingAddress);
         return new RedemptionPaymentReceiver(runner, redeemer);
     }
@@ -85,12 +85,12 @@ export class RedemptionPaymentReceiver extends FuzzingActor {
     }
 }
 
-export class FuzzingCustomer extends FuzzingActor implements FAssetSeller {
+export class SimulationCustomer extends SimulationActor implements FAssetSeller {
     minter: Minter;
     redeemer: Redeemer;
 
     constructor(
-        runner: FuzzingRunner,
+        runner: SimulationRunner,
         public address: string,
         public underlyingAddress: string,
         public wallet: IBlockChainWallet,
@@ -100,12 +100,12 @@ export class FuzzingCustomer extends FuzzingActor implements FAssetSeller {
         this.redeemer = new Redeemer(runner.context, address, underlyingAddress);
     }
 
-    static async createTest(runner: FuzzingRunner, address: string, underlyingAddress: string, underlyingBalance: BN) {
+    static async createTest(runner: SimulationRunner, address: string, underlyingAddress: string, underlyingBalance: BN) {
         const chain = runner.context.chain;
         if (!(chain instanceof MockChain)) assert.fail("only for mock chains");
         chain.mint(underlyingAddress, underlyingBalance);
         const wallet = new MockChainWallet(chain);
-        return new FuzzingCustomer(runner, address, underlyingAddress, wallet);
+        return new SimulationCustomer(runner, address, underlyingAddress, wallet);
     }
 
     get name() {

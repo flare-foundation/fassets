@@ -10,7 +10,7 @@ type CheckNumericOptions = {
 };
 const NO_OPTIONS: CheckNumericOptions = {};
 
-export class FuzzingStateComparator {
+export class SimulationStateComparator {
     logger = new MemoryLog();
     problems: number = 0;
 

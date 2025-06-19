@@ -9,21 +9,21 @@ import { sleep } from "../../../lib/utils/helpers";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { Web3EventDecoder } from "../../../lib/test-utils/Web3EventDecoder";
 import { FAssetMarketplace } from "./FAssetMarketplace";
-import { FuzzingAgent } from "./FuzzingAgent";
-import { FuzzingCustomer } from "./FuzzingCustomer";
-import { FuzzingState } from "./FuzzingState";
-import { FuzzingTimeline } from "./FuzzingTimeline";
+import { SimulationAgent } from "./SimulationAgent";
+import { SimulationCustomer } from "./SimulationCustomer";
+import { SimulationState } from "./SimulationState";
+import { SimulationTimeline } from "./SimulationTimeline";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
 
-export class FuzzingRunner extends ScopedRunner {
+export class SimulationRunner extends ScopedRunner {
     constructor(
         public context: AssetContext,
         public eventDecoder: Web3EventDecoder,
         public interceptor: TruffleTransactionInterceptor,
-        public timeline: FuzzingTimeline,
+        public timeline: SimulationTimeline,
         public truffleEvents: IEvmEvents,
         public chainEvents: UnderlyingChainEvents,
-        public state: FuzzingState,
+        public state: SimulationState,
         public avoidErrors: boolean,
     ) {
         super();
@@ -32,8 +32,8 @@ export class FuzzingRunner extends ScopedRunner {
 
     waitingToFinish: boolean = false;
 
-    agents: FuzzingAgent[] = [];
-    customers: FuzzingCustomer[] = [];
+    agents: SimulationAgent[] = [];
+    customers: SimulationCustomer[] = [];
     availableAgents: AvailableAgentInfo[] = [];
     fAssetMarketplace = new FAssetMarketplace();
 
