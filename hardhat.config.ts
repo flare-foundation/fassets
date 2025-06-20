@@ -4,7 +4,7 @@ import "@nomicfoundation/hardhat-verify";
 import "@nomiclabs/hardhat-truffle5";
 import "@nomiclabs/hardhat-web3";
 import fs from "fs";
-import glob from "glob";
+import { globSync } from "glob";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
 import { TASK_COMPILE, TASK_TEST_GET_TEST_FILES } from 'hardhat/builtin-tasks/task-names';
@@ -13,6 +13,8 @@ import { HardhatNetworkAccountUserConfig } from "hardhat/types";
 import path from "path";
 import 'solidity-coverage';
 import "./type-extensions";
+// Importing standalone simple library to surpass warnings in mock contracts and in mock contract imports
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-require-imports
 const intercept = require('intercept-stdout');
 
 // more complex tasks
@@ -26,14 +28,15 @@ task(TASK_TEST_GET_TEST_FILES, async ({ testFiles }: { testFiles: string[] }, { 
         const testPath = path.relative(cwd, config.paths.tests).replace(/\\/g, '/');    // glob doesn't work with windows paths
         testFiles = [testPath + '/**/*.{js,ts}'];
     }
-    return testFiles.flatMap(pattern => glob.sync(pattern))
+    return testFiles.flatMap(pattern => globSync(pattern))
         .map(fname => path.resolve(cwd, fname));
 });
 
 // Override solc compile task and filter out useless warnings
 task(TASK_COMPILE)
     .setAction(async (args, hre, runSuper) => {
-        intercept((text: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        intercept((text: string) => {
             if (/MockContract.sol/.test(text) && text.match(/Warning: SPDX license identifier not provided in source file/)) return '';
             if (/MockContract.sol/.test(text) &&
                 /Warning: This contract has a payable fallback function, but no receive ether function/.test(text)) return '';
@@ -43,6 +46,7 @@ task(TASK_COMPILE)
                 /Warning: Visibility for constructor is ignored./.test(text)) return '';
             if (/ReentrancyGuard.sol/.test(text) &&
                 /Warning: Visibility for constructor is ignored/.test(text)) return '';
+            if (/\/mock\//i.test(text) && /Warning:/.test(text) ) return ''; // ignore warnings for mock contracts
             return text;
         });
         await runSuper(args);
@@ -51,7 +55,7 @@ task(TASK_COMPILE)
 function readAccounts(network: string) {
     const deployerPK = process.env[networkDeployerPrivateKeyName(network)];
     const deployerAccounts: HardhatNetworkAccountUserConfig[] = deployerPK ? [{ privateKey: deployerPK, balance: "100000000000000000000000000000000" }] : [];
-    let testAccounts: HardhatNetworkAccountUserConfig[] = JSON.parse(fs.readFileSync('test/test-1020-accounts.json').toString());
+    let testAccounts: HardhatNetworkAccountUserConfig[] = JSON.parse(fs.readFileSync('test/test-1020-accounts.json').toString()) as HardhatNetworkAccountUserConfig[];
     if (process.env.TENDERLY === 'true') {
         testAccounts = testAccounts.slice(0, 100);
     }

@@ -3,7 +3,7 @@ import { Artifact, HardhatRuntimeEnvironment } from 'hardhat/types';
 import { Contract, loadContractsList, saveContractsList } from './contracts';
 import { readDeployedCode } from './deploy-utils';
 
-export async function linkContracts(hre: HardhatRuntimeEnvironment, contracts: string[], mapfile: string | null) {
+export async function linkContracts(hre: HardhatRuntimeEnvironment, contracts: string[], mapfile: string | undefined) {
     const web3 = hre.web3;
 
     const accounts = await web3.eth.getAccounts();
