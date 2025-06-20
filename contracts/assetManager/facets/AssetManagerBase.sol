@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {IWhitelist} from "../../userInterfaces/IWhitelist.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";

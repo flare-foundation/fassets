@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {IAgentPing} from "../../userInterfaces/IAgentPing.sol";
 import {Agents} from "../library/Agents.sol";

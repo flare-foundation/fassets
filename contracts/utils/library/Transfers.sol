@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {Reentrancy} from "../../openzeppelin/library/Reentrancy.sol";

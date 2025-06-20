@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {AgentSettingsUpdater} from "../library/AgentSettingsUpdater.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";

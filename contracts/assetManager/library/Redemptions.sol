@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {Transfers} from "../../utils/library/Transfers.sol";

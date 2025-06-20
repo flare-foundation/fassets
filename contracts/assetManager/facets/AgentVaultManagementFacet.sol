@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
 import {AgentsCreateDestroy} from "../library/AgentsCreateDestroy.sol";

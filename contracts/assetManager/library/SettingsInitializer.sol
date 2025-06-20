@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {Globals} from "./Globals.sol";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {AgentsExternal} from "../library/AgentsExternal.sol";
 import {AgentsCreateDestroy} from "../library/AgentsCreateDestroy.sol";

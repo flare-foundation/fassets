@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {IIFAsset} from "../../fassetToken/interfaces/IIFAsset.sol";
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {IICoreVaultManager} from "../../coreVaultManager/interfaces/IICoreVaultManager.sol";
 import {MathUtils} from "../../utils/library/MathUtils.sol";

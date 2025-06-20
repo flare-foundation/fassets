@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {RedemptionQueue} from "./RedemptionQueue.sol";
 import {PaymentConfirmations} from "./PaymentConfirmations.sol";

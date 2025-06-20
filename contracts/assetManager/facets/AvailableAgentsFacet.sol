@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {AvailableAgents} from "../library/AvailableAgents.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
