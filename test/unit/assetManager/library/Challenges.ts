@@ -4,7 +4,7 @@ import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
-import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/MockChain";
@@ -21,7 +21,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
     let contracts: TestSettingsContracts;
     let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
-    let wNat: WNatInstance;
+    let wNat: WNatMockInstance;
     let usdc: ERC20MockInstance;
     let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];

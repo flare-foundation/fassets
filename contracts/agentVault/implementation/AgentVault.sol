@@ -123,10 +123,6 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         _token.undelegateAll();
     }
 
-    function revokeDelegationAt(IVPToken _token, address _who, uint256 _blockNumber) external override onlyOwner {
-        _token.revokeDelegationAt(_who, _blockNumber);
-    }
-
     function delegateGovernance(IVPToken _token, address _to) external override onlyOwner {
         _token.governanceVotePower().delegate(_to);
     }

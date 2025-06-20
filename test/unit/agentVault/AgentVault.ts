@@ -2,7 +2,7 @@ import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { erc165InterfaceId, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
-import { AgentVaultInstance, AssetManagerMockInstance, CollateralPoolInstance, CollateralPoolTokenInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, IIAssetManagerControllerInstance, IIAssetManagerInstance, WNatInstance } from "../../../typechain-truffle";
+import { AgentVaultInstance, AssetManagerMockInstance, CollateralPoolInstance, CollateralPoolTokenInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, IIAssetManagerControllerInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../typechain-truffle";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager, newAssetManagerController } from "../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
@@ -25,7 +25,7 @@ const RewardManager = artifacts.require("RewardManagerMock");
 
 contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, accounts => {
     let contracts: TestSettingsContracts;
-    let wNat: WNatInstance;
+    let wNat: WNatMockInstance;
     let stablecoins: Record<string, ERC20MockInstance>;
     let usdc: ERC20MockInstance;
     let assetManagerController: IIAssetManagerControllerInstance;
@@ -252,22 +252,6 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
     it("cannot undelegate if not owner", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const res = agentVault.undelegateAll(wNat.address, { from: accounts[2] });
-        await expectRevert(res, "only owner")
-    });
-
-    it("should revoke delegation", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        await agentVault.delegate(wNat.address, accounts[2], 50, { from: owner });
-        const blockNumber = await web3.eth.getBlockNumber();
-        await agentVault.revokeDelegationAt(wNat.address, accounts[2], blockNumber, { from: owner });
-        const votePower = await wNat.votePowerOfAt(accounts[2], blockNumber);
-        assertWeb3Equal(votePower.toNumber(), 0);
-    });
-
-    it("cannot revoke delegation if not owner", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        const blockNumber = await web3.eth.getBlockNumber();
-        const res = agentVault.revokeDelegationAt(wNat.address, accounts[2], blockNumber, { from: accounts[2] });
         await expectRevert(res, "only owner")
     });
 

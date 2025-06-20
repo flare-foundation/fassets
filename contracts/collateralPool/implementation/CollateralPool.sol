@@ -891,10 +891,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         wNat.undelegateAll();
     }
 
-    function revokeDelegationAt(address _who, uint256 _blockNumber) external onlyAgent {
-        wNat.revokeDelegationAt(_who, _blockNumber);
-    }
-
     function delegateGovernance(address _to) external onlyAgent {
         wNat.governanceVotePower().delegate(_to);
     }

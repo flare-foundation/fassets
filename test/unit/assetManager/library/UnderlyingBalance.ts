@@ -4,7 +4,7 @@ import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
 import { randomAddress } from "../../../../lib/utils/helpers";
-import { ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
+import { ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { precomputeContractAddress } from "../../../../lib/test-utils/contract-test-helpers";
 import { AssetManagerInitSettings, newAssetManager } from "../../../../lib/test-utils/fasset/CreateAssetManager";
@@ -20,7 +20,7 @@ contract(`UnderlyingBalance.sol; ${getTestFile(__filename)};  UnderlyingBalance 
     let contracts: TestSettingsContracts;
     let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
-    let wNat: WNatInstance;
+    let wNat: WNatMockInstance;
     let usdc: ERC20MockInstance;
     let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];

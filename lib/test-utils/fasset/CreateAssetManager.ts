@@ -4,7 +4,7 @@ import { DiamondCut, FacetCutAction } from "../../utils/diamond";
 import { findEvent } from "../../utils/events/truffle";
 import { abiEncodeCall, BNish, contractMetadata, ZERO_ADDRESS } from "../../utils/helpers";
 import { web3DeepNormalize } from "../../utils/web3normalize";
-import { AssetManagerInitInstance, FAssetInstance, GovernanceSettingsInstance, IDiamondLoupeInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
+import { AssetManagerInitInstance, FAssetInstance, GovernanceSettingsMockInstance, IDiamondLoupeInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
 import { GovernanceCallTimelocked } from "../../../typechain-truffle/AssetManagerController";
 
 export interface AssetManagerInitSettings extends AssetManagerSettings {
@@ -44,7 +44,7 @@ export async function newAssetManager(
     assetName = name,
     assetSymbol = symbol,
     options?: {
-        governanceSettings?: string | GovernanceSettingsInstance,
+        governanceSettings?: string | GovernanceSettingsMockInstance,
         updateExecutor?: string,
         coreVaultCustodian?: string,
     }
@@ -88,7 +88,7 @@ export async function newAssetManager(
     return [assetManager, fAsset];
 }
 
-export async function newAssetManagerDiamond(diamondCuts: DiamondCut[], assetManagerInit: AssetManagerInitInstance, governanceSettings: string | GovernanceSettingsInstance,
+export async function newAssetManagerDiamond(diamondCuts: DiamondCut[], assetManagerInit: AssetManagerInitInstance, governanceSettings: string | GovernanceSettingsMockInstance,
     governanceAddress: string, assetManagerSettings: AssetManagerSettings, collateralTokens: CollateralType[])
 {
     const governanceSettingsAddress = typeof governanceSettings === 'string' ? governanceSettings : governanceSettings.address;

@@ -1,5 +1,5 @@
 import { toBN, toStringExp } from "../../../../lib/utils/helpers";
-import { ConversionMockContract, ConversionMockInstance } from "../../../../typechain-truffle/ConversionMock";
+import { ConversionMockContract, ConversionMockInstance } from "../../../../typechain-truffle";
 import { getTestFile } from "../../../../lib/test-utils/test-helpers";
 
 const Conversion = artifacts.require("ConversionMock");

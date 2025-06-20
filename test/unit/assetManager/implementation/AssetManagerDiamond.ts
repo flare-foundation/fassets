@@ -3,7 +3,7 @@ import { CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { DiamondCut, DiamondSelectors, FacetCutAction } from "../../../../lib/utils/diamond";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { executeTimelockedGovernanceCall } from "../../../../lib/test-utils/contract-test-helpers";
 import { AssetManagerInitSettings, deployAssetManagerFacets, newAssetManager } from "../../../../lib/test-utils/fasset/CreateAssetManager";
@@ -22,7 +22,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond te
     let diamondCuts: DiamondCut[];
     let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
-    let wNat: WNatInstance;
+    let wNat: WNatMockInstance;
     let usdc: ERC20MockInstance;
     let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];

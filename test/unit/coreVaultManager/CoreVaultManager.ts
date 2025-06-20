@@ -1,9 +1,9 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import {
-  AddressUpdaterInstance,
+  AddressUpdaterMockInstance,
   CoreVaultManagerInstance,
   CoreVaultManagerProxyInstance,
-  GovernanceSettingsInstance,
+  GovernanceSettingsMockInstance,
   MockContractInstance,
 } from "../../../typechain-truffle";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../lib/test-utils/constants";
@@ -16,17 +16,17 @@ import { ZERO_BYTES_32 } from "@flarenetwork/state-connector-protocol";
 
 const CoreVaultManager = artifacts.require("CoreVaultManager");
 const CoreVaultManagerProxy = artifacts.require("CoreVaultManagerProxy");
-const GovernanceSettings = artifacts.require("GovernanceSettings");
-const AddressUpdater = artifacts.require("AddressUpdater");
+const GovernanceSettings = artifacts.require("GovernanceSettingsMock");
+const AddressUpdater = artifacts.require("AddressUpdaterMock");
 const MockContract = artifacts.require("MockContract");
 
 contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager unit tests`, (accounts) => {
     let coreVaultManager: CoreVaultManagerInstance;
     let coreVaultManagerProxy: CoreVaultManagerProxyInstance;
     let coreVaultManagerImplementation: CoreVaultManagerInstance;
-    let addressUpdater: AddressUpdaterInstance;
+    let addressUpdater: AddressUpdaterMockInstance;
     let fdcVerification: MockContractInstance;
-    let governanceSettings: GovernanceSettingsInstance;
+    let governanceSettings: GovernanceSettingsMockInstance;
     const governance = accounts[1000];
     const assetManager = accounts[101];
     const chainId = web3.utils.keccak256("123");
@@ -42,7 +42,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         from: GENESIS_GOVERNANCE_ADDRESS,
       });
       // create address updater
-      addressUpdater = await AddressUpdater.new(governance); // don't switch to production
+      addressUpdater = await AddressUpdater.new(governanceSettings.address, governance); // don't switch to production
       // create core vault manager
       coreVaultManagerImplementation = await CoreVaultManager.new();
       coreVaultManagerProxy = await CoreVaultManagerProxy.new(

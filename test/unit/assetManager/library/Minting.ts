@@ -7,7 +7,7 @@ import { TX_BLOCKED, TX_FAILED } from "../../../../lib/underlying-chain/interfac
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BNish, MAX_BIPS, toBIPS, toBN, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
-import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/IIAssetManager";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { precomputeContractAddress } from "../../../../lib/test-utils/contract-test-helpers";
@@ -25,7 +25,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
     let contracts: TestSettingsContracts;
     let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
-    let wNat: WNatInstance;
+    let wNat: WNatMockInstance;
     let usdc: ERC20MockInstance;
     let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];

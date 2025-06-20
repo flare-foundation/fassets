@@ -5,7 +5,7 @@ import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelp
 import { findRequiredEvent } from "../../../lib/utils/events/truffle";
 import { erc165InterfaceId, toBNExp, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
-import { AgentOwnerRegistryInstance, AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance, WNatInstance, WhitelistInstance } from "../../../typechain-truffle";
+import { AgentOwnerRegistryInstance, AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance, WNatMockInstance, WhitelistInstance } from "../../../typechain-truffle";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, waitForTimelock } from "../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
@@ -24,7 +24,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
     let contracts: TestSettingsContracts;
     let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
-    let wNat: WNatInstance;
+    let wNat: WNatMockInstance;
     let usdc: ERC20MockInstance;
     let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];

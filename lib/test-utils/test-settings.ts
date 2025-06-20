@@ -7,17 +7,17 @@ import { findRequiredEvent } from "../utils/events/truffle";
 import { BNish, DAYS, HOURS, MAX_BIPS, MINUTES, requireNotNull, toBIPS, toBNExp, WEEKS, ZERO_ADDRESS } from "../utils/helpers";
 import { web3DeepNormalize } from "../utils/web3normalize";
 import {
-    AddressUpdaterInstance,
+    AddressUpdaterMockInstance,
     AgentOwnerRegistryInstance,
     AgentVaultFactoryInstance,
     CollateralPoolFactoryInstance,
     CollateralPoolTokenFactoryInstance,
     ERC20MockInstance,
-    GovernanceSettingsInstance,
+    GovernanceSettingsMockInstance,
     IIAssetManagerInstance,
     IPriceReaderInstance,
     IWhitelistInstance,
-    WNatInstance,
+    WNatMockInstance,
     IFdcVerificationInstance,
     RelayMockInstance,
     FdcHubMockInstance,
@@ -28,16 +28,15 @@ import { testChainInfo, TestChainInfo } from "./actors/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";
 import { AssetManagerInitSettings, waitForTimelock } from "./fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "./fasset/MockChain";
-import { setDefaultVPContract } from "./token-test-helpers";
 
 const AgentVault = artifacts.require("AgentVault");
-const WNat = artifacts.require("WNat");
-const AddressUpdater = artifacts.require('AddressUpdater');
+const WNat = artifacts.require("WNatMock");
+const AddressUpdater = artifacts.require('AddressUpdaterMock');
 const FdcVerification = artifacts.require('FdcVerificationMock');
 const FtsoV2PriceStoreMock = artifacts.require('FtsoV2PriceStoreMock');
 const FdcHub = artifacts.require('FdcHubMock');
 const Relay = artifacts.require('RelayMock');
-const GovernanceSettings = artifacts.require('GovernanceSettings');
+const GovernanceSettings = artifacts.require('GovernanceSettingsMock');
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const ERC20Mock = artifacts.require("ERC20Mock");
 const CollateralPool = artifacts.require("CollateralPool");
@@ -49,8 +48,8 @@ const CoreVaultManager = artifacts.require('CoreVaultManager');
 const CoreVaultManagerProxy = artifacts.require('CoreVaultManagerProxy');
 
 export interface TestSettingsCommonContracts {
-    governanceSettings: GovernanceSettingsInstance;
-    addressUpdater: AddressUpdaterInstance;
+    governanceSettings: GovernanceSettingsMockInstance;
+    addressUpdater: AddressUpdaterMockInstance;
     agentVaultFactory: AgentVaultFactoryInstance;
     collateralPoolFactory: CollateralPoolFactoryInstance;
     collateralPoolTokenFactory: CollateralPoolTokenFactoryInstance;
@@ -60,7 +59,7 @@ export interface TestSettingsCommonContracts {
     priceReader: IPriceReaderInstance,
     whitelist?: IWhitelistInstance;
     agentOwnerRegistry: AgentOwnerRegistryInstance;
-    wNat: WNatInstance,
+    wNat: WNatMockInstance,
     stablecoins: Record<string, ERC20MockInstance>,
 }
 
@@ -225,7 +224,7 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     const governanceSettings = await GovernanceSettings.new();
     await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
     // create address updater
-    const addressUpdater = await AddressUpdater.new(governance);  // don't switch to production
+    const addressUpdater = await AddressUpdater.new(governanceSettings.address, governance);  // don't switch to production
     // create FdcHub
     const fdcHub = await FdcHub.new();
     // create Relay
@@ -234,7 +233,6 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     const fdcVerification = await FdcVerification.new(relay.address, 200);
     // create WNat token
     const wNat = await WNat.new(governance, "NetworkNative", "NAT");
-    await setDefaultVPContract(wNat, governance);
     // create stablecoins
     const stablecoins = {
         USDC: await ERC20Mock.new("USDCoin", "USDC"),
@@ -268,7 +266,7 @@ export async function createTestContracts(governance: string): Promise<TestSetti
         priceStore, priceReader: priceStore, agentOwnerRegistry, wNat, stablecoins };
 }
 
-export async function createCoreVaultManager(assetManager: IIAssetManagerInstance, addressUpdater: AddressUpdaterInstance, settings: CoreVaultManagerInitSettings) {
+export async function createCoreVaultManager(assetManager: IIAssetManagerInstance, addressUpdater: AddressUpdaterMockInstance, settings: CoreVaultManagerInitSettings) {
     const coreVaultManagerImpl = await CoreVaultManager.new();
     const assetManagerSettings = await assetManager.getSettings();
     const governanceSettings = await assetManager.governanceSettings();
@@ -282,7 +280,7 @@ export async function createCoreVaultManager(assetManager: IIAssetManagerInstanc
     return coreVaultManager;
 }
 
-export async function assignCoreVaultManager(assetManager: IIAssetManagerInstance, addressUpdater: AddressUpdaterInstance, settings: CoreVaultManagerInitSettings)
+export async function assignCoreVaultManager(assetManager: IIAssetManagerInstance, addressUpdater: AddressUpdaterMockInstance, settings: CoreVaultManagerInitSettings)
 {
     const governance = await assetManager.governance();
     const coreVaultManager = await createCoreVaultManager(assetManager, addressUpdater, settings);

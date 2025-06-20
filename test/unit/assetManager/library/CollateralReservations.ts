@@ -5,7 +5,7 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BNish, toBN, toWei, ZERO_ADDRESS, ZERO_BYTES32 } from "../../../../lib/utils/helpers";
-import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/IIAssetManager";
 import { TestChainInfo, testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../../lib/test-utils/fasset/CreateAssetManager";
@@ -23,7 +23,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     let contracts: TestSettingsContracts;
     let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
-    let wNat: WNatInstance;
+    let wNat: WNatMockInstance;
     let usdc: ERC20MockInstance;
     let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];

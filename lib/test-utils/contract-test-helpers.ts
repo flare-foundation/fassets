@@ -6,8 +6,8 @@ import { AllEvents as IGovernedEvents } from "../../typechain-truffle/IGoverned"
 import { Web3EventDecoder } from "./Web3EventDecoder";
 
 const SuicidalMock = artifacts.require("SuicidalMock");
-const GovernanceSettings = artifacts.require("GovernanceSettings");
-const GovernedBase = artifacts.require("contracts/governance/implementation/GovernedBase.sol:GovernedBase" as "GovernedBase");
+const GovernanceSettings = artifacts.require("GovernanceSettingsMock");
+const GovernedBase = artifacts.require("GovernedBase");
 
 export function precomputeContractAddress(deployer: string, nonce: number) {
     const rlpEnc = '0x' + rlp.encode([deployer, nonce]).toString('hex');

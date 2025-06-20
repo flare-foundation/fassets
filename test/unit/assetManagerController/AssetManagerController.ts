@@ -3,7 +3,7 @@ import { AssetManagerSettings, CollateralType } from "../../../lib/fasset/AssetM
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, latestBlockTimestamp, randomAddress, toBIPS, toBN, toStringExp } from "../../../lib/utils/helpers";
-import { AddressUpdatableInstance, ERC20MockInstance, FAssetInstance, GovernanceSettingsInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance, TestUUPSProxyImplInstance, WNatInstance, WhitelistInstance } from "../../../typechain-truffle";
+import { AddressUpdatableInstance, ERC20MockInstance, FAssetInstance, GovernanceSettingsMockInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance, TestUUPSProxyImplInstance, WNatMockInstance, WhitelistInstance } from "../../../typechain-truffle";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, waitForTimelock } from "../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
@@ -13,7 +13,7 @@ import { TestSettingsContracts, createTestAgent, createTestCollaterals, createTe
 import { assertWeb3Equal, web3ResultStruct } from "../../../lib/test-utils/web3assertions";
 import { getStorageAt } from "@nomicfoundation/hardhat-network-helpers";
 
-const AddressUpdater = artifacts.require('AddressUpdater');
+const AddressUpdater = artifacts.require('AddressUpdaterMock');
 const Whitelist = artifacts.require('Whitelist');
 const AddressUpdatableMock = artifacts.require('AddressUpdatableMock');
 
@@ -24,7 +24,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
     let contracts: TestSettingsContracts;
     let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
-    let wNat: WNatInstance;
+    let wNat: WNatMockInstance;
     let usdc: ERC20MockInstance;
     let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];
@@ -34,7 +34,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
     let attestationProvider: AttestationHelper;
     let whitelist: WhitelistInstance;
     let addressUpdatableMock : AddressUpdatableInstance;
-    let governanceSettings: GovernanceSettingsInstance;
+    let governanceSettings: GovernanceSettingsMockInstance;
 
     async function initialize() {
         const ci = testChainInfo.eth;
@@ -660,7 +660,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("should change contracts by direct updateContracts call - zero contract value forbidden", async () => {
             let addressUpdater = contracts.addressUpdater;
             for (let zi = 0; zi < 3; zi++) {
-                const newAddressUpdater = await AddressUpdater.new(governance);
+                const newAddressUpdater = await AddressUpdater.new(governanceSettings.address, governance);
                 await addressUpdater.addOrUpdateContractNamesAndAddresses(["AddressUpdater", "AssetManagerController", "WNat"],
                     [newAddressUpdater.address, assetManagerController.address, contracts.wNat.address], { from: governance });
                 await assetManagerController.updateContracts([assetManager.address], { from: governance });

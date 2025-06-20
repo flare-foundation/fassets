@@ -33,7 +33,7 @@ contract(`AuditV3Diamond.ts; ${getTestFile(__filename)}; FAsset diamond design a
         const iDiamondCut = await IDiamondCut.at(assetManagerDiamondCutFacetAddr);
         const iGovernedBase = await AssetManagerInit.at(assetManagerDiamondCutFacetAddr);
         // Deploy fake governance settings
-        const FakeGovernanceSettings = artifacts.require("GovernanceSettings");
+        const FakeGovernanceSettings = artifacts.require("GovernanceSettingsMock");
         const fakeGovSettings = await FakeGovernanceSettings.new();
         // Deploy a suicidal contract (will be used in a delegated context)
         const SuicidalContract = artifacts.require("SuicidalMock");
@@ -63,14 +63,14 @@ contract(`AuditV3Diamond.ts; ${getTestFile(__filename)}; FAsset diamond design a
         // For this test, an extended interface for GovernedBase was coded
         // It extends IGoverned with the initialise() function
         const IDiamondCut = artifacts.require("IDiamondCut");
-        const IGovernedBase = artifacts.require("contracts/governance/implementation/GovernedBase.sol:GovernedBase" as "GovernedBase");
+        const IGovernedBase = artifacts.require("GovernedBase");
         // diamondCuts is an array of facets, the first one is the AssetManagerDiamondCutFacet
         const assetManagerDiamondCutFacetAddr = await context.assetManager.facetAddress('0x1f931c1c');
         // The AssetManagerDiamondCutFacet implements both IDiamondCut and IGovernedBase
         const iDiamondCut = await IDiamondCut.at(assetManagerDiamondCutFacetAddr);
         const iGovernedBase = await IGovernedBase.at(assetManagerDiamondCutFacetAddr);
         // Deploy fake governance settings
-        const FakeGovernanceSettings = artifacts.require("GovernanceSettings");
+        const FakeGovernanceSettings = artifacts.require("GovernanceSettingsMock");
         const fakeGovSettings = await FakeGovernanceSettings.new();
         // Deploy a suicidal contract (will be used in a delegated context)
         const SuicidalContract = artifacts.require("SuicidalMock");

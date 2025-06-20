@@ -7,14 +7,13 @@ import {
 import { ContractWithEvents } from "../../utils/events/truffle";
 import { ZERO_ADDRESS } from "../../utils/helpers";
 import {
-    AddressUpdaterInstance, AgentVaultFactoryInstance, CollateralPoolFactoryInstance,
+    AddressUpdaterMockInstance, AgentVaultFactoryInstance, CollateralPoolFactoryInstance,
     CollateralPoolTokenFactoryInstance, ERC20MockInstance, FdcHubMockInstance, FdcVerificationMockInstance,
-    FtsoV2PriceStoreMockInstance, GovernanceSettingsInstance,
-    IIAssetManagerControllerInstance, IPriceReaderInstance, RelayMockInstance, WNatInstance
+    FtsoV2PriceStoreMockInstance, GovernanceSettingsMockInstance,
+    IIAssetManagerControllerInstance, IPriceReaderInstance, RelayMockInstance, WNatMockInstance
 } from "../../../typechain-truffle";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../constants";
 import { newAssetManagerController } from "../fasset/CreateAssetManager";
-import { setDefaultVPContract } from "../token-test-helpers";
 import { testChainInfo, TestNatInfo, testNatInfo } from "./TestChainInfo";
 import { createMockFtsoV2PriceStore } from "../test-settings";
 
@@ -25,12 +24,12 @@ const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
 const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
 const FdcVerification = artifacts.require('FdcVerificationMock');
-const AddressUpdater = artifacts.require('AddressUpdater');
-const WNat = artifacts.require('WNat');
+const AddressUpdater = artifacts.require('AddressUpdaterMock');
+const WNat = artifacts.require('WNatMock');
 const ERC20Mock = artifacts.require("ERC20Mock");
 const Relay = artifacts.require('RelayMock');
 const FdcHub = artifacts.require('FdcHubMock');
-const GovernanceSettings = artifacts.require('GovernanceSettings');
+const GovernanceSettings = artifacts.require('GovernanceSettingsMock');
 
 // common context shared between several asset managers
 
@@ -39,8 +38,8 @@ export class CommonContext {
 
     constructor(
         public governance: string,
-        public governanceSettings: GovernanceSettingsInstance,
-        public addressUpdater: ContractWithEvents<AddressUpdaterInstance, AddressUpdaterEvents>,
+        public governanceSettings: GovernanceSettingsMockInstance,
+        public addressUpdater: ContractWithEvents<AddressUpdaterMockInstance, AddressUpdaterEvents>,
         public assetManagerController: ContractWithEvents<IIAssetManagerControllerInstance, IIAssetManagerControllerEvents>,
         public relay: ContractWithEvents<RelayMockInstance, RelayEvents>,
         public fdcHub: ContractWithEvents<FdcHubMockInstance, FdcHubEvents>,
@@ -51,7 +50,7 @@ export class CommonContext {
         public priceReader: ContractWithEvents<IPriceReaderInstance, PriceReaderEvents>,
         public priceStore: ContractWithEvents<FtsoV2PriceStoreMockInstance, FtsoV2PriceStoreEvents>,
         public natInfo: TestNatInfo,
-        public wNat: ContractWithEvents<WNatInstance, WNatEvents>,
+        public wNat: ContractWithEvents<WNatMockInstance, WNatEvents>,
         public stablecoins: Record<string, ContractWithEvents<ERC20MockInstance, ERC20Events>>,
     ) { }
 
@@ -66,10 +65,9 @@ export class CommonContext {
         // create attestation client
         const fdcVerification = await FdcVerification.new(relay.address, 200);
         // create address updater
-        const addressUpdater = await AddressUpdater.new(governance); // don't switch to production
+        const addressUpdater = await AddressUpdater.new(governanceSettings.address, governance); // don't switch to production
         // create WNat token
         const wNat = await WNat.new(governance, testNatInfo.name, testNatInfo.symbol);
-        await setDefaultVPContract(wNat, governance);
         // create stablecoins
         const stablecoins = {
             USDC: await ERC20Mock.new("USDCoin", "USDC"),

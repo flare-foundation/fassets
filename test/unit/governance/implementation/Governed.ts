@@ -1,4 +1,4 @@
-import { GovernanceSettingsInstance, GovernedMockInstance } from "../../../../typechain-truffle";
+import { GovernanceSettingsMockInstance, GovernedMockInstance } from "../../../../typechain-truffle";
 
 import { expectEvent, expectRevert } from '@openzeppelin/test-helpers';
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../../lib/test-utils/constants";
@@ -6,7 +6,7 @@ import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/tes
 import { ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 
 const Governed = artifacts.require("GovernedMock");
-const GovernanceSettings = artifacts.require("GovernanceSettings");
+const GovernanceSettings = artifacts.require("GovernanceSettingsMock");
 
 const ALREADY_INIT_MSG = "initialised != false";
 const ONLY_GOVERNANCE_MSG = "only governance";
@@ -19,7 +19,7 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, accoun
 
     // contains a fresh contract for each test
     let governed: GovernedMockInstance;
-    let governanceSettings: GovernanceSettingsInstance;
+    let governanceSettings: GovernanceSettingsMockInstance;
 
     async function initialize() {
         governanceSettings = await GovernanceSettings.new();

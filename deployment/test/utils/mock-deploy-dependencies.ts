@@ -1,13 +1,12 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { testDeployGovernanceSettings } from "../../../lib/test-utils/contract-test-helpers";
 import { FAssetContractStore } from "../../lib/contracts";
-import { loadDeployAccounts, requiredEnvironmentVariable } from "../../lib/deploy-utils";
+import { loadDeployAccounts } from "../../lib/deploy-utils";
 
-const AddressUpdater = artifacts.require('AddressUpdater');
+const AddressUpdaterMock = artifacts.require('AddressUpdaterMock');
 const RelayMock = artifacts.require('RelayMock');
 const FdcHubMock = artifacts.require('FdcHubMock');
-const WNat = artifacts.require('WNat');
-const VPContract = artifacts.require('VPContract');
+const WNatMock = artifacts.require('WNatMock');
 const FdcVerification = artifacts.require('FdcVerificationMock');
 
 export async function mockDeployDependencies(hre: HardhatRuntimeEnvironment, contractsFile: string) {
@@ -20,7 +19,7 @@ export async function mockDeployDependencies(hre: HardhatRuntimeEnvironment, con
     const governanceSettings = await testDeployGovernanceSettings(governance, 1, [governance, deployer]);
 
     // AddressUpdater
-    const addressUpdater = await AddressUpdater.new(deployer);
+    const addressUpdater = await AddressUpdaterMock.new(governanceSettings.address, deployer);
     await addressUpdater.addOrUpdateContractNamesAndAddresses(["AddressUpdater"], [addressUpdater.address], { from: deployer });
     await addressUpdater.addOrUpdateContractNamesAndAddresses(["GovernanceSettings"], [governanceSettings.address], { from: deployer });
 
@@ -37,10 +36,7 @@ export async function mockDeployDependencies(hre: HardhatRuntimeEnvironment, con
     await addressUpdater.addOrUpdateContractNamesAndAddresses(["FdcVerification"], [fdcVerification.address], { from: deployer });
 
     // WNat
-    const wNat = await WNat.new(deployer, "Wrapped Native", "WNAT");
-    const vpContract = await VPContract.new(wNat.address, false);
-    await wNat.setWriteVpContract(vpContract.address, { from: deployer });
-    await wNat.setReadVpContract(vpContract.address, { from: deployer });
+    const wNat = await WNatMock.new(deployer, "Wrapped Native", "WNAT");
     await addressUpdater.addOrUpdateContractNamesAndAddresses(["WNat"], [wNat.address], { from: deployer });
 
     // create contracts
@@ -52,11 +48,6 @@ export async function mockDeployDependencies(hre: HardhatRuntimeEnvironment, con
     contracts.add('FdcVerification', 'FdcVerificationMock.sol', fdcVerification.address);
     contracts.add('WNat', 'WNat.sol', wNat.address);
 
-    // console.log('FTSO indices:', (await ftsoRegistry.getSupportedIndices()).map(Number));
-    // console.log('FTSO symbols:', await ftsoRegistry.getSupportedSymbols());
-    // console.log('FTSOs:', await ftsoRegistry.getSupportedFtsos());
-
     // switch to production
     await addressUpdater.switchToProductionMode();
-    await wNat.switchToProductionMode();
 }

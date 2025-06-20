@@ -6,7 +6,7 @@ import { waitForTimelock } from "../../../lib/test-utils/fasset/CreateAssetManag
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-helpers";
 
 const Whitelist = artifacts.require('Whitelist');
-const GovernanceSettings = artifacts.require('GovernanceSettings');
+const GovernanceSettings = artifacts.require('GovernanceSettingsMock');
 
 contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, accounts => {
     let whitelist: WhitelistInstance;

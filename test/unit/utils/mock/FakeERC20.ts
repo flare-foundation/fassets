@@ -7,7 +7,7 @@ import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { waitForTimelock } from "../../../../lib/test-utils/fasset/CreateAssetManager";
 
 const FakeERC20 = artifacts.require('FakeERC20');
-const GovernanceSettings = artifacts.require('GovernanceSettings');
+const GovernanceSettings = artifacts.require('GovernanceSettingsMock');
 
 contract(`FakeERC20.sol; ${getTestFile(__filename)}; FakeERC20 basic tests`, accounts => {
     let coin: FakeERC20Instance;

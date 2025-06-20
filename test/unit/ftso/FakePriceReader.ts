@@ -3,7 +3,6 @@ import { erc165InterfaceId } from "../../../lib/utils/helpers";
 import { FakePriceReaderInstance } from "../../../typechain-truffle";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
-import { Web3EventDecoder } from "../../../lib/test-utils/Web3EventDecoder";
 
 const FakePriceReader = artifacts.require('FakePriceReader');
 
@@ -89,17 +88,9 @@ contract(`FakePriceReader.sol; ${getTestFile(__filename)}; FakePriceReader basic
             await expectRevert(pr4, "price not initialized");
         });
 
-        it("should emit PriceEpochFinalized event", async () => {
+        it("should emit PricesPublished event", async () => {
             const res = await priceReader.finalizePrices({ from: provider });
-            expectEvent(res, 'PriceEpochFinalized');
-        });
-
-        it("PriceEpochFinalized event in price reader should have the same signature as the one in FtsoManager", async () => {
-            const res = await priceReader.finalizePrices({ from: provider });
-            const IFtsoManager = artifacts.require('IFtsoManager');
-            const fakeFtsoManager = await IFtsoManager.at(priceReader.address);
-            const decoder = new Web3EventDecoder({ fakeFtsoManager });
-            assert.isTrue(decoder.decodeEvents(res).find(ev => ev.event === 'PriceEpochFinalized') != null, "cannot find correct event signature");
+            expectEvent(res, 'PricesPublished');
         });
     });
 

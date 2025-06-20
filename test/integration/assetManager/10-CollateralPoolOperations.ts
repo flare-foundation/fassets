@@ -543,13 +543,6 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assertWeb3Equal(delegations1._bips[0], 6000);
         const votePower1 = await context.wNat.votePowerOf(accounts[2]);
         assertWeb3Equal(votePower1, fullAgentVaultCollateral.muln(6_000).divn(10_000));
-        // undelegate at block
-        const blockNumber = await web3.eth.getBlockNumber();
-        await agent.collateralPool.revokeDelegationAt(accounts[2], blockNumber, { from: agentOwner1 });
-        const votePower2 = await context.wNat.votePowerOfAt(accounts[2], blockNumber);
-        assertWeb3Equal(votePower2, 0);
-        const votePower3 = await context.wNat.votePowerOfAt(accounts[3], blockNumber);
-        assertWeb3Equal(votePower3, fullAgentVaultCollateral.muln(4_000).divn(10_000));
         // undelegate
         await agent.collateralPool.undelegateAll({ from: agentOwner1 });
         const delegations2 = await context.wNat.delegatesOf(agent.collateralPool.address) as any;

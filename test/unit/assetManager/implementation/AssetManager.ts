@@ -6,7 +6,7 @@ import { DiamondCut } from "../../../../lib/utils/diamond";
 import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, WEEKS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, latestBlockTimestamp, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
-import { AgentVaultInstance, AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { assertApproximatelyEqual } from "../../../../lib/test-utils/approximation";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../../lib/test-utils/constants";
@@ -18,7 +18,7 @@ import { TestSettingsContracts, createTestAgentSettings, createTestCollaterals, 
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../../lib/test-utils/web3assertions";
 
 const Whitelist = artifacts.require('Whitelist');
-const GovernanceSettings = artifacts.require('GovernanceSettings');
+const GovernanceSettings = artifacts.require('GovernanceSettingsMock');
 const AgentVault = artifacts.require('AgentVault');
 const CollateralPool = artifacts.require('CollateralPool');
 const CollateralPoolToken = artifacts.require('CollateralPoolToken');
@@ -44,7 +44,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let diamondCuts: DiamondCut[];
     let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
-    let wNat: WNatInstance;
+    let wNat: WNatMockInstance;
     let usdc: ERC20MockInstance;
     let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];

@@ -15,8 +15,7 @@
   },
   "files": [
     "artifacts",
-    "contracts",
-    "flattened"
+    "contracts"
   ],
   "scripts": {
     "---------TEST---SCRIPTS": "",
@@ -32,19 +31,15 @@
     "---------COMPILE---SCRIPTS": "",
     "clean": "env rm -rf cache artifacts build build-info typechain typechain-truffle",
     "clean-all": "yarn clean && env rm -rf node_modules",
-    "compile": "yarn hardhat compile && yarn typechain-prepare && yarn typechain-truffle-v5 && yarn typechain-after",
+    "compile": "yarn hardhat compile && yarn typechain-truffle-v5",
     "c": "yarn compile && yarn lint",
     "lint": "yarn solhint \"contracts/**/*.sol\"",
-    "typechain-prepare": "env bash scripts/remove-flattened-duplicates.sh",
-    "typechain-truffle-v5": "yarn typechain --target=truffle-v5 --out-dir typechain-truffle \"artifacts/!(build-info|flattened)/**/+([a-zA-Z0-9_]).json\"",
-    "typechain-after": "env rm -rf artifacts/flare-sc",
+    "typechain-truffle-v5": "yarn typechain --target=truffle-v5 --out-dir typechain-truffle \"artifacts/!(build-info)/**/+([a-zA-Z0-9_]).json\"",
     "size": "yarn run hardhat size-contracts",
     "flatten": "yarn hardhat flatten",
     "install-slither": "which slither > /dev/null || PIP_BREAK_SYSTEM_PACKAGES=1 pip3 install slither-analyzer",
     "slither": "yarn install-slither; rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json 2> /dev/null || true; node scripts/slither-parse.js ./slither.json",
     "slither-show-stderr": "yarn install-slither; rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json || true; node scripts/slither-parse.js ./slither.json",
-    "flatten-flare-sc": "yarn flatten-dependencies ../flare-smart-contracts scripts/flatten-files.txt flattened/FlareSmartContracts.sol scripts/flatten-extra-imports.txt flare-distribution-to-delegators",
-    "flatten-dependencies": "env bash scripts/flatten-dependencies.sh",
     "ts-compile-watch": "tsc --watch --noEmit",
     "eslint": "eslint \"{lib,test,deployment,scripts}/**/*.ts\" \"./*.ts\"",
     "generate-json-schema": "typescript-json-schema --noExtraProps --required --strictNullChecks",

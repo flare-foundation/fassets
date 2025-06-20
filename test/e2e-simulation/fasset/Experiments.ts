@@ -1,12 +1,11 @@
 import { time } from "@openzeppelin/test-helpers";
 import { network } from "hardhat";
 import { Future, formatBN, sleep, toBN, toBNExp, toStringExp } from "../../../lib/utils/helpers";
-import { WNatInstance } from "../../../typechain-truffle";
+import { WNatMockInstance } from "../../../typechain-truffle";
 import { currentRealTime, elapsedTime } from "../../../lib/test-utils/simulation-utils";
 import { deterministicTimeIncrease, getTestFile } from "../../../lib/test-utils/test-helpers";
-import { setDefaultVPContract } from "../../../lib/test-utils/token-test-helpers";
 
-const WNAT = artifacts.require("WNat");
+const WNAT = artifacts.require("WNatMock");
 
 let startTimestamp: BN;
 
@@ -46,17 +45,15 @@ contract(`Experiments; ${getTestFile(__filename)}`, accounts => {
         console.log(web3.eth.accounts.currentProvider);
         console.log(WNAT);
         const wNat = await WNAT.new(account.address, "Wrapped NAT", "WNAT");
-        await setDefaultVPContract(wNat, account.address);
     });
 
     describe.skip("web3 hardhat experiments", () => {
         // a fresh contract for each test
-        let wNat: WNatInstance;
+        let wNat: WNatMockInstance;
 
         // Do clean unit tests by spinning up a fresh contract for each test
         beforeEach(async () => {
             wNat = await WNAT.new(accounts[0], "Wrapped NAT", "WNAT");
-            await setDefaultVPContract(wNat, accounts[0]);
             startTimestamp = await time.latest();
             // switch to manual mining
             await network.provider.send('evm_setAutomine', [false]);
@@ -115,12 +112,11 @@ contract(`Experiments; ${getTestFile(__filename)}`, accounts => {
 
     describe("simple web3 experiments", () => {
         // a fresh contract for each test
-        let wNat: WNatInstance;
+        let wNat: WNatMockInstance;
 
         // Do clean unit tests by spinning up a fresh contract for each test
         beforeEach(async () => {
             wNat = await WNAT.new(accounts[0], "Wrapped NAT", "WNAT");
-            await setDefaultVPContract(wNat, accounts[0]);
             startTimestamp = await time.latest();
         });
 

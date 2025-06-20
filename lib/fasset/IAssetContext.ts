@@ -1,13 +1,13 @@
-import { CoreVaultManagerInstance, FAssetInstance, FtsoV2PriceStoreInstance, IERC20Instance, IIAssetManagerControllerInstance, IIAssetManagerInstance, IPriceReaderInstance, WNatInstance } from "../../typechain-truffle";
+import { CoreVaultManagerInstance, FAssetInstance, FtsoV2PriceStoreInstance, IERC20Instance, IIAssetManagerControllerInstance, IIAssetManagerInstance, IPriceReaderInstance, WNatMockInstance } from "../../typechain-truffle";
 import { AttestationHelper } from "../underlying-chain/AttestationHelper";
 import { IBlockChain } from "../underlying-chain/interfaces/IBlockChain";
 import { UnderlyingChainEvents } from "../underlying-chain/UnderlyingChainEvents";
 import { ContractWithEvents } from "../utils/events/truffle";
 import { ChainInfo } from "./ChainInfo";
 
-export type AddressUpdaterEvents = import('../../typechain-truffle/AddressUpdater').AllEvents;
+export type AddressUpdaterEvents = import('../../typechain-truffle/AddressUpdaterMock').AllEvents;
 export type IIAssetManagerControllerEvents = import('../../typechain-truffle/IIAssetManagerController').AllEvents;
-export type WNatEvents = import('../../typechain-truffle/WNat').AllEvents;
+export type WNatEvents = import('../../typechain-truffle/WNatMock').AllEvents;
 export type RelayEvents = import('../../typechain-truffle/IRelay').AllEvents;
 export type FdcHubEvents = import('../../typechain-truffle/IFdcHub').AllEvents;
 export type AgentVaultFactoryEvents = import('../../typechain-truffle/AgentVaultFactory').AllEvents;
@@ -17,9 +17,6 @@ export type WhitelistEvents = import('../../typechain-truffle/IWhitelist').AllEv
 export type FdcVerificationEvents = import('../../typechain-truffle/IFdcVerification').AllEvents;
 export type PriceReaderEvents = import('../../typechain-truffle/IPriceReader').AllEvents;
 export type FtsoV2PriceStoreEvents = import('../../typechain-truffle/FtsoV2PriceStore').AllEvents;
-export type FtsoRegistryEvents = import('../../typechain-truffle/IFtsoRegistry').AllEvents;
-export type FtsoEvents = import('../../typechain-truffle/IFtso').AllEvents;
-export type FtsoManagerEvents = import('../../typechain-truffle/IFtsoManager').AllEvents;
 export type AssetManagerEvents = import('../../typechain-truffle/IIAssetManager').AllEvents;
 export type FAssetEvents = import('../../typechain-truffle/FAsset').AllEvents;
 export type ERC20Events = import('../../typechain-truffle/IERC20').AllEvents;
@@ -36,7 +33,7 @@ export interface IAssetContext {
     attestationProvider: AttestationHelper;
     // contracts
     assetManagerController: ContractWithEvents<IIAssetManagerControllerInstance, IIAssetManagerControllerEvents>;
-    wNat: ContractWithEvents<WNatInstance, WNatEvents>;
+    wNat: ContractWithEvents<WNatMockInstance, WNatEvents>;
     fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>;
     assetManager: ContractWithEvents<IIAssetManagerInstance, AssetManagerEvents>;
     stablecoins: Record<string, ContractWithEvents<IERC20Instance, ERC20Events>>;

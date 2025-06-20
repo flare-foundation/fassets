@@ -1,7 +1,7 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
 import { eventArgs } from "../../../lib/utils/events/truffle";
-import { BNish, MAX_BIPS, ZERO_ADDRESS, erc165InterfaceId, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { MAX_BIPS, ZERO_ADDRESS, erc165InterfaceId, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import {
     AgentVaultMockInstance,
     AssetManagerMockInstance,
@@ -1481,7 +1481,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
 
         it("should claim rewards from reward manager", async () => {
-            const WNat = artifacts.require("WNat");
+            const WNat = artifacts.require("WNatMock");
             const wNat = await WNat.new(accounts[0], "WNat", "WNAT");
             // create reward manager
             const rewardManager = await RewardManager.new(wNat.address);
@@ -1618,12 +1618,6 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         it("random address shouldn't be able to undelegate all", async () => {
             const res = collateralPool.undelegateAll({ from: accounts[5] });
-            await expectRevert(res, "only agent");
-        });
-
-        it("random address shouldn't be able to revoke delegation at block", async () => {
-            const blockNumber = await web3.eth.getBlockNumber();
-            const res = collateralPool.revokeDelegationAt(accounts[2], blockNumber, { from: accounts[5] });
             await expectRevert(res, "only agent");
         });
 
