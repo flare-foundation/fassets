@@ -974,7 +974,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const newSettings8 = createTestSettings(contracts, testChainInfo.eth);
             newSettings8.redemptionFeeBIPS = 0;
             const res8 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings8, collaterals);
-            await expectRevert(res8, "cannot be zero");;
+            await expectRevert(res8, "cannot be zero");
         });
 
         it("should validate settings - cannot be zero (maxRedeemedTickets)", async () => {
@@ -1112,10 +1112,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should validate settings - other validators (redemptionDefaultFactorVaultCollateralBIPS)", async () => {
             const newSettings2 = createTestSettings(contracts, testChainInfo.eth);
-            newSettings2.redemptionDefaultFactorVaultCollateralBIPS = 5000;
-            newSettings2.redemptionDefaultFactorPoolBIPS = 5000;
+            newSettings2.redemptionDefaultFactorVaultCollateralBIPS = 10000;
             const res2 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings2, collaterals);
             await expectRevert(res2, "bips value too low");
+        });
+
+        it("should validate settings - must be zero (__redemptionDefaultFactorPoolBIPS)", async () => {
+            const newSettings23 = createTestSettings(contracts, testChainInfo.eth)
+            newSettings23.__redemptionDefaultFactorPoolBIPS = 1;
+            const res23 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings23, collaterals);
+            await expectRevert(res23, "must be zero");
         });
 
         it("should validate settings - other validators (attestationWindowSeconds)", async () => {
@@ -1559,7 +1565,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const redeemerUSDCBalanceUSD = await ubaToTokenWei(await usdc.balanceOf(redeemer), usdcSymbol);
             const redeemerWNatBalanceUSD = await ubaToTokenWei(await wNat.balanceOf(redeemer), natSymbol);
             assertEqualWithNumError(redeemerUSDCBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorVaultCollateralBIPS)), toBN(10));
-            assertEqualWithNumError(redeemerWNatBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorPoolBIPS)), toBN(10));
+            assertWeb3Equal(redeemerWNatBalanceUSD, 0);
         });
 
         it("should do a redemption payment default by executor", async () => {
@@ -1599,7 +1605,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const redeemerUSDCBalanceUSD = await ubaToTokenWei(await usdc.balanceOf(redeemer), usdcSymbol);
             const redeemerWNatBalanceUSD = await ubaToTokenWei(await wNat.balanceOf(redeemer), natSymbol);
             assertEqualWithNumError(redeemerUSDCBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorVaultCollateralBIPS)), toBN(10));
-            assertEqualWithNumError(redeemerWNatBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorPoolBIPS)), toBN(10));
+            assertWeb3Equal(redeemerWNatBalanceUSD, 0);
         });
 
         it("should revert redeeming if sending funds but not setting executor ", async () => {
@@ -2384,9 +2390,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const ci = testChainInfo.eth;
             collaterals = createTestCollaterals(contracts, ci);
             settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
-            let collateralsNew: CollateralType[];
             //First collateral shouldn't be anything else than a Pool collateral
-            collateralsNew = collaterals;
+            const collateralsNew: CollateralType[] = collaterals;
             //Make first collateral be VaultCollateral
             collateralsNew[0].collateralClass = collateralsNew[1].collateralClass;
             const res = newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collateralsNew, ci.assetName, ci.assetSymbol);
@@ -2398,8 +2403,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             collaterals = createTestCollaterals(contracts, ci);
             settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
             //Only one collateral should not be enough to create asset manager
-            let collateralsNew: CollateralType[];
-            collateralsNew=[collaterals[0]];
+            const collateralsNew: CollateralType[] = [collaterals[0]];
             const res = newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collateralsNew, ci.assetName, ci.assetSymbol);
             await expectRevert(res,"at least two collaterals required");
         });
@@ -2408,9 +2412,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const ci = testChainInfo.eth;
             collaterals = createTestCollaterals(contracts, ci);
             settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
-            let collateralsNew: CollateralType[];
             //First collateral shouldn't be anything else than a Pool collateral
-            collateralsNew = collaterals;
+            const collateralsNew: CollateralType[] = collaterals;
             //Collaterals after the first should all be VaultCollateral
             //Make second and third collateral be Pool
             collaterals[1].collateralClass = collaterals[0].collateralClass;
@@ -2521,8 +2524,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(promise, "only asset manager controller");
         });
 
-        it("should not setRedemptionDefaultFactorBips if not from asset manager controller", async () => {
-            const promise = assetManager.setRedemptionDefaultFactorBips(0, 0);
+        it("should not setRedemptionDefaultFactorVaultCollateralBIPS if not from asset manager controller", async () => {
+            const promise = assetManager.setRedemptionDefaultFactorVaultCollateralBIPS(0);
             await expectRevert(promise, "only asset manager controller");
         });
 
@@ -2855,17 +2858,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.setRedemptionFeeBips(toBN(oldValue).subn(2), { from: assetManagerController });
         });
 
-        it("should not setRedemptionDefaultFactorBips if rate limited", async () => {
-            const oldValueVault = settings.redemptionDefaultFactorVaultCollateralBIPS;
-            const oldValuePool = settings.redemptionDefaultFactorPoolBIPS;
-            await assetManager.setRedemptionDefaultFactorBips(toBN(oldValueVault).subn(1), toBN(oldValuePool).subn(1), { from: assetManagerController });
+        it("should not setRedemptionDefaultFactorVaultCollateralBIPS if rate limited", async () => {
+            const oldValue = settings.redemptionDefaultFactorVaultCollateralBIPS;
+            await assetManager.setRedemptionDefaultFactorVaultCollateralBIPS(toBN(oldValue).subn(1), { from: assetManagerController });
             const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
             // skip time
             await deterministicTimeIncrease(toBN(minUpdateTime).subn(2));
-            const promise = assetManager.setRedemptionDefaultFactorBips(toBN(oldValueVault).subn(2), toBN(oldValuePool).subn(2), { from: assetManagerController });
+            const promise = assetManager.setRedemptionDefaultFactorVaultCollateralBIPS(toBN(oldValue).subn(2), { from: assetManagerController });
             await expectRevert(promise, "too close to previous update");
             await deterministicTimeIncrease(1);
-            await assetManager.setRedemptionDefaultFactorBips(toBN(oldValueVault).subn(2), toBN(oldValuePool).subn(2), { from: assetManagerController });
+            await assetManager.setRedemptionDefaultFactorVaultCollateralBIPS(toBN(oldValue).subn(2), { from: assetManagerController });
         });
 
         it("should not setConfirmationByOthersAfterSeconds if rate limited", async () => {

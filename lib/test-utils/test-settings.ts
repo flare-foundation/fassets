@@ -104,7 +104,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         redemptionFeeBIPS: toBIPS("2%"),
         maxRedeemedTickets: 20,                                 // TODO: find number that fits comfortably in gas limits
         redemptionDefaultFactorVaultCollateralBIPS: toBIPS(1.1),
-        redemptionDefaultFactorPoolBIPS: toBIPS(0.1),
+        __redemptionDefaultFactorPoolBIPS: 0,
         confirmationByOthersAfterSeconds: 6 * HOURS,            // 6 hours
         confirmationByOthersRewardUSD5: toBNExp(100, 5),        // 100 USD
         paymentChallengeRewardUSD5: toBNExp(300, 5),            // 300 USD

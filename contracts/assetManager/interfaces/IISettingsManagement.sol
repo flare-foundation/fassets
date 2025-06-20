@@ -63,7 +63,7 @@ interface IISettingsManagement {
     function setRedemptionFeeBips(uint256 _value)
         external;
 
-    function setRedemptionDefaultFactorBips(uint256 _vaultFactor, uint256 _poolFactor)
+    function setRedemptionDefaultFactorVaultCollateralBIPS(uint256 _value)
         external;
 
     function setConfirmationByOthersAfterSeconds(uint256 _value)

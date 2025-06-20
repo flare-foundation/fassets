@@ -149,7 +149,7 @@ library AssetManagerSettings {
 
         // This is the part of redemption factor paid from agent's pool collateral.
         // rate-limited
-        uint32 redemptionDefaultFactorPoolBIPS;
+        uint32 __redemptionDefaultFactorPoolBIPS; // only storage placeholder
 
         // If the agent or redeemer becomes unresponsive, we still need payment or non-payment confirmations
         // to be presented eventually to properly track agent's underlying balance.

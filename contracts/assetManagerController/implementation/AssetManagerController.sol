@@ -334,12 +334,12 @@ contract AssetManagerController is
             IISettingsManagement.setRedemptionFeeBips.selector, _value);
     }
 
-    function setRedemptionDefaultFactorBips(IIAssetManager[] memory _assetManagers, uint256 _vaultF, uint256 _poolF)
+    function setRedemptionDefaultFactorVaultCollateralBIPS(IIAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyImmediateGovernance
     {
-        _callOnManagers(_assetManagers,
-            abi.encodeCall(IISettingsManagement.setRedemptionDefaultFactorBips, (_vaultF, _poolF)));
+        _setValueOnManagers(_assetManagers,
+            IISettingsManagement.setRedemptionDefaultFactorVaultCollateralBIPS.selector, _value);
     }
 
     function setConfirmationByOthersAfterSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)

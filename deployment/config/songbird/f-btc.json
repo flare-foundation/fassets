@@ -41,7 +41,6 @@
     "maxRedeemedTickets": 20,
     "redemptionFeeBIPS": 100,
     "redemptionDefaultFactorVaultCollateralBIPS": 10200,
-    "redemptionDefaultFactorPoolBIPS": 0,
     "underlyingBlocksForPayment": 36,
     "underlyingSecondsForPayment": 21600,
     "averageBlockTimeMS": 600000,

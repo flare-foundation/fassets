@@ -310,11 +310,6 @@
             "pattern": "^\\w+$",
             "type": "string"
         },
-        "redemptionDefaultFactorPoolBIPS": {
-            "description": "On redemption underlying payment failure, redeemer is compensated with\nredemption value recalculated times redemption failure factor.\nThis is the part of factor paid from pool in FLR/SGB.",
-            "minimum": 0,
-            "type": "integer"
-        },
         "redemptionDefaultFactorVaultCollateralBIPS": {
             "description": "On redemption underlying payment failure, redeemer is compensated with\nredemption value recalculated times redemption failure factor.\nThis is the part of factor paid from agent's vault collateral.",
             "minimum": 0,
@@ -419,7 +414,6 @@
         "poolCollateral",
         "poolExitCRChangeTimelockSeconds",
         "poolTokenSuffix",
-        "redemptionDefaultFactorPoolBIPS",
         "redemptionDefaultFactorVaultCollateralBIPS",
         "redemptionFeeBIPS",
         "redemptionPaymentExtensionSeconds",

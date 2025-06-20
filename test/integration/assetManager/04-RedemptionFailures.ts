@@ -624,7 +624,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             //
             const redemptionDefaultFactorVaultBIPS = toBN(context.settings.redemptionDefaultFactorVaultCollateralBIPS);
-            const redemptionDefaultFactorPoolBIPS = toBN(context.settings.redemptionDefaultFactorPoolBIPS);
             const mintingPoolHoldingsRequiredBIPS = toBN(context.settings.mintingPoolHoldingsRequiredBIPS);
             // add redeemer to usdc sanction list
             await context.usdc.addToSanctionList(redeemer.address);
@@ -649,7 +648,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await agent.buyCollateralPoolTokens(requiredExtraPoolTokens);
             // now the payment should succeed
             const res = await redeemer.redemptionPaymentDefault(request);
-            assertApproximatelyEqual(res.redeemedPoolCollateralWei, poolEquivWei.mul(redemptionDefaultFactorVaultBIPS.add(redemptionDefaultFactorPoolBIPS)).divn(MAX_BIPS), "absolute", 10);
+            assertApproximatelyEqual(res.redeemedPoolCollateralWei, poolEquivWei.mul(redemptionDefaultFactorVaultBIPS).divn(MAX_BIPS), "absolute", 10);
             assertWeb3Equal(res.redeemedVaultCollateralWei, 0);
         });
 
@@ -669,7 +668,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await minter.transferFAsset(redeemer.address, context.convertLotsToUBA(10));
             //
             const redemptionDefaultFactorVaultBIPS = toBN(context.settings.redemptionDefaultFactorVaultCollateralBIPS);
-            const redemptionDefaultFactorPoolBIPS = toBN(context.settings.redemptionDefaultFactorPoolBIPS);
             const mintingPoolHoldingsRequiredBIPS = toBN(context.settings.mintingPoolHoldingsRequiredBIPS);
             //
             async function redeemAndDefaultSanctioned(lots: number) {
@@ -697,7 +695,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 // once enough is added, the payment default should succeed
                 await agent.buyCollateralPoolTokens(toWei(1));
                 const res = await redeemer.redemptionPaymentDefault(request);
-                assertApproximatelyEqual(res.redeemedPoolCollateralWei, poolEquivWei.mul(redemptionDefaultFactorVaultBIPS.add(redemptionDefaultFactorPoolBIPS)).divn(MAX_BIPS), "absolute", 10);
+                assertApproximatelyEqual(res.redeemedPoolCollateralWei, poolEquivWei.mul(redemptionDefaultFactorVaultBIPS).divn(MAX_BIPS), "absolute", 10);
                 assertWeb3Equal(res.redeemedVaultCollateralWei, 0);
                 // pool token price should not change due to agent's token burning
                 const ac2 = await agent.getAgentCollateral();

@@ -242,7 +242,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assertWeb3Equal(await agent.collateralPoolToken.balanceOf(poolContributor), poolContributorPoolTokens);
     });
 
-    it("should test redemption default payout from pool", async () => {
+    it("should test redemption default payout - nothing from pool", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
         const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
@@ -272,18 +272,16 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const agentWNatAfter = await agent.poolCollateralBalance();
         const agentFAssetFeesAfter = await agent.collateralPool.fAssetFeesOf(agent.agentVault.address);
         const redeemerFAssetFeesAfter = await agent.collateralPool.fAssetFeesOf(redeemer.address);
-        assert(res.redeemedPoolCollateralWei.gtn(0));
+        assert(res.redeemedPoolCollateralWei.eqn(0));
         const [, redeemedPoolCollateralWei] = await agent.getRedemptionPaymentDefaultValue(lots);
         assertWeb3Equal(res.redeemedPoolCollateralWei, redeemedPoolCollateralWei);
         assertWeb3Equal(agentWNatBefore.sub(agentWNatAfter), redeemedPoolCollateralWei); // agent's tokens covered whole redemption
         assertWeb3Equal(poolCollateralAfter, fullAgentPoolCollateral.add(poolCRFee).add(minterPoolDeposit).sub(redeemedPoolCollateralWei));
         assertWeb3Equal(poolCollateralBefore.sub(poolCollateralAfter), redeemedPoolCollateralWei);
-        assert(redeemerFAssetFeesAfter.gt(redeemerFAssetFeesBefore));
-        assert(agentFAssetFeesAfter.lt(agentFAssetFeesBefore));
+        assert(redeemerFAssetFeesAfter.eq(redeemerFAssetFeesBefore));
+        assert(agentFAssetFeesAfter.eq(agentFAssetFeesBefore));
         assertWeb3Equal(agentFAssetFeesBefore.sub(agentFAssetFeesAfter), redeemerFAssetFeesAfter.sub(redeemerFAssetFeesBefore));
         // minter withdraws fees from pool and later exits
-        await agent.collateralPool.withdrawFees(redeemerFAssetFeesAfter, { from: minter.address });
-        assertWeb3Equal(await context.fAsset.balanceOf(redeemer.address), redeemerFAssetFeesAfter);
         const minterPoolTokens = await agent.collateralPoolToken.balanceOf(minter.address);
         await deterministicTimeIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds());
         const response = await agent.collateralPool.exit(minterPoolTokens, 0, { from: minter.address });

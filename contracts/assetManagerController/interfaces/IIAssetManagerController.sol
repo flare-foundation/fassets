@@ -115,7 +115,7 @@ interface IIAssetManagerController is
     function setRedemptionFeeBips(IIAssetManager[] memory _assetManagers, uint256 _value)
         external;
 
-    function setRedemptionDefaultFactorBips(IIAssetManager[] memory _assetManagers, uint256 _vaultF, uint256 _poolF)
+    function setRedemptionDefaultFactorVaultCollateralBIPS(IIAssetManager[] memory _assetManagers, uint256 _value)
         external;
 
     function setConfirmationByOthersAfterSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)

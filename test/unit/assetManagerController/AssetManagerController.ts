@@ -84,10 +84,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should add and remove asset manager", async () => {
-            let assetManager2: IIAssetManagerInstance;
-            let fAsset2: FAssetInstance;
             const managers_current = await assetManagerController.getAssetManagers();
-            [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController, "Wrapped Ether", "FETH", 18, settings, collaterals, "Ether", "ETH", { governanceSettings, updateExecutor });
+            const [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController, "Wrapped Ether", "FETH", 18, settings, collaterals, "Ether", "ETH", { governanceSettings, updateExecutor });
 
             const res1 = await assetManagerController.addAssetManager(assetManager2.address, { from: governance });
             await waitForTimelock(res1, assetManagerController, updateExecutor);
@@ -100,10 +98,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(managers_current.length, managers_remove.length);
         });
 
-        it("Asset manager controller should not be attached when add asset manager is called from a different controler", async () => {
-            let assetManager2: IIAssetManagerInstance;
-            let fAsset2: FAssetInstance;
-            [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, "Ether", "ETH", { governanceSettings, updateExecutor });
+        it("Asset manager controller should not be attached when add asset manager is called from a different controller", async () => {
+            const [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, "Ether", "ETH", { governanceSettings, updateExecutor });
             await assetManager2.attachController(false, { from: accounts[5] });
             const res1 = await assetManagerController.addAssetManager(assetManager2.address, { from: governance });
             await waitForTimelock(res1, assetManagerController, updateExecutor);
@@ -111,10 +107,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(isAttached, false);
         });
 
-        it("Asset manager controller should not be unattached when remove asset manager is called from a different controler", async () => {
-            let assetManager2: IIAssetManagerInstance;
-            let fAsset2: FAssetInstance;
-            [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, "Ether", "ETH", { governanceSettings, updateExecutor });
+        it("Asset manager controller should not be unattached when remove asset manager is called from a different controller", async () => {
+            const [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, "Ether", "ETH", { governanceSettings, updateExecutor });
             const res1 = await assetManagerController.addAssetManager(assetManager2.address, { from: governance });
             await waitForTimelock(res1, assetManagerController, updateExecutor);
             const res2 = await assetManagerController.removeAssetManager(assetManager2.address, { from: governance });
@@ -132,10 +126,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should do nothing if removing unexisting asset manager", async () => {
-            let assetManager2: IIAssetManagerInstance;
-            let fAsset2: FAssetInstance;
             const managers_current = await assetManagerController.getAssetManagers();
-            [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController, "Wrapped Ether", "FETH", 18, settings, collaterals, "Ether", "ETH", { governanceSettings, updateExecutor });
+            const [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController, "Wrapped Ether", "FETH", 18, settings, collaterals, "Ether", "ETH", { governanceSettings, updateExecutor });
 
             await waitForTimelock(assetManagerController.addAssetManager(assetManager2.address, { from: governance }), assetManagerController, updateExecutor);
             const managers_add = await assetManagerController.getAssetManagers();
@@ -464,7 +456,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "attestationWindowSeconds", value: toBN(attestationWindowSeconds_new) });
         });
 
-        it("should revert seting average block time in ms if value is 0, too big or too small", async () => {
+        it("should revert setting average block time in ms if value is 0, too big or too small", async () => {
             const currentSettings = await assetManager.getSettings();
             let averageBlockTimeMS_new = toBN(currentSettings.averageBlockTimeMS).muln(3);
             let res = assetManagerController.setAverageBlockTimeMS([assetManager.address], averageBlockTimeMS_new, { from: governance });
@@ -495,51 +487,36 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const currentSettings = await assetManager.getSettings();
             const redemptionDefaultFactorVaultCollateralBIPS_big = toBN(currentSettings.redemptionDefaultFactorVaultCollateralBIPS).muln(12001).divn(10_000).addn(1000);
             const redemptionDefaultFactorVaultCollateralBIPS_low = MAX_BIPS;
-            const redemptionDefaultFactorPoolBIPS = toBN(currentSettings.redemptionDefaultFactorPoolBIPS);
-            const redemptionDefaultFactorAgentPool_big = toBN(currentSettings.redemptionDefaultFactorVaultCollateralBIPS).muln(12001).divn(10_000).addn(1000);
-            const redemptionDefaultFactorAgentPool_low = 100;
             const redemptionDefaultFactorBIPS_new = 1_3000;
 
             await time.increase(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
-            const res_big_pool = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorBIPS_new, redemptionDefaultFactorAgentPool_big, { from: governance });
+            const res_big = assetManagerController.setRedemptionDefaultFactorVaultCollateralBIPS([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_big, { from: governance });
             await time.increase(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
-            const res_low_pool = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorBIPS_new, redemptionDefaultFactorAgentPool_low, { from: governance });
-
-            await expectRevert(res_big_pool, "fee increase too big");
-            await expectRevert(res_low_pool, "fee decrease too big");
-
-            await time.increase(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
-            const res_big = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_big, redemptionDefaultFactorPoolBIPS, { from: governance });
-            await time.increase(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
-            const res_low = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_low, BN_ZERO, { from: governance });
+            const res_low = assetManagerController.setRedemptionDefaultFactorVaultCollateralBIPS([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_low, { from: governance });
 
             await expectRevert(res_big, "fee increase too big");
             await expectRevert(res_low, "bips value too low");
 
             await time.increase(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
-            await assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorBIPS_new, redemptionDefaultFactorPoolBIPS, { from: governance });
+            await assetManagerController.setRedemptionDefaultFactorVaultCollateralBIPS([assetManager.address], redemptionDefaultFactorBIPS_new, { from: governance });
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            const redemptionDefaultFactorBIPS_small = toBN(newSettings.redemptionDefaultFactorVaultCollateralBIPS).muln(8332).divn(10_000);;
+            const redemptionDefaultFactorBIPS_small = toBN(newSettings.redemptionDefaultFactorVaultCollateralBIPS).muln(8332).divn(10_000);
 
             await time.increase(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
-            const res_small = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorBIPS_small, redemptionDefaultFactorPoolBIPS, { from: governance });
+            const res_small = assetManagerController.setRedemptionDefaultFactorVaultCollateralBIPS([assetManager.address], redemptionDefaultFactorBIPS_small, { from: governance });
             await expectRevert(res_small, "fee decrease too big");
         });
 
         it("should set redemption default factor bips for agent", async () => {
-            const currentSettings = await assetManager.getSettings();
-            const redemptionDefaultFactorPoolBIPS = toBN(currentSettings.redemptionDefaultFactorPoolBIPS);
             const redemptionDefaultFactorVaultCollateralBIPS_new = 1_1000;
-            const res = await assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_new, redemptionDefaultFactorPoolBIPS, { from: governance });
+            const res = await assetManagerController.setRedemptionDefaultFactorVaultCollateralBIPS([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_new, { from: governance });
             await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "redemptionDefaultFactorVaultCollateralBIPS", value: toBN(redemptionDefaultFactorVaultCollateralBIPS_new) });
         });
 
         it("should revert update - too close to previous update", async () => {
-            const currentSettings = await assetManager.getSettings();
-            const redemptionDefaultFactorPoolBIPS = toBN(currentSettings.redemptionDefaultFactorPoolBIPS);
             const redemptionDefaultFactorVaultCollateralBIPS_new = 1_3000;
-            await assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_new, redemptionDefaultFactorPoolBIPS, { from: governance });
-            const update = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_new, redemptionDefaultFactorPoolBIPS, { from: governance });
+            await assetManagerController.setRedemptionDefaultFactorVaultCollateralBIPS([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_new, { from: governance });
+            const update = assetManagerController.setRedemptionDefaultFactorVaultCollateralBIPS([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_new, { from: governance });
             await expectRevert(update, "too close to previous update");
         });
 
@@ -1433,9 +1410,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("controler shouldn't be able to terminate asset manager that he is not managing", async () => {
-            let assetManager2: IIAssetManagerInstance;
-            let fAsset2: FAssetInstance;
-            [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, "Ether", "ETH", { governanceSettings, updateExecutor });
+            const [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, "Ether", "ETH", { governanceSettings, updateExecutor });
             //Shouldn't be able to terminate unmanaged asset manager
             await expectRevert(assetManagerController.terminate([assetManager2.address], { from: governance }), "Asset manager not managed");
         });
@@ -1542,9 +1517,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("random address shouldn't be able to set redemption default factor bips for agent", async () => {
             const currentSettings = await assetManager.getSettings();
-            const redemptionDefaultFactorPoolBIPS = toBN(currentSettings.redemptionDefaultFactorPoolBIPS);
             const redemptionDefaultFactorVaultCollateralBIPS_new = 1_1000;
-            const res = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_new, redemptionDefaultFactorPoolBIPS, { from: accounts[12] });
+            const res = assetManagerController.setRedemptionDefaultFactorVaultCollateralBIPS([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_new, { from: accounts[12] });
             await expectRevert(res, "only governance");
         });
 
@@ -1640,9 +1614,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("Controler that does not manage an asset manager shouldn't be able to update its settings", async () => {
-            let assetManager2: IIAssetManagerInstance;
-            let fAsset2: FAssetInstance;
-            [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, "Ether", "ETH", { governanceSettings, updateExecutor });
+            const [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, "Ether", "ETH", { governanceSettings, updateExecutor });
             const poolExitCRChangeTimelockSeconds_new = DAYS;
             const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager2.address], poolExitCRChangeTimelockSeconds_new, { from: governance });
             await expectRevert(res, "Asset manager not managed");

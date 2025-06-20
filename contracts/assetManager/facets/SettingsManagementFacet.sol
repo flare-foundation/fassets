@@ -316,28 +316,22 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         emit SettingChanged("redemptionFeeBIPS", _value);
     }
 
-    function setRedemptionDefaultFactorBips(uint256 _vaultFactor, uint256 _poolFactor)
+    function setRedemptionDefaultFactorVaultCollateralBIPS(uint256 _value)
         external
         onlyAssetManagerController
         rateLimited
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
-        require(_vaultFactor + _poolFactor > SafePct.MAX_BIPS,
+        require(_value > SafePct.MAX_BIPS,
             "bips value too low");
-        require(_vaultFactor <= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(12000) + 1000,
+        require(_value <= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(12000) + 1000,
             "fee increase too big");
-        require(_vaultFactor >= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(8333),
-            "fee decrease too big");
-        require(_poolFactor <= settings.redemptionDefaultFactorPoolBIPS.mulBips(12000) + 1000,
-            "fee increase too big");
-        require(_poolFactor >= settings.redemptionDefaultFactorPoolBIPS.mulBips(8333),
+        require(_value >= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(8333),
             "fee decrease too big");
         // update
-        settings.redemptionDefaultFactorVaultCollateralBIPS = _vaultFactor.toUint32();
-        emit SettingChanged("redemptionDefaultFactorVaultCollateralBIPS", _vaultFactor);
-        settings.redemptionDefaultFactorPoolBIPS = _poolFactor.toUint32();
-        emit SettingChanged("redemptionDefaultFactorPoolBIPS", _poolFactor);
+        settings.redemptionDefaultFactorVaultCollateralBIPS = _value.toUint32();
+        emit SettingChanged("redemptionDefaultFactorVaultCollateralBIPS", _value);
     }
 
     function setConfirmationByOthersAfterSeconds(uint256 _value)

@@ -270,14 +270,6 @@ export interface AssetManagerParameters {
     redemptionDefaultFactorVaultCollateralBIPS: integer;
 
     /**
-     * On redemption underlying payment failure, redeemer is compensated with
-     * redemption value recalculated times redemption failure factor.
-     * This is the part of factor paid from pool in FLR/SGB.
-     * @minimum 0
-     */
-    redemptionDefaultFactorPoolBIPS: integer;
-
-    /**
      * Number of underlying blocks that the minter or agent is allowed to pay underlying value.
      * If payment not reported in that time, minting/redemption can be challenged and default action triggered.
      * CAREFUL: Count starts from the current proved block height, so the minters and agents should

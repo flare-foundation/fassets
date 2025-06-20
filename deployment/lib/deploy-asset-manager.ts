@@ -237,7 +237,7 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         maxRedeemedTickets: parameters.maxRedeemedTickets,
         redemptionFeeBIPS: parameters.redemptionFeeBIPS,
         redemptionDefaultFactorVaultCollateralBIPS: parameters.redemptionDefaultFactorVaultCollateralBIPS,
-        redemptionDefaultFactorPoolBIPS: parameters.redemptionDefaultFactorPoolBIPS,
+        __redemptionDefaultFactorPoolBIPS: 0,
         underlyingBlocksForPayment: parameters.underlyingBlocksForPayment,
         underlyingSecondsForPayment: parameters.underlyingSecondsForPayment,
         attestationWindowSeconds: parameters.attestationWindowSeconds,

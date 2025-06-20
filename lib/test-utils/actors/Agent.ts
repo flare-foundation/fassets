@@ -5,7 +5,7 @@ import { PaymentReference } from "../../fasset/PaymentReference";
 import { IBlockChainWallet } from "../../underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../utils/events/common";
 import { checkEventNotEmited, eventArgs, filterEvents, requiredEventArgs } from "../../utils/events/truffle";
-import { BN_ZERO, BNish, deepFormat, MAX_BIPS, randomAddress, requireNotNull, toBIPS, toBN, toBNExp, toWei } from "../../utils/helpers";
+import { BN_ZERO, BNish, MAX_BIPS, randomAddress, requireNotNull, toBIPS, toBN, toBNExp, toWei } from "../../utils/helpers";
 import { web3DeepNormalize } from "../../utils/web3normalize";
 import { AgentVaultInstance, CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import { CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/IIAssetManager";
@@ -443,8 +443,7 @@ export class Agent extends AssetContextClient {
         if (!selfCloseExit) {
             redemptionDefaultAgent = priceVaultCollateral.convertUBAToTokenWei(uba).mul(
                 toBN(this.context.settings.redemptionDefaultFactorVaultCollateralBIPS)).divn(MAX_BIPS);
-            redemptionDefaultPool = priceNat.convertUBAToTokenWei(uba).mul(
-                toBN(this.context.settings.redemptionDefaultFactorPoolBIPS)).divn(MAX_BIPS);
+            redemptionDefaultPool = toBN(0);
         } else {
             redemptionDefaultAgent = priceVaultCollateral.convertUBAToTokenWei(uba);
             redemptionDefaultPool = toBN(0);
@@ -621,7 +620,7 @@ export class Agent extends AssetContextClient {
         // assertWeb3Equal(agentCollateral.freeCollateralWei(agentCollateral.agentPoolTokens), agentInfo.freeAgentPoolTokensWei);
         assertWeb3Equal(agentCollateral.collateralRatioBIPS(agentCollateral.vault), agentInfo.vaultCollateralRatioBIPS);
         assertWeb3Equal(agentCollateral.collateralRatioBIPS(agentCollateral.pool), agentInfo.poolCollateralRatioBIPS);
-        // keep the check from prevous
+        // keep the check from previous
         if (previousCheck === "inherit") {
             check = { ...this.lastAgentInfoCheck, ...check };
         }
