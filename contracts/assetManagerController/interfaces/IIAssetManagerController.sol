@@ -91,9 +91,6 @@ interface IIAssetManagerController is
     function setLotSizeAmg(IIAssetManager[] memory _assetManagers, uint256 _value)
         external;
 
-    function setMinUnderlyingBackingBips(IIAssetManager[] memory _assetManagers, uint256 _value)
-        external;
-
     function setTimeForPayment(
         IIAssetManager[] memory _assetManagers,
         uint256 _underlyingBlocks,

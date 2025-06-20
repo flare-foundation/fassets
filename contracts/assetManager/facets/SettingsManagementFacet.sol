@@ -251,24 +251,6 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         emit SettingChanged("lotSizeAMG", _value);
     }
 
-    function setMinUnderlyingBackingBips(uint256 _value)
-        external
-        onlyAssetManagerController
-        rateLimited
-    {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        // validate
-        // huge lot size increase is very dangerous, because it breaks redemption
-        // (converts all tickets to dust)
-        require(_value > 0, "cannot be zero");
-        require(_value <= SafePct.MAX_BIPS, "must be below 1");
-        require(_value <= settings.minUnderlyingBackingBIPS * 2, "increase too big");
-        require(_value >= settings.minUnderlyingBackingBIPS / 2, "decrease too big");
-        // update
-        settings.minUnderlyingBackingBIPS = _value.toUint16();
-        emit SettingChanged("minUnderlyingBackingBIPS", _value);
-    }
-
     function setMaxTrustedPriceAgeSeconds(uint256 _value)
         external
         onlyAssetManagerController

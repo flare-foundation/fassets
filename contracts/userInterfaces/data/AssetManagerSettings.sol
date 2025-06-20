@@ -107,7 +107,7 @@ library AssetManagerSettings {
         uint64 lotSizeAMG;
 
         // The percentage of minted f-assets that the agent must hold in his underlying address.
-        uint16 minUnderlyingBackingBIPS;
+        uint16 __minUnderlyingBackingBIPS; // only storage placeholder
 
         // for some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address
         // this must be done by presenting a payment proof from that address

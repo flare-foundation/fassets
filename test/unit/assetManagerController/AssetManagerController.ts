@@ -1002,53 +1002,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectEvent.inTransaction(timelock_info.tx, assetManager, "SettingChanged", { name: "minUpdateRepeatTimeSeconds", value: toBN(DAYS) });
         });
 
-        it("should revert setting min underlying backing bips if value is 0", async () => {
-            const minUnderlyingBackingBIPS_zero = toBIPS(0);
-            const res = assetManagerController.setMinUnderlyingBackingBips([assetManager.address], minUnderlyingBackingBIPS_zero, { from: governance });
-            const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
-            await expectRevert(timelock_info, "cannot be zero");
-        });
-
-        it("should revert setting min underlying backing bips if value is above 1", async () => {
-            const minUnderlyingBackingBIPS_zero = toBIPS("110%");
-            const res = assetManagerController.setMinUnderlyingBackingBips([assetManager.address], minUnderlyingBackingBIPS_zero, { from: governance });
-            const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
-            await expectRevert(timelock_info, "must be below 1");
-        });
-
-        it("should revert setting min underlying backing bips if decrease is too big", async () => {
-            const currentSettings = await assetManager.getSettings();
-            const minUnderlyingBackingBIPS_decreaseTooBig = toBN(currentSettings.minUnderlyingBackingBIPS).divn(3);
-            const res = assetManagerController.setMinUnderlyingBackingBips([assetManager.address], minUnderlyingBackingBIPS_decreaseTooBig, { from: governance });
-            const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
-            await expectRevert(timelock_info, "decrease too big");
-        });
-
-        it("should revert setting min underlying backing bips if increase is too big", async () => {
-            //First we need to lower the setting to 30% so we can multiply by 3 and still be below 100%
-            const res_prev1 = assetManagerController.setMinUnderlyingBackingBips([assetManager.address], toBIPS("50%"), { from: governance });
-            await waitForTimelock(res_prev1, assetManagerController, updateExecutor);
-            await deterministicTimeIncrease(WEEKS);
-
-            const res_prev2 = assetManagerController.setMinUnderlyingBackingBips([assetManager.address], toBIPS("30%"), { from: governance });
-            await waitForTimelock(res_prev2, assetManagerController, updateExecutor);
-            await deterministicTimeIncrease(WEEKS);
-
-            const currentSettings = await assetManager.getSettings();
-            const minUnderlyingBackingBIPS_increaseTooBig = toBN(currentSettings.minUnderlyingBackingBIPS).muln(3);
-            const res = assetManagerController.setMinUnderlyingBackingBips([assetManager.address], minUnderlyingBackingBIPS_increaseTooBig, { from: governance });
-            const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
-            await expectRevert(timelock_info, "increase too big");
-        });
-
-        it("should set min underlying backing bips", async () => {
-            const currentSettings = await assetManager.getSettings();
-            const minUnderlyingBackingBIPS_new = toBN(currentSettings.minUnderlyingBackingBIPS).divn(2);
-            const res = assetManagerController.setMinUnderlyingBackingBips([assetManager.address], minUnderlyingBackingBIPS_new, { from: governance });
-            const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
-            await expectEvent.inTransaction(timelock_info.tx, assetManager, "SettingChanged", { name: "minUnderlyingBackingBIPS", value: minUnderlyingBackingBIPS_new });
-        });
-
         // removed settings
         it("all removed settings should not be set", async () => {
             const currentSettings = await assetManager.getSettings();

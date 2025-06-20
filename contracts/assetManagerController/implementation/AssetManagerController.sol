@@ -278,14 +278,6 @@ contract AssetManagerController is
             IISettingsManagement.setLotSizeAmg.selector, _value);
     }
 
-    function setMinUnderlyingBackingBips(IIAssetManager[] memory _assetManagers, uint256 _value)
-        external
-        onlyGovernance
-    {
-        _setValueOnManagers(_assetManagers,
-            IISettingsManagement.setMinUnderlyingBackingBips.selector, _value);
-    }
-
     function setTimeForPayment(
         IIAssetManager[] memory _assetManagers,
         uint256 _underlyingBlocks,

@@ -1859,8 +1859,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const underlyingBalanceTooLow = findRequiredEvent(tx, "UnderlyingBalanceTooLow").args;
             assertWeb3Equal(underlyingBalanceTooLow.agentVault, agentVault.address);
             assertWeb3Equal(underlyingBalanceTooLow.balance, underlyingPaymentUBA.sub(lotsToUBA(lots)));
-            assertWeb3Equal(underlyingBalanceTooLow.requiredBalance,
-                mulBIPS(await fAsset.totalSupply(), toBN(settings.minUnderlyingBackingBIPS)));
+            assertWeb3Equal(underlyingBalanceTooLow.requiredBalance, await fAsset.totalSupply());
             // check that challenger was rewarded
             const expectedChallengerReward = await usd5ToVaultCollateralWei(toBN(settings.paymentChallengeRewardUSD5));
             assertWeb3Equal(await usdc.balanceOf(challenger), expectedChallengerReward);
@@ -2301,22 +2300,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(res, "cannot be zero");
         });
 
-        it("validate settings minUnderlyingBackingBIPS cannot be zero", async () => {
+        it("validate settings - must be zero (__minUnderlyingBackingBIPS)", async () => {
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
-            Settings.minUnderlyingBackingBIPS = 0;
+            Settings.__minUnderlyingBackingBIPS = 1;
             const res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals);
-            await expectRevert(res, "cannot be zero");
-        });
-
-        it("validate settings minUnderlyingBackingBIPS cannot be bigger than max bips", async () => {
-            const Collaterals = web3DeepNormalize(collaterals);
-            const Settings = web3DeepNormalize(settings);
-            Settings.fAsset = accounts[5];
-            Settings.minUnderlyingBackingBIPS = 20000;
-            const res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals);
-            await expectRevert(res, "bips value too high");
+            await expectRevert(res, "must be zero");
         });
 
         it("validate settings vaultCollateralBuyForFlareFactorBIPS cannot be smaller than max bips", async () => {
@@ -2501,11 +2491,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should not set lot size if not from asset manager controller", async () => {
             const promise = assetManager.setLotSizeAmg(0);
-            await expectRevert(promise, "only asset manager controller");
-        });
-
-        it("should not setMinUnderlyingBackingBips not from asset manager controller", async () => {
-            const promise = assetManager.setMinUnderlyingBackingBips(0);
             await expectRevert(promise, "only asset manager controller");
         });
 
@@ -2808,18 +2793,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(promise, "too close to previous update");
             await deterministicTimeIncrease(1);
             await assetManager.setLotSizeAmg(toBN(oldLotSize).addn(2), { from: assetManagerController });
-        });
-
-        it("should not setMinUnderlyingBackingBips rate limited", async () => {
-            const oldValue = settings.minUnderlyingBackingBIPS;
-            await assetManager.setMinUnderlyingBackingBips(toBN(oldValue).subn(1), { from: assetManagerController });
-            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
-            // skip time
-            await deterministicTimeIncrease(toBN(minUpdateTime).subn(2));
-            const promise = assetManager.setMinUnderlyingBackingBips(toBN(oldValue).subn(2), { from: assetManagerController });
-            await expectRevert(promise, "too close to previous update");
-            await deterministicTimeIncrease(1);
-            await assetManager.setMinUnderlyingBackingBips(toBN(oldValue).subn(2), { from: assetManagerController });
         });
 
         it("should not setMaxTrustedPriceAgeSeconds if rate limited", async () => {

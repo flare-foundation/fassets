@@ -98,11 +98,6 @@ export class AssetContext implements IAssetContext {
         await this.refreshSettings();
     }
 
-    async setMinUnderlyingBackingBips(newMinUnderlyingBackingBips: BNish) {
-        await waitForTimelock(this.assetManagerController.setMinUnderlyingBackingBips([this.assetManager.address], newMinUnderlyingBackingBips, { from: this.governance }), this.assetManagerController, this.governance);
-        await this.refreshSettings();
-    }
-
     async setCollateralReservationFeeBips(newCollateralReservationFeeBips: BNish) {
         await waitForTimelock(this.assetManagerController.setCollateralReservationFeeBips([this.assetManager.address], newCollateralReservationFeeBips, { from: this.governance }), this.assetManagerController, this.governance);
         await this.refreshSettings();

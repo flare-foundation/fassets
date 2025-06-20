@@ -95,7 +95,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         assetUnitUBA: toBNExp(1, ci.decimals),
         assetMintingDecimals: ci.amgDecimals,
         assetMintingGranularityUBA: toBNExp(1, ci.decimals - ci.amgDecimals),
-        minUnderlyingBackingBIPS: MAX_BIPS,
+        __minUnderlyingBackingBIPS: 0,
         mintingCapAMG: 0,                                   // minting cap disabled
         lotSizeAMG: toBNExp(ci.lotSize, ci.amgDecimals),
         requireEOAAddressProof: ci.requireEOAProof,
