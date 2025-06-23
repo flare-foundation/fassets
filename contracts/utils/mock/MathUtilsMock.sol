@@ -16,4 +16,18 @@ contract MathUtilsMock {
     function subOrZero(uint256 _a, uint256 _b) external pure returns (uint256) {
         return MathUtils.subOrZero(_a, _b);
     }
+
+    function positivePart(int256 _x) external pure returns (uint256) {
+        return MathUtils.positivePart(_x);
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function mixedLTE_ui(uint256 _a, int256 _b) external pure returns (bool) {
+        return MathUtils.mixedLTE(_a, _b);
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function mixedLTE_iu(int256 _a, uint256 _b) external pure returns (bool) {
+        return MathUtils.mixedLTE(_a, _b);
+    }
 }
