@@ -110,6 +110,13 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         token = IICollateralPoolToken(_poolToken);
     }
 
+    /**
+     * @notice Returns the collateral pool token contract used by this contract
+     */
+    function poolToken() external view returns (ICollateralPoolToken) {
+        return token;
+    }
+
     function setExitCollateralRatioBIPS(uint256 _exitCollateralRatioBIPS)
         external
         onlyAssetManager
@@ -314,8 +321,8 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         token.burn(msg.sender, _tokenShare, false);
         _withdrawWNatTo(_recipient, natShare);
         if (returnFunds) {
-            // return any NAT included by mistake back to the sender
-            Transfers.transferNAT(payable(msg.sender), msg.value);
+            // return any NAT included by mistake to the recipient
+            Transfers.transferNAT(_recipient, msg.value);
         }
         // emit event
         emit CPSelfCloseExited(msg.sender, _tokenShare, natShare, requiredFAssets);
@@ -391,13 +398,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         _transferFAssetFrom(msg.sender, _fAssets);
         // emit event
         emit CPFeeDebtPaid(msg.sender, _fAssets);
-    }
-
-    /**
-     * @notice Returns the collateral pool token contract used by this contract
-     */
-    function poolToken() external view returns (ICollateralPoolToken) {
-        return token;
     }
 
     function _collateralToTokenShare(
@@ -538,7 +538,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         });
     }
 
-
     function _totalVirtualFees()
         internal view
         returns (uint256)
@@ -586,6 +585,13 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
 
     ////////////////////////////////////////////////////////////////////////////////////
     // tracking wNat collateral and f-asset fees
+
+    function depositNat()
+        external payable
+        onlyAssetManager
+    {
+        _depositWNat();
+    }
 
     // this is needed to track asset manager's minting fee deposit
     function fAssetFeeDeposited(
@@ -757,13 +763,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         if (untrackedFAsset > 0) {
             fAsset.safeTransfer(_recipient, untrackedFAsset);
         }
-    }
-
-    function depositNat()
-        external payable
-        onlyAssetManager
-    {
-        _depositWNat();
     }
 
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant

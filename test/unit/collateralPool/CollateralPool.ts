@@ -938,15 +938,16 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await collateralPool.withdrawFees(await collateralPool.fAssetFeesOf(accounts[0]), { from: accounts[0] });
             const holderWithdrawnFAssets = await fAsset.balanceOf(accounts[0]);
             //
+            const unneededExecutorFee = ETH(1);
             await fAsset.approve(collateralPool.address, ETH(10), { from: accounts[0] });
-            const receipt = await collateralPool.selfCloseExitTo(exitTokens, true, accounts[2], "underlying_1", ZERO_ADDRESS, { from: accounts[0], value: ETH(1) });
+            const receipt = await collateralPool.selfCloseExitTo(exitTokens, true, accounts[2], "underlying_1", ZERO_ADDRESS, { from: accounts[0], value: unneededExecutorFee });
             await expectEvent.inTransaction(receipt.tx, assetManager, "AgentRedemptionInCollateral", { _recipient: accounts[2], _amountUBA: ETH(5) });
             const holderReceivedNat = await calculateReceivedNat(receipt, accounts[0]);
             const receiverReceivedNat = await calculateReceivedNat(receipt, accounts[2]);
             const holderFAssetsLeftAfterSelfClose = await fAsset.balanceOf(accounts[0]);
             const receiverReceivedFAssets = await fAsset.balanceOf(accounts[2]);
-            assertEqualBN(holderReceivedNat, BN_ZERO); // msg.value is returned to sender
-            assertEqualBN(receiverReceivedNat, exitTokens);
+            assertEqualBN(holderReceivedNat, unneededExecutorFee.neg()); // msg.value is returned to sender
+            assertEqualBN(receiverReceivedNat, exitTokens.add(unneededExecutorFee));
             assertEqualBN(holderWithdrawnFAssets, ETH(10));
             assertEqualBN(holderFAssetsLeftAfterSelfClose, ETH(5));
             assertEqualBN(receiverReceivedFAssets, BN_ZERO);   // half fees get redeemed, so expect half fees to be paid out
