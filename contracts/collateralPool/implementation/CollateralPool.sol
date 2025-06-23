@@ -148,7 +148,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         // mint pool tokens to the sender
         uint256 timelockExp = token.mint(msg.sender, tokenShare);
         // emit event
-        emit CPEntered(msg.sender, msg.value, tokenShare, _fAssetFeeDebtOf[msg.sender], timelockExp);
+        emit CPEntered(msg.sender, msg.value, tokenShare, timelockExp);
         return (tokenShare, timelockExp);
     }
 
@@ -208,7 +208,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         token.burn(msg.sender, _tokenShare, false);
         _withdrawWNatTo(_recipient, natShare);
         // emit event
-        emit CPExited(msg.sender, _tokenShare, natShare, 0, _fAssetFeeDebtOf[msg.sender]);
+        emit CPExited(msg.sender, _tokenShare, natShare);
         return natShare;
     }
 
@@ -318,7 +318,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
             Transfers.transferNAT(payable(msg.sender), msg.value);
         }
         // emit event
-        emit CPExited(msg.sender, _tokenShare, natShare, requiredFAssets, _fAssetFeeDebtOf[msg.sender]);
+        emit CPSelfCloseExited(msg.sender, _tokenShare, natShare, requiredFAssets);
     }
 
     /**
@@ -372,7 +372,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         _createFAssetFeeDebt(msg.sender, _fAssets);
         _transferFAssetTo(_recipient, _fAssets);
         // emit event
-        emit CPFeesWithdrawn(msg.sender, _fAssets, _fAssetFeeDebtOf[msg.sender]);
+        emit CPFeesWithdrawn(msg.sender, _fAssets);
     }
 
     /**
@@ -390,7 +390,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         _deleteFAssetFeeDebt(msg.sender, _fAssets);
         _transferFAssetFrom(msg.sender, _fAssets);
         // emit event
-        emit CPFeeDebtPaid(msg.sender, _fAssets, _fAssetFeeDebtOf[msg.sender]);
+        emit CPFeeDebtPaid(msg.sender, _fAssets);
     }
 
     /**
@@ -603,6 +603,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         int256 fAssets = _fAssets.toInt256();
         _fAssetFeeDebtOf[_account] += fAssets;
         totalFAssetFeeDebt += fAssets;
+        emit CPFeeDebtChanged(_account, _fAssetFeeDebtOf[_account]);
     }
 
     // _fAssets should be smaller or equal to _account's f-asset debt
@@ -612,6 +613,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         int256 fAssets = _fAssets.toInt256();
         _fAssetFeeDebtOf[_account] -= fAssets;
         totalFAssetFeeDebt -= fAssets;
+        emit CPFeeDebtChanged(_account, _fAssetFeeDebtOf[_account]);
     }
 
     function _transferFAssetFrom(
@@ -783,7 +785,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
             uint256 debtFAssetFeeShare = _tokensToVirtualFeeShare(slashedTokens);
             _deleteFAssetFeeDebt(agentVault, debtFAssetFeeShare);
             token.burn(agentVault, slashedTokens, true);
-            emit CPExited(agentVault, slashedTokens, 0, 0, _fAssetFeeDebtOf[agentVault]);
         }
         // transfer collateral to the recipient
         _transferWNatTo(_recipient, _amount);

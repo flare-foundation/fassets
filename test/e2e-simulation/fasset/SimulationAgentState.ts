@@ -14,7 +14,7 @@ import { openNewFile } from "../../../lib/utils/file-utils";
 import { BN_ZERO, expectErrors, formatBN, latestBlockTimestamp, sumBN, toBN, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
 import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
-import { CPEntered, CPExited } from "../../../typechain-truffle/CollateralPool";
+import { CPEntered, CPExited, CPFeeDebtChanged } from "../../../typechain-truffle/CollateralPool";
 import {
     AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionPoolFeeMinted, RedemptionRequested, RedemptionTicketCreated,
@@ -96,6 +96,7 @@ export class SimulationAgentState extends TrackedAgentState {
     // pool data
     poolTokenBalances = new SparseArray();
     poolFeeDebt = new SparseArray();
+    lastPoolFeeDebtChange = new Map<string, number>();
 
     // log
     actionLog: SimulationStateLogRecord[] = [];
@@ -124,6 +125,7 @@ export class SimulationAgentState extends TrackedAgentState {
         // pool eneter and exit event
         this.parent.truffleEvents.event(collateralPool, 'CPEntered').immediate().subscribe(args => this.handlePoolEnter(args));
         this.parent.truffleEvents.event(collateralPool, 'CPExited').immediate().subscribe(args => this.handlePoolExit(args));
+        this.parent.truffleEvents.event(collateralPool, 'CPFeeDebtChanged').immediate().subscribe(args => this.handleFeeDebtChanged(args));
         // pool token transfer event
         this.parent.truffleEvents.event(collateralPoolToken, 'Transfer').immediate().subscribe(args => {
             this.handlePoolTokenTransfer(args.from, args.to, toBN(args.value));
@@ -367,13 +369,22 @@ export class SimulationAgentState extends TrackedAgentState {
     handlePoolEnter(args: EvmEventArgs<CPEntered>): void {
         // const debtChange = this.calculatePoolFeeDebtChange(toBN(args.receivedTokensWei), toBN(args.addedFAssetFeesUBA));
         // this.poolFeeDebt.addTo(args.tokenHolder, debtChange);
-        this.poolFeeDebt.set(args.tokenHolder, toBN(args.newFAssetFeeDebt));
     }
 
     handlePoolExit(args: EvmEventArgs<CPExited>): void {
         // const debtChange = this.calculatePoolFeeDebtChange(toBN(args.burnedTokensWei).neg(), toBN(args.receviedFAssetFeesUBA).neg());
         // this.poolFeeDebt.addTo(args.tokenHolder, debtChange);
-        this.poolFeeDebt.set(args.tokenHolder, toBN(args.newFAssetFeeDebt));
+    }
+
+    handleFeeDebtChanged(args: EvmEventArgs<CPFeeDebtChanged>): void {
+        const eventAt = this.calcBlockIndex(args.$event);
+        const lastChangeAt = this.lastPoolFeeDebtChange.get(args.tokenHolder) ?? -1;
+        if (eventAt > lastChangeAt) {
+            this.poolFeeDebt.set(args.tokenHolder, toBN(args.newFeeDebtUBA));
+            this.lastPoolFeeDebtChange.set(args.tokenHolder, eventAt);
+        } else {
+            this.parent.logger?.log(`???? ISSUE poolFeeDebt[${args.tokenHolder}] not changed due to inconsistent event ordering: prev change at ${lastChangeAt}, this change at ${eventAt}`);
+        }
     }
 
     private calculatePoolFeeDebtChange(receivedPoolTokens: BN, sentFAssets: BN) {

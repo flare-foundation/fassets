@@ -385,7 +385,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assertWeb3Equal((await agent.collateralPoolToken.balanceOf(minter.address)), 0);
         await expectEvent.inTransaction(response.tx, context.assetManager, "RedemptionRequested");
         assertWeb3Equal(receivedNat, natShare);
-        expectEvent(response, "CPExited");
+        expectEvent(response, "CPSelfCloseExited");
     });
 
     it("self close exit test, too many tickets required to burn", async () => {
@@ -460,7 +460,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const vaultCollateralBalanceRedeemerAfter = await context.usdc.balanceOf(minter.address);
         assertWeb3Equal(vaultCollateralBalanceRedeemerAfter.sub(vaultCollateralBalanceRedeemerBefore), vaultCollateralBalanceAgentBefore.sub(vaultCollateralBalanceAgentAfter));
         assertWeb3Equal(receivedNat, natShare);
-        expectEvent(response, "CPExited");
+        expectEvent(response, "CPSelfCloseExited");
     });
 
     it("can withdraw collateral when FAsset is terminated", async () => {

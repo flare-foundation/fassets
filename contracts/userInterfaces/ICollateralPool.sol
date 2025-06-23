@@ -8,31 +8,34 @@ import {ICollateralPoolToken} from "./ICollateralPoolToken.sol";
 
 
 interface ICollateralPool {
-    // Also emitted in case of fee debt payment - in this case `amountNatWei = receivedTokensWei = 0`.
     event CPEntered(
         address indexed tokenHolder,
         uint256 amountNatWei,
         uint256 receivedTokensWei,
-        int256 newFAssetFeeDebt,
         uint256 timelockExpiresAt);
 
-    // In case of self-close exit, `closedFAssetsUBA` is nonzero and includes `receivedFAssetFeesUBA`.
     event CPExited(
         address indexed tokenHolder,
         uint256 burnedTokensWei,
+        uint256 receivedNatWei);
+
+    event CPSelfCloseExited(
+        address indexed tokenHolder,
+        uint256 burnedTokensWei,
         uint256 receivedNatWei,
-        uint256 closedFAssetsUBA,
-        int256 newFAssetFeeDebt);
+        uint256 closedFAssetsUBA);
 
     event CPFeeDebtPaid(
         address indexed tokenHolder,
-        uint256 paidFeesUBA,
-        int256 newFAssetFeeDebt);
+        uint256 paidFeesUBA);
 
     event CPFeesWithdrawn(
         address indexed tokenHolder,
-        uint256 withdrawnFeesUBA,
-        int256 newFAssetFeeDebt);
+        uint256 withdrawnFeesUBA);
+
+    event CPFeeDebtChanged(
+        address indexed tokenHolder,
+        int256 newFeeDebtUBA);
 
     // Emitted when asset manager forces payout from the pool
     event CPPaidOut(
