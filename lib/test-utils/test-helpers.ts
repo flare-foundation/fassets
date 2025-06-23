@@ -125,7 +125,7 @@ export function ether(value: BN | number | string): BN {
  * @param promise response of a transaction
  * @param message the expected revert message
  */
-export async function expectRevert(promise: Promise<any>, message: string): Promise<void> {
+export async function expectRevert(promise: Promise<unknown>, message: string): Promise<void> {
     try {
         await promise;
     } catch (error: any) {
@@ -145,7 +145,7 @@ export namespace expectRevert {
      * Like expectRevert, asserts that promise was rejected due to a reverted transaction caused by a require or revert statement, but doesn’t check the revert reason.
      * @param promise response of a transaction
      */
-    export function unspecified(promise: Promise<any>) {
+    export function unspecified(promise: Promise<unknown>) {
         return expectRevert(promise, 'revert');
     }
 
@@ -153,8 +153,26 @@ export namespace expectRevert {
      * Asserts that promise was rejected due to a transaction running out of gas.
      * @param promise response of a transaction
      */
-    export function outOfGas(promise: Promise<any>) {
+    export function outOfGas(promise: Promise<unknown>) {
         return expectRevert(promise, 'out of gas');
+    }
+
+    /**
+     * Asserts that promise was rejected with custom error with given name and args.
+     * @param promise response of a transaction
+     * @param name Solidity custom error name
+     * @param args custom error args (optional - if not provided, the match is just by name)
+     */
+    export function custom(promise: Promise<unknown>, name: string, args?: unknown[]) {
+        if (args) {
+            // match byu name and args
+            const argStrings = args.map(x => typeof x === 'string' ? JSON.stringify(x) : String(x));
+            const errorString = `${name}(${argStrings.join(", ")})`;
+            return expectRevert(promise, `reverted with custom error '${errorString}'`);
+        } else {
+            // match by just name
+            return expectRevert(promise, `reverted with custom error '${name}`);
+        }
     }
 }
 
@@ -238,7 +256,7 @@ function matchEventListArgs<T extends Truffle.AnyEvent>(events: TruffleExtractEv
 
 function matchEventArgs<T extends Truffle.AnyEvent>(event: TruffleExtractEvent<T, T["name"]>, eventArgs: Partial<StringForBN<T["args"]>>) {
     for (const [name, expected] of Object.entries(eventArgs)) {
-        const actual: any = event.args[name];
+        const actual = event.args[name];
         if (actual === undefined) {
             assert.fail(`Event argument '${name}' not found`);
         }

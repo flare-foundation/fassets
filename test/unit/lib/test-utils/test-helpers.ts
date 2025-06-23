@@ -1,9 +1,10 @@
 import { expectEvent, expectRevert, time } from "../../../../lib/test-utils/test-helpers";
 import { getTestFile } from "../../../../lib/test-utils/test-suite-helpers";
 import { toBN } from "../../../../lib/utils/helpers";
-import { ERC20MockInstance } from "../../../../typechain-truffle";
+import { CustomErrorMockInstance, ERC20MockInstance } from "../../../../typechain-truffle";
 
 const ERC20Mock = artifacts.require("ERC20Mock");
+const CustomErrorMock = artifacts.require("CustomErrorMock");
 
 contract(`test-helpers.ts; ${getTestFile(__filename)}; Test library helpers unit tests`, accounts => {
     let token: ERC20MockInstance;
@@ -55,8 +56,53 @@ contract(`test-helpers.ts; ${getTestFile(__filename)}; Test library helpers unit
             }
             assert.fail("error not detected");
         });
-
     });
+
+    describe("testing expectRevert.custom", () => {
+        let errorMock: CustomErrorMockInstance;
+
+        beforeEach(async () => {
+            errorMock = await CustomErrorMock.new();
+        });
+
+        it("should succeed checking for error without args", async () => {
+            await expectRevert.custom(errorMock.emitErrorWithoutArgs(), "ErrorWithoutArgs", []);
+        });
+
+        it("should succeed checking for error with args", async () => {
+            await expectRevert.custom(errorMock.emitErrorWithArgs(123, "amount too low"), "ErrorWithArgs", [123, "amount too low"]);
+            await expectRevert.custom(errorMock.emitErrorWithArgs(123, "amount too low"), "ErrorWithArgs", [toBN(123), "amount too low"]);
+        });
+
+        it("should succeed checking for error by name only", async () => {
+            await expectRevert.custom(errorMock.emitErrorWithoutArgs(), "ErrorWithoutArgs");
+            await expectRevert.custom(errorMock.emitErrorWithArgs(123, "amount too low"), "ErrorWithArgs");
+        });
+
+        it("should fail checking for error with wrong name", async () => {
+            await expectRevert(
+                expectRevert.custom(errorMock.emitErrorWithoutArgs(), "UnknownError"),
+                "Wrong kind of exception received");
+            await expectRevert(
+                expectRevert.custom(errorMock.emitErrorWithArgs(123, "amount too low"), "UnknownError"),
+                "Wrong kind of exception received");
+            await expectRevert(
+                expectRevert.custom(errorMock.emitErrorWithArgs(123, "amount too low"), "UnknownError", []),
+                "Wrong kind of exception received");
+        });
+
+        it("should fail checking for error with wrong args", async () => {
+            await expectRevert(
+                expectRevert.custom(errorMock.emitErrorWithArgs(123, "amount too low"), "ErrorWithArgs", []),
+                "Wrong kind of exception received");
+            await expectRevert(
+                expectRevert.custom(errorMock.emitErrorWithArgs(123, "amount too low"), "ErrorWithArgs", [123, "amount too high"]),
+                "Wrong kind of exception received");
+            await expectRevert(
+                expectRevert.custom(errorMock.emitErrorWithArgs(123, "amount too low"), "ErrorWithArgs", [125, "amount too low"]),
+                "Wrong kind of exception received");
+        });
+    })
 
     describe("testing expectEvent", () => {
         it("should succeed if event found", async () => {
@@ -103,14 +149,9 @@ contract(`test-helpers.ts; ${getTestFile(__filename)}; Test library helpers unit
 
         it("should fail if event name not found", async () => {
             const response = await token.deposit({ from: accounts[1], value: toBN(100) });
-            try {
-                await expectEvent.inTransaction(response.tx, token, "Approval");
-            } catch (error) {
-                assert(error instanceof Error);
-                assert.match(error.message, /No 'Approval' events found/);
-                return;
-            }
-            assert.fail("should not reach here");
+            await expectRevert(
+                expectEvent.inTransaction(response.tx, token, "Approval"),
+                `No 'Approval' events found`);
         });
 
         it("should succeed if event with correct args found", async () => {
@@ -120,26 +161,16 @@ contract(`test-helpers.ts; ${getTestFile(__filename)}; Test library helpers unit
 
         it("should fail if event arg not found", async () => {
             const response = await token.deposit({ from: accounts[1], value: toBN(100) });
-            try {
-                await expectEvent.inTransaction(response.tx, token, "Transfer", { amount: "50" } as any);
-            } catch (error) {
-                assert(error instanceof Error);
-                assert.match(error.message, /Event argument 'amount' not found/);
-                return;
-            }
-            assert.fail("should not reach here");
+            await expectRevert(
+                expectEvent.inTransaction(response.tx, token, "Transfer", { amount: "50" } as any),
+                `Event argument 'amount' not found`);
         });
 
         it("should fail if event arg has wrong value", async () => {
             const response = await token.deposit({ from: accounts[1], value: toBN(100) });
-            try {
-                await expectEvent.inTransaction(response.tx, token, "Transfer", { value: 50 });
-            } catch (error) {
-                assert(error instanceof Error);
-                assert.match(error.message, /expected event argument 'value' to have value 50 but got 100/);
-                return;
-            }
-            assert.fail("should not reach here");
+            await expectRevert(
+                expectEvent.inTransaction(response.tx, token, "Transfer", { value: 50 }),
+                `expected event argument 'value' to have value 50 but got 100`);
         });
 
         it("notEmitted should succeed if event not found", async () => {
@@ -149,14 +180,9 @@ contract(`test-helpers.ts; ${getTestFile(__filename)}; Test library helpers unit
 
         it("notEmitted should fail if event was found", async () => {
             const response = await token.deposit({ from: accounts[1], value: toBN(100) });
-            try {
-                await expectEvent.notEmitted.inTransaction(response.tx, token, "Transfer");
-            } catch (error) {
-                assert(error instanceof Error);
-                assert.match(error.message, /Unexpected event 'Transfer' was found/);
-                return;
-            }
-            assert.fail("should not reach here");
+            await expectRevert(
+                expectEvent.notEmitted.inTransaction(response.tx, token, "Transfer"),
+                `Unexpected event 'Transfer' was found`);
         });
     });
 });

@@ -61,6 +61,16 @@ export default tseslint.config([
             'eqeqeq': ['warn', 'always', { null: 'ignore' }],
             // Disable async-without-await error
             '@typescript-eslint/require-await': 'off',
+            // Make `any` errors into warnings
+            '@typescript-eslint/no-explicit-any': 'warn',
+            '@typescript-eslint/no-unsafe-argument': 'warn',
+            '@typescript-eslint/no-unsafe-assignment': 'warn',
+            '@typescript-eslint/no-unsafe-call': 'warn',
+            '@typescript-eslint/no-unsafe-declaration-merging': 'warn',
+            '@typescript-eslint/no-unsafe-enum-comparison': 'warn',
+            '@typescript-eslint/no-unsafe-function-type': 'warn',
+            '@typescript-eslint/no-unsafe-member-access': 'warn',
+            '@typescript-eslint/no-unsafe-return': 'warn',
         },
     },
     // Override rules for specific files
