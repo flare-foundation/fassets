@@ -1,9 +1,9 @@
-import { time } from "@openzeppelin/test-helpers";
+import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
+import { randomShuffle } from "../../../lib/test-utils/simulation-utils";
+import { time } from "../../../lib/test-utils/test-helpers";
 import { ClearableSubscription, EventEmitter, EventExecutionQueue, EventHandler, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
 import { latestBlockTimestamp, runAsync } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
-import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
-import { randomShuffle } from "../../../lib/test-utils/simulation-utils";
 import { ITimer } from "./Timer";
 
 type TimelineEventType = 'FlareTime' | 'UnderlyingBlock' | 'UnderlyingTime';

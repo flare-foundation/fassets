@@ -1,9 +1,9 @@
-import { time } from "@openzeppelin/test-helpers";
 import { network } from "hardhat";
 import * as rlp from "rlp";
 import { toBN, ZERO_BYTES32 } from "../utils/helpers";
 import { AllEvents as IGovernedEvents } from "../../typechain-truffle/IGoverned";
 import { Web3EventDecoder } from "./Web3EventDecoder";
+import { time } from "./test-helpers";
 
 const SuicidalMock = artifacts.require("SuicidalMock");
 const GovernanceSettings = artifacts.require("GovernanceSettingsMock");

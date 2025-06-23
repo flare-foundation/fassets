@@ -1,6 +1,6 @@
 import hre from "hardhat";
 import { requiredEventArgs } from "../../lib/utils/events/truffle";
-import { getTestFile, itSkipIf } from "../../lib/test-utils/test-helpers";
+import { getTestFile, itSkipIf } from "../../lib/test-utils/test-suite-helpers";
 import { createTestAgent } from "../../lib/test-utils/test-settings";
 import { AgentOwnerRegistryInstance, IAssetManagerControllerInstance } from "../../typechain-truffle";
 import { FAssetContractStore } from "../lib/contracts";

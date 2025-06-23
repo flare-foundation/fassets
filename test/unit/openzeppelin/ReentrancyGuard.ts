@@ -1,4 +1,4 @@
-import { expectRevert } from '@openzeppelin/test-helpers';
+import { expectRevert } from "../../../lib/test-utils/test-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { ReentrancyMockInstance } from '../../../typechain-truffle';
 

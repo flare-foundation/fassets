@@ -1,23 +1,20 @@
 import { ARESBase, AddressValidity, Payment } from "@flarenetwork/state-connector-protocol";
-import { ether, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSetting, AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
-import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { SourceId } from "../../../../lib/underlying-chain/SourceId";
-import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BNish, toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
-import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
-import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-helpers";
-import {
-    TestSettingsContracts, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts,
-    createTestSettings
-} from "../../../../lib/test-utils/test-settings";
+import { ether, expectEvent, expectRevert, time } from "../../../../lib/test-utils/test-helpers";
+import { TestSettingsContracts, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings } from "../../../../lib/test-utils/test-settings";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
+import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { SourceId } from "../../../../lib/underlying-chain/SourceId";
+import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
+import { BNish, ZERO_ADDRESS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
+import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance } from "../../../../typechain-truffle";
 
 const CollateralPool = artifacts.require("CollateralPool");
 const CollateralPoolToken = artifacts.require("CollateralPoolToken");

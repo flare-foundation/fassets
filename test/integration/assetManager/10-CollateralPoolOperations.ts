@@ -1,12 +1,4 @@
-import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { MAX_BIPS, ZERO_ADDRESS, toBIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
-import { impersonateContract, stopImpersonatingContract } from "../../../lib/test-utils/contract-test-helpers";
-import { calculateReceivedNat } from "../../../lib/test-utils/eth";
-import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
-import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-helpers";
-import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
@@ -15,7 +7,15 @@ import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
+import { impersonateContract, stopImpersonatingContract } from "../../../lib/test-utils/contract-test-helpers";
+import { calculateReceivedNat } from "../../../lib/test-utils/eth";
+import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
+import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
+import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { MAX_BIPS, ZERO_ADDRESS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 
 
 contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral pool operations`, accounts => {

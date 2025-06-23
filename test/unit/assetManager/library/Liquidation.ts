@@ -1,16 +1,16 @@
-import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, AgentStatus, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
-import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
-import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-helpers";
-import { TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestSettings } from "../../../../lib/test-utils/test-settings";
+import { expectRevert, time } from "../../../../lib/test-utils/test-helpers";
+import { createTestAgent, createTestCollaterals, createTestContracts, createTestSettings, TestSettingsContracts } from "../../../../lib/test-utils/test-settings";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
+import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
+import { toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
+import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../../typechain-truffle";
 
 contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`, accounts => {
     const governance = accounts[10];

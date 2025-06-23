@@ -1,8 +1,7 @@
-import { expectRevert } from "@openzeppelin/test-helpers";
 import { formatBN, HOURS, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
@@ -11,6 +10,7 @@ import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { Liquidator } from "../../../lib/test-utils/actors/Liquidator";
 import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
+import { expectRevert } from "../../../lib/test-utils/test-helpers";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests - emergency pause`, accounts => {
     const governance = accounts[10];

@@ -1,11 +1,4 @@
-import { time } from "@openzeppelin/test-helpers";
-import { AgentSettings, AssetManagerSettings, CollateralClass, CollateralType } from "../fasset/AssetManagerTypes";
-import { ChainInfo } from "../fasset/ChainInfo";
-import { PaymentReference } from "../fasset/PaymentReference";
-import { AttestationHelper } from "../underlying-chain/AttestationHelper";
-import { findRequiredEvent } from "../utils/events/truffle";
-import { BNish, DAYS, HOURS, MAX_BIPS, MINUTES, requireNotNull, toBIPS, toBNExp, WEEKS, ZERO_ADDRESS } from "../utils/helpers";
-import { web3DeepNormalize } from "../utils/web3normalize";
+import { time } from "./test-helpers";
 import {
     AddressUpdaterMockInstance,
     AgentOwnerRegistryInstance,
@@ -13,16 +6,23 @@ import {
     CollateralPoolFactoryInstance,
     CollateralPoolTokenFactoryInstance,
     ERC20MockInstance,
+    FdcHubMockInstance,
+    FtsoV2PriceStoreMockInstance,
     GovernanceSettingsMockInstance,
+    IFdcVerificationInstance,
     IIAssetManagerInstance,
     IPriceReaderInstance,
     IWhitelistInstance,
-    WNatMockInstance,
-    IFdcVerificationInstance,
     RelayMockInstance,
-    FdcHubMockInstance,
-    FtsoV2PriceStoreMockInstance
+    WNatMockInstance
 } from "../../typechain-truffle";
+import { AgentSettings, AssetManagerSettings, CollateralClass, CollateralType } from "../fasset/AssetManagerTypes";
+import { ChainInfo } from "../fasset/ChainInfo";
+import { PaymentReference } from "../fasset/PaymentReference";
+import { AttestationHelper } from "../underlying-chain/AttestationHelper";
+import { findRequiredEvent } from "../utils/events/truffle";
+import { BNish, DAYS, HOURS, MAX_BIPS, MINUTES, requireNotNull, toBIPS, toBNExp, WEEKS, ZERO_ADDRESS } from "../utils/helpers";
+import { web3DeepNormalize } from "../utils/web3normalize";
 import { CoreVaultManagerSettings } from "./actors/MockCoreVaultBot";
 import { testChainInfo, TestChainInfo } from "./actors/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";

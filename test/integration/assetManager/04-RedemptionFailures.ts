@@ -1,19 +1,19 @@
-import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
-import { eventArgs, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { DAYS, deepFormat, MAX_BIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
-import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
-import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
-import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-helpers";
-import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
+import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
-import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
+import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
+import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
+import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
+import { expectEvent, expectRevert } from "../../../lib/test-utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
+import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
+import { eventArgs, requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { DAYS, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {

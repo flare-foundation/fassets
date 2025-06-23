@@ -1,14 +1,14 @@
-import { expectEvent, time } from "@openzeppelin/test-helpers";
 import { CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
-import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { FAssetInstance, IIAssetManagerInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-helpers";
+import { expectEvent, time } from "../../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestCollaterals, createTestContracts, createTestSettings } from "../../../../lib/test-utils/test-settings";
+import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
+import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { FAssetInstance, IIAssetManagerInstance } from "../../../../typechain-truffle";
 
 contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests`, accounts => {
     const governance = accounts[10];

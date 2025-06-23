@@ -1,13 +1,5 @@
-import { expectRevert } from "@openzeppelin/test-helpers";
 import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
-import { EventArgs } from "../../../lib/utils/events/common";
-import { DAYS, toBN, toWei } from "../../../lib/utils/helpers";
-import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
-import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
-import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-helpers";
-import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { Challenger } from "../../../lib/test-utils/actors/Challenger";
@@ -17,6 +9,14 @@ import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
+import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
+import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
+import { expectRevert } from "../../../lib/test-utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
+import { EventArgs } from "../../../lib/utils/events/common";
+import { DAYS, toBN, toWei } from "../../../lib/utils/helpers";
+import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
     const governance = accounts[10];

@@ -1,7 +1,7 @@
-import { expectRevert } from "@openzeppelin/test-helpers";
-import { getTestFile } from "../../../../lib/test-utils/test-helpers";
-import { MerkleTreeMockInstance } from "../../../../typechain-truffle";
 import { MerkleTree } from "@flarenetwork/state-connector-protocol/dist/libs/ts/MerkleTree";
+import { expectRevert } from "../../../../lib/test-utils/test-helpers";
+import { getTestFile } from "../../../../lib/test-utils/test-suite-helpers";
+import { MerkleTreeMockInstance } from "../../../../typechain-truffle";
 
 const MerkleTreeMock = artifacts.require("MerkleTreeMock");
 

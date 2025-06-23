@@ -12,12 +12,15 @@ export const BN_ZERO = Web3.utils.toBN(0);
 export const BN_ONE = Web3.utils.toBN(1);
 export const BN_TEN = Web3.utils.toBN(10);
 
+export const MAX_UINT256 = BN_ONE.shln(256).sub(BN_ONE);
+
 export const MAX_BIPS = 10_000;
 
 export const MINUTES = 60;
 export const HOURS = 60 * MINUTES;
 export const DAYS = 24 * HOURS;
 export const WEEKS = 7 * DAYS;
+export const YEARS = 365 * DAYS;
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 export const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000";

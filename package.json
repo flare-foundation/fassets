@@ -93,7 +93,6 @@
     "@nomicfoundation/hardhat-verify": "2.0.14",
     "@nomiclabs/hardhat-truffle5": "2.0.7",
     "@nomiclabs/hardhat-web3": "2.0.1",
-    "@openzeppelin/test-helpers": "0.5.16",
     "@typechain/truffle-v5": "7.0.0",
     "@types/chai": "5.2.2",
     "@types/mocha": "10.0.10",

@@ -1,10 +1,10 @@
-import { expectRevert } from '@openzeppelin/test-helpers';
-import { DiamondCutFacetInstance, DiamondLoupeFacetInstance } from '../../../typechain-truffle';
-import { DiamondCut, DiamondSelectors, FacetCutAction } from '../../../lib/utils/diamond';
+import { expectRevert } from '../../../lib/test-utils/test-helpers';
 import { TestSettingsContracts, createTestContracts } from '../../../lib/test-utils/test-settings';
-import { deployDiamond } from './deploy';
-import { loadFixtureCopyVars } from '../../../lib/test-utils/test-helpers';
+import { loadFixtureCopyVars } from '../../../lib/test-utils/test-suite-helpers';
+import { DiamondCut, DiamondSelectors, FacetCutAction } from '../../../lib/utils/diamond';
 import { ZERO_ADDRESS, requireNotNull } from '../../../lib/utils/helpers';
+import { DiamondCutFacetInstance, DiamondLoupeFacetInstance } from '../../../typechain-truffle';
+import { deployDiamond } from './deploy';
 
 const DiamondCutFacet = artifacts.require('DiamondCutFacet');
 const MockDiamond = artifacts.require('MockDiamond');

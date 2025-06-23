@@ -1,7 +1,6 @@
 import Web3 from "web3";
 import { Artifact, HardhatRuntimeEnvironment } from "hardhat/types";
 
-// same as in @openzeppelin/test-helpers, but including those in hadhat scripts breaks tests for some reason
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 export interface DeployAccounts {

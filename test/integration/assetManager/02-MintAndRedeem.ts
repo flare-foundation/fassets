@@ -1,20 +1,20 @@
-import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import { BN_ZERO, MAX_BIPS, sumBN, toBN, toBNExp, toWei, ZERO_ADDRESS, ZERO_BYTES32 } from "../../../lib/utils/helpers";
-import { Approximation } from "../../../lib/test-utils/approximation";
-import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-helpers";
-import { assertWeb3DeepEqual, assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
+import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
-import { ERC20MockInstance } from "../../../typechain-truffle";
+import { Approximation } from "../../../lib/test-utils/approximation";
 import { impersonateContract, stopImpersonatingContract } from "../../../lib/test-utils/contract-test-helpers";
 import { waitForTimelock } from "../../../lib/test-utils/fasset/CreateAssetManager";
+import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
+import { expectEvent, expectRevert } from "../../../lib/test-utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { assertWeb3DeepEqual, assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
+import { BN_ZERO, MAX_BIPS, sumBN, toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { ERC20MockInstance } from "../../../typechain-truffle";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
     const governance = accounts[10];

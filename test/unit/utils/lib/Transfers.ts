@@ -1,8 +1,8 @@
-import { expectRevert } from "@openzeppelin/test-helpers";
+import { expectRevert } from "../../../../lib/test-utils/test-helpers";
+import { getTestFile } from "../../../../lib/test-utils/test-suite-helpers";
+import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { toBNExp } from "../../../../lib/utils/helpers";
 import { MathUtilsMockInstance, TransfersMockInstance } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../../lib/test-utils/test-helpers";
-import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 
 const MathUtils = artifacts.require("MathUtilsMock");
 const Transfers = artifacts.require("TransfersMock");

@@ -1,13 +1,13 @@
-import { expectRevert } from "@openzeppelin/test-helpers";
 import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
-import { toBNExp, toWei } from "../../../lib/utils/helpers";
-import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-helpers";
-import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
+import { expectRevert } from "../../../lib/test-utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
+import { toBNExp, toWei } from "../../../lib/utils/helpers";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
     const governance = accounts[10];

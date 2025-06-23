@@ -1,11 +1,11 @@
-import { time } from "@openzeppelin/test-helpers";
+import { AssetManagerInitInstance, FAssetInstance, GovernanceSettingsMockInstance, IDiamondLoupeInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
+import { GovernanceCallTimelocked } from "../../../typechain-truffle/AssetManagerController";
 import { AssetManagerSettings, CollateralType } from "../../fasset/AssetManagerTypes";
 import { DiamondCut, FacetCutAction } from "../../utils/diamond";
 import { findEvent } from "../../utils/events/truffle";
 import { abiEncodeCall, BNish, contractMetadata, ZERO_ADDRESS } from "../../utils/helpers";
 import { web3DeepNormalize } from "../../utils/web3normalize";
-import { AssetManagerInitInstance, FAssetInstance, GovernanceSettingsMockInstance, IDiamondLoupeInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
-import { GovernanceCallTimelocked } from "../../../typechain-truffle/AssetManagerController";
+import { time } from "../test-helpers";
 
 export interface AssetManagerInitSettings extends AssetManagerSettings {
     // redemption time extension

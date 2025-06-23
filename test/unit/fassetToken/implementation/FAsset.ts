@@ -1,11 +1,11 @@
 import { stopImpersonatingAccount } from "@nomicfoundation/hardhat-network-helpers";
-import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
-import { abiEncodeCall, BNish, erc165InterfaceId, toBN, toBNExp, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
-import { FAssetInstance } from "../../../../typechain-truffle";
 import { impersonateContract } from "../../../../lib/test-utils/contract-test-helpers";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-helpers";
+import { expectRevert, time } from "../../../../lib/test-utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { Permit, signPermit } from "../../../../lib/utils/erc20permits";
+import { abiEncodeCall, BNish, erc165InterfaceId, MAX_UINT256, toBN, toBNExp, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
+import { FAssetInstance } from "../../../../typechain-truffle";
 
 const FAsset = artifacts.require('FAsset');
 const FAssetProxy = artifacts.require('FAssetProxy');
@@ -358,7 +358,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, accounts 
         const spender = accounts[5];
         const target = accounts[6];
 
-        async function createPermit(owner: string, spender: string, value: BNish, deadline: BNish = constants.MAX_UINT256): Promise<Permit> {
+        async function createPermit(owner: string, spender: string, value: BNish, deadline: BNish = MAX_UINT256): Promise<Permit> {
             const nonce = await fAsset.nonces(owner);
             return { owner, spender, value: toBN(value), nonce, deadline: toBN(deadline) };
         }

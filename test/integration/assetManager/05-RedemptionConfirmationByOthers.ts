@@ -1,10 +1,3 @@
-import { expectRevert } from "@openzeppelin/test-helpers";
-import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
-import { toBN, toWei } from "../../../lib/utils/helpers";
-import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
-import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-helpers";
-import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { Challenger } from "../../../lib/test-utils/actors/Challenger";
@@ -12,6 +5,13 @@ import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
+import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
+import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
+import { expectRevert } from "../../../lib/test-utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
+import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
+import { toBN, toWei } from "../../../lib/utils/helpers";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
     const governance = accounts[10];

@@ -1,9 +1,9 @@
-import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import { erc165InterfaceId, ZERO_ADDRESS } from "../../../lib/utils/helpers";
-import { IERC165Contract, WhitelistInstance } from "../../../typechain-truffle";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../lib/test-utils/constants";
 import { waitForTimelock } from "../../../lib/test-utils/fasset/CreateAssetManager";
-import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-helpers";
+import { expectEvent, expectRevert } from "../../../lib/test-utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { erc165InterfaceId, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { IERC165Contract, WhitelistInstance } from "../../../typechain-truffle";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettingsMock');

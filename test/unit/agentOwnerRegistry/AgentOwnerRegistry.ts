@@ -1,17 +1,17 @@
-import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { CollateralType } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
-import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
-import { findRequiredEvent } from "../../../lib/utils/events/truffle";
-import { erc165InterfaceId, toBNExp, ZERO_ADDRESS } from "../../../lib/utils/helpers";
-import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
-import { AgentOwnerRegistryInstance, AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance, WNatMockInstance, WhitelistInstance } from "../../../typechain-truffle";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, waitForTimelock } from "../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-helpers";
+import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings } from "../../../lib/test-utils/test-settings";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
+import { findRequiredEvent } from "../../../lib/utils/events/truffle";
+import { ZERO_ADDRESS, erc165InterfaceId, toBNExp } from "../../../lib/utils/helpers";
+import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
+import { AgentOwnerRegistryInstance, AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance, WNatMockInstance, WhitelistInstance } from "../../../typechain-truffle";
 
 const Whitelist = artifacts.require('Whitelist');
 const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");

@@ -1,9 +1,9 @@
-import { time } from "@openzeppelin/test-helpers";
 import { network } from "hardhat";
 import { Future, formatBN, sleep, toBN, toBNExp, toStringExp } from "../../../lib/utils/helpers";
 import { WNatMockInstance } from "../../../typechain-truffle";
 import { currentRealTime, elapsedTime } from "../../../lib/test-utils/simulation-utils";
-import { deterministicTimeIncrease, getTestFile } from "../../../lib/test-utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile } from "../../../lib/test-utils/test-suite-helpers";
+import { time } from "../../../lib/test-utils/test-helpers";
 
 const WNAT = artifacts.require("WNatMock");
 

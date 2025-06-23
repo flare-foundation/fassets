@@ -1,9 +1,8 @@
-import { expectRevert } from "@openzeppelin/test-helpers";
-import { ZERO_ADDRESS } from "../../../lib/utils/helpers";
-import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-helpers";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { ZERO_ADDRESS } from "../../../lib/utils/helpers";
 
 contract(`AuditV3Diamond.ts; ${getTestFile(__filename)}; FAsset diamond design audit tests`, accounts => {
     const governance = accounts[10];

@@ -1,24 +1,23 @@
-import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BNish, DAYS, deepFormat, HOURS, MAX_BIPS, requireNotNull, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
-import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-helpers";
-import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
+import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
+import { Challenger } from "../../../lib/test-utils/actors/Challenger";
 import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
+import { MockCoreVaultBot } from "../../../lib/test-utils/actors/MockCoreVaultBot";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
-import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
-import { executeTimelockedGovernanceCall } from "../../../lib/test-utils/contract-test-helpers";
-import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
-import { PaymentReference } from "../../../lib/fasset/PaymentReference";
-import { MockCoreVaultBot } from "../../../lib/test-utils/actors/MockCoreVaultBot";
 import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
-import { calculateReceivedNat } from "../../../lib/test-utils/eth";
+import { executeTimelockedGovernanceCall } from "../../../lib/test-utils/contract-test-helpers";
 import { newAssetManager } from "../../../lib/test-utils/fasset/CreateAssetManager";
-import { Challenger } from "../../../lib/test-utils/actors/Challenger";
+import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
+import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
+import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
+import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
+import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { BNish, DAYS, deepFormat, HOURS, MAX_BIPS, requireNotNull, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
     const governance = accounts[10];

@@ -1,8 +1,8 @@
-import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { erc165InterfaceId } from "../../../lib/utils/helpers";
 import { FakePriceReaderInstance } from "../../../typechain-truffle";
-import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-helpers";
-import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 
 const FakePriceReader = artifacts.require('FakePriceReader');
 
