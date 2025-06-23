@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 // solhint-disable no-empty-blocks
+// solhint-disable gas-custom-errors
 
 pragma solidity ^0.8.0;
 

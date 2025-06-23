@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable gas-custom-errors
+// solhint-disable reason-string
+
 pragma solidity ^0.8.27;
 
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";

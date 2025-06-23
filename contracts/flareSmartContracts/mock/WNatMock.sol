@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable gas-custom-errors
+// solhint-disable reason-string
+
 pragma solidity ^0.8.27;
 
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";

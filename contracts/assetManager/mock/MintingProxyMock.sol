@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable gas-custom-errors
+
 pragma solidity ^0.8.27;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
