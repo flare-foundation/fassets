@@ -98,7 +98,7 @@ export class SimulationAgent extends SimulationActor {
         this.runner.interceptor.captureEventsFrom(`${agentName}_LPTOKEN`, this.agent.collateralPoolToken, 'CollateralPoolToken');
     }
 
-    async handleRedemptionRequest(request: EventArgs<RedemptionRequested>) {
+    handleRedemptionRequest(request: EventArgs<RedemptionRequested>) {
         if (!coinFlip(0.8)) return;
         this.runner.startThread(async (scope) => {
             const agent = this.agent;   // save in case it is destroyed and re-created

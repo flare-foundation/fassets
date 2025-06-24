@@ -27,11 +27,13 @@ export class SimulationKeeper extends SimulationActor {
         this.assetManagerEvent('SelfMint').subscribe(args => this.handleMintingExecuted(args));
     }
 
-    async checkAllAgentsForLiquidation() {
-        for (const agent of this.state.agents.values()) {
-            await this.checkAgentForLiquidation(agent)
-                .catch(e => expectErrors(e, ["cannot stop liquidation"]));
-        }
+    checkAllAgentsForLiquidation() {
+        this.runner.startThread(async (scope) => {
+            for (const agent of this.state.agents.values()) {
+                await this.checkAgentForLiquidation(agent)
+                    .catch(e => expectErrors(e, ["cannot stop liquidation"]));
+            }
+        });
     }
 
     handleMintingExecuted(args: EvmEventArgs<MintingExecuted> | EvmEventArgs<SelfMint>) {

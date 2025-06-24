@@ -2,6 +2,7 @@ import { IBlockChain } from "./IBlockChain";
 
 type NumberLike = BN | number | string;
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface TransactionOptions {
 }
 

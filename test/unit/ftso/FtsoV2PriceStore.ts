@@ -1,3 +1,4 @@
+/* eslint-disable no-var */
 import { ZERO_BYTES_20 } from "@flarenetwork/state-connector-protocol";
 import { expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestContracts } from "../../../lib/test-utils/test-settings";

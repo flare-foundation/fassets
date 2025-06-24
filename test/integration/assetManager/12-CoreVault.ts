@@ -65,7 +65,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
         // add escrow preimage hashes
         preimages = Array.from({ length: 10 }, (_, i) => `PREIMAGE no. ${i + 1}`);
-        const preimageHashes = preimages.map(web3.utils.keccak256);
+        const preimageHashes = preimages.map(x => web3.utils.keccak256(x));
         await context.coreVaultManager!.addPreimageHashes(preimageHashes, { from: context.governance });
         //
         return { commonContext, context, preimages };
@@ -1168,7 +1168,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         const wallet = new MockChainWallet(mockChain);
-        const challenger = Challenger.create(context, challengerAddress2);
+        const challenger = await Challenger.create(context, challengerAddress2);
         const agentOtherAddress = "otherAddress";
         // make agent available
         await agent.depositCollateralLotsAndMakeAvailable(100);

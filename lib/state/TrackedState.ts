@@ -133,6 +133,7 @@ export class TrackedState {
             collateral.validUntil = toBN(args.validUntil);
         });
         // track price changes
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
         this.truffleEvents.event(this.context.priceStore, 'PricesPublished').immediate().subscribe(async args => {
             const [prices, trustedPrices] = await this.getPrices();
             this.logger?.log(`PRICES CHANGED  ftso=${this.prices}->${prices}  trusted=${this.trustedPrices}->${trustedPrices}`);

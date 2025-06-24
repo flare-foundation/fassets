@@ -187,10 +187,10 @@ contract('DiamondTest', function (accounts) {
         assert.isDefined(cutFacet);
         const loupeFacet = facets.find(f => f.facetAddress === diamondLoupeAddr);
         assert.isDefined(loupeFacet);
-        assert.equal(cutFacet!.facetAddress, diamondCutAddr);
-        assert.sameMembers(cutFacet!.functionSelectors, ['0x1f931c1c']);
-        assert.equal(loupeFacet!.facetAddress, diamondLoupeAddr);
-        assert.sameMembers(loupeFacet!.functionSelectors, ['0x7a0ed627']);
+        assert.equal(cutFacet.facetAddress, diamondCutAddr);
+        assert.sameMembers(cutFacet.functionSelectors, ['0x1f931c1c']);
+        assert.equal(loupeFacet.facetAddress, diamondLoupeAddr);
+        assert.sameMembers(loupeFacet.functionSelectors, ['0x7a0ed627']);
     });
 
     it('re-add most functions and facets', async () => {

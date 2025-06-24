@@ -1129,7 +1129,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(incompleteSelfCloseExit.redeemedFAssetUBA, requiredFAssets.subn(1));
             assertEqualBN(userTokensAfter, userTokensBefore.sub(incompleteSelfCloseExit.burnedTokensWei));
             const agentRedemption = requiredEventArgsFrom(resp, assetManager, "AgentRedemptionInCollateral");
-            // @ts-ignore
+            // @ts-expect-error event AgentRedemptionInCollateral is not in AssetManager, only in mock
             assertEqualBN(agentRedemption._amountUBA, requiredFAssets.subn(1));
         });
 
@@ -1335,7 +1335,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         // This is why `setAutoClaiming` was removed from collateral pool.
         it.skip("coinspect - can steal all auto-claimed rewards upon destruction", async () => {
             const contract = await MockContract.new();
-            // @ts-ignore (collateral pool does not have auto claiming anymore)
+            // @ts-expect-error (collateral pool does not have auto claiming anymore)
             await collateralPool.setAutoClaiming(contract.address, [accounts[2]], { from: agent });
             let totalCollateral = await collateralPool.totalCollateral();
             let poolwNatBalance = await wNat.balanceOf(collateralPool.address);

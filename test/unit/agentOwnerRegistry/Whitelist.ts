@@ -94,10 +94,9 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, acc
         });
 
         it('should not revoke address from the whitelist if revoke is not supported', async function () {
-            let whitelist2: WhitelistInstance;
             const governanceSettings = await GovernanceSettings.new();
             await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
-            whitelist2 = await Whitelist.new(governanceSettings.address, governance, false);
+            const whitelist2 = await Whitelist.new(governanceSettings.address, governance, false);
             await whitelist2.switchToProductionMode({ from: governance });
             await whitelist2.addAddressToWhitelist(whitelistedAddresses[0], {from: governance});
             await expectRevert(whitelist2.revokeAddress(whitelistedAddresses[0], {from: governance}), "revoke not supported");

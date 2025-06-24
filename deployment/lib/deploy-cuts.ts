@@ -7,6 +7,7 @@ import { deployFacet } from "./deploy-asset-manager-facets";
 import { ZERO_ADDRESS, abiEncodeCall, loadDeployAccounts, waitFinalize } from "./deploy-utils";
 import { contractMetadata } from "../../lib/utils/helpers";
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const diamondCutJsonSchema = new JsonParameterSchema<DiamondCutJson>(require('../cuts/diamond-cuts.schema.json'));
 
 export type DiamondCutsOptions = { execute?: boolean, verbose?: boolean };

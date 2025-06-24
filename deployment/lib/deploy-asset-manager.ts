@@ -12,7 +12,9 @@ import { deployCutsOnDiamond } from "./deploy-cuts";
 import { ZERO_ADDRESS, abiEncodeCall, encodeContractNames, loadDeployAccounts, waitFinalize } from './deploy-utils';
 import { CoreVaultManagerParameters } from "./core-vault-manager-parameters";
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 export const assetManagerParameters = new JsonParameterSchema<AssetManagerParameters>(require('../config/asset-manager-parameters.schema.json'));
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 export const coreVaultManagerParameters = new JsonParameterSchema<CoreVaultManagerParameters>(require('../config/core-vault-manager-parameters.schema.json'));
 
 export async function deployAssetManagerController(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore, managerParameterFiles: string[]) {

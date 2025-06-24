@@ -15,7 +15,7 @@ export class Challenger extends AssetContextClient {
         super(context);
     }
 
-    static create(ctx: AssetContext, address: string) {
+    static async create(ctx: AssetContext, address: string) {
         // creater object
         return new Challenger(ctx, address);
     }

@@ -35,7 +35,7 @@ export class EventFormatter {
         } else if (typeof value === 'object' && value?.constructor === Object) {
             return `{ ${Object.entries(value).map(([k, v]) => `${k}: ${this.formatArg(v)}`).join(', ')} }`;
         } else {
-            return '' + value;
+            return String(value);
         }
     }
 

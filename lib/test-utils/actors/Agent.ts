@@ -462,7 +462,7 @@ export class Agent extends AssetContextClient {
             sourceAddress = minter.underlyingAddress;
         } else {
             const tx = await this.chain.getTransaction(transactionHash);
-            sourceAddress = tx?.inputs[0][0]!;
+            sourceAddress = tx!.inputs[0][0];
         }
         const proof = await this.attestationProvider.provePayment(transactionHash, sourceAddress, this.underlyingAddress);
         const res = await this.assetManager.executeMinting(proof, crt.collateralReservationId, { from: this.ownerWorkAddress });
