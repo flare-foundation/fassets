@@ -1,4 +1,4 @@
-import { loadFixture, mine, time } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { deepCopy } from "../utils/deepCopy";
 
 /**
@@ -26,12 +26,4 @@ export function loadFixtureCopyVars<T>(fixture: () => Promise<T>): Promise<T> {
  */
 export function itSkipIf(condition: boolean) {
     return condition ? it.skip : it;
-}
-
-export async  function deterministicTimeIncrease(increase: string | number | BN) {
-    const latest = await time.latest();
-    const skip = Math.max(Number(increase), 1);
-    await time.setNextBlockTimestamp(latest + skip);
-    await mine(1);  // at least 1 block is expected to be mined
-    await time.setNextBlockTimestamp(latest + skip + 1);
 }

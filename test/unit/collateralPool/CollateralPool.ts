@@ -4,7 +4,7 @@ import { impersonateContract, transferWithSuicide } from "../../../lib/test-util
 import { calcGasCost, calculateReceivedNat } from "../../../lib/test-utils/eth";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestContracts } from "../../../lib/test-utils/test-settings";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { eventArgs } from "../../../lib/utils/events/truffle";
 import { MAX_BIPS, ZERO_ADDRESS, erc165InterfaceId, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import {
@@ -318,7 +318,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 const prms2 = collateralPool.exit(ETH(1), TokenExitType.KEEP_RATIO);
                 await expectRevert(prms2, "insufficient non-timelocked balance");
                 // increase time by 1 day
-                await deterministicTimeIncrease(time.duration.days(1));
+                await time.deterministicIncrease(time.duration.days(1));
                 const timelockedTokens2 = await collateralPoolToken.timelockedBalanceOf(accounts[0]);
                 assertEqualBN(timelockedTokens2, BN_ZERO);
                 await collateralPoolToken.transfer(accounts[1], ETH(1));
@@ -338,12 +338,12 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 // account0 obtains some pool tokens
                 await collateralPool.enter(0, true, { value: ETH(100) });
                 // increase time by half a day
-                await deterministicTimeIncrease(time.duration.hours(12));
+                await time.deterministicIncrease(time.duration.hours(12));
                 await collateralPool.enter(0, true, { value: ETH(200) });
                 const timelockedTokens1 = await collateralPoolToken.timelockedBalanceOf(accounts[0]);
                 assertEqualBN(timelockedTokens1, ETH(300));
                 // increase time by half a day
-                await deterministicTimeIncrease(time.duration.hours(12));
+                await time.deterministicIncrease(time.duration.hours(12));
                 const timelockedTokens2 = await collateralPoolToken.timelockedBalanceOf(accounts[0]);
                 assertEqualBN(timelockedTokens2, ETH(200));
                 // transfer and exit with available tokens
@@ -360,7 +360,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 const natBalanceAcc01 = toBN(await web3.eth.getBalance(accounts[0]));
                 assertEqualBN(natBalanceAcc01, natBalanceAcc00.sub(gas1).add(ETH(90)));
                 // increase time by half a day
-                await deterministicTimeIncrease(time.duration.hours(12));
+                await time.deterministicIncrease(time.duration.hours(12));
                 const timelockedTokens3 = await collateralPoolToken.timelockedBalanceOf(accounts[0]);
                 assertEqualBN(timelockedTokens3, BN_ZERO);
                 // transfer and exit with available tokens
@@ -391,7 +391,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 const timelockedTokens2 = await collateralPoolToken.timelockedBalanceOf(accounts[0]);
                 assertEqualBN(timelockedTokens2, ETH(100));
                 // wait for timelocks to expire
-                await deterministicTimeIncrease(time.duration.hours(1));
+                await time.deterministicIncrease(time.duration.hours(1));
                 // now timelocked should be zero
                 const timelockedTokens3 = await collateralPoolToken.timelockedBalanceOf(accounts[0]);
                 assertEqualBN(timelockedTokens3, BN_ZERO);
@@ -438,12 +438,12 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 const prms3 = collateralPool.exit(transferableTokensAcc11, TokenExitType.KEEP_RATIO, { from: accounts[1] });
                 await expectRevert(prms3, "insufficient non-timelocked balance");
                 // account1 gets new timelocked tokens after a while and no new transferable tokens
-                await deterministicTimeIncrease(time.duration.minutes(30));
+                await time.deterministicIncrease(time.duration.minutes(30));
                 await collateralPool.enter(0, false, { value: ETH(1000), from: accounts[1] });
                 const transferableTokensAcc12 = await collateralPoolToken.debtFreeBalanceOf(accounts[1]);
                 assertEqualBN(transferableTokensAcc11, transferableTokensAcc12); // just so we are aware of this
                 // first enter tokens get unlocked after 30 minutes
-                await deterministicTimeIncrease(time.duration.minutes(30));
+                await time.deterministicIncrease(time.duration.minutes(30));
                 // account1's transferable tokens are unlocked
                 const nonTimelockedTokensAcc12 = await collateralPoolToken.nonTimelockedBalanceOf(accounts[1]);
                 assertEqualBN(nonTimelockedTokensAcc12, timelockedTokensAcc11);
@@ -457,7 +457,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 const nonTimelockedTokensAcc13 = await collateralPoolToken.nonTimelockedBalanceOf(accounts[1]);
                 assertEqualBN(nonTimelockedTokensAcc13, BN_ZERO);
                 // after 30 minutes user can exit with the remaining tokens
-                await deterministicTimeIncrease(time.duration.minutes(30));
+                await time.deterministicIncrease(time.duration.minutes(30));
                 const remainingTokensAcc11 = await collateralPoolToken.balanceOf(accounts[1]);
                 await collateralPool.exit(remainingTokensAcc11, TokenExitType.KEEP_RATIO, { from: accounts[1] });
                 const remainingTokensAcc12 = await collateralPoolToken.balanceOf(accounts[1]);

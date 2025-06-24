@@ -7,8 +7,8 @@ import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { expectRevert } from "../../../lib/test-utils/test-helpers";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { expectRevert, time } from "../../../lib/test-utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { toBN, toWei } from "../../../lib/utils/helpers";
@@ -82,7 +82,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
             await expectRevert(agent.destroy(), "destroy not announced");
             // others can confirm redemption payment after some time
-            await deterministicTimeIncrease(context.settings.confirmationByOthersAfterSeconds);
+            await time.deterministicIncrease(context.settings.confirmationByOthersAfterSeconds);
             const startChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.poolFeeUBA, reservedUBA: 0, redeemingUBA: request.valueUBA });
             await challenger.confirmActiveRedemptionPayment(request, tx1Hash, agent);
@@ -128,7 +128,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
             await expectRevert(agent.destroy(), "destroy not announced");
             // others can confirm redemption payment after some time
-            await deterministicTimeIncrease(context.settings.confirmationByOthersAfterSeconds);
+            await time.deterministicIncrease(context.settings.confirmationByOthersAfterSeconds);
             const startChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.poolFeeUBA, reservedUBA: 0, redeemingUBA: request.valueUBA });
             await challenger.confirmBlockedRedemptionPayment(request, tx1Hash, agent);
@@ -173,7 +173,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
             await expectRevert(agent.destroy(), "destroy not announced");
             // others can confirm redemption payment after some time
-            await deterministicTimeIncrease(context.settings.confirmationByOthersAfterSeconds);
+            await time.deterministicIncrease(context.settings.confirmationByOthersAfterSeconds);
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.poolFeeUBA, reservedUBA: 0, redeemingUBA: request.valueUBA });
             const startVaultCollateralBalanceChallenger = await agent.vaultCollateralToken().balanceOf(challenger.address);
             const startVaultCollateralBalanceAgent = await agent.vaultCollateralToken().balanceOf(agent.agentVault.address);
@@ -255,7 +255,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // perform too late redemption payment
             const tx1Hash = await agent.performRedemptionPayment(request);
             // others can confirm redemption payment after some time
-            await deterministicTimeIncrease(context.settings.confirmationByOthersAfterSeconds);
+            await time.deterministicIncrease(context.settings.confirmationByOthersAfterSeconds);
             const startChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
             await challenger.confirmDefaultedRedemptionPayment(request, tx1Hash, agent);
             const challengerVaultCollateralReward = await agent.usd5ToVaultCollateralWei(toBN(context.settings.confirmationByOthersRewardUSD5));

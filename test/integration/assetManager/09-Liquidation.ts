@@ -7,8 +7,8 @@ import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { expectRevert } from "../../../lib/test-utils/test-helpers";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { expectRevert, time } from "../../../lib/test-utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { BN_ZERO, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 
@@ -84,7 +84,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const { 0: availableAgentInfos1 } = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
             assert.equal(Number(availableAgentInfos1[0].status), AgentStatus.CCB);
             // skip some time
-            await deterministicTimeIncrease(300);
+            await time.deterministicIncrease(300);
             // now the agent should be in liquidation
             await agent.checkAgentInfo({
                 status: AgentStatus.LIQUIDATION
@@ -135,10 +135,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             });
             assertWeb3Equal(info.liquidationStartTimestamp, toBN(ccbStartTimestamp).add(ccbTimeSeconds));
             // startLiquidation after 10 seconds should fail
-            await deterministicTimeIncrease(10);
+            await time.deterministicIncrease(10);
             await expectRevert(liquidator.startLiquidation(agent), "liquidation not started");
             // after ccb time we can switch to liquidation (and liquidation event should be sent)
-            await deterministicTimeIncrease(ccbTimeSeconds);
+            await time.deterministicIncrease(ccbTimeSeconds);
             const [ccb2, liquidationStartTimestamp] = await liquidator.startLiquidation(agent);
             assert.isFalse(ccb2);
             await agent.checkAgentInfo({
@@ -474,7 +474,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
             await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
             // wait some time to get next premium
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             // liquidate agent (second part)
             const liquidateMaxUBA2 = context.convertLotsToUBA(1);
             const startBalanceLiquidator2NAT = await context.wNat.balanceOf(liquidator.address);
@@ -646,7 +646,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
             await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
             // wait some time to get next premium
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             // liquidate agent (second part)
             const liquidateMaxUBA2 = minted.mintedAmountUBA.sub(liquidatedUBA1);
             const startBalanceLiquidator2NAT = await context.wNat.balanceOf(liquidator.address);
@@ -752,7 +752,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // wait some time to get next premium
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             // liquidate agent (second part)
 
             const startBalanceLiquidator2NAT = await context.wNat.balanceOf(liquidator.address);
@@ -783,7 +783,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, liquidationTimestamp1);
             // wait some time to get next premium
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             // liquidate agent (last part)
             const startBalanceLiquidator3NAT = await context.wNat.balanceOf(liquidator.address);
             const startBalanceLiquidator3VaultCollateral = await agent.vaultCollateralToken().balanceOf(liquidator.address);
@@ -885,7 +885,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // wait some time to get next premium
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             // liquidate agent (second part)
 
             const startBalanceLiquidator2NAT = await context.wNat.balanceOf(liquidator.address);
@@ -916,7 +916,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, liquidationTimestamp1);
             // wait some time to get next premium
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             // liquidate agent (last part)
             const startBalanceLiquidator3NAT = await context.wNat.balanceOf(liquidator.address);
             const startBalanceLiquidator3VaultCollateral = await agent.vaultCollateralToken().balanceOf(liquidator.address);
@@ -1020,7 +1020,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // price change after some time
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             await context.priceStore.setCurrentPrice("NAT", 100, 0);
             await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 100, 0);
             await context.priceStore.setCurrentPrice(context.chainInfo.symbol, toBNExp(10, 5), 0);
@@ -1117,7 +1117,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // price change after some time
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             await agent.setVaultCollateralRatioByChangingAssetPrice(20000);
             // agent still in liquidation status
             const info1 = await agent.checkAgentInfo({
@@ -1213,7 +1213,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // price change after some time
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             await context.priceStore.setCurrentPrice("NAT", 100, 0);
             await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 100, 0);
             await context.priceStore.setCurrentPrice(context.chainInfo.symbol, toBNExp(10, 5), 0);
@@ -1310,7 +1310,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // price change after some time
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             await context.priceStore.setCurrentPrice("NAT", 100, 0);
             await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 100, 0);
             await context.priceStore.setCurrentPrice(context.chainInfo.symbol, toBNExp(10, 5), 0);
@@ -1407,13 +1407,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // price change after some time
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             await context.priceStore.setCurrentPrice("NAT", 100, 0);
             await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 100, 0);
             await context.priceStore.setCurrentPrice(context.chainInfo.symbol, toBNExp(10, 5), 0);
             await context.priceStore.setCurrentPriceFromTrustedProviders(context.chainInfo.symbol, toBNExp(10, 5), 0);
             // wait some time to get next premium
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             // agent still in liquidation status
             const info1 = await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral.sub(vaultCollateralLiquidationReward1),
@@ -1526,10 +1526,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // price change after some time
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             await agent.setVaultCollateralRatioByChangingAssetPrice(30000);
             // wait some time to get next premium
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             // agent still in liquidation status
             const info1 = await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral.sub(vaultCollateralLiquidationReward1),
@@ -1648,7 +1648,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
             await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
             // wait some time to get next premium
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             // liquidate agent (second part)
             const liquidateMaxUBA2 = minted.mintedAmountUBA.sub(liquidatedUBA1);
             const startBalanceLiquidator2NAT = await context.wNat.balanceOf(liquidator.address);
@@ -1758,7 +1758,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
             await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
             // wait some time to get next premium
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             // liquidate agent (second part)
             const liquidateMaxUBA2 = minted.mintedAmountUBA.sub(liquidatedUBA1);
             const startBalanceLiquidator2NAT = await context.wNat.balanceOf(liquidator.address);
@@ -1868,7 +1868,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
             await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
             // wait some time to get next premium
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             // liquidate agent (second part)
             const liquidateMaxUBA2 = minted.mintedAmountUBA.sub(liquidatedUBA1);
             const startBalanceLiquidator2NAT = await context.wNat.balanceOf(liquidator.address);

@@ -8,8 +8,8 @@ import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { expectEvent, expectRevert } from "../../../lib/test-utils/test-helpers";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { eventArgs, requiredEventArgs } from "../../../lib/utils/events/truffle";
@@ -521,7 +521,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             }
             // check that calling finishRedemptionWithoutPayment after no redemption payment will revert if called too soon
             await expectRevert(agent.finishRedemptionWithoutPayment(request), "should default first");
-            await deterministicTimeIncrease(DAYS);
+            await time.deterministicIncrease(DAYS);
             context.skipToProofUnavailability(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
             // test rewarding for redemption payment default
             const vaultCollateralToken = agent.vaultCollateralToken();

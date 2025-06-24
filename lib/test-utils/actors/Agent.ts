@@ -13,7 +13,6 @@ import { AgentCollateral } from "../fasset/AgentCollateral";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../fasset/MockChain";
 import { time } from "../test-helpers";
 import { createTestAgentSettings } from "../test-settings";
-import { deterministicTimeIncrease } from "../test-suite-helpers";
 import { assertWeb3Equal } from "../web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
@@ -227,7 +226,7 @@ export class Agent extends AssetContextClient {
             throw new Error("agent still backing f-assets");
         }
         // redeem pool tokens to empty the pool (this only works in tests where there are no other pool token holders)
-        await deterministicTimeIncrease(await this.context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock to expire
+        await time.deterministicIncrease(await this.context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock to expire
         const poolTokenBalance = await this.poolTokenBalance();
         const { withdrawalAllowedAt } = await this.announcePoolTokenRedemption(poolTokenBalance);
         await time.increaseTo(withdrawalAllowedAt);

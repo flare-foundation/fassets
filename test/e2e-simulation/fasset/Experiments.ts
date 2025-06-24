@@ -1,9 +1,9 @@
 import { network } from "hardhat";
+import { currentRealTime, elapsedTime } from "../../../lib/test-utils/simulation-utils";
+import { time } from "../../../lib/test-utils/test-helpers";
+import { getTestFile } from "../../../lib/test-utils/test-suite-helpers";
 import { Future, formatBN, sleep, toBN, toBNExp, toStringExp } from "../../../lib/utils/helpers";
 import { WNatMockInstance } from "../../../typechain-truffle";
-import { currentRealTime, elapsedTime } from "../../../lib/test-utils/simulation-utils";
-import { deterministicTimeIncrease, getTestFile } from "../../../lib/test-utils/test-suite-helpers";
-import { time } from "../../../lib/test-utils/test-helpers";
 
 const WNAT = artifacts.require("WNatMock");
 
@@ -136,11 +136,11 @@ contract(`Experiments; ${getTestFile(__filename)}`, accounts => {
             console.log(`Start time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
             await wNat.deposit({ from: accounts[1], value: toBN(10_000) });
             console.log(`After deposit time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
-            await deterministicTimeIncrease(0);
+            await time.deterministicIncrease(0);
             console.log(`After skip(0) time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
-            await deterministicTimeIncrease(1);
+            await time.deterministicIncrease(1);
             console.log(`After skip(1) time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
-            await deterministicTimeIncrease(10);
+            await time.deterministicIncrease(10);
             console.log(`After skip(10) time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
         });
 

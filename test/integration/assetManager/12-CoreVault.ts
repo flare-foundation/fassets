@@ -13,7 +13,7 @@ import { executeTimelockedGovernanceCall } from "../../../lib/test-utils/contrac
 import { newAssetManager } from "../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
 import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
@@ -306,7 +306,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // others cannot default immediately when payment time ends
         await expectRevert(agent.transferToCoreVaultDefault(rdreqs[0], challengerAddress1), "only redeemer, executor or agent");
         // after confirmation by others time, the default will succeed and the challenger will get some reward
-        await deterministicTimeIncrease(context.settings.confirmationByOthersAfterSeconds);
+        await time.deterministicIncrease(context.settings.confirmationByOthersAfterSeconds);
         const challengerBalanceBefore = await context.usdc.balanceOf(challengerAddress1);
         await agent.transferToCoreVaultDefault(rdreqs[0], challengerAddress1);
         const challengerBalanceAfter = await context.usdc.balanceOf(challengerAddress1);
@@ -845,7 +845,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
     }
 
     async function increaseTime(seconds: BNish) {
-        await deterministicTimeIncrease(seconds);
+        await time.deterministicIncrease(seconds);
         mockChain.skipTime(Number(seconds));
     }
 
@@ -1204,7 +1204,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         await context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agentOwner1 });
         assert(Number((await agent.getAgentInfo()).status) == 0);
         // when allowed, the challenger cann the payment
-        await deterministicTimeIncrease(context.settings.confirmationByOthersAfterSeconds);
+        await time.deterministicIncrease(context.settings.confirmationByOthersAfterSeconds);
         await expectRevert(context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: challenger.address }), 'invalid request id');
         await expectRevert(challenger.illegalPaymentChallenge(agent, txHash), 'chlg: transaction confirmed')
     });

@@ -11,8 +11,8 @@ import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { expectRevert } from "../../../lib/test-utils/test-helpers";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { expectRevert, time } from "../../../lib/test-utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { DAYS, toBN, toWei } from "../../../lib/utils/helpers";
@@ -249,7 +249,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const txhash = await agent.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
             // wait 24h
             mockChain.mine(100);
-            await deterministicTimeIncrease(1 * DAYS);
+            await time.deterministicIncrease(1 * DAYS);
             mockChain.skipTime(1 * DAYS);
             mockChain.mine(100);
             // expire payment
@@ -288,7 +288,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             });
             // wait 24h
             mockChain.mine(100);
-            await deterministicTimeIncrease(1 * DAYS);
+            await time.deterministicIncrease(1 * DAYS);
             mockChain.skipTime(1 * DAYS);
             mockChain.mine(100);
             // perform payment, but do not prove it
@@ -428,7 +428,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 status: AgentStatus.FULL_LIQUIDATION
             });
             // wait some time to get next premium
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             // liquidate agent (second part)
             const startBalanceLiquidator2VaultCollateral = await context.usdc.balanceOf(liquidator.address);
             const startBalanceLiquidator2Pool = await context.wNat.balanceOf(liquidator.address);
@@ -460,7 +460,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 status: AgentStatus.FULL_LIQUIDATION
             });
             // wait some time to get next premium
-            await deterministicTimeIncrease(90);
+            await time.deterministicIncrease(90);
             // liquidate agent (last part)
             const startBalanceLiquidator3VaultCollateral = await context.usdc.balanceOf(liquidator.address);
             const startBalanceLiquidator3Pool = await context.wNat.balanceOf(liquidator.address);

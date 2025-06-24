@@ -7,7 +7,7 @@ import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/Mo
 import { MockFlareDataConnectorClient } from "../../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { ether, expectEvent, expectRevert, time } from "../../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings } from "../../../../lib/test-utils/test-settings";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { SourceId } from "../../../../lib/underlying-chain/SourceId";
@@ -448,7 +448,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         await depositCollateral(agentOwner1, agentVault, amount);
         // act
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
-        await deterministicTimeIncrease(150);
+        await time.deterministicIncrease(150);
         // assert
         await expectRevert(assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 }), "destroy: not allowed yet");
     });
@@ -463,10 +463,10 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         // should update status
         const info = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info.status, 4);
-        await deterministicTimeIncrease(150);
+        await time.deterministicIncrease(150);
         // should not change destroy time
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
-        await deterministicTimeIncrease(150);
+        await time.deterministicIncrease(150);
         const startBalance = await usdc.balanceOf(agentOwner1);
         const tx = await assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 });
         // nothing is returned automatically, but the owner can withdraw collateral without announcement now
@@ -533,7 +533,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         await depositCollateral(agentOwner1, agentVault, amount);
         await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
         // act
-        await deterministicTimeIncrease(300);
+        await time.deterministicIncrease(300);
         const startBalance = await usdc.balanceOf(agentOwner1);
         const tx = await agentVault.withdrawCollateral(usdc.address, 100, agentOwner1, { from: agentOwner1 });
         // assert
@@ -548,7 +548,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         await depositCollateral(agentOwner1, agentVault, amount);
         await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 101, { from: agentOwner1 });
         // act
-        await deterministicTimeIncrease(300);
+        await time.deterministicIncrease(300);
         const startBalance = await usdc.balanceOf(agentOwner1);
         const tx1 = await agentVault.withdrawCollateral(usdc.address, 45, agentOwner1, { from: agentOwner1 });
         const withdrawn1 = (await usdc.balanceOf(agentOwner1)).sub(startBalance);
@@ -590,7 +590,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         await depositCollateral(agentOwner1, agentVault, amount);
         await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
         // act
-        await deterministicTimeIncrease(150);
+        await time.deterministicIncrease(150);
         // assert
         await expectRevert(agentVault.withdrawCollateral(usdc.address, 100, agentOwner1, { from: agentOwner1 }),
             "withdrawal: not allowed yet");
@@ -603,7 +603,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         await depositCollateral(agentOwner1, agentVault, amount);
         await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
         // act
-        await deterministicTimeIncrease(toBN(settings.withdrawalWaitMinSeconds).add(toBN(settings.agentTimelockedOperationWindowSeconds)).addn(100));
+        await time.deterministicIncrease(toBN(settings.withdrawalWaitMinSeconds).add(toBN(settings.agentTimelockedOperationWindowSeconds)).addn(100));
         // assert
         await expectRevert(agentVault.withdrawCollateral(usdc.address, 100, agentOwner1, { from: agentOwner1 }),
             "withdrawal: too late");
@@ -616,7 +616,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         await depositCollateral(agentOwner1, agentVault, amount);
         await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
         // act
-        await deterministicTimeIncrease(300);
+        await time.deterministicIncrease(300);
         // assert
         await expectRevert(agentVault.withdrawCollateral(usdc.address, 101, agentOwner1, { from: agentOwner1 }),
             "withdrawal: more than announced");

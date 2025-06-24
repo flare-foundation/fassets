@@ -1,6 +1,6 @@
 import { testDeployGovernanceSettings } from "../../../../lib/test-utils/contract-test-helpers";
-import { expectEvent, expectRevert } from "../../../../lib/test-utils/test-helpers";
-import { deterministicTimeIncrease, getTestFile } from "../../../../lib/test-utils/test-suite-helpers";
+import { expectEvent, expectRevert, time } from "../../../../lib/test-utils/test-helpers";
+import { getTestFile } from "../../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
 import { abiEncodeCall } from "../../../../lib/utils/helpers";
@@ -40,7 +40,7 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
     it("can execute after time", async () => {
         const res = await mock.changeA(15, { from: governance });
         const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
-        await deterministicTimeIncrease(3600);
+        await time.deterministicIncrease(3600);
         const execRes = await mock.executeGovernanceCall(encodedCall, { from: executor });
         expectEvent(execRes, "TimelockedGovernanceCallExecuted", { encodedCallHash });
         assertWeb3Equal(await mock.a(), 15);
@@ -49,7 +49,7 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
     it("cannot execute before time", async () => {
         const res = await mock.changeA(15, { from: governance });
         const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
-        await deterministicTimeIncrease(3000);  // should be 3600
+        await time.deterministicIncrease(3000);  // should be 3600
         await expectRevert(mock.executeGovernanceCall(encodedCall, { from: executor }),
             "timelock: not allowed yet");
         assertWeb3Equal(await mock.a(), 0);
@@ -58,7 +58,7 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
     it("must use valid calldata to execute", async () => {
         const res = await mock.changeA(15, { from: governance });
         findRequiredEvent(res, 'GovernanceCallTimelocked').args;
-        await deterministicTimeIncrease(3600);  // should be 3600
+        await time.deterministicIncrease(3600);  // should be 3600
         const useCallData = abiEncodeCall(mock, (m) => m.changeA(16));
         await expectRevert(mock.executeGovernanceCall(useCallData, { from: executor }),
             "timelock: invalid selector");
@@ -68,7 +68,7 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
     it("cannot execute same timelocked method twice", async () => {
         const res = await mock.increaseA(10, { from: governance });
         const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
-        await deterministicTimeIncrease(3600);
+        await time.deterministicIncrease(3600);
         const execRes = await mock.executeGovernanceCall(encodedCall, { from: executor });
         expectEvent(execRes, "TimelockedGovernanceCallExecuted", { encodedCallHash });
         assertWeb3Equal(await mock.a(), 10);
@@ -81,7 +81,7 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
     it("passes reverts correctly", async () => {
         const res = await mock.changeWithRevert(15, { from: governance });
         const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
-        await deterministicTimeIncrease(3600);
+        await time.deterministicIncrease(3600);
         await expectRevert(mock.executeGovernanceCall(encodedCall, { from: executor }),
             "this is revert");
         assertWeb3Equal(await mock.a(), 0);
@@ -90,7 +90,7 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
     it("can cancel timelocked call", async () => {
         const res = await mock.increaseA(10, { from: governance });
         const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
-        await deterministicTimeIncrease(3600);
+        await time.deterministicIncrease(3600);
         const cancelRes = await mock.cancelGovernanceCall(encodedCall, { from: governance });
         expectEvent(cancelRes, "TimelockedGovernanceCallCanceled", { encodedCallHash });
         // shouldn't execute after cancel
@@ -102,7 +102,7 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
     it("cannot cancel an already executed timelocked call", async () => {
         const res = await mock.increaseA(10, { from: governance });
         const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
-        await deterministicTimeIncrease(3600);
+        await time.deterministicIncrease(3600);
         const execRes = await mock.executeGovernanceCall(encodedCall, { from: executor });
         expectEvent(execRes, "TimelockedGovernanceCallExecuted", { encodedCallHash });
         // shouldn't execute after cancel
@@ -127,14 +127,14 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
     it("only an executor can execute a timelocked call", async () => {
         const res = await mock.changeA(15, { from: governance });
         const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
-        await deterministicTimeIncrease(3600);
+        await time.deterministicIncrease(3600);
         await expectRevert(mock.executeGovernanceCall(encodedCall, { from: accounts[5] }), "only executor");
     });
 
     it("only governance can cancel a timelocked call", async () => {
         const res = await mock.increaseA(10, { from: governance });
         const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
-        await deterministicTimeIncrease(3600);
+        await time.deterministicIncrease(3600);
         await expectRevert(mock.cancelGovernanceCall(encodedCall, { from: executor }),
             "only governance");
     });

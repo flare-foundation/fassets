@@ -6,7 +6,7 @@ import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestSettings } from "../../../lib/test-utils/test-settings";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { erc165InterfaceId, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
@@ -137,9 +137,9 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
             await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const tokens = agentInfo.totalAgentPoolTokensWei;
-            await deterministicTimeIncrease(await assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock
+            await time.deterministicIncrease(await assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock
             await assetManager.announceAgentPoolTokenRedemption(agentVault.address, tokens, { from: owner });
-            await deterministicTimeIncrease((await assetManager.getSettings()).withdrawalWaitMinSeconds);
+            await time.deterministicIncrease((await assetManager.getSettings()).withdrawalWaitMinSeconds);
             await agentVault.redeemCollateralPoolTokens(tokens, natRecipient, { from: owner });
             const pool = await getCollateralPoolToken(assetManager, agentVault);
             const poolTokenBalance = await pool.balanceOf(agentVault.address);
@@ -205,7 +205,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
         await agentVault.depositCollateral(usdc.address, 100, { from: owner });
         // withdraw collateral
         await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100, { from: owner });
-        await deterministicTimeIncrease(time.duration.hours(1));
+        await time.deterministicIncrease(time.duration.hours(1));
         await agentVault.withdrawCollateral(usdc.address, 100, recipient, { from: owner });
         assertWeb3Equal(await usdc.balanceOf(recipient), toBN(100));
     });
@@ -345,7 +345,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
         //Withdraw token so balance is 0
         await expectRevert(agentVault.withdrawCollateral(usdc.address, toBN(100), accounts[12], { from: owner }), "withdrawal: not announced");
         await assetManager.announceDestroyAgent(agentVault.address, { from: owner });
-        await deterministicTimeIncrease(settings.withdrawalWaitMinSeconds);
+        await time.deterministicIncrease(settings.withdrawalWaitMinSeconds);
         await assetManager.destroyAgent(agentVault.address, owner, { from: owner });
         // now it should work
         assertWeb3Equal(await usdc.balanceOf(agentVault.address), toBN(100));
@@ -426,7 +426,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const tokens = agentInfo.totalAgentPoolTokensWei;
             await assetManager.announceAgentPoolTokenRedemption(agentVault.address, tokens, { from: owner });
-            await deterministicTimeIncrease((await assetManager.getSettings()).withdrawalWaitMinSeconds);
+            await time.deterministicIncrease((await assetManager.getSettings()).withdrawalWaitMinSeconds);
             const res = agentVault.redeemCollateralPoolTokens(tokens, natRecipient, { from: accounts[14] });
             await expectRevert(res, "only owner");
         });

@@ -1,4 +1,3 @@
-import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { ZERO_ADDRESS } from "../../../deployment/lib/deploy-utils";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
@@ -10,8 +9,8 @@ import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { expectEvent, expectRevert } from "../../../lib/test-utils/test-helpers";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { deepFormat, toBIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
@@ -317,7 +316,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // attestation window seconds: 86400
         mockChain.mine(144);
         mockChain.skipTime(87000);
-        await deterministicTimeIncrease(87000);
+        await time.deterministicIncrease(87000);
         await context.updateUnderlyingBlock();
 
         console.log(">> Agent invokes finishRedemptionWithoutPayment on their own redemption");
@@ -426,7 +425,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // attestation window seconds: 86400
         mockChain.mine(144);
         mockChain.skipTime(87000);
-        await deterministicTimeIncrease(87000);
+        await time.deterministicIncrease(87000);
         await context.updateUnderlyingBlock();
 
         console.log(">> Agent invokes finishRedemptionWithoutPayment on their own redemption");

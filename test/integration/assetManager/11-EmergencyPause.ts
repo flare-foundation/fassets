@@ -1,16 +1,16 @@
-import { formatBN, HOURS, toWei } from "../../../lib/utils/helpers";
-import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
-import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
-import { Minter } from "../../../lib/test-utils/actors/Minter";
-import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
-import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { Liquidator } from "../../../lib/test-utils/actors/Liquidator";
-import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
-import { expectRevert } from "../../../lib/test-utils/test-helpers";
+import { Minter } from "../../../lib/test-utils/actors/Minter";
+import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
+import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
+import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
+import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
+import { expectRevert, time } from "../../../lib/test-utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { formatBN, HOURS, toWei } from "../../../lib/utils/helpers";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests - emergency pause`, accounts => {
     const governance = accounts[10];
@@ -62,7 +62,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.assetManagerController.emergencyPause([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             await expectRevert(minter.reserveCollateral(agent.vaultAddress, lots), "emergency pause active");
             // after one hour, collateral reservations should work again
-            await deterministicTimeIncrease(1 * HOURS);
+            await time.deterministicIncrease(1 * HOURS);
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             // minting can be finished after pause
             await context.assetManagerController.emergencyPause([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
@@ -110,7 +110,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.assetManagerController.emergencyPause([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             await expectRevert(liquidator.liquidate(agent, context.convertLotsToUBA(1)), "emergency pause active");
             // can liquidate when pause expires
-            await deterministicTimeIncrease(1 * HOURS);
+            await time.deterministicIncrease(1 * HOURS);
             const [liq] = await liquidator.liquidate(agent, context.convertLotsToUBA(3));
             console.log(formatBN(liq), formatBN(context.convertLotsToUBA(3)));
             await agent.checkAgentInfo({ status: AgentStatus.NORMAL });
@@ -131,7 +131,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const [minted] = await minter.performMinting(agent.vaultAddress, lots);
             await expectRevert(minter.transferFAsset(redeemer.address, lotSize), "emergency pause of transfers active");
             // after one hour, collateral reservations should work again
-            await deterministicTimeIncrease(1 * HOURS);
+            await time.deterministicIncrease(1 * HOURS);
             await minter.transferFAsset(redeemer.address, lotSize);
             // another pause
             await context.assetManagerController.emergencyPauseTransfers([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });

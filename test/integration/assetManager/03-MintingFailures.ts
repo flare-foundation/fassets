@@ -5,8 +5,8 @@ import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { expectRevert } from "../../../lib/test-utils/test-helpers";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { expectRevert, time } from "../../../lib/test-utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { BN_ZERO, DAYS, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 
@@ -143,7 +143,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             }
             // check that calling unstickMinting after no payment will revert if called too soon
             await expectRevert(agent.unstickMinting(crt), "cannot unstick minting yet");
-            await deterministicTimeIncrease(DAYS);
+            await time.deterministicIncrease(DAYS);
             context.skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
             await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral,
@@ -197,7 +197,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             }
             // check that calling unstickMinting after failed minting payment will revert if called too soon
             await expectRevert(agent.unstickMinting(crt), "cannot unstick minting yet");
-            await deterministicTimeIncrease(DAYS);
+            await time.deterministicIncrease(DAYS);
             context.skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
             // test rewarding for unstick default
             const vaultCollateralToken = agent.vaultCollateralToken();
@@ -245,7 +245,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             }
             // check that calling unstickMinting after unconfirmed payment will revert if called too soon
             await expectRevert(agent.unstickMinting(crt), "cannot unstick minting yet");
-            await deterministicTimeIncrease(DAYS);
+            await time.deterministicIncrease(DAYS);
             context.skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
             // test rewarding for unstick default
             const vaultCollateralToken = agent.vaultCollateralToken();

@@ -490,7 +490,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
 
         // const timeIncrease = toBN(settings.timelockSeconds).addn(1);
-        // await deterministicTimeIncrease(timeIncrease);
+        // await time.deterministicIncrease(timeIncrease);
         // chain.skipTime(timeIncrease.toNumber());
         // await time.advanceBlock();
 

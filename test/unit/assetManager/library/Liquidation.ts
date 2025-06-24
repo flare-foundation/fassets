@@ -5,7 +5,7 @@ import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/Mo
 import { MockFlareDataConnectorClient } from "../../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectRevert, time } from "../../../../lib/test-utils/test-helpers";
 import { createTestAgent, createTestCollaterals, createTestContracts, createTestSettings, TestSettingsContracts } from "../../../../lib/test-utils/test-settings";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
@@ -313,7 +313,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info1.status, 1);
         //Skip time
-        await deterministicTimeIncrease(200);
+        await time.deterministicIncrease(200);
         //Getting agent info should show status in Liquidation
         const info2 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info2.status, 2);

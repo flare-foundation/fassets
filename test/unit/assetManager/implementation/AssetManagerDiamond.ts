@@ -6,7 +6,7 @@ import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/Mo
 import { MockFlareDataConnectorClient } from "../../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectRevert, time } from "../../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestCollaterals, createTestContracts, createTestSettings } from "../../../../lib/test-utils/test-settings";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { DiamondCut, DiamondSelectors, FacetCutAction } from "../../../../lib/utils/diamond";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
@@ -85,10 +85,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond te
             const res = await assetManager.diamondCut([test1Cut], ZERO_ADDRESS, "0x0", { from: governance });
             const timelocked = requiredEventArgs(res, "GovernanceCallTimelocked");
             // assert
-            await deterministicTimeIncrease(300);
+            await time.deterministicIncrease(300);
             await expectRevert(assetManager.executeGovernanceCall(timelocked.encodedCall, { from: executor }),
                 "timelock: not allowed yet");
-            await deterministicTimeIncrease(3600);
+            await time.deterministicIncrease(3600);
             await assetManager.executeGovernanceCall(timelocked.encodedCall, { from: executor });
         });
 
@@ -110,10 +110,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond te
             const res = await assetManager2.diamondCut([test1Cut], ZERO_ADDRESS, "0x0", { from: governance });
             const timelocked = requiredEventArgs(res, "GovernanceCallTimelocked");
             // assert
-            await deterministicTimeIncrease(30);
+            await time.deterministicIncrease(30);
             await expectRevert(assetManager2.executeGovernanceCall(timelocked.encodedCall, { from: executor }),
                 "timelock: not allowed yet");
-            await deterministicTimeIncrease(60);
+            await time.deterministicIncrease(60);
             await assetManager2.executeGovernanceCall(timelocked.encodedCall, { from: executor });
         });
     });

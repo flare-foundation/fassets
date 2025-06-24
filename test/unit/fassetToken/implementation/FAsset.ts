@@ -1,7 +1,7 @@
 import { stopImpersonatingAccount } from "@nomicfoundation/hardhat-network-helpers";
 import { impersonateContract } from "../../../../lib/test-utils/contract-test-helpers";
 import { expectRevert, time } from "../../../../lib/test-utils/test-helpers";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { Permit, signPermit } from "../../../../lib/utils/erc20permits";
 import { abiEncodeCall, BNish, erc165InterfaceId, MAX_UINT256, toBN, toBNExp, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
@@ -69,7 +69,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, accounts 
             await fAsset.terminate({ from: assetManager });
             assert.isTrue(await fAsset.terminated());
             const terminatedAt = await fAsset.terminatedAt();
-            await deterministicTimeIncrease(100);
+            await time.deterministicIncrease(100);
             await fAsset.terminate({ from: assetManager });
             const terminatedAt2 = await fAsset.terminatedAt();
             assertWeb3Equal(terminatedAt, terminatedAt2);
@@ -390,12 +390,12 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, accounts 
             // quick permit execution works
             const deadline1 = (await time.latest()).addn(1000);
             const permit1 = await createPermit(wallet.address, spender, 500, deadline1);
-            await deterministicTimeIncrease(500);
+            await time.deterministicIncrease(500);
             await signAndExecutePermit(wallet.privateKey, permit1);
             // but going over deadline fails
             const deadline2 = (await time.latest()).addn(1000);
             const permit2 = await createPermit(wallet.address, spender, 500, deadline2);
-            await deterministicTimeIncrease(1001);
+            await time.deterministicIncrease(1001);
             await expectRevert(signAndExecutePermit(wallet.privateKey, permit2), "ERC20Permit: expired deadline");
         });
 

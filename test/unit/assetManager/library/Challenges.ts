@@ -6,7 +6,7 @@ import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/Mo
 import { MockFlareDataConnectorClient } from "../../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectEvent, expectRevert, time } from "../../../../lib/test-utils/test-helpers";
 import { createTestAgent, createTestCollaterals, createTestContracts, createTestSettings, TestSettingsContracts } from "../../../../lib/test-utils/test-settings";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
@@ -103,7 +103,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
         const pool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
         const poolToken = await CollateralPoolToken.at(await pool.poolToken());
         await pool.enter(0, false, { value: tokens, from: owner }); // owner will get at least `tokens` of tokens
-        await deterministicTimeIncrease(await assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock
+        await time.deterministicIncrease(await assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock
         await poolToken.transfer(agentVault.address, tokens, { from: owner });
     }
 
@@ -179,7 +179,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(0));
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
 
-            await deterministicTimeIncrease(14 * 86400);
+            await time.deterministicIncrease(14 * 86400);
             const res = assetManager.illegalPaymentChallenge(
                 proof, agentVault.address, { from: whitelistedAccount });
             await expectRevert(res, "verified transaction too old")

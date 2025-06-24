@@ -9,8 +9,8 @@ import { Approximation } from "../../../lib/test-utils/approximation";
 import { impersonateContract, stopImpersonatingContract } from "../../../lib/test-utils/contract-test-helpers";
 import { waitForTimelock } from "../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
-import { expectEvent, expectRevert } from "../../../lib/test-utils/test-helpers";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3DeepEqual, assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, MAX_BIPS, sumBN, toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
@@ -172,7 +172,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA.add(minted2.mintedAmountUBA), { from: minter.address });
             // wait until another setting update is possible
-            await deterministicTimeIncrease(currentSettings.minUpdateRepeatTimeSeconds);
+            await time.deterministicIncrease(currentSettings.minUpdateRepeatTimeSeconds);
             // change redemption fee bips
             await context.setCollateralReservationFeeBips(toBN(currentSettings.redemptionFeeBIPS).muln(2));
             // perform redemption
@@ -709,7 +709,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const fullAgentCollateral = toWei(3e8);
             await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // wait for token timelock
-            await deterministicTimeIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds());
+            await time.deterministicIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds());
             // mine some blocks to skip the agent creation time
             mockChain.mine(5);
             // Upgrade wNat contract
@@ -721,7 +721,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const agentInfo = await context.assetManager.getAgentInfo(agent.agentVault.address);
             const tokens = agentInfo.totalAgentPoolTokensWei;
             await context.assetManager.announceAgentPoolTokenRedemption(agent.agentVault.address, tokens, { from: agentOwner1 });
-            await deterministicTimeIncrease((await context.assetManager.getSettings()).withdrawalWaitMinSeconds);
+            await time.deterministicIncrease((await context.assetManager.getSettings()).withdrawalWaitMinSeconds);
             const poolTokensBefore = await agent.collateralPoolToken.totalSupply();
             //Redeem collateral pool tokens
             await agent.agentVault.redeemCollateralPoolTokens(tokens, agentOwner1, { from: agentOwner1 });

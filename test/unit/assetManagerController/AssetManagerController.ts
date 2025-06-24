@@ -6,7 +6,7 @@ import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockC
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestSettings } from "../../../lib/test-utils/test-settings";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal, web3ResultStruct } from "../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
@@ -195,20 +195,20 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const paymentChallengeRewardUSD5_big = (toBN(newSettings.paymentChallengeRewardUSD5).muln(5).add(toBN(val)));
             const paymentChallengeRewardUSD5_small = toBN(newSettings.paymentChallengeRewardUSD5).divn(5);
 
-            await deterministicTimeIncrease(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
+            await time.deterministicIncrease(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
             const res1 = assetManagerController.setPaymentChallengeReward([assetManager.address], paymentChallengeRewardUSD5_big, newSettings.paymentChallengeRewardBIPS, { from: governance });
             await expectRevert(res1, "increase too big");
-            await deterministicTimeIncrease(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
+            await time.deterministicIncrease(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
             const res2 = assetManagerController.setPaymentChallengeReward([assetManager.address], paymentChallengeRewardUSD5_small, newSettings.paymentChallengeRewardBIPS, { from: governance });
             await expectRevert(res2, "decrease too big");
 
             const paymentChallengeRewardBIPS_big = (toBN(newSettings.paymentChallengeRewardBIPS).addn(100)).muln(5);
             const paymentChallengeRewardBIPS_small = toBN(newSettings.paymentChallengeRewardBIPS).divn(5);
 
-            await deterministicTimeIncrease(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
+            await time.deterministicIncrease(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
             const res3 = assetManagerController.setPaymentChallengeReward([assetManager.address], newSettings.paymentChallengeRewardUSD5, paymentChallengeRewardBIPS_big, { from: governance });
             await expectRevert(res3, "increase too big");
-            await deterministicTimeIncrease(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
+            await time.deterministicIncrease(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
             const res4 = assetManagerController.setPaymentChallengeReward([assetManager.address], newSettings.paymentChallengeRewardUSD5, paymentChallengeRewardBIPS_small, { from: governance });
             await expectRevert(res4, "decrease too big");
         });
@@ -793,7 +793,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const res = await assetManagerController.setMintingCapAmg([assetManager.address], mintingCapAMG_new, { from: governance });
             await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "mintingCapAMG", value: toBN(mintingCapAMG_new) });
             // can reset cap to 0
-            await deterministicTimeIncrease(1 * DAYS);
+            await time.deterministicIncrease(1 * DAYS);
             const res1 = await assetManagerController.setMintingCapAmg([assetManager.address], 0, { from: governance });
             await expectEvent.inTransaction(res1.tx, assetManager, "SettingChanged", { name: "mintingCapAMG", value: toBN(0) });
         });
@@ -1028,11 +1028,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             //First we need to lower the setting to 30% so we can multiply by 3 and still be below 100%
             const res_prev1 = assetManagerController.setMinUnderlyingBackingBips([assetManager.address], toBIPS("50%"), { from: governance });
             await waitForTimelock(res_prev1, assetManagerController, updateExecutor);
-            await deterministicTimeIncrease(WEEKS);
+            await time.deterministicIncrease(WEEKS);
 
             const res_prev2 = assetManagerController.setMinUnderlyingBackingBips([assetManager.address], toBIPS("30%"), { from: governance });
             await waitForTimelock(res_prev2, assetManagerController, updateExecutor);
-            await deterministicTimeIncrease(WEEKS);
+            await time.deterministicIncrease(WEEKS);
 
             const currentSettings = await assetManager.getSettings();
             const minUnderlyingBackingBIPS_increaseTooBig = toBN(currentSettings.minUnderlyingBackingBIPS).muln(3);
@@ -1093,7 +1093,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await assetManagerController.addEmergencyPauseSender(sender, { from: governance });
             await assetManagerController.emergencyPause([assetManager.address], 10, { from: sender });
             assert.isTrue(await assetManager.emergencyPaused());
-            await deterministicTimeIncrease(20);
+            await time.deterministicIncrease(20);
             assert.isFalse(await assetManager.emergencyPaused());
             // remove sender
             await assetManagerController.removeEmergencyPauseSender(sender, { from: governance });
@@ -1316,7 +1316,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await assetManagerController.addCollateralType([assetManager.address], newToken, { from: governance });
             await assetManagerController.addCollateralType([assetManager.address], invalidToken, { from: governance });
             await assetManagerController.deprecateCollateralType([assetManager.address],2, invalidToken.token,currentSettings.tokenInvalidationTimeMinSeconds ,{ from: governance });
-            await deterministicTimeIncrease(WEEKS);
+            await time.deterministicIncrease(WEEKS);
             const res = assetManagerController.deprecateCollateralType([assetManager.address],2, invalidToken.token,currentSettings.tokenInvalidationTimeMinSeconds ,{ from: governance });
             await expectRevert(res, "token not valid");
 
@@ -1396,11 +1396,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assert.isFalse(await assetManager.mintingPaused());
             await assetManagerController.pauseMinting([assetManager.address], { from: governance });
             assert.isTrue(await assetManager.mintingPaused());
-            await deterministicTimeIncrease(MINIMUM_PAUSE_BEFORE_STOP / 2);
+            await time.deterministicIncrease(MINIMUM_PAUSE_BEFORE_STOP / 2);
             await assetManagerController.pauseMinting([assetManager.address], { from: governance });
             assert.isTrue(await assetManager.mintingPaused());
             await expectRevert(assetManagerController.terminate([assetManager.address], { from: governance }), "asset manager not paused enough");
-            await deterministicTimeIncrease(MINIMUM_PAUSE_BEFORE_STOP / 2);
+            await time.deterministicIncrease(MINIMUM_PAUSE_BEFORE_STOP / 2);
             assert.isFalse(await fAsset.terminated());
             assert.isFalse(await assetManager.terminated());
             await assetManagerController.terminate([assetManager.address], { from: governance })
@@ -1441,7 +1441,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assert.isFalse(await assetManager.mintingPaused());
             await assetManagerController.pauseMinting([assetManager.address], { from: governance });
             assert.isTrue(await assetManager.mintingPaused());
-            await deterministicTimeIncrease(MINIMUM_PAUSE_BEFORE_STOP);
+            await time.deterministicIncrease(MINIMUM_PAUSE_BEFORE_STOP);
             const promise = assetManagerController.terminate([assetManager.address], { from: accounts[0] })
             await expectRevert(promise, "only governance");
             assert.isFalse(await fAsset.terminated());
@@ -1452,7 +1452,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
             await assetManagerController.pauseMinting([assetManager.address], { from: governance });
             assert.isTrue(await assetManager.mintingPaused());
-            await deterministicTimeIncrease(MINIMUM_PAUSE_BEFORE_STOP);
+            await time.deterministicIncrease(MINIMUM_PAUSE_BEFORE_STOP);
             assert.isFalse(await fAsset.terminated());
             await assetManagerController.terminate([assetManager.address], { from: governance })
             assert.isTrue(await fAsset.terminated());

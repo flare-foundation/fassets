@@ -7,7 +7,7 @@ import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { impersonateContract, stopImpersonatingContract } from "../../../lib/test-utils/contract-test-helpers";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { expectRevert, time } from "../../../lib/test-utils/test-helpers";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { BN_ZERO, BNish, MAX_BIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 
@@ -145,7 +145,7 @@ contract(`AuditV2.ts; ${getTestFile(__filename)}; FAsset V2 audit tests`, accoun
         }
         // redeem pool tokens to empty the pool (agent only works in tests where there are no other pool token holders)
         const poolTokenBalance = await agent.poolTokenBalance();
-        await deterministicTimeIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock
+        await time.deterministicIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock
         const { withdrawalAllowedAt } = await agent.announcePoolTokenRedemption(poolTokenBalance);
         console.log(`Pool Token Balance to Redeem: ${poolTokenBalance}`);
         await time.increaseTo(withdrawalAllowedAt);
