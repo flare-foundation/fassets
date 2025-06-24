@@ -3,8 +3,9 @@ pragma solidity ^0.8.27;
 
 import {SafePct} from "../../utils/library/SafePct.sol";
 
+
 library SettingsValidators {
-    using SafePct for *;
+    using SafePct for uint256;
 
     uint256 internal constant MAXIMUM_PROOF_WINDOW = 1 days;
 

@@ -10,7 +10,6 @@ import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettin
 import {Globals} from "./Globals.sol";
 
 library LiquidationPaymentStrategy {
-    using Agent for Agent.State;
     using Agents for Agent.State;
     using CollateralTypes for CollateralTypeInt.Data;
 

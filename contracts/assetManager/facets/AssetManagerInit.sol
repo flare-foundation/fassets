@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
+import {CollateralTypes} from "../library/CollateralTypes.sol";
+import {SettingsInitializer} from "../library/SettingsInitializer.sol";
+import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
+import {IDiamondCut} from "../../diamond/interfaces/IDiamondCut.sol";
+import {IDiamondLoupe} from "../../diamond/interfaces/IDiamondLoupe.sol";
+import {LibDiamond} from "../../diamond/library/LibDiamond.sol";
+import {IGoverned} from "../../governance/interfaces/IGoverned.sol";
 import {GovernedBase} from "../../governance/implementation/GovernedBase.sol";
 import {GovernedProxyImplementation} from "../../governance/implementation/GovernedProxyImplementation.sol";
-import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
-import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
-import {LibDiamond} from "../../diamond/library/LibDiamond.sol";
-import {SettingsInitializer} from "../library/SettingsInitializer.sol";
-import {CollateralTypes} from "../library/CollateralTypes.sol";
-import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
 import {IAgentPing} from "../../userInterfaces/IAgentPing.sol";
-import {IGoverned} from "../../governance/interfaces/IGoverned.sol";
-import {IDiamondCut} from "../../diamond/interfaces/IDiamondCut.sol";
-import {IDiamondLoupe} from "../../diamond/interfaces/IDiamondLoupe.sol";
+import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
 
 
 contract AssetManagerInit is GovernedProxyImplementation, ReentrancyGuard {

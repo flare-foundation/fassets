@@ -6,8 +6,8 @@ import {Globals} from "./Globals.sol";
 import {SettingsValidators} from "./SettingsValidators.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 
+
 library SettingsInitializer {
-    using SafePct for *;
 
     struct SettingsWrapper {
         AssetManagerSettings.Data settings;

@@ -11,7 +11,6 @@ import {UnderlyingBalance} from "./UnderlyingBalance.sol";
 import {CollateralReservations} from "./CollateralReservations.sol";
 import {AgentCollateral} from "./AgentCollateral.sol";
 import {TransactionAttestation} from "./TransactionAttestation.sol";
-import {RedemptionQueue} from "./data/RedemptionQueue.sol";
 import {PaymentConfirmations} from "./data/PaymentConfirmations.sol";
 import {Collateral} from "./data/Collateral.sol";
 import {Agent} from "./data/Agent.sol";
@@ -24,9 +23,8 @@ import {PaymentReference} from "./data/PaymentReference.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 library Minting {
-    using SafePct for *;
-    using SafeCast for *;
-    using RedemptionQueue for RedemptionQueue.State;
+    using SafePct for uint256;
+    using SafeCast for uint256;
     using PaymentConfirmations for PaymentConfirmations.State;
     using AgentCollateral for Collateral.CombinedData;
     using Agent for Agent.State;

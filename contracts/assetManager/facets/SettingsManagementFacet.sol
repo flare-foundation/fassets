@@ -2,24 +2,24 @@
 pragma solidity ^0.8.27;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
-import {IUpgradableProxy} from "../../utils/interfaces/IUpgradableProxy.sol";
-import {SafePct} from "../../utils/library/SafePct.sol";
-import {IISettingsManagement} from "../../assetManager/interfaces/IISettingsManagement.sol";
-import {Globals} from "../library/Globals.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {IISettingsManagement} from "../interfaces/IISettingsManagement.sol";
 import {CollateralTypes} from "../library/CollateralTypes.sol";
+import {Globals} from "../library/Globals.sol";
 import {SettingsUpdater} from "../library/SettingsUpdater.sol";
 import {SettingsValidators} from "../library/SettingsValidators.sol";
-import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {IIFAsset} from "../../fassetToken/interfaces/IIFAsset.sol";
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
-import {IIFAsset} from "../../fassetToken/interfaces/IIFAsset.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {IUpgradableProxy} from "../../utils/interfaces/IUpgradableProxy.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
 
 
 contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISettingsManagement {
     using SafeCast for uint256;
-    using SafePct for *;
+    using SafePct for uint256;
 
     struct UpdaterState {
         mapping (bytes4 => uint256) lastUpdate;
@@ -325,9 +325,9 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         // validate
         require(_value > SafePct.MAX_BIPS,
             "bips value too low");
-        require(_value <= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(12000) + 1000,
+        require(_value <= uint256(settings.redemptionDefaultFactorVaultCollateralBIPS).mulBips(12000) + 1000,
             "fee increase too big");
-        require(_value >= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(8333),
+        require(_value >= uint256(settings.redemptionDefaultFactorVaultCollateralBIPS).mulBips(8333),
             "fee decrease too big");
         // update
         settings.redemptionDefaultFactorVaultCollateralBIPS = _value.toUint32();

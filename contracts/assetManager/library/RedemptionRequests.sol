@@ -23,7 +23,7 @@ import {PaymentReference} from "./data/PaymentReference.sol";
 
 
 library RedemptionRequests {
-    using SafePct for *;
+    using SafePct for uint256;
     using SafeCast for uint256;
     using RedemptionQueue for RedemptionQueue.State;
 
@@ -265,7 +265,7 @@ library RedemptionRequests {
             _lastPaymentBlock(_data.agentVault, _additionalPaymentTime);
         request.timestamp = block.timestamp.toUint64();
         request.underlyingFeeUBA = _transferToCoreVault ?
-            0 : redeemedValueUBA.mulBips(Globals.getSettings().redemptionFeeBIPS).toUint128();
+            0 : uint256(redeemedValueUBA).mulBips(Globals.getSettings().redemptionFeeBIPS).toUint128();
         request.redeemer = _redeemer;
         request.agentVault = _data.agentVault;
         request.valueAMG = _data.valueAMG;
