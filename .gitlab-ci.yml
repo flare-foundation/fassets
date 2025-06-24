@@ -22,7 +22,7 @@ default:
 
 .test-node-sc:
   stage: test
-  image: node:18
+  image: node:20
   timeout: 3h
   needs:
   - build-smart-contracts
@@ -60,7 +60,7 @@ default:
 build-smart-contracts:
   stage: build
   needs: []
-  image: node:18
+  image: node:20
   cache:
     policy: pull-push
     when: on_success
