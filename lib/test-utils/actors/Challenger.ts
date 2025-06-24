@@ -1,5 +1,5 @@
 import { EventArgs } from "../../utils/events/common";
-import { checkEventNotEmited, eventArgs, findRequiredEvent, requiredEventArgs } from "../../utils/events/truffle";
+import { checkEventNotEmited, optionalEventArgs, findRequiredEvent, requiredEventArgs } from "../../utils/events/truffle";
 import { BNish, MAX_BIPS, toBN } from "../../utils/helpers";
 import { FullLiquidationStarted, RedemptionDefault, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/IIAssetManager";
 import { Agent } from "./Agent";
@@ -24,7 +24,7 @@ export class Challenger extends AssetContextClient {
         const proof = await this.attestationProvider.proveBalanceDecreasingTransaction(txHash, agent.underlyingAddress);
         const res = await this.assetManager.illegalPaymentChallenge(proof, agent.agentVault.address, { from: this.address });
         findRequiredEvent(res, 'IllegalPaymentConfirmed');
-        return eventArgs(res, 'FullLiquidationStarted');
+        return requiredEventArgs(res, 'FullLiquidationStarted');
     }
 
     async doublePaymentChallenge(agent: Agent, txHash1: string, txHash2: string): Promise<EventArgs<FullLiquidationStarted>> {
@@ -32,7 +32,7 @@ export class Challenger extends AssetContextClient {
         const proof2 = await this.attestationProvider.proveBalanceDecreasingTransaction(txHash2, agent.underlyingAddress);
         const res = await this.assetManager.doublePaymentChallenge(proof1, proof2, agent.agentVault.address, { from: this.address });
         findRequiredEvent(res, 'DuplicatePaymentConfirmed');
-        return eventArgs(res, 'FullLiquidationStarted');
+        return requiredEventArgs(res, 'FullLiquidationStarted');
     }
 
     async freeBalanceNegativeChallenge(agent: Agent, txHashes: string[]): Promise<EventArgs<FullLiquidationStarted>> {
@@ -42,7 +42,7 @@ export class Challenger extends AssetContextClient {
         }
         const res = await this.assetManager.freeBalanceNegativeChallenge(proofs, agent.agentVault.address, { from: this.address });
         findRequiredEvent(res, 'UnderlyingBalanceTooLow');
-        return eventArgs(res, 'FullLiquidationStarted');
+        return requiredEventArgs(res, 'FullLiquidationStarted');
     }
 
     async confirmActiveRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string, agent: Agent) {

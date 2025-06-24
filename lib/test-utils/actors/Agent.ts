@@ -5,7 +5,7 @@ import { AssetManagerEvents } from "../../fasset/IAssetContext";
 import { PaymentReference } from "../../fasset/PaymentReference";
 import { IBlockChainWallet } from "../../underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../utils/events/common";
-import { checkEventNotEmited, eventArgs, filterEvents, requiredEventArgs } from "../../utils/events/truffle";
+import { checkEventNotEmited, optionalEventArgs, filterEvents, requiredEventArgs } from "../../utils/events/truffle";
 import { BN_ZERO, BNish, MAX_BIPS, randomAddress, requireNotNull, toBIPS, toBN, toBNExp, toWei } from "../../utils/helpers";
 import { web3DeepNormalize } from "../../utils/web3normalize";
 import { Approximation, assertApproximateMatch } from "../approximation";
@@ -419,10 +419,10 @@ export class Agent extends AssetContextClient {
         return await context.assetManager.redemptionPaymentDefault(proof, request.requestId, { from: from });
     }
 
-    async finishRedemptionWithoutPayment(request: EventArgs<RedemptionRequested>): Promise<EventArgs<RedemptionDefault>> {
+    async finishRedemptionWithoutPayment(request: EventArgs<RedemptionRequested>): Promise<EventArgs<RedemptionDefault> | undefined> {
         const proof = await this.attestationProvider.proveConfirmedBlockHeightExists(this.context.attestationWindowSeconds());
         const res = await this.assetManager.finishRedemptionWithoutPayment(proof, request.requestId, { from: this.ownerWorkAddress });
-        return eventArgs(res, "RedemptionDefault");
+        return optionalEventArgs(res, "RedemptionDefault");
     }
 
     async getRedemptionPaymentDefaultValue(lots: BNish, selfCloseExit: boolean = false): Promise<[BN, BN]> {
@@ -522,13 +522,13 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'SelfMint');
     }
 
-    async selfClose(amountUBA: BNish): Promise<[dustChangesUBA: BN[], selfClosedValueUBA: BN, liquidationCancelledEvent: EventArgs<LiquidationEnded>]> {
+    async selfClose(amountUBA: BNish): Promise<[dustChangesUBA: BN[], selfClosedValueUBA: BN, liquidationCancelledEvent: EventArgs<LiquidationEnded> | undefined]> {
         const res = await this.assetManager.selfClose(this.agentVault.address, amountUBA, { from: this.ownerWorkAddress });
         const dustChangedEvents = filterEvents(res, 'DustChanged').map(e => e.args);
         const selfClose = requiredEventArgs(res, 'SelfClose');
         dustChangedEvents.every(dc => assert.equal(dc.agentVault, this.agentVault.address));
         assert.equal(selfClose.agentVault, this.agentVault.address);
-        return [dustChangedEvents.map(dc => dc.dustUBA), selfClose.valueUBA, eventArgs(res, "LiquidationEnded")];
+        return [dustChangedEvents.map(dc => dc.dustUBA), selfClose.valueUBA, optionalEventArgs(res, "LiquidationEnded")];
     }
 
     async performPayment(paymentAddress: string, paymentAmount: BNish, paymentReference: string | null = null, options?: MockTransactionOptionsWithFee) {

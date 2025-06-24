@@ -1,5 +1,5 @@
 import { DustChanged, RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
-import { eventArgs, filterEvents, requiredEventArgs } from "../../utils/events/truffle";
+import { optionalEventArgs, filterEvents, requiredEventArgs } from "../../utils/events/truffle";
 import { EventArgs } from "../../utils/events/common";
 import { BN_ZERO, BNish, ZERO_ADDRESS, requireNotNull, toBN } from "../../utils/helpers";
 import { Agent } from "./Agent";
@@ -25,7 +25,7 @@ export class Redeemer extends AssetContextClient {
         const res = await this.assetManager.redeem(lots, this.underlyingAddress, executorAddress ?? ZERO_ADDRESS,
             { from: this.address, value: executorFee });
         const redemptionRequests = filterEvents(res, 'RedemptionRequested').map(e => e.args);
-        const redemptionIncomplete = eventArgs(res, 'RedemptionRequestIncomplete');
+        const redemptionIncomplete = optionalEventArgs(res, 'RedemptionRequestIncomplete');
         const dustChangedEvents = filterEvents(res, 'DustChanged').map(e => e.args);
         const remainingLots = redemptionIncomplete?.remainingLots ?? BN_ZERO;
         return [redemptionRequests, remainingLots, dustChangedEvents];

@@ -1,6 +1,6 @@
 import { LiquidationEnded, LiquidationStarted } from "../../../typechain-truffle/IIAssetManager";
 import { EventArgs } from "../../utils/events/common";
-import { eventArgs, filterEvents, findEvent, requiredEventArgs } from "../../utils/events/truffle";
+import { optionalEventArgs, filterEvents, findEvent, requiredEventArgs } from "../../utils/events/truffle";
 import { BN_ZERO, BNish, toBN } from "../../utils/helpers";
 import { expectEvent } from "../test-helpers";
 import { Agent } from "./Agent";
@@ -31,10 +31,10 @@ export class Liquidator extends AssetContextClient {
         return [liquidationStarted.event === 'AgentInCCB', liquidationStarted.args.timestamp];
     }
 
-    async liquidate(agent: Agent, amountUBA: BNish): Promise<[liquidatedValueUBA: BN, blockTimestamp: BNish, liquidationStarted: EventArgs<LiquidationStarted>, liquidationCancelled: EventArgs<LiquidationEnded>, dustChangesUBA: BN[]]> {
+    async liquidate(agent: Agent, amountUBA: BNish): Promise<[liquidatedValueUBA: BN, blockTimestamp: BNish, liquidationStarted: EventArgs<LiquidationStarted> | undefined, liquidationCancelled: EventArgs<LiquidationEnded> | undefined, dustChangesUBA: BN[]]> {
         const res = await this.assetManager.liquidate(agent.agentVault.address, amountUBA, { from: this.address });
         expectEvent.notEmitted(res, 'AgentInCCB');
-        const liquidationPerformed = eventArgs(res, 'LiquidationPerformed');
+        const liquidationPerformed = optionalEventArgs(res, 'LiquidationPerformed');
         const dustChangedEvents = filterEvents(res, 'DustChanged').map(e => e.args);
         if (liquidationPerformed) {
             assert.equal(liquidationPerformed.agentVault, agent.agentVault.address);
@@ -42,7 +42,7 @@ export class Liquidator extends AssetContextClient {
         }
         const tr = await web3.eth.getTransaction(res.tx);
         const block = await web3.eth.getBlock(tr.blockHash!);
-        return [liquidationPerformed?.valueUBA ?? BN_ZERO, block.timestamp, eventArgs(res, 'LiquidationStarted'), eventArgs(res, 'LiquidationEnded'), dustChangedEvents.map(dc => dc.dustUBA)];
+        return [liquidationPerformed?.valueUBA ?? BN_ZERO, block.timestamp, optionalEventArgs(res, 'LiquidationStarted'), optionalEventArgs(res, 'LiquidationEnded'), dustChangedEvents.map(dc => dc.dustUBA)];
     }
 
     async endLiquidation(agent: Agent) {

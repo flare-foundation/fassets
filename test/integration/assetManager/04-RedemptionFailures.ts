@@ -12,7 +12,7 @@ import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-he
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
-import { eventArgs, requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { optionalEventArgs, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { DAYS, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 
 
@@ -530,6 +530,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const startPoolBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const startPoolBalanceAgent = await agent.poolCollateralBalance();
             const redDef = await agent.finishRedemptionWithoutPayment(request);
+            assert.isDefined(redDef);
             await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral.sub(redDef.redeemedVaultCollateralWei),
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.valueUBA), mintedUBA: minted.poolFeeUBA, redeemingUBA: 0
@@ -607,7 +608,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // perform too late redemption payment
             const tx1Hash = await agent.performRedemptionPayment(request);
             const tx = await agent.confirmDefaultedRedemptionPayment(request, tx1Hash);
-            assert.equal(eventArgs(tx, "RedemptionPaymentFailed").failureReason, "redemption payment too late");
+            assert.equal(requiredEventArgs(tx, "RedemptionPaymentFailed").failureReason, "redemption payment too late");
             await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral.sub(res.redeemedVaultCollateralWei),
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.feeUBA), mintedUBA: minted.poolFeeUBA, redeemingUBA: 0

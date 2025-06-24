@@ -9,7 +9,7 @@ import { TestSettingsContracts, createTestAgent, createTestCollaterals, createTe
 import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { eventArgs, requiredEventArgs } from "../../../../lib/utils/events/truffle";
+import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { toBN } from "../../../../lib/utils/helpers";
 import { ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../../typechain-truffle";
 
@@ -69,7 +69,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const res = await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         // assert
         expectEvent(res, "UnderlyingWithdrawalAnnounced", {agentVault: agentVault.address});
-        const args = eventArgs(res, "UnderlyingWithdrawalAnnounced");
+        const args = requiredEventArgs(res, "UnderlyingWithdrawalAnnounced");
         assert.isAbove(Number(args.announcementId), 0);
         assert.equal(args.paymentReference, PaymentReference.announcedWithdrawal(args.announcementId));
         const info = await assetManager.getAgentInfo(agentVault.address);
@@ -111,7 +111,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
         // assert
         expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash});
-        assert.isAbove(Number(eventArgs(res, "UnderlyingWithdrawalConfirmed").announcementId), 0);
+        assert.isAbove(Number(requiredEventArgs(res, "UnderlyingWithdrawalConfirmed").announcementId), 0);
     });
 
     it("should confirm underlying withdrawal both times", async () => {
@@ -137,9 +137,9 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const res2 = await assetManager.confirmUnderlyingWithdrawal(proof2, agentVault.address, { from: agentOwner1 });
         // assert
         expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash});
-        assert.isAbove(Number(eventArgs(res, "UnderlyingWithdrawalConfirmed").announcementId), 0);
+        assert.isAbove(Number(requiredEventArgs(res, "UnderlyingWithdrawalConfirmed").announcementId), 0);
         expectEvent(res2, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash2});
-        assert.isAbove(Number(eventArgs(res2, "UnderlyingWithdrawalConfirmed").announcementId), 0);
+        assert.isAbove(Number(requiredEventArgs(res2, "UnderlyingWithdrawalConfirmed").announcementId), 0);
     });
 
     it("others can confirm underlying withdrawal after some time, empty token ftso symbol conversion test (convertFromUSD5)", async () => {
@@ -164,7 +164,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: accounts[12] });
         // assert
         expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash});
-        assert.isAbove(Number(eventArgs(res, "UnderlyingWithdrawalConfirmed").announcementId), 0);
+        assert.isAbove(Number(requiredEventArgs(res, "UnderlyingWithdrawalConfirmed").announcementId), 0);
     });
 
     it("others can confirm underlying withdrawal after some time", async () => {
@@ -182,7 +182,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: accounts[12] });
         // assert
         expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash});
-        assert.isAbove(Number(eventArgs(res, "UnderlyingWithdrawalConfirmed").announcementId), 0);
+        assert.isAbove(Number(requiredEventArgs(res, "UnderlyingWithdrawalConfirmed").announcementId), 0);
     });
 
     it("only owner can confirm underlying withdrawal immediatelly", async () => {

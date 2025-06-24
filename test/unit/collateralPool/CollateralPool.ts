@@ -5,7 +5,7 @@ import { calcGasCost, calculateReceivedNat } from "../../../lib/test-utils/eth";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestContracts } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
-import { eventArgs } from "../../../lib/utils/events/truffle";
+import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { MAX_BIPS, ZERO_ADDRESS, erc165InterfaceId, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import {
     AgentVaultMockInstance,
@@ -1123,7 +1123,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             expectEvent(resp, "IncompleteSelfCloseExit");
             await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemptionInCollateral");
             // check that all user's tokens were spent
-            const incompleteSelfCloseExit = eventArgs(resp, "IncompleteSelfCloseExit");
+            const incompleteSelfCloseExit = requiredEventArgs(resp, "IncompleteSelfCloseExit");
             const newTokenShare = natShare.mul(totalPoolSupply).div(poolNatBalance);
             assertEqualBN(incompleteSelfCloseExit.burnedTokensWei, newTokenShare);
             assertEqualBN(incompleteSelfCloseExit.redeemedFAssetUBA, requiredFAssets.subn(1));

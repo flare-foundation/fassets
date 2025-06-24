@@ -254,6 +254,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             mockChain.mine(100);
             // expire payment
             const redDef = await agent.finishRedemptionWithoutPayment(request);
+            assert.isDefined(redDef);
             assertWeb3Equal(redDef.requestId, request.requestId);
             // try to challenge
             await expectRevert(challenger.illegalPaymentChallenge(agent, txhash), "matching redemption active");
