@@ -1,20 +1,19 @@
 import tseslint from "typescript-eslint";
+import { includeIgnoreFile } from "@eslint/compat";
+import path from "node:path";
 
 
 export default tseslint.config([
     tseslint.configs.recommended,
     // linting with type information
     tseslint.configs.recommendedTypeChecked,
+    // ignore everything in .gitignore
+    includeIgnoreFile(path.resolve(".gitignore"), "Files from .gitignore"),
     {
         ignores: [
             'eslint.config.mjs',
-            "**/artifacts",
-            "**/cache",
-            "**/coverage",
-            "**/node_modules",
-            "**/test_logs",
-            "**/typechain",
-            "**/typechain-truffle",
+            'scripts/**/*',
+            '.solcover.js',
         ],
     },
     {
@@ -44,15 +43,7 @@ export default tseslint.config([
                 },
             ],
             //
-            '@typescript-eslint/restrict-template-expressions': [
-                'error',
-                {
-                    allow: [
-                        { from: "package", name: "BN", package: "bn.js" },
-                        { from: "lib", name: "Error" },
-                    ]
-                }
-            ],
+            '@typescript-eslint/restrict-template-expressions': 'off',
             // Require for-in loops to include an if statement that checks hasOwnProperty.
             'guard-for-in': 'error',
             // Errors when a case in a switch statement falls through to the next case without a break statement or other termination.
@@ -71,6 +62,13 @@ export default tseslint.config([
             '@typescript-eslint/no-unsafe-function-type': 'warn',
             '@typescript-eslint/no-unsafe-member-access': 'warn',
             '@typescript-eslint/no-unsafe-return': 'warn',
+            //
+            '@typescript-eslint/no-empty-object-type': [
+                'error',
+                {
+                    allowInterfaces: 'with-single-extends'
+                }
+            ],
         },
     },
     // Override rules for specific files
