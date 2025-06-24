@@ -783,7 +783,8 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         it("should require nat share to leave enough pool non-zero collateral", async () => {
             await fAsset.mint(collateralPool.address, ETH(10), { from: assetManager.address });
-            await collateralPool.enter({ value: MIN_NAT_BALANCE_AFTER_EXIT });
+            await collateralPool.enter({ value: MIN_NAT_BALANCE_AFTER_EXIT.addn(2) });
+            await collateralPool.payout(accounts[0], MIN_TOKEN_SUPPLY_AFTER_EXIT.divn(2), 0, { from: assetManager.address });
             const prms = collateralPool.selfCloseExit(new BN(2), true, "", ZERO_ADDRESS);
             await expectRevert(prms, "collateral left after exit is too low and non-zero");
         });

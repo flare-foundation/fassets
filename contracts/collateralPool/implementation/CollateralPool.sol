@@ -196,8 +196,8 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         require(_tokenShare > 0, "token share is zero");
         require(_tokenShare <= token.balanceOf(msg.sender), "token balance too low");
         _requireMinTokenSupplyAfterExit(_tokenShare);
-        // poolTokenSupply >= _tokenShare > 0
-        uint256 natShare = _tokenShare.mulDiv(totalCollateral, token.totalSupply());
+        // token.totalSupply() >= token.balanceOf(msg.sender) >= _tokenShare > 0
+        uint256 natShare = totalCollateral.mulDiv(_tokenShare, token.totalSupply());
         require(natShare > 0, "amount of sent tokens is too small");
         _requireMinNatSupplyAfterExit(natShare);
         // special case after termination - we don't care about fees or CR anymore and we must avoid fasset transfer
@@ -287,17 +287,16 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     {
         require(_tokenShare > 0, "token share is zero");
         require(_tokenShare <= token.balanceOf(msg.sender), "token balance too low");
+        _requireMinTokenSupplyAfterExit(_tokenShare);
         // token.totalSupply() >= token.balanceOf(msg.sender) >= _tokenShare > 0
         uint256 natShare = totalCollateral.mulDiv(_tokenShare, token.totalSupply());
         require(natShare > 0, "amount of sent tokens is too small");
+        _requireMinNatSupplyAfterExit(natShare);
         uint256 maxAgentRedemption = assetManager.maxRedemptionFromAgent(agentVault);
         uint256 requiredFAssets = _getFAssetRequiredToNotSpoilCR(natShare);
         // Rare case: if agent has too many low-valued open tickets they can't redeem the requiredFAssets
         // in one transaction. In that case, we revert and the user should retry with lower amount.
         require(maxAgentRedemption > requiredFAssets, "redemption requires closing too many tickets");
-        // require here in case above block changed nat and token share
-        _requireMinNatSupplyAfterExit(natShare);
-        _requireMinTokenSupplyAfterExit(_tokenShare);
         // get owner f-asset fees to be spent (maximize fee withdrawal to cover the potentially necessary f-assets)
         uint256 debtFAssetFeeShare = _tokensToVirtualFeeShare(_tokenShare);
         // transfer the owner's fassets that will be redeemed
@@ -447,7 +446,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
                 assetPrice.div * (totalCollateral - _natShare) * SafePct.MAX_BIPS / (assetPrice.mul * exitCR));
         } else {
             // f-asset that preserves pool CR (assume poolNatBalance >= natShare > 0)
-            // solve (N - n) / (F - f) = N / F get n = N f / F
+            // solve (N - n) / (F - f) = N / F get f = n F / N
             return backedFAssets.mulDiv(_natShare, totalCollateral);
         }
     }

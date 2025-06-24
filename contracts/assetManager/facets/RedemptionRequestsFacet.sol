@@ -136,7 +136,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         nonReentrant
         returns (uint256 _closedAmountUBA)
     {
-        // in SelfClose.selfClose we check that only agent can do this
+        // in RedemptionRequests.selfClose we check that only agent can do this
         return RedemptionRequests.selfClose(_agentVault, _amountUBA);
     }
 
