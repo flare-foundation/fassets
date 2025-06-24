@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
-import {AgentsExternal} from "../library/AgentsExternal.sol";
-import {RedemptionRequests} from "../library/RedemptionRequests.sol";
-import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {IAddressValidity} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
-
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
+import {Agents} from "../library/Agents.sol";
+import {Globals} from "../library/Globals.sol";
+import {RedemptionRequests} from "../library/RedemptionRequests.sol";
+import {Agent} from "../library/data/Agent.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 
 
 contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
@@ -154,6 +156,14 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         external
         nonReentrant
     {
-        AgentsExternal.convertDustToTicket(_agentVault);
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        Agent.State storage agent = Agent.get(_agentVault);
+        // if dust is more than 1 lot, create a new redemption ticket
+        if (agent.dustAMG >= settings.lotSizeAMG) {
+            uint64 remainingDustAMG = agent.dustAMG % settings.lotSizeAMG;
+            uint64 ticketValueAMG = agent.dustAMG - remainingDustAMG;
+            Agents.createRedemptionTicket(agent, ticketValueAMG);
+            Agents.changeDust(agent, remainingDustAMG);
+        }
     }
 }

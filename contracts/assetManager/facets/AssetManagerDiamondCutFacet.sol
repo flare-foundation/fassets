@@ -6,10 +6,10 @@ pragma solidity ^0.8.0;
 * EIP-2535 Diamonds: https://eips.ethereum.org/EIPS/eip-2535
 /******************************************************************************/
 
+import { Globals } from "../library/Globals.sol";
 import { IDiamondCut } from "../../diamond/interfaces/IDiamondCut.sol";
 import { LibDiamond } from "../../diamond/library/LibDiamond.sol";
 import { GovernedProxyImplementation } from "../../governance/implementation/GovernedProxyImplementation.sol";
-import { Globals } from "../library/Globals.sol";
 
 // DiamondCutFacet that also respects diamondCutMinTimelockSeconds setting.
 

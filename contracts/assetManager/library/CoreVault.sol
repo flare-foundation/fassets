@@ -29,7 +29,7 @@ import {ICoreVault} from "../../userInterfaces/ICoreVault.sol";
 
 
 library CoreVault {
-    using SafePct for *;
+    using SafePct for uint256;
     using SafeCast for *;
     using Agent for Agent.State;
     using AgentCollateral for Collateral.CombinedData;

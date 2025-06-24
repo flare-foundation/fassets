@@ -10,7 +10,7 @@ import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare
 
 
 contract FtsoV2PriceStoreMock is FtsoV2PriceStore {
-    using SafeCast for *;
+    using SafeCast for uint256;
 
     constructor(
         IGovernanceSettings _governanceSettings,

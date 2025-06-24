@@ -3,11 +3,11 @@ pragma solidity ^0.8.27;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
-import {AssetManagerState} from "../library/data/AssetManagerState.sol";
-import {Globals} from "../library/Globals.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {Globals} from "../library/Globals.sol";
+import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 
 
 contract EmergencyPauseTransfersFacet is AssetManagerBase, IAssetManagerEvents {

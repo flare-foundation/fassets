@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {StateUpdater} from "../library/StateUpdater.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {Globals} from "../library/Globals.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 
 
 contract SystemStateManagementFacet is AssetManagerBase {
+    using SafeCast for uint256;
+
+    uint256 internal constant MINIMUM_PAUSE_BEFORE_STOP = 30 days;
+
     /**
      * When `attached` is true, asset manager has been added to the asset manager controller.
      * Even though the asset manager controller address is set at the construction time, the manager may not
@@ -34,7 +39,10 @@ contract SystemStateManagementFacet is AssetManagerBase {
         external
         onlyAssetManagerController
     {
-        StateUpdater.pauseMinting();
+        AssetManagerState.State storage state = AssetManagerState.get();
+        if (state.mintingPausedAt == 0) {
+            state.mintingPausedAt = block.timestamp.toUint64();
+        }
     }
 
     /**
@@ -45,7 +53,9 @@ contract SystemStateManagementFacet is AssetManagerBase {
         external
         onlyAssetManagerController
     {
-        StateUpdater.unpauseMinting();
+        AssetManagerState.State storage state = AssetManagerState.get();
+        require(!Globals.getFAsset().terminated(), "f-asset terminated");
+        state.mintingPausedAt = 0;
     }
 
     /**
@@ -60,6 +70,9 @@ contract SystemStateManagementFacet is AssetManagerBase {
         external
         onlyAssetManagerController
     {
-        StateUpdater.terminate();
+        AssetManagerState.State storage state = AssetManagerState.get();
+        require(state.mintingPausedAt != 0 && block.timestamp > state.mintingPausedAt + MINIMUM_PAUSE_BEFORE_STOP,
+            "asset manager not paused enough");
+        Globals.getFAsset().terminate();
     }
 }

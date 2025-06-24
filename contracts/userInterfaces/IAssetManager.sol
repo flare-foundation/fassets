@@ -955,11 +955,11 @@ interface IAssetManager is
      * underlying withdrawal announcement calls).
      * On success, immediately triggers full agent liquidation and rewards the caller.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
-     * @param _transaction proof of a transaction from the agent's underlying address
+     * @param _payment proof of a transaction from the agent's underlying address
      * @param _agentVault agent vault address
      */
     function illegalPaymentChallenge(
-        IBalanceDecreasingTransaction.Proof calldata _transaction,
+        IBalanceDecreasingTransaction.Proof calldata _payment,
         address _agentVault
     ) external;
 

@@ -133,6 +133,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
         assert.isTrue(addressValidityProof.data.responseBody.isValid);
         const agentSettings = createTestAgentSettings(usdc.address);
+        agentSettings.redemptionPoolFeeShareBIPS = 1;
         const res = await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 });
         // assert
         expectEvent(res, "AgentVaultCreated", { owner: agentOwner1 });
@@ -142,6 +143,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         assert.notEqual(args.creationData.collateralPoolToken, ZERO_ADDRESS);
         assert.equal(args.creationData.vaultCollateralToken, usdc.address);
         assert.notEqual(args.creationData.collateralPoolToken, contracts.wNat.address);
+        assertWeb3Equal(args.creationData.redemptionPoolFeeShareBIPS, 1);
     });
 
     it("should create agent from owner's work address", async () => {

@@ -1,12 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {AvailableAgents} from "../library/AvailableAgents.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {AgentCollateral} from "../library/AgentCollateral.sol";
+import {Agents} from "../library/Agents.sol";
+import {Globals} from "../library/Globals.sol";
+import {Agent} from "../library/data/Agent.sol";
+import {AssetManagerState} from "../library/data/AssetManagerState.sol";
+import {Collateral} from "../library/data/Collateral.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {AvailableAgentInfo} from "../../userInterfaces/data/AvailableAgentInfo.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 
 
 contract AvailableAgentsFacet is AssetManagerBase {
+    using SafeCast for uint256;
+    using AgentCollateral for Collateral.CombinedData;
+
     /**
      * Add the agent to the list of publicly available agents.
      * Other agents can only self-mint.
@@ -17,8 +29,21 @@ contract AvailableAgentsFacet is AssetManagerBase {
         address _agentVault
     )
         external
+        onlyAgentVaultOwner(_agentVault)
     {
-        AvailableAgents.makeAvailable(_agentVault);
+        AssetManagerState.State storage state = AssetManagerState.get();
+        Agent.State storage agent = Agent.get(_agentVault);
+        require(agent.status == Agent.Status.NORMAL, "invalid agent status");
+        require(agent.availableAgentsPos == 0, "agent already available");
+        // check that there is enough free collateral for at least one lot
+        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
+        uint256 freeCollateralLots = collateralData.freeCollateralLots(agent);
+        require(freeCollateralLots >= 1, "not enough free collateral");
+        // add to queue
+        state.availableAgents.push(_agentVault);
+        agent.availableAgentsPos = state.availableAgents.length.toUint32();     // index+1 (0=not in list)
+        emit IAssetManagerEvents.AgentAvailable(_agentVault, agent.feeBIPS,
+            agent.mintingVaultCollateralRatioBIPS, agent.mintingPoolCollateralRatioBIPS, freeCollateralLots);
     }
 
     /**
@@ -31,9 +56,15 @@ contract AvailableAgentsFacet is AssetManagerBase {
         address _agentVault
     )
         external
+        onlyAgentVaultOwner(_agentVault)
         returns (uint256 _exitAllowedAt)
     {
-        return AvailableAgents.announceExit(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
+        require(agent.availableAgentsPos != 0, "agent not available");
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        _exitAllowedAt = block.timestamp + settings.agentExitAvailableTimelockSeconds;
+        agent.exitAvailableAfterTs = _exitAllowedAt.toUint64();
+        emit IAssetManagerEvents.AvailableAgentExitAnnounced(_agentVault, _exitAllowedAt);
     }
 
     /**
@@ -45,8 +76,26 @@ contract AvailableAgentsFacet is AssetManagerBase {
         address _agentVault
     )
         external
+        onlyAgentVaultOwner(_agentVault)
     {
-        AvailableAgents.exit(_agentVault);
+        AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        Agent.State storage agent = Agent.get(_agentVault);
+        require(agent.availableAgentsPos != 0, "agent not available");
+        require(agent.exitAvailableAfterTs != 0, "exit not announced");
+        require(block.timestamp >= agent.exitAvailableAfterTs, "exit too soon");
+        require(block.timestamp <= agent.exitAvailableAfterTs + settings.agentTimelockedOperationWindowSeconds,
+            "exit too late");
+        uint256 ind = agent.availableAgentsPos - 1;
+        if (ind + 1 < state.availableAgents.length) {
+            state.availableAgents[ind] = state.availableAgents[state.availableAgents.length - 1];
+            Agent.State storage movedAgent = Agent.get(state.availableAgents[ind]);
+            movedAgent.availableAgentsPos = uint32(ind + 1);
+        }
+        agent.availableAgentsPos = 0;
+        state.availableAgents.pop();
+        agent.exitAvailableAfterTs = 0;
+        emit IAssetManagerEvents.AvailableAgentExited(_agentVault);
     }
 
     /**
@@ -62,7 +111,14 @@ contract AvailableAgentsFacet is AssetManagerBase {
         external view
         returns (address[] memory _agents, uint256 _totalLength)
     {
-        return AvailableAgents.getList(_start, _end);
+        AssetManagerState.State storage state = AssetManagerState.get();
+        _totalLength = state.availableAgents.length;
+        _end = Math.min(_end, _totalLength);
+        _start = Math.min(_start, _end);
+        _agents = new address[](_end - _start);
+        for (uint256 i = _start; i < _end; i++) {
+            _agents[i - _start] = state.availableAgents[i];
+        }
     }
 
     /**
@@ -81,6 +137,26 @@ contract AvailableAgentsFacet is AssetManagerBase {
         external view
         returns (AvailableAgentInfo.Data[] memory _agents, uint256 _totalLength)
     {
-        return AvailableAgents.getListWithInfo(_start, _end);
+        AssetManagerState.State storage state = AssetManagerState.get();
+        _totalLength = state.availableAgents.length;
+        _end = Math.min(_end, _totalLength);
+        _start = Math.min(_start, _end);
+        _agents = new AvailableAgentInfo.Data[](_end - _start);
+        for (uint256 i = _start; i < _end; i++) {
+            address agentVault = state.availableAgents[i];
+            Agent.State storage agent = Agent.getWithoutCheck(agentVault);
+            Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
+            (uint256 agentCR,) = AgentCollateral.mintingMinCollateralRatio(agent, Collateral.Kind.VAULT);
+            (uint256 poolCR,) = AgentCollateral.mintingMinCollateralRatio(agent, Collateral.Kind.POOL);
+            _agents[i - _start] = AvailableAgentInfo.Data({
+                agentVault: agentVault,
+                ownerManagementAddress: agent.ownerManagementAddress,
+                feeBIPS: agent.feeBIPS,
+                mintingVaultCollateralRatioBIPS: agentCR,
+                mintingPoolCollateralRatioBIPS: poolCR,
+                freeCollateralLots: collateralData.freeCollateralLots(agent),
+                status: Agents.getAgentStatus(agent)
+            });
+        }
     }
 }

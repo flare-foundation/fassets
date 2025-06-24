@@ -1,15 +1,40 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
-import {AgentsCreateDestroy} from "../library/AgentsCreateDestroy.sol";
-import {AgentsExternal} from "../library/AgentsExternal.sol";
-import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {IAddressValidity, IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {Agents} from "../library/Agents.sol";
+import {Globals} from "../library/Globals.sol";
+import {StateUpdater} from "../library/StateUpdater.sol";
+import {TransactionAttestation} from "../library/TransactionAttestation.sol";
+import {Agent} from "../library/data/Agent.sol";
+import {AssetManagerState} from "../library/data/AssetManagerState.sol";
+import {UnderlyingAddressOwnership} from "../library/data/UnderlyingAddressOwnership.sol";
+import {IIAgentVault} from "../../agentVault/interfaces/IIAgentVault.sol";
+import {IIAgentVaultFactory} from "../../agentVault/interfaces/IIAgentVaultFactory.sol";
+import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
+import {IICollateralPool} from "../../collateralPool/interfaces/IICollateralPool.sol";
+import {IICollateralPoolFactory} from "../../collateralPool/interfaces/IICollateralPoolFactory.sol";
+import {IICollateralPoolTokenFactory} from "../../collateralPool/interfaces/IICollateralPoolTokenFactory.sol";
+import {IUpgradableContractFactory} from "../../utils/interfaces/IUpgradableContractFactory.sol";
+import {IUpgradableProxy} from "../../utils/interfaces/IUpgradableProxy.sol";
+import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {AgentSettings} from "../../userInterfaces/data/AgentSettings.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {ICollateralPool} from "../../userInterfaces/ICollateralPool.sol";
+import {ICollateralPoolToken} from "../../userInterfaces/ICollateralPoolToken.sol";
 
 
 contract AgentVaultManagementFacet is AssetManagerBase {
+    using SafeCast for uint256;
+    using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
+    using Agents for Agent.State;
+
+    uint256 internal constant MIN_SUFFIX_LEN = 2;
+    uint256 internal constant MAX_SUFFIX_LEN = 20;
+
     /**
      * This method fixes the underlying address to be used by given agent owner.
      * A proof of payment (can be minimal or to itself) from this address must be provided,
@@ -25,7 +50,21 @@ contract AgentVaultManagementFacet is AssetManagerBase {
     )
         external
     {
-        AgentsCreateDestroy.claimAddressWithEOAProof(_payment);
+        AssetManagerState.State storage state = AssetManagerState.get();
+        TransactionAttestation.verifyPaymentSuccess(_payment);
+        address ownerManagementAddress = _getManagementAddress(msg.sender);
+        Agents.requireWhitelisted(ownerManagementAddress);
+        state.underlyingAddressOwnership.claimWithProof(_payment, state.paymentConfirmations, ownerManagementAddress);
+        // Make sure that current underlying block is at least as high as the EOA proof block.
+        // This ensures that any transaction done at or before EOA check cannot be used as payment proof for minting.
+        // It prevents the attack where an agent guesses the minting id, pays to the underlying address,
+        // then removes all in EOA proof transaction (or a transaction before EOA proof) and finally uses the
+        // proof of transaction for minting.
+        // Since we have a proof of the block N, current block is at least N+1.
+        // Payment proof doesn't include confirmation blocks, so we set it to 0. The update happens only when
+        // block and timestamp increase anyway, so this cannot make the block number or timestamp approximation worse.
+        StateUpdater.updateCurrentBlock(_payment.data.responseBody.blockNumber + 1,
+            _payment.data.responseBody.blockTimestamp, 0);
     }
 
     /**
@@ -44,7 +83,59 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         onlyAttached
         returns (address _agentVault)
     {
-        return AgentsCreateDestroy.createAgentVault(IIAssetManager(address(this)), _addressProof, _settings);
+        AssetManagerState.State storage state = AssetManagerState.get();
+        // reserve suffix quickly to prevent griefing attacks by frontrunning agent creation
+        // with same suffix, wasting agent owner gas
+        _reserveAndValidatePoolTokenSuffix(_settings.poolTokenSuffix);
+        // can be called from management or work owner address
+        address ownerManagementAddress = _getManagementAddress(msg.sender);
+        // management address must be whitelisted
+        Agents.requireWhitelisted(ownerManagementAddress);
+        // require valid address
+        TransactionAttestation.verifyAddressValidity(_addressProof);
+        IAddressValidity.ResponseBody memory avb = _addressProof.data.responseBody;
+        require(avb.isValid, "address invalid");
+        IIAssetManager assetManager = IIAssetManager(address(this));
+        // create agent vault
+        IIAgentVaultFactory agentVaultFactory = IIAgentVaultFactory(Globals.getSettings().agentVaultFactory);
+        IIAgentVault agentVault = agentVaultFactory.create(assetManager);
+        // set initial status
+        Agent.State storage agent = Agent.getWithoutCheck(address(agentVault));
+        assert(agent.status == Agent.Status.EMPTY);     // state should be empty on creation
+        agent.status = Agent.Status.NORMAL;
+        agent.ownerManagementAddress = ownerManagementAddress;
+        // set collateral token types
+        agent.setVaultCollateral(_settings.vaultCollateralToken);
+        agent.poolCollateralIndex = state.poolCollateralIndex;
+        // set initial collateral ratios
+        agent.setMintingVaultCollateralRatioBIPS(_settings.mintingVaultCollateralRatioBIPS);
+        agent.setMintingPoolCollateralRatioBIPS(_settings.mintingPoolCollateralRatioBIPS);
+        // set minting fee and share
+        agent.setFeeBIPS(_settings.feeBIPS);
+        agent.setPoolFeeShareBIPS(_settings.poolFeeShareBIPS);
+        agent.setBuyFAssetByAgentFactorBIPS(_settings.buyFAssetByAgentFactorBIPS);
+        // claim the underlying address to make sure no other agent is using it
+        // for chains where this is required, also checks that address was proved to be EOA
+        state.underlyingAddressOwnership.claimAndTransfer(ownerManagementAddress, address(agentVault),
+            avb.standardAddressHash, Globals.getSettings().requireEOAAddressProof);
+        // set underlying address
+        agent.underlyingAddressString = avb.standardAddress;
+        agent.underlyingAddressHash = avb.standardAddressHash;
+        uint64 eoaProofBlock = state.underlyingAddressOwnership.underlyingBlockOfEOAProof(avb.standardAddressHash);
+        agent.underlyingBlockAtCreation = SafeMath64.max64(state.currentUnderlyingBlock, eoaProofBlock + 1);
+        // add collateral pool
+        agent.collateralPool = _createCollateralPool(assetManager, address(agentVault), _settings);
+        // run the pool setters just for validation
+        agent.setPoolExitCollateralRatioBIPS(_settings.poolExitCollateralRatioBIPS);
+        // set redemption pool fee share
+        agent.setRedemptionPoolFeeShareBIPS(_settings.redemptionPoolFeeShareBIPS);
+        // add to the list of all agents
+        agent.allAgentsPos = state.allAgents.length.toUint32();
+        state.allAgents.push(address(agentVault));
+        // notify
+        _emitAgentVaultCreated(ownerManagementAddress, address(agentVault), agent.collateralPool,
+            avb.standardAddress, _settings);
+        return address(agentVault);
     }
 
     /**
@@ -57,9 +148,22 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         address _agentVault
     )
         external
+        onlyAgentVaultOwner(_agentVault)
         returns (uint256 _destroyAllowedAt)
     {
-        return AgentsCreateDestroy.announceDestroy(_agentVault);
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        Agent.State storage agent = Agent.get(_agentVault);
+        // all minting must stop and all minted assets must have been cleared
+        require(agent.availableAgentsPos == 0, "agent still available");
+        require(agent.totalBackedAMG() == 0, "agent still active");
+        // if not destroying yet, start timing
+        if (agent.status != Agent.Status.DESTROYING) {
+            agent.status = Agent.Status.DESTROYING;
+            uint256 destroyAllowedAt = block.timestamp + settings.withdrawalWaitMinSeconds;
+            agent.destroyAllowedAt = destroyAllowedAt.toUint64();
+            emit IAssetManagerEvents.AgentDestroyAnnounced(_agentVault, destroyAllowedAt);
+        }
+        return agent.destroyAllowedAt;
     }
 
     /**
@@ -79,8 +183,31 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         address payable _recipient
     )
         external
+        onlyAgentVaultOwner(_agentVault)
     {
-        AgentsCreateDestroy.destroyAgent(_agentVault, _recipient);
+        AssetManagerState.State storage state = AssetManagerState.get();
+        Agent.State storage agent = Agent.get(_agentVault);
+        // destroy must have been announced enough time before
+        require(agent.status == Agent.Status.DESTROYING, "destroy not announced");
+        require(block.timestamp > agent.destroyAllowedAt, "destroy: not allowed yet");
+        // cannot have any minting when in destroying status
+        assert(agent.totalBackedAMG() == 0);
+        // destroy pool
+        agent.collateralPool.destroy(_recipient);
+        // destroy agent vault
+        IIAgentVault(_agentVault).destroy();
+        // remove from the list of all agents
+        uint256 ind = agent.allAgentsPos;
+        if (ind + 1 < state.allAgents.length) {
+            state.allAgents[ind] = state.allAgents[state.allAgents.length - 1];
+            Agent.State storage movedAgent = Agent.get(state.allAgents[ind]);
+            movedAgent.allAgentsPos = uint32(ind);
+        }
+        state.allAgents.pop();
+        // delete agent data
+        Agent.deleteStorage(agent);
+        // notify
+        emit IAssetManagerEvents.AgentDestroyed(_agentVault);
     }
 
     /**
@@ -97,7 +224,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         external
         onlyAgentVaultOwner(_agentVault)
     {
-        AgentsCreateDestroy.upgradeAgentVaultAndPool(_agentVault);
+        _upgradeAgentVaultAndPool(_agentVault);
     }
 
     /**
@@ -118,9 +245,117 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         external
         onlyAssetManagerController
     {
-        (address[] memory _agents,) = AgentsExternal.getAllAgents(_start, _end);
+        (address[] memory _agents,) = Agents.getAllAgents(_start, _end);
         for (uint256 i = 0; i < _agents.length; i++) {
-            AgentsCreateDestroy.upgradeAgentVaultAndPool(_agents[i]);
+            _upgradeAgentVaultAndPool(_agents[i]);
         }
+    }
+
+    function _upgradeAgentVaultAndPool(address _agentVault)
+        private
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        ICollateralPool collateralPool = Agent.get(_agentVault).collateralPool;
+        ICollateralPoolToken collateralPoolToken = collateralPool.poolToken();
+        _upgradeContract(IIAgentVaultFactory(settings.agentVaultFactory), _agentVault);
+        _upgradeContract(IICollateralPoolFactory(settings.collateralPoolFactory),
+            address(collateralPool));
+        _upgradeContract(IICollateralPoolTokenFactory(settings.collateralPoolTokenFactory),
+            address(collateralPoolToken));
+    }
+
+    function _upgradeContract(
+        IUpgradableContractFactory _factory,
+        address _proxyAddress
+    )
+        private
+    {
+        IUpgradableProxy proxy = IUpgradableProxy(_proxyAddress);
+        address newImplementation = _factory.implementation();
+        address currentImplementation = proxy.implementation();
+        if (currentImplementation != newImplementation) {
+            bytes memory initCall = _factory.upgradeInitCall(_proxyAddress);
+            if (initCall.length > 0) {
+                proxy.upgradeToAndCall(newImplementation, initCall);
+            } else {
+                proxy.upgradeTo(newImplementation);
+            }
+        }
+    }
+
+    function _createCollateralPool(
+        IIAssetManager _assetManager,
+        address _agentVault,
+        AgentSettings.Data calldata _settings
+    )
+        private
+        returns (IICollateralPool)
+    {
+        AssetManagerSettings.Data storage globalSettings = Globals.getSettings();
+        IICollateralPoolFactory collateralPoolFactory =
+            IICollateralPoolFactory(globalSettings.collateralPoolFactory);
+        IICollateralPoolTokenFactory poolTokenFactory =
+            IICollateralPoolTokenFactory(globalSettings.collateralPoolTokenFactory);
+        IICollateralPool collateralPool = collateralPoolFactory.create(_assetManager, _agentVault, _settings);
+        address poolToken =
+            poolTokenFactory.create(collateralPool, globalSettings.poolTokenSuffix, _settings.poolTokenSuffix);
+        collateralPool.setPoolToken(poolToken);
+        return collateralPool;
+    }
+
+    function _reserveAndValidatePoolTokenSuffix(string memory _suffix)
+        private
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        // reserve unique suffix
+        require(!state.reservedPoolTokenSuffixes[_suffix], "suffix already reserved");
+        state.reservedPoolTokenSuffixes[_suffix] = true;
+        // validate - require only printable ASCII characters (no spaces) and limited length
+        bytes memory suffixb = bytes(_suffix);
+        uint256 len = suffixb.length;
+        require(len >= MIN_SUFFIX_LEN, "suffix too short");
+        require(len <= MAX_SUFFIX_LEN, "suffix too long");
+        for (uint256 i = 0; i < len; i++) {
+            bytes1 ch = suffixb[i];
+            // allow A-Z, 0-9 and '-' (but not at start or end)
+            require((ch >= "A" && ch <= "Z") || (ch >= "0" && ch <= "9") || (i > 0 && i < len - 1 && ch == "-"),
+                "invalid character in suffix");
+        }
+    }
+
+    // Basically the same as `emit IAssetManagerEvents.AgentVaultCreated`.
+    // Must be a separate method as workaround for EVM 16 stack variables limit.
+    function _emitAgentVaultCreated(
+        address _ownerManagementAddress,
+        address _agentVault,
+        IICollateralPool _collateralPool,
+        string memory _underlyingAddress,
+        AgentSettings.Data calldata _settings
+    )
+        private
+    {
+        IAssetManagerEvents.AgentVaultCreationData memory data;
+        data.collateralPool = address(_collateralPool);
+        data.collateralPoolToken = address(_collateralPool.poolToken());
+        data.vaultCollateralToken = address(_settings.vaultCollateralToken);
+        data.poolWNatToken = address(_collateralPool.wNat());
+        data.underlyingAddress = _underlyingAddress;
+        data.feeBIPS = _settings.feeBIPS;
+        data.poolFeeShareBIPS = _settings.poolFeeShareBIPS;
+        data.mintingVaultCollateralRatioBIPS = _settings.mintingVaultCollateralRatioBIPS;
+        data.mintingPoolCollateralRatioBIPS = _settings.mintingPoolCollateralRatioBIPS;
+        data.buyFAssetByAgentFactorBIPS = _settings.buyFAssetByAgentFactorBIPS;
+        data.poolExitCollateralRatioBIPS = _settings.poolExitCollateralRatioBIPS;
+        data.redemptionPoolFeeShareBIPS = _settings.redemptionPoolFeeShareBIPS;
+        emit IAssetManagerEvents.AgentVaultCreated(_ownerManagementAddress, _agentVault, data);
+    }
+
+    // Returns management owner's address, given either work or management address.
+    function _getManagementAddress(address _ownerAddress)
+        private view
+        returns (address)
+    {
+        address ownerManagementAddress = Globals.getAgentOwnerRegistry().getManagementAddress(_ownerAddress);
+        return ownerManagementAddress != address(0) ? ownerManagementAddress : _ownerAddress;
     }
 }

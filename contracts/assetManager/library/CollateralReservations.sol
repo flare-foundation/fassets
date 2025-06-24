@@ -25,7 +25,7 @@ import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettin
 
 
 library CollateralReservations {
-    using SafePct for *;
+    using SafePct for uint256;
     using SafeCast for uint256;
     using AgentCollateral for Collateral.CombinedData;
     using Agent for Agent.State;

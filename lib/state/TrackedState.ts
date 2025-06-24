@@ -12,7 +12,7 @@ import { web3DeepNormalize, web3Normalize } from "../utils/web3normalize";
 import { CollateralList, isPoolCollateral } from "./CollateralIndexedList";
 import { Prices } from "./Prices";
 import { tokenContract } from "./TokenPrice";
-import { ExtendedAgentInfo, InitialAgentData, TrackedAgentState } from "./TrackedAgentState";
+import { InitialAgentData, TrackedAgentState } from "./TrackedAgentState";
 
 export class TrackedCoreVaultState {
     // confirmed balance by CoreVaultManager
@@ -265,7 +265,7 @@ export class TrackedState {
     }
 
     async createAgentVaultWithCurrentState(address: string) {
-        const agentInfo = await this.getExtendedAgentInfo(address);
+        const agentInfo = await this.context.assetManager.getAgentInfo(address);
         const agent = this.createAgentVault({
             agentVault: address,
             owner: agentInfo.ownerManagementAddress,
@@ -281,6 +281,7 @@ export class TrackedState {
                 mintingPoolCollateralRatioBIPS: agentInfo.mintingPoolCollateralRatioBIPS,
                 buyFAssetByAgentFactorBIPS: agentInfo.buyFAssetByAgentFactorBIPS,
                 poolExitCollateralRatioBIPS: agentInfo.poolExitCollateralRatioBIPS,
+                redemptionPoolFeeShareBIPS: agentInfo.redemptionPoolFeeShareBIPS,
             }
         });
         agent.initializeState(agentInfo);
@@ -308,13 +309,6 @@ export class TrackedState {
     }
 
     // helpers
-
-    async getExtendedAgentInfo(vaultAddress: string): Promise<ExtendedAgentInfo> {
-        return {
-            ...await this.context.assetManager.getAgentInfo(vaultAddress),
-            redemptionPoolFeeShareBIPS: await this.context.assetManager.getAgentSetting(vaultAddress, "redemptionPoolFeeShareBIPS"),
-        }
-    }
 
     assetManagerEvent<N extends AssetManagerEvents['name']>(event: N, filter?: Partial<ExtractedEventArgs<AssetManagerEvents, N>>) {
         const emitter = this.truffleEvents.event(this.context.assetManager, event, filter).immediate();

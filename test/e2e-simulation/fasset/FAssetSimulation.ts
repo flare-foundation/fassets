@@ -128,7 +128,6 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
     it("f-asset simulation test", async () => {
         // create agents
         const firstAgentAddress = 10;
-        const settingThreads: number[] = [];
         runner.comment(`Initializing ${N_AGENTS} agents`);
         for (let i = 0; i < N_AGENTS; i++) {
             const underlyingAddress = "underlying_agent_" + i;
@@ -141,15 +140,10 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
             const options = createAgentVaultOptions();
             const ownerAddress = coinFlip() ? ownerWorkAddress : ownerManagementAddress;
             const simulationAgent = await SimulationAgent.createTest(runner, ownerAddress, underlyingAddress, ownerUnderlyingAddress, options);
-            settingThreads.push(
-                runner.startThread(scope => simulationAgent.changeSetting(scope, "redemptionPoolFeeShareBIPS", options.redemptionPoolFeeShareBIPS))
-            );
             simulationAgent.capturePerAgentContractEvents(`AGENT_${i}`);
             await simulationAgent.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));
             agents.push(simulationAgent);
         }
-        runner.comment(`Waiting for setting threads to finish`);
-        await runner.waitForThreadsToFinish(settingThreads, 1000, true);
         // create customers
         runner.comment(`Initializing ${N_CUSTOMERS} customers`);
         const firstCustomerAddress = firstAgentAddress + 3 * N_AGENTS;
@@ -295,7 +289,7 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
         assert.isTrue(simulationState.failedExpectations.length === 0, "simulation state has expectation failures");
     });
 
-    function createAgentVaultOptions(): AgentCreateOptions & { redemptionPoolFeeShareBIPS: BN } {
+    function createAgentVaultOptions(): AgentCreateOptions {
         const vaultCollateral = randomChoice(context.collaterals.filter(isVaultCollateral));
         const poolCollateral = context.collaterals.filter(isPoolCollateral)[0];
         const mintingVaultCollateralRatioBIPS = mulDecimal(toBN(vaultCollateral.minCollateralRatioBIPS), randomNum(1, 1.5));

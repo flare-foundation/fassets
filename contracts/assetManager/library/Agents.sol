@@ -20,6 +20,8 @@ import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
+import {AgentInfo} from "../../userInterfaces/data/AgentInfo.sol";
+import {Liquidation} from "./Liquidation.sol";
 
 library Agents {
     using SafeCast for uint256;
@@ -493,5 +495,42 @@ library Agents {
         // would need `max(redeemingAMG, poolRedeemingAMG)`
         assert(_agent.poolRedeemingAMG <= _agent.redeemingAMG);
         return _agent.mintedAMG + _agent.reservedAMG + _agent.redeemingAMG;
+    }
+
+    function getAgentStatus(
+        Agent.State storage _agent
+    )
+        internal view
+        returns (AgentInfo.Status)
+    {
+        Agent.Status status = _agent.status;
+        if (status == Agent.Status.NORMAL) {
+            return AgentInfo.Status.NORMAL;
+        } else if (status == Agent.Status.LIQUIDATION) {
+            Agent.LiquidationPhase phase = Liquidation.currentLiquidationPhase(_agent);
+            return phase == Agent.LiquidationPhase.CCB ? AgentInfo.Status.CCB : AgentInfo.Status.LIQUIDATION;
+        } else if (status == Agent.Status.FULL_LIQUIDATION) {
+            return AgentInfo.Status.FULL_LIQUIDATION;
+        } else {
+            assert (status == Agent.Status.DESTROYING);
+            return AgentInfo.Status.DESTROYING;
+        }
+    }
+
+    function getAllAgents(
+        uint256 _start,
+        uint256 _end
+    )
+        internal view
+        returns (address[] memory _agents, uint256 _totalLength)
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        _totalLength = state.allAgents.length;
+        _end = Math.min(_end, _totalLength);
+        _start = Math.min(_start, _end);
+        _agents = new address[](_end - _start);
+        for (uint256 i = _start; i < _end; i++) {
+            _agents[i - _start] = state.allAgents[i];
+        }
     }
 }

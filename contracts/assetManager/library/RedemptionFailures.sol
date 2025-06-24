@@ -20,7 +20,7 @@ import {PaymentReference} from "./data/PaymentReference.sol";
 import {Globals} from "./Globals.sol";
 
 library RedemptionFailures {
-    using SafePct for *;
+    using SafePct for uint256;
     using Agent for Agent.State;
     using AgentCollateral for Collateral.Data;
 
@@ -161,7 +161,7 @@ library RedemptionFailures {
         uint256 poolTokenEquiv = _paidC1Wei
             .mulDiv(cd.agentPoolTokens.amgToTokenWeiPrice, cd.agentCollateral.amgToTokenWeiPrice);
         uint256 requiredPoolTokensForRemainder =
-            (_agent.reservedAMG + _agent.mintedAMG + _agent.redeemingAMG - _request.valueAMG)
+            uint256(_agent.reservedAMG + _agent.mintedAMG + _agent.redeemingAMG - _request.valueAMG)
                 .mulDiv(cd.agentPoolTokens.amgToTokenWeiPrice, Conversion.AMG_TOKEN_WEI_PRICE_SCALE)
                 .mulBips(Globals.getSettings().mintingPoolHoldingsRequiredBIPS);
         require(requiredPoolTokensForRemainder + poolTokenEquiv <= cd.agentPoolTokens.fullCollateral,
@@ -216,8 +216,8 @@ library RedemptionFailures {
                 // calculate paid amount and max available amount from the pool
                 Collateral.Data memory cdPool = AgentCollateral.poolCollateralData(_agent);
                 uint256 maxPoolWei = cdPool.maxRedemptionCollateral(_agent, _request.valueAMG);
-                uint256 extraPoolAmg =
-                    _request.valueAMG.mulDivRoundUp(_vaultCollateralWei - maxVaultCollateralWei, _vaultCollateralWei);
+                uint256 extraPoolAmg = uint256(_request.valueAMG)
+                    .mulDivRoundUp(_vaultCollateralWei - maxVaultCollateralWei, _vaultCollateralWei);
                 _vaultCollateralWei = maxVaultCollateralWei;
                 _poolWei = Conversion.convertAmgToTokenWei(extraPoolAmg, cdPool.amgToTokenWeiPrice);
                 // if there is not enough collateral in the pool, just reduce the payment - however this is not likely,

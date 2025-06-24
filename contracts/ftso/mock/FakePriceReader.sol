@@ -10,7 +10,7 @@ import {IPriceChangeEmitter} from "../interfaces/IPriceChangeEmitter.sol";
 
 
 contract FakePriceReader is IPriceReader, IPriceChangeEmitter, IERC165 {
-    using SafeCast for *;
+    using SafeCast for uint256;
 
     struct PricingData {
         uint8 decimals;
