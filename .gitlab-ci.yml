@@ -115,6 +115,7 @@ test-linter:
   extends: .test-node-sc-noschedule
   script:
   - yarn lint
+  - yarn eslint
 
 
 test-slither-check:
