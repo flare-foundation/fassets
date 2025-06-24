@@ -42,7 +42,6 @@
             "safetyMinCollateralRatioBIPS": 16000
         }
     ],
-    "minUnderlyingBackingBIPS": 10000,
     "mintingCap": "0",
     "lotSize": "20 000000",
     "requireEOAAddressProof": false,

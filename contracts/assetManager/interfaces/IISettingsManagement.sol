@@ -51,9 +51,6 @@ interface IISettingsManagement {
     function setLotSizeAmg(uint256 _value)
         external;
 
-    function setMinUnderlyingBackingBips(uint256 _value)
-        external;
-
     function setMaxTrustedPriceAgeSeconds(uint256 _value)
         external;
 

@@ -209,13 +209,6 @@ export interface AssetManagerParameters {
     vaultCollaterals: CollateralTypeParameters[];
 
     /**
-     * The percentage of minted f-assets that the agent must hold in his underlying address.
-     * @minimum 0
-     * @maximum 10000
-     */
-    minUnderlyingBackingBIPS: integer;
-
-    /**
      * Maximum minted amount of the f-asset, in base unit of underlying asset.
      * @pattern ^[0-9 ]+$
      */

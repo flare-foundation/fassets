@@ -89,8 +89,7 @@ export class TrackedAgentState {
     // calculated getters
 
     get requiredUnderlyingBalanceUBA() {
-        const backedUBA = this.mintedUBA.add(this.redeemingUBA);
-        return backedUBA.mul(toBN(this.parent.settings.minUnderlyingBackingBIPS)).divn(MAX_BIPS);
+        return this.mintedUBA.add(this.redeemingUBA);
     }
 
     get freeUnderlyingBalanceUBA() {

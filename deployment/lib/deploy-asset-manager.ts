@@ -230,7 +230,7 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         assetUnitUBA: assetUnitUBA,
         assetMintingDecimals: parameters.assetMintingDecimals,
         assetMintingGranularityUBA: assetMintingGranularityUBA,
-        minUnderlyingBackingBIPS: parameters.minUnderlyingBackingBIPS,
+        __minUnderlyingBackingBIPS: 0,
         mintingCapAMG: parseBN(parameters.mintingCap).div(assetMintingGranularityUBA),
         lotSizeAMG: parseBN(parameters.lotSize).div(assetMintingGranularityUBA),
         requireEOAAddressProof: parameters.requireEOAAddressProof,

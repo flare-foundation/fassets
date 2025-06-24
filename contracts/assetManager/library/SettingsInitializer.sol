@@ -70,8 +70,6 @@ library SettingsInitializer {
         require(_settings.lotSizeAMG > 0, "cannot be zero");
         require(_settings.mintingCapAMG == 0 || _settings.mintingCapAMG >= _settings.lotSizeAMG,
             "minting cap too small");
-        require(_settings.minUnderlyingBackingBIPS > 0, "cannot be zero");
-        require(_settings.minUnderlyingBackingBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_settings.collateralReservationFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_settings.redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_settings.redemptionDefaultFactorVaultCollateralBIPS > SafePct.MAX_BIPS, "bips value too low");
@@ -84,6 +82,7 @@ library SettingsInitializer {
         require(_settings.liquidationStepSeconds > 0, "cannot be zero");
         SettingsValidators.validateLiquidationFactors(_settings.liquidationCollateralFactorBIPS,
             _settings.liquidationFactorVaultCollateralBIPS);
+        require(_settings.__minUnderlyingBackingBIPS == 0, "must be zero");
         require(_settings.__redemptionDefaultFactorPoolBIPS == 0, "must be zero");
         require(_settings.__cancelCollateralReservationAfterSeconds == 0, "must be zero");
         require(_settings.__rejectOrCancelCollateralReservationReturnFactorBIPS == 0, "must be zero");
