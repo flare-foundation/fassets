@@ -622,7 +622,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // buy half pool collateral as agent vault and the rest from agent's owner address
         const requiredCollateral = await agent.requiredCollateralForLots(10);
         await agent.depositCollateralsAndMakeAvailable(requiredCollateral.vault, requiredCollateral.pool.divn(2));
-        await agent.collateralPool.enter(0, false, { from: agent.ownerWorkAddress, value: requiredCollateral.pool.divn(2) });
+        await agent.collateralPool.enter({ from: agent.ownerWorkAddress, value: requiredCollateral.pool.divn(2) });
         //
         await minter.performMinting(agent.vaultAddress, 10);
         // agent buys 5 lots
@@ -649,7 +649,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // buy half pool collateral as agent vault and the rest from agent's owner address
         const requiredCollateral = await agent.requiredCollateralForLots(10);
         await agent.depositCollateralsAndMakeAvailable(requiredCollateral.vault, requiredCollateral.pool.divn(2));
-        await agent.collateralPool.enter(0, false, { from: agent.ownerWorkAddress, value: requiredCollateral.pool.divn(2) });
+        await agent.collateralPool.enter({ from: agent.ownerWorkAddress, value: requiredCollateral.pool.divn(2) });
         //
         await minter.performMinting(agent.vaultAddress, 10);
         // agent buys 5 lots
@@ -771,7 +771,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         await agent.depositCollateralLotsAndMakeAvailable(20, 1);
         await minter.performMinting(agent.vaultAddress, 10);
         // enter agent's collateral pool
-        await agent.collateralPool.enter(0, false, { from: minter.address, value: toBNExp(1, 24) });
+        await agent.collateralPool.enter({ from: minter.address, value: toBNExp(1, 24) });
         const minterNatBefore = await agent.poolNatBalanceOf(minter.address);
         // put agent into CCB
         await agent.setVaultCollateralRatioByChangingVaultTokenPrice(13050);
@@ -830,10 +830,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         await minter.performMinting(agent.vaultAddress, 10);
 
         // enter agent's collateral pool
-        await agent.collateralPool.enter(0, false, { from: minter.address, value: toBNExp(1, 24) });
+        await agent.collateralPool.enter({ from: minter.address, value: toBNExp(1, 24) });
 
         // victim enters the pool
-        await agent.collateralPool.enter(0, false, { value: toBNExp(1, 21), from: victim });
+        await agent.collateralPool.enter({ value: toBNExp(1, 21), from: victim });
         const victimNatBefore = await agent.poolNatBalanceOf(victim);
         console.log("victim nat:", victimNatBefore.toString());
 

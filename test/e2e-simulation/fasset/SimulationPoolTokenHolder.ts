@@ -8,8 +8,6 @@ import { SimulationRunner } from "./SimulationRunner";
 
 const MIN_POOL_ENTER_EXIT = toWei(1);
 
-enum TokenExitType { MAXIMIZE_FEE_WITHDRAWAL, MINIMIZE_FEE_DEBT, KEEP_RATIO }
-
 interface PoolInfo {
     pool: CollateralPoolInstance;
     poolToken: CollateralPoolTokenInstance;
@@ -45,7 +43,7 @@ export class SimulationPoolTokenHolder extends SimulationActor {
             const lotSizeWei = natPrice.convertUBAToTokenWei(this.state.lotSize());
             const amount = randomBN(MIN_POOL_ENTER_EXIT, lotSizeWei.muln(3));
             this.comment(`${this.formatAddress(this.address)}: entering pool ${this.formatAddress(this.poolInfo.pool.address)} (${formatBN(amount)})`);
-            await this.poolInfo.pool.enter(0, false, { from: this.address, value: amount })
+            await this.poolInfo.pool.enter({ from: this.address, value: amount })
                 .catch(e => scope.exitOnExpectedError(e, ['invalid agent vault address']));
         });
     }
@@ -60,7 +58,7 @@ export class SimulationPoolTokenHolder extends SimulationActor {
             const selfCloseFAssetRequired = await this.poolInfo.pool.fAssetRequiredForSelfCloseExit(amount);
             if (selfCloseFAssetRequired.isZero()) {
                 this.comment(`${this.formatAddress(this.address)}: exiting pool ${this.formatAddress(this.poolInfo.pool.address)} (${amountFmt})`);
-                await this.poolInfo.pool.exit(amount, TokenExitType.MAXIMIZE_FEE_WITHDRAWAL, { from: this.address })
+                await this.poolInfo.pool.exit(amount, { from: this.address })
                     .catch(e => scope.exitOnExpectedError(e, ['collateral ratio falls below exitCR']));
             } else {
                 const redeemToCollateral = coinFlip(0.1);   // it will usually redeem to collateral anyway, because amount is typically < 1 lot

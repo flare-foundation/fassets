@@ -53,7 +53,7 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     function buyCollateralPoolTokens()
         external payable
     {
-        collateralPool().enter{value: msg.value}(0, false);
+        collateralPool().enter{value: msg.value}();
     }
 
     function withdrawPoolFees(uint256 _amount, address _recipient)
@@ -70,7 +70,7 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     {
         ICollateralPool pool = collateralPool();
         assetManager.beforeCollateralWithdrawal(pool.poolToken(), _amount);
-        pool.exitTo(_amount, _recipient, ICollateralPool.TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
+        pool.exitTo(_amount, _recipient);
     }
 
     // must call `token.approve(vault, amount)` before for each token in _tokens

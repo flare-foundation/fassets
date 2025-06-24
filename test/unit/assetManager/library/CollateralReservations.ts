@@ -240,7 +240,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // separately deposit vault collateral, buy pool tokens, and enter pool - all at minimum required amount
         await depositCollateral(agentOwner1, agentVault, vaultCollateral);
         await agentVault.buyCollateralPoolTokens({ from: agentOwner1, value: poolTokens });
-        await collateralPool.enter(0, false, { from: agentOwner1, value: poolCollateral.sub(poolTokens) });
+        await collateralPool.enter({ from: agentOwner1, value: poolCollateral.sub(poolTokens) });
         //
         await assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 });
         // act
@@ -263,7 +263,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // separately deposit vault collateral, buy pool tokens, and enter pool
         await depositCollateral(agentOwner1, agentVault, vaultCollateral);
         await agentVault.buyCollateralPoolTokens({ from: agentOwner1, value: poolTokens.subn(100) });
-        await collateralPool.enter(0, false, { from: agentOwner1, value: poolCollateral.sub(poolTokens) });
+        await collateralPool.enter({ from: agentOwner1, value: poolCollateral.sub(poolTokens) });
         //
         await assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 });
         // act
@@ -288,7 +288,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // separately deposit vault collateral, buy pool tokens, and enter pool
         await depositCollateral(agentOwner1, agentVault, vaultCollateral.subn(100));
         await agentVault.buyCollateralPoolTokens({ from: agentOwner1, value: poolTokens });
-        await collateralPool.enter(0, false, { from: agentOwner1, value: poolCollateral.sub(poolTokens) });
+        await collateralPool.enter({ from: agentOwner1, value: poolCollateral.sub(poolTokens) });
         //
         await assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 });
         // act
@@ -313,7 +313,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // separately deposit vault collateral, buy pool tokens, and enter pool
         await depositCollateral(agentOwner1, agentVault, vaultCollateral);
         await agentVault.buyCollateralPoolTokens({ from: agentOwner1, value: poolTokens });
-        await collateralPool.enter(0, false, { from: agentOwner1, value: poolCollateral.sub(poolTokens).subn(100) });
+        await collateralPool.enter({ from: agentOwner1, value: poolCollateral.sub(poolTokens).subn(100) });
         //
         await assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 });
         // act
