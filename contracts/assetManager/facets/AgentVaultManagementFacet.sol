@@ -127,6 +127,8 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         agent.collateralPool = _createCollateralPool(assetManager, address(agentVault), _settings);
         // run the pool setters just for validation
         agent.setPoolExitCollateralRatioBIPS(_settings.poolExitCollateralRatioBIPS);
+        // set redemption pool fee share
+        agent.setRedemptionPoolFeeShareBIPS(_settings.redemptionPoolFeeShareBIPS);
         // add to the list of all agents
         agent.allAgentsPos = state.allAgents.length.toUint32();
         state.allAgents.push(address(agentVault));
@@ -344,6 +346,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         data.mintingPoolCollateralRatioBIPS = _settings.mintingPoolCollateralRatioBIPS;
         data.buyFAssetByAgentFactorBIPS = _settings.buyFAssetByAgentFactorBIPS;
         data.poolExitCollateralRatioBIPS = _settings.poolExitCollateralRatioBIPS;
+        data.redemptionPoolFeeShareBIPS = _settings.redemptionPoolFeeShareBIPS;
         emit IAssetManagerEvents.AgentVaultCreated(_ownerManagementAddress, _agentVault, data);
     }
 

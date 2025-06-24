@@ -1,11 +1,11 @@
 import BN from "bn.js";
 import { closeSync } from "fs";
-import { AgentStatus, CollateralClass, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
+import { AgentInfo, AgentStatus, CollateralClass, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
 import { NAT_WEI } from "../../../lib/fasset/Conversions";
 import { CollateralPoolEvents, CollateralPoolTokenEvents } from "../../../lib/fasset/IAssetContext";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { Prices } from "../../../lib/state/Prices";
-import { ExtendedAgentInfo, InitialAgentData, TrackedAgentState } from "../../../lib/state/TrackedAgentState";
+import { InitialAgentData, TrackedAgentState } from "../../../lib/state/TrackedAgentState";
 import { ITransaction } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EvmEventArgs } from "../../../lib/utils/events/IEvmEvents";
 import { EvmEvent } from "../../../lib/utils/events/common";
@@ -113,7 +113,7 @@ export class SimulationAgentState extends TrackedAgentState {
 
     // init
 
-    override initializeState(agentInfo: ExtendedAgentInfo) {
+    override initializeState(agentInfo: AgentInfo) {
         super.initializeState(agentInfo);
         this.poolTokenBalances.set(this.address, agentInfo.totalAgentPoolTokensWei);
     }

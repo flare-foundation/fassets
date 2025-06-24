@@ -214,7 +214,8 @@ export function createTestAgentSettings(vaultCollateralTokenAddress: string, opt
         mintingVaultCollateralRatioBIPS: toBIPS(1.6),
         mintingPoolCollateralRatioBIPS: toBIPS(2.5),
         poolExitCollateralRatioBIPS: toBIPS(2.6),
-        buyFAssetByAgentFactorBIPS: toBIPS(0.9)
+        buyFAssetByAgentFactorBIPS: toBIPS(0.9),
+        redemptionPoolFeeShareBIPS: 0
     };
     return { ...defaults, ...(options ?? {}) };
 }

@@ -115,6 +115,7 @@ contract AgentInfoFacet is AssetManagerBase {
         _info.announcedUnderlyingWithdrawalId = agent.announcedUnderlyingWithdrawalId;
         _info.buyFAssetByAgentFactorBIPS = agent.buyFAssetByAgentFactorBIPS;
         _info.poolExitCollateralRatioBIPS = agent.collateralPool.exitCollateralRatioBIPS();
+        _info.redemptionPoolFeeShareBIPS = agent.redemptionPoolFeeShareBIPS;
     }
 
     function getCollateralPool(address _agentVault)
