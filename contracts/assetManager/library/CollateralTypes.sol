@@ -13,19 +13,28 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 library CollateralTypes {
     using SafeCast for uint256;
 
+    error InvalidCollateralRatios();
+    error CannotAddDeprecatedToken();
+    error TokenAlreadyExists();
+    error TokenZero();
+    error UnknownToken();
+    error NotAVaultCollateral();
+    error NotAPoolCollateralAtZero();
+    error AtLeastTwoCollateralsRequired();
+
     function initialize(
         CollateralType.Data[] memory _data
     )
         internal
     {
-        require(_data.length >= 2, "at least two collaterals required");
+        require(_data.length >= 2, AtLeastTwoCollateralsRequired());
         // initial pool collateral token
-        require(_data[0].collateralClass == CollateralType.Class.POOL, "not a pool collateral at 0");
+        require(_data[0].collateralClass == CollateralType.Class.POOL, NotAPoolCollateralAtZero());
         _add(_data[0]);
         _setPoolCollateralTypeIndex(0);
         // initial vault collateral tokens
         for (uint256 i = 1; i < _data.length; i++) {
-            require(_data[i].collateralClass == CollateralType.Class.VAULT, "not a vault collateral");
+            require(_data[i].collateralClass == CollateralType.Class.VAULT, NotAVaultCollateral());
             _add(_data[i]);
         }
     }
@@ -35,7 +44,7 @@ library CollateralTypes {
     )
         internal
     {
-        require(_data.collateralClass == CollateralType.Class.VAULT, "not a vault collateral");
+        require(_data.collateralClass == CollateralType.Class.VAULT, NotAVaultCollateral());
         _add(_data);
     }
 
@@ -80,7 +89,7 @@ library CollateralTypes {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         uint256 index = state.collateralTokenIndex[_tokenKey(_collateralClass, _token)];
-        require(index > 0, "unknown token");
+        require(index > 0, UnknownToken());
         return state.collateralTokens[index - 1];
     }
 
@@ -93,7 +102,7 @@ library CollateralTypes {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         uint256 index = state.collateralTokenIndex[_tokenKey(_collateralClass, _token)];
-        require(index > 0, "unknown token");
+        require(index > 0, UnknownToken());
         return index - 1;
     }
 
@@ -107,15 +116,15 @@ library CollateralTypes {
     function _add(CollateralType.Data memory _data) private returns (uint256) {
         AssetManagerState.State storage state = AssetManagerState.get();
         // validation of collateralClass is done before call to _add
-        require(address(_data.token) != address(0), "token zero");
+        require(address(_data.token) != address(0), TokenZero());
         bytes32 tokenKey = _tokenKey(_data.collateralClass, _data.token);
-        require(state.collateralTokenIndex[tokenKey] == 0, "token already exists");
-        require(_data.validUntil == 0, "cannot add deprecated token");
+        require(state.collateralTokenIndex[tokenKey] == 0, TokenAlreadyExists());
+        require(_data.validUntil == 0, CannotAddDeprecatedToken());
         bool ratiosValid =
             SafePct.MAX_BIPS < _data.ccbMinCollateralRatioBIPS &&
             _data.ccbMinCollateralRatioBIPS <= _data.minCollateralRatioBIPS &&
             _data.minCollateralRatioBIPS <= _data.safetyMinCollateralRatioBIPS;
-        require(ratiosValid, "invalid collateral ratios");
+        require(ratiosValid, InvalidCollateralRatios());
         uint256 newTokenIndex = state.collateralTokens.length;
         state.collateralTokens.push(CollateralTypeInt.Data({
             token: _data.token,

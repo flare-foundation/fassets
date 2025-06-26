@@ -24,6 +24,10 @@ contract LiquidationFacet is AssetManagerBase, ReentrancyGuard {
     using SafePct for uint256;
     using Agent for Agent.State;
 
+    error CannotStopLiquidation();
+    error NotInLiquidation();
+    error LiquidationNotStarted();
+
     /**
      * Checks that the agent's collateral is too low and if true, starts agent's liquidation.
      * @param _agentVault agent vault address
@@ -50,7 +54,7 @@ contract LiquidationFacet is AssetManagerBase, ReentrancyGuard {
         // upgrade liquidation based on CR and time
         Liquidation.CRData memory cr = Liquidation.getCollateralRatiosBIPS(agent);
         (Agent.LiquidationPhase liquidationPhase, bool liquidationUpgraded) = _upgradeLiquidationPhase(agent, cr);
-        require(liquidationUpgraded, "liquidation not started");
+        require(liquidationUpgraded, LiquidationNotStarted());
         _liquidationStatus = uint8(liquidationPhase);
         _liquidationStartAt = Liquidation.getLiquidationStartTimestamp(agent);
     }
@@ -83,7 +87,7 @@ contract LiquidationFacet is AssetManagerBase, ReentrancyGuard {
         Liquidation.CRData memory cr = Liquidation.getCollateralRatiosBIPS(agent);
         // allow one-step liquidation (without calling startLiquidation first)
         (Agent.LiquidationPhase currentPhase,) = _upgradeLiquidationPhase(agent, cr);
-        require(currentPhase == Agent.LiquidationPhase.LIQUIDATION, "not in liquidation");
+        require(currentPhase == Agent.LiquidationPhase.LIQUIDATION, NotInLiquidation());
         // liquidate redemption tickets
         (uint64 liquidatedAmountAMG, uint256 payoutC1Wei, uint256 payoutPoolWei) =
             _performLiquidation(agent, cr, Conversion.convertUBAToAmg(_amountUBA));
@@ -125,7 +129,7 @@ contract LiquidationFacet is AssetManagerBase, ReentrancyGuard {
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Liquidation.endLiquidationIfHealthy(agent);
-        require(agent.status == Agent.Status.NORMAL, "cannot stop liquidation");
+        require(agent.status == Agent.Status.NORMAL, CannotStopLiquidation());
     }
 
      // Upgrade (CR-based) liquidation phase (NONE -> CCR -> LIQUIDATION), based on agent's collateral ratio.

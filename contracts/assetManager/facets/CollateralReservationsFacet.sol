@@ -27,6 +27,14 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
     using Agent for Agent.State;
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    error InappropriateFeeAmount();
+    error AgentsFeeTooHigh();
+    error NotEnoughFreeCollateral();
+    error RcInvalidAgentStatus();
+    error CannotMintZeroLots();
+    error AgentNotInMintQueue();
+    error MintingPaused();
+
     /**
      * Before paying underlying assets for minting, minter has to reserve collateral and
      * pay collateral reservation fee. Collateral is reserved at ratio of agent's agentMinCollateralRatio
@@ -61,13 +69,13 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
         Agents.requireWhitelistedAgentVaultOwner(agent);
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         AssetManagerState.State storage state = AssetManagerState.get();
-        require(state.mintingPausedAt == 0, "minting paused");
+        require(state.mintingPausedAt == 0, MintingPaused());
         require(agent.availableAgentsPos != 0 || agent.alwaysAllowedMinters.contains(msg.sender),
-            "agent not in mint queue");
-        require(_lots > 0, "cannot mint 0 lots");
-        require(agent.status == Agent.Status.NORMAL, "rc: invalid agent status");
-        require(collateralData.freeCollateralLots(agent) >= _lots, "not enough free collateral");
-        require(_maxMintingFeeBIPS >= agent.feeBIPS, "agent's fee too high");
+            AgentNotInMintQueue());
+        require(_lots > 0, CannotMintZeroLots());
+        require(agent.status == Agent.Status.NORMAL, RcInvalidAgentStatus());
+        require(collateralData.freeCollateralLots(agent) >= _lots, NotEnoughFreeCollateral());
+        require(_maxMintingFeeBIPS >= agent.feeBIPS, AgentsFeeTooHigh());
         uint64 valueAMG = Conversion.convertLotsToAMG(_lots);
         _reserveCollateral(agent, valueAMG + _currentPoolFeeAMG(agent, valueAMG));
         // - only charge reservation fee for public minting, not for alwaysAllowedMinters on non-public agent
@@ -75,7 +83,7 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
         uint256 reservationFee = agent.availableAgentsPos != 0
             ? _reservationFee(collateralData.poolCollateral.amgToTokenWeiPrice, valueAMG)
             : 0;
-        require(msg.value >= reservationFee, "inappropriate fee amount");
+        require(msg.value >= reservationFee, InappropriateFeeAmount());
         // create new crt id - pre-increment, so that id can never be 0
         state.newCrtId += PaymentReference.randomizedIdSkip();
         uint256 crtId = state.newCrtId;

@@ -16,6 +16,12 @@ import {ICollateralPoolToken} from "../../userInterfaces/ICollateralPoolToken.so
 contract CollateralPoolToken is IICollateralPoolToken, ERC20, UUPSUpgradeable {
     using SafeCast for uint256;
 
+    error OnlyAssetManager();
+    error InsufficientNontimelockedBalance();
+    error InsufficientTransferableBalance();
+    error AlreadyInitialized();
+    error OnlyCollateralPool();
+
     struct Timelock {
         uint128 amount;
         uint64 endTime;
@@ -37,7 +43,7 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20, UUPSUpgradeable {
     bool private initialized;
 
     modifier onlyCollateralPool {
-        require(msg.sender == collateralPool, "only collateral pool");
+        require(msg.sender == collateralPool, OnlyCollateralPool());
         _;
     }
 
@@ -60,7 +66,7 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20, UUPSUpgradeable {
     )
         public
     {
-        require(!initialized, "already initialized");
+        require(!initialized, AlreadyInitialized());
         initialized = true;
         // init vars
         collateralPool = _collateralPool;
@@ -205,7 +211,7 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20, UUPSUpgradeable {
     {
         if (msg.sender != collateralPool) {
             uint256 transferable = debtFreeBalanceOf(_from);
-            require(_amount <= transferable, "insufficient transferable balance");
+            require(_amount <= transferable, InsufficientTransferableBalance());
         }
         // either user transfer or non-minting collateral pool with ignoreTimelocked=false flag
         if (!ignoreTimelocked && _from != address(0)) {
@@ -213,7 +219,7 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20, UUPSUpgradeable {
             // if it is too little - just the non-timelocked balance may be too small and you have to call again
             cleanupExpiredTimelocks(_from, 10);
             uint256 nonTimelocked = nonTimelockedBalanceOf(_from);
-            require(_amount <= nonTimelocked, "insufficient non-timelocked balance");
+            require(_amount <= nonTimelocked, InsufficientNontimelockedBalance());
         }
         // if ignoreTimelock, then we are spending from timelocked balance,
         // the reason why it is not updated is because it might not fit in one transaction
@@ -278,6 +284,6 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20, UUPSUpgradeable {
         internal virtual override
     {
         IIAssetManager assetManager = IICollateralPool(collateralPool).assetManager();
-        require(msg.sender == address(assetManager), "only asset manager");
+        require(msg.sender == address(assetManager), OnlyAssetManager());
     }
 }

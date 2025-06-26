@@ -27,6 +27,26 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
         uint8 numberOfSubmits;
     }
 
+    error InvalidStartTime();
+    error VotingEpochDurationTooShort();
+    error WrongNumberOfProofs();
+    error PricesAlreadyPublished();
+    error SubmissionWindowNotClosed();
+    error VotingRoundIdMismatch();
+    error FeedIdMismatch();
+    error ValueMustBeNonNegative();
+    error MerkleProofInvalid();
+    error OnlyTrustedProvider();
+    error AllPricesMustBeProvided();
+    error SubmissionWindowClosed();
+    error AlreadySubmitted();
+    error DecimalsMismatch();
+    error LengthMismatch();
+    error MaxSpreadTooBig();
+    error TooManyTrustedProviders();
+    error ThresholdTooHigh();
+    error SymbolNotSupported();
+
     /// Timestamp when the first voting epoch started, in seconds since UNIX epoch.
     uint64 public immutable firstVotingRoundStartTs;
     /// Duration of voting epochs, in seconds.
@@ -74,8 +94,8 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
     )
         Governed(_governanceSettings, _initialGovernance) AddressUpdatable(_addressUpdater)
     {
-        require(_firstVotingRoundStartTs + _votingEpochDurationSeconds <= block.timestamp, "invalid start time");
-        require(_votingEpochDurationSeconds > 1, "voting epoch duration too short"); // 90 s
+        require(_firstVotingRoundStartTs + _votingEpochDurationSeconds <= block.timestamp, InvalidStartTime());
+        require(_votingEpochDurationSeconds > 1, VotingEpochDurationTooShort()); // 90 s
         firstVotingRoundStartTs = _firstVotingRoundStartTs;
         votingEpochDurationSeconds = _votingEpochDurationSeconds;
         submitTrustedPricesWindowSeconds = _votingEpochDurationSeconds / 2; // 45 s
@@ -88,29 +108,29 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
      */
     function publishPrices(FeedWithProof[] calldata _proofs) external {
         uint32 votingRoundId = 0;
-        require(_proofs.length == feedIds.length, "wrong number of proofs");
+        require(_proofs.length == feedIds.length, WrongNumberOfProofs());
         for (uint256 i = 0; i < _proofs.length; i++) {
             FeedWithProof calldata proof = _proofs[i];
             Feed calldata feed = proof.body;
             if (i == 0) {
                 votingRoundId = feed.votingRoundId;
-                require(votingRoundId > lastPublishedVotingRoundId, "(newer) prices already published");
+                require(votingRoundId > lastPublishedVotingRoundId, PricesAlreadyPublished());
                 require(_getEndTimestamp(votingRoundId) + submitTrustedPricesWindowSeconds <= block.timestamp,
-                     "submission window not closed yet");
+                    SubmissionWindowNotClosed());
                 // update last published voting round id
                 lastPublishedVotingRoundId = votingRoundId;
                 // emit event
                 emit PricesPublished(votingRoundId);
             } else {
-                require(feed.votingRoundId == votingRoundId, "voting round id mismatch");
+                require(feed.votingRoundId == votingRoundId, VotingRoundIdMismatch());
             }
             bytes21 feedId = feedIds[i];
-            require(feed.id == feedId, "feed id mismatch");
-            require(feed.value >= 0, "value must be non-negative");
+            require(feed.id == feedId, FeedIdMismatch());
+            require(feed.value >= 0, ValueMustBeNonNegative());
 
             bytes32 feedHash = keccak256(abi.encode(feed));
             bytes32 merkleRoot = relay.merkleRoots(ftsoProtocolId, votingRoundId);
-            require(proof.proof.verifyCalldata(merkleRoot, feedHash), "merkle proof invalid");
+            require(proof.proof.verifyCalldata(merkleRoot, feedHash), MerkleProofInvalid());
 
             PriceStore storage priceStore = latestPrices[feedId];
             priceStore.votingRoundId = feed.votingRoundId;
@@ -139,23 +159,23 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
      * @dev The function can be called by trusted providers only.
      */
     function submitTrustedPrices(uint32 _votingRoundId, TrustedProviderFeed[] calldata _feeds) external {
-        require(trustedProvidersMap[msg.sender], "only trusted provider");
-        require(_feeds.length == feedIds.length, "all prices must be provided");
+        require(trustedProvidersMap[msg.sender], OnlyTrustedProvider());
+        require(_feeds.length == feedIds.length, AllPricesMustBeProvided());
         uint32 previousVotingEpochId = _getPreviousVotingEpochId();
-        require(_votingRoundId == previousVotingEpochId, "voting round id mismatch");
+        require(_votingRoundId == previousVotingEpochId, VotingRoundIdMismatch());
         // end of previous voting epoch = start of current voting epoch
         uint256 startTimestamp = _getEndTimestamp(previousVotingEpochId);
         uint256 endTimestamp = startTimestamp + submitTrustedPricesWindowSeconds;
-        require(block.timestamp >= startTimestamp && block.timestamp < endTimestamp, "submission window closed");
-        require(lastVotingEpochIdByProvider[msg.sender] < previousVotingEpochId, "already submitted");
+        require(block.timestamp >= startTimestamp && block.timestamp < endTimestamp, SubmissionWindowClosed());
+        require(lastVotingEpochIdByProvider[msg.sender] < previousVotingEpochId, AlreadySubmitted());
         // mark the trusted provider submission
         lastVotingEpochIdByProvider[msg.sender] = previousVotingEpochId;
 
         for (uint256 i = 0; i < _feeds.length; i++) {
             TrustedProviderFeed calldata feed = _feeds[i];
             bytes21 feedId = feedIds[i];
-            require(feed.id == feedId, "feed id mismatch");
-            require(feed.decimals == latestPrices[feedId].trustedDecimals, "decimals mismatch");
+            require(feed.id == feedId, FeedIdMismatch());
+            require(feed.decimals == latestPrices[feedId].trustedDecimals, DecimalsMismatch());
             submittedTrustedPrices[feedId][previousVotingEpochId] =
                 bytes.concat(submittedTrustedPrices[feedId][previousVotingEpochId], bytes4(feed.value));
         }
@@ -177,8 +197,8 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
     )
         external onlyGovernance
     {
-        require(_feedIds.length == _symbols.length && _feedIds.length == _trustedDecimals.length, "length mismatch");
-        require(_maxSpreadBIPS <= MAX_BIPS, "max spread too big");
+        require(_feedIds.length == _symbols.length && _feedIds.length == _trustedDecimals.length, LengthMismatch());
+        require(_maxSpreadBIPS <= MAX_BIPS, MaxSpreadTooBig());
         maxSpreadBIPS = _maxSpreadBIPS;
         feedIds = _feedIds;
         for (uint256 i = 0; i < _feedIds.length; i++) {
@@ -210,8 +230,8 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
     )
         external onlyGovernance
     {
-        require(_trustedProviders.length < 2**8, "too many trusted providers");
-        require(_trustedProviders.length >= _trustedProvidersThreshold, "threshold too high");
+        require(_trustedProviders.length < 2**8, TooManyTrustedProviders());
+        require(_trustedProviders.length >= _trustedProvidersThreshold, ThresholdTooHigh());
         trustedProvidersThreshold = _trustedProvidersThreshold;
         // reset all trusted providers
         for (uint256 i = 0; i < trustedProviders.length; i++) {
@@ -232,7 +252,7 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
         returns (uint256 _price, uint256 _timestamp, uint256 _priceDecimals)
     {
         bytes21 feedId = symbolToFeedId[_symbol];
-        require(feedId != bytes21(0), "symbol not supported");
+        require(feedId != bytes21(0), SymbolNotSupported());
         PriceStore storage feed = latestPrices[feedId];
         _price = feed.value;
         _timestamp = _getEndTimestamp(feed.votingRoundId);
@@ -253,7 +273,7 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
         returns (uint256 _price, uint256 _timestamp, uint256 _priceDecimals)
     {
         bytes21 feedId = symbolToFeedId[_symbol];
-        require(feedId != bytes21(0), "symbol not supported");
+        require(feedId != bytes21(0), SymbolNotSupported());
         PriceStore storage feed = latestPrices[feedId];
         (_price, _timestamp, _priceDecimals) = _getPriceFromTrustedProviders(feed);
     }
@@ -266,7 +286,7 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
         returns (uint256 _price, uint256 _timestamp, uint256 _priceDecimals, uint8 _numberOfSubmits)
     {
         bytes21 feedId = symbolToFeedId[_symbol];
-        require(feedId != bytes21(0), "symbol not supported");
+        require(feedId != bytes21(0), SymbolNotSupported());
         PriceStore storage feed = latestPrices[feedId];
         (_price, _timestamp, _priceDecimals) = _getPriceFromTrustedProviders(feed);
         _numberOfSubmits = feed.numberOfSubmits;

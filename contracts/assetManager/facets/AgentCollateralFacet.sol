@@ -26,6 +26,19 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
     using AgentCollateral for Collateral.Data;
     using Agents for Agent.State;
 
+    error WithdrawalInvalidStatus();
+    error WithdrawalNotAnnounced();
+    error WithdrawalMoreThanAnnounced();
+    error WithdrawalNotAllowedYet();
+    error WithdrawalTooLate();
+    error WithdrawalCRTooLow();
+    error WithdrawalValueTooHigh();
+
+    error OnlyAgentValutOrPool();
+    error CollateralNotDeprecated();
+    error CollateralWithdrawalAnnounced();
+    error FAssetNotTerminated();
+
     /**
      * Agent is going to withdraw `_valueNATWei` amount of collateral from agent vault.
      * This has to be announced and agent must then wait `withdrawalWaitMinSeconds` time.
@@ -91,18 +104,18 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
         // only agents that are not being liquidated can withdraw
         // however, if the agent is in FULL_LIQUIDATION and totally liquidated,
         // the withdrawals must still be possible, otherwise the collateral gets locked forever
-        require(agent.status == Agent.Status.NORMAL || agent.totalBackedAMG() == 0, "withdrawal: invalid status");
-        require(withdrawal.allowedAt != 0, "withdrawal: not announced");
-        require(_amountWei <= withdrawal.amountWei, "withdrawal: more than announced");
-        require(block.timestamp >= withdrawal.allowedAt, "withdrawal: not allowed yet");
+        require(agent.status == Agent.Status.NORMAL || agent.totalBackedAMG() == 0, WithdrawalInvalidStatus());
+        require(withdrawal.allowedAt != 0, WithdrawalNotAnnounced());
+        require(_amountWei <= withdrawal.amountWei, WithdrawalMoreThanAnnounced());
+        require(block.timestamp >= withdrawal.allowedAt, WithdrawalNotAllowedYet());
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         require(block.timestamp <= withdrawal.allowedAt + settings.agentTimelockedOperationWindowSeconds,
-            "withdrawal: too late");
+            WithdrawalTooLate());
         // Check that withdrawal doesn't reduce CR below mintingCR (withdrawal is not executed yet, but it balances
         // with the withdrawal announcement that is still in effect).
         // This would be equivalent to `collateralData.freeCollateralWei >= 0` if freeCollateralWei was signed,
         // but actually freeCollateralWei always returns positive part, so it cannot be used in this test.
-        require(collateralData.lockedCollateralWei(agent) <= collateralData.fullCollateral, "withdrawal: CR too low");
+        require(collateralData.lockedCollateralWei(agent) <= collateralData.fullCollateral, WithdrawalCRTooLow());
         // (partially) clear withdrawal announcement
         uint256 remaining = withdrawal.amountWei - _amountWei;    // guarded by above require
         withdrawal.amountWei = uint128(remaining);
@@ -124,7 +137,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
     {
         Agent.State storage agent = Agent.get(_agentVault);
         require(msg.sender == _agentVault || msg.sender == address(agent.collateralPool),
-            "only agent vault or pool");
+            OnlyAgentValutOrPool());
         // try to pull agent out of liquidation
         if (agent.isCollateralToken(_token)) {
             Liquidation.endLiquidationIfHealthy(agent);
@@ -148,10 +161,10 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
         // could work without this check, but would need timelock, otherwise there can be
         // withdrawal without announcement by switching, withdrawing and switching back
         CollateralTypeInt.Data storage currentCollateral = agent.getVaultCollateral();
-        require(currentCollateral.validUntil != 0, "current collateral not deprecated");
+        require(currentCollateral.validUntil != 0, CollateralNotDeprecated());
         // cannot switch if collateral withdrawal is announced
         Agent.WithdrawalAnnouncement storage withdrawal = agent.withdrawalAnnouncement(Collateral.Kind.VAULT);
-        require(withdrawal.allowedAt == 0, "collateral withdrawal announced");
+        require(withdrawal.allowedAt == 0, CollateralWithdrawalAnnounced());
         // set new collateral
         agent.setVaultCollateral(_token);
         emit IAssetManagerEvents.AgentCollateralTypeChanged(_agentVault,
@@ -194,7 +207,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
         // only agents that are not being liquidated can withdraw
         // however, if the agent is in FULL_LIQUIDATION and totally liquidated,
         // the withdrawals must still be possible, otherwise the collateral gets locked forever
-        require(agent.status == Agent.Status.NORMAL || agent.totalBackedAMG() == 0, "withdrawal ann: invalid status");
+        require(agent.status == Agent.Status.NORMAL || agent.totalBackedAMG() == 0, WithdrawalInvalidStatus());
         Agent.WithdrawalAnnouncement storage withdrawal = agent.withdrawalAnnouncement(_kind);
         if (_amountWei > withdrawal.amountWei) {
             AssetManagerSettings.Data storage settings = Globals.getSettings();
@@ -202,7 +215,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
             // announcement increased - must check there is enough free collateral and then lock it
             // in this case the wait to withdrawal restarts from this moment
             uint256 increase = _amountWei - withdrawal.amountWei;
-            require(increase <= collateralData.freeCollateralWei(agent), "withdrawal: value too high");
+            require(increase <= collateralData.freeCollateralWei(agent), WithdrawalValueTooHigh());
             withdrawal.allowedAt = (block.timestamp + settings.withdrawalWaitMinSeconds).toUint64();
         } else {
             // announcement decreased or cancelled

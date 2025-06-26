@@ -3,6 +3,10 @@ pragma solidity >=0.7.6 <0.9;
 
 
 interface IAddressUpdatable {
+
+    error AUAddressZero();
+    error AUOnlyAddressUpdater();
+
     /**
      * Return the address updater managing this contract.
      */

@@ -20,6 +20,14 @@ import {Globals} from "../library/Globals.sol";
 contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
     using SafeCast for uint256;
 
+    error ShouldDefaultFirst();
+    error OnlyRedeemerExecutorOrAgent();
+    error RedemptionNonpaymentProofWindowTooShort();
+    error RedemptionDefaultTooEarly();
+    error RedemptionNonpaymentMismatch();
+    error InvalidRedemptionStatus();
+    error SourceAddressesNotSupported();
+
     /**
      * If the agent doesn't transfer the redeemed underlying assets in time (until the last allowed block on
      * the underlying chain), the redeemer calls this method and receives payment in collateral (with some extra).
@@ -39,10 +47,10 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         external
         nonReentrant
     {
-        require(!_proof.data.requestBody.checkSourceAddresses, "source addresses not supported");
+        require(!_proof.data.requestBody.checkSourceAddresses, SourceAddressesNotSupported());
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
         Agent.State storage agent = Agent.get(request.agentVault);
-        require(request.status == Redemption.Status.ACTIVE, "invalid redemption status");
+        require(request.status == Redemption.Status.ACTIVE, InvalidRedemptionStatus());
         // verify transaction
         TransactionAttestation.verifyReferencedPaymentNonexistence(_proof);
         // check non-payment proof
@@ -50,19 +58,19 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
                 PaymentReference.redemption(_redemptionRequestId) &&
             _proof.data.requestBody.destinationAddressHash == request.redeemerUnderlyingAddressHash &&
             _proof.data.requestBody.amount == request.underlyingValueUBA - request.underlyingFeeUBA,
-            "redemption non-payment mismatch");
+            RedemptionNonpaymentMismatch());
         require(_proof.data.responseBody.firstOverflowBlockNumber > request.lastUnderlyingBlock &&
             _proof.data.responseBody.firstOverflowBlockTimestamp > request.lastUnderlyingTimestamp,
-            "redemption default too early");
+            RedemptionDefaultTooEarly());
         require(_proof.data.requestBody.minimalBlockNumber <= request.firstUnderlyingBlock,
-            "redemption non-payment proof window too short");
+            RedemptionNonpaymentProofWindowTooShort());
         // We allow only redeemers or agents to trigger redemption default, since they may want
         // to do it at some particular time. (Agent might want to call default to unstick redemption when
         // the redeemer is unresponsive.)
         // The exception is transfer to core vault, where anybody can call default after enough time.
         bool expectedSender = msg.sender == request.redeemer || msg.sender == request.executor ||
             Agents.isOwner(agent, msg.sender);
-        require(expectedSender || _othersCanConfirmDefault(request), "only redeemer, executor or agent");
+        require(expectedSender || _othersCanConfirmDefault(request), OnlyRedeemerExecutorOrAgent());
         // pay redeemer in collateral / cancel transfer to core vault
         RedemptionDefaults.executeDefaultOrCancel(agent, request, _redemptionRequestId);
         // in case of confirmation by other for core vault transfer, pay the reward
@@ -108,7 +116,7 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
                 && _proof.data.responseBody.lowestQueryWindowBlockTimestamp > request.lastUnderlyingTimestamp
                 && _proof.data.responseBody.lowestQueryWindowBlockTimestamp + settings.attestationWindowSeconds <=
                     _proof.data.responseBody.blockTimestamp,
-                "should default first");
+                ShouldDefaultFirst());
             RedemptionDefaults.executeDefaultOrCancel(agent, request, _redemptionRequestId);
             // burn the executor fee
             // guarded against reentrancy in RedemptionDefaultsFacet

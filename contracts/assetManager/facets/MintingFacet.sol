@@ -31,6 +31,21 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
     using AgentCollateral for Collateral.CombinedData;
     using Agent for Agent.State;
 
+    error CannotMintZeroLots();
+    error FreeUnderlyingBalanceToSmall();
+    error InvalidMintingReference();
+    error InvalidSelfmintReference();
+    error MintingPaused();
+    error MintingPaymentTooOld();
+    error MintingPaymentTooSmall();
+    error NotEnoughFreeCollateral();
+    error NotMintingAgentsAddress();
+    error OnlyMinterExecutorOrAgent();
+    error SelfmintInvalidAgentStatus();
+    error SelfmintNotAgentsAddress();
+    error SelfmintPaymentTooOld();
+    error SelfmintPaymentTooSmall();
+
     enum MintingType { PUBLIC, SELF_MINT, FROM_FREE_UNDERLYING }
 
     /**
@@ -56,18 +71,18 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         // minter or agent can present the proof - agent may do it to unlock the collateral if minter
         // becomes unresponsive
         require(msg.sender == crt.minter || msg.sender == crt.executor || Agents.isOwner(agent, msg.sender),
-            "only minter, executor or agent");
+            OnlyMinterExecutorOrAgent());
         require(_payment.data.responseBody.standardPaymentReference == PaymentReference.minting(_crtId),
-            "invalid minting reference");
+            InvalidMintingReference());
         require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
-            "not minting agent's address");
+            NotMintingAgentsAddress());
         uint256 mintValueUBA = Conversion.convertAmgToUBA(crt.valueAMG);
         require(_payment.data.responseBody.receivedAmount >= SafeCast.toInt256(mintValueUBA + crt.underlyingFeeUBA),
-            "minting payment too small");
+            MintingPaymentTooSmall());
         // we do not allow payments before the underlying block at requests, because the payer should have guessed
         // the payment reference, which is good for nothing except attack attempts
         require(_payment.data.responseBody.blockNumber >= crt.firstUnderlyingBlock,
-            "minting payment too old");
+            MintingPaymentTooOld());
         // mark payment used
         AssetManagerState.get().paymentConfirmations.confirmIncomingPayment(_payment);
         // execute minting
@@ -115,21 +130,21 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         Agents.requireWhitelistedAgentVaultOwner(agent);
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         TransactionAttestation.verifyPaymentSuccess(_payment);
-        require(state.mintingPausedAt == 0, "minting paused");
-        require(agent.status == Agent.Status.NORMAL, "self-mint invalid agent status");
-        require(collateralData.freeCollateralLots(agent) >= _lots, "not enough free collateral");
+        require(state.mintingPausedAt == 0, MintingPaused());
+        require(agent.status == Agent.Status.NORMAL, SelfmintInvalidAgentStatus());
+        require(collateralData.freeCollateralLots(agent) >= _lots, NotEnoughFreeCollateral());
         uint64 valueAMG = Conversion.convertLotsToAMG(_lots);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
         uint256 poolFeeUBA = Minting.calculateCurrentPoolFeeUBA(agent, mintValueUBA);
         Minting.checkMintingCap(valueAMG + Conversion.convertUBAToAmg(poolFeeUBA));
         require(_payment.data.responseBody.standardPaymentReference == PaymentReference.selfMint(_agentVault),
-            "invalid self-mint reference");
+            InvalidSelfmintReference());
         require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
-            "self-mint not agent's address");
+            SelfmintNotAgentsAddress());
         require(_payment.data.responseBody.receivedAmount >= SafeCast.toInt256(mintValueUBA + poolFeeUBA),
-            "self-mint payment too small");
+            SelfmintPaymentTooSmall());
         require(_payment.data.responseBody.blockNumber >= agent.underlyingBlockAtCreation,
-            "self-mint payment too old");
+            SelfmintPaymentTooOld());
         state.paymentConfirmations.confirmIncomingPayment(_payment);
         // update underlying block
         UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
@@ -166,16 +181,16 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         Agents.requireAgentVaultOwner(agent);
         Agents.requireWhitelistedAgentVaultOwner(agent);
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
-        require(state.mintingPausedAt == 0, "minting paused");
-        require(_lots > 0, "cannot mint 0 lots");
-        require(agent.status == Agent.Status.NORMAL, "self-mint invalid agent status");
-        require(collateralData.freeCollateralLots(agent) >= _lots, "not enough free collateral");
+        require(state.mintingPausedAt == 0, MintingPaused());
+        require(_lots > 0, CannotMintZeroLots());
+        require(agent.status == Agent.Status.NORMAL, SelfmintInvalidAgentStatus());
+        require(collateralData.freeCollateralLots(agent) >= _lots, NotEnoughFreeCollateral());
         uint64 valueAMG = Conversion.convertLotsToAMG(_lots);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
         uint256 poolFeeUBA = Minting.calculateCurrentPoolFeeUBA(agent, mintValueUBA);
         Minting.checkMintingCap(valueAMG + Conversion.convertUBAToAmg(poolFeeUBA));
         uint256 requiredUnderlyingAfter = UnderlyingBalance.requiredUnderlyingUBA(agent) + mintValueUBA + poolFeeUBA;
-        require(requiredUnderlyingAfter.toInt256() <= agent.underlyingBalanceUBA, "free underlying balance to small");
+        require(requiredUnderlyingAfter.toInt256() <= agent.underlyingBalanceUBA, FreeUnderlyingBalanceToSmall());
         _performMinting(agent, MintingType.FROM_FREE_UNDERLYING, 0, msg.sender, valueAMG, 0, poolFeeUBA);
     }
 

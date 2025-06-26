@@ -20,6 +20,8 @@ import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
 
 
 contract AssetManagerInit is GovernedProxyImplementation, ReentrancyGuard {
+    error NotInitialized();
+
     function init(
         IGovernanceSettings _governanceSettings,
         address _initialGovernance,
@@ -42,7 +44,7 @@ contract AssetManagerInit is GovernedProxyImplementation, ReentrancyGuard {
      */
     function upgradeERC165Identifiers() external {
         LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
-        require(ds.supportedInterfaces[type(IERC165).interfaceId], "not initialized");
+        require(ds.supportedInterfaces[type(IERC165).interfaceId], NotInitialized());
         ds.supportedInterfaces[type(IGoverned).interfaceId] = true;
         ds.supportedInterfaces[type(IAssetManager).interfaceId] = true;
         ds.supportedInterfaces[type(IIAssetManager).interfaceId] = true;

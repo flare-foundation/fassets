@@ -11,6 +11,11 @@ import {CheckPointsByAddress} from "../library/CheckPointsByAddress.sol";
  * @notice ERC20 behavior which adds balance check point features.
  **/
 abstract contract CheckPointable is IICheckPointable {
+    error CheckPointableReadingFromCleanedupBlock();
+    error OnlyCleanerContract();
+    error CleanupBlockNumberMustNeverDecrease();
+    error CleanupBlockMustBeInThePast();
+
     using CheckPointHistory for CheckPointHistory.CheckPointHistoryState;
     using CheckPointsByAddress for CheckPointsByAddress.CheckPointsByAddressState;
     using SafeMath for uint256;
@@ -42,12 +47,12 @@ abstract contract CheckPointable is IICheckPointable {
     //   - total supply history when either `from` or `to` is zero
 
     modifier notBeforeCleanupBlock(uint256 _blockNumber) {
-        require(_blockNumber >= cleanupBlockNumber, "CheckPointable: reading from cleaned-up block");
+        require(_blockNumber >= cleanupBlockNumber, CheckPointableReadingFromCleanedupBlock());
         _;
     }
 
     modifier onlyCleaner {
-        require(msg.sender == cleanerContract, "Only cleaner contract");
+        require(msg.sender == cleanerContract, OnlyCleanerContract());
         _;
     }
 
@@ -120,8 +125,8 @@ abstract contract CheckPointable is IICheckPointable {
      * Set the cleanup block number.
      */
     function _setCleanupBlockNumber(uint256 _blockNumber) internal {
-        require(_blockNumber >= cleanupBlockNumber, "Cleanup block number must never decrease");
-        require(_blockNumber < block.number, "Cleanup block must be in the past");
+        require(_blockNumber >= cleanupBlockNumber, CleanupBlockNumberMustNeverDecrease());
+        require(_blockNumber < block.number, CleanupBlockMustBeInThePast());
         cleanupBlockNumber = _blockNumber;
     }
 

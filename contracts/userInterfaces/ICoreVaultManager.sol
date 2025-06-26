@@ -8,6 +8,25 @@ import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerifi
  */
 interface ICoreVaultManager {
 
+    error InvalidAddress();
+    error InvalidChain();
+    error InvalidAmount();
+    error PaymentFailed();
+    error PaymentNotProven();
+    error NotCoreVault();
+    error AmountZero();
+    error DestinationNotAllowed();
+    error RequestExists();
+    error InsufficientFunds();
+    error NotFound();
+    error NotAuthorized();
+    error FeeZero();
+    error InvalidEndTime();
+    error InvalidPreimageHash();
+    error EscrowAlreadyFinished();
+    error OnlyAssetManager();
+    error ContractPaused();
+
     // Structs
     struct Escrow {
         bytes32 preimageHash;

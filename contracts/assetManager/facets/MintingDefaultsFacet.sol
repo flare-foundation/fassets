@@ -19,6 +19,12 @@ import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettin
 
 contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
 
+    error CannotUnstickMintingYet();
+    error MintingNonpaymentProofWindowTooShort();
+    error MintingDefaultTooEarly();
+    error MintingNonpaymentMismatch();
+    error SourceAddressesNotSupported();
+
     /**
      * When the time for minter to pay underlying amount is over (i.e. the last underlying block has passed),
      * the agent can declare payment default. Then the agent collects collateral reservation fee
@@ -36,7 +42,7 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         nonReentrant
     {
         CollateralReservation.Data storage crt = Minting.getCollateralReservation(_crtId);
-        require(!_proof.data.requestBody.checkSourceAddresses, "source addresses not supported");
+        require(!_proof.data.requestBody.checkSourceAddresses, SourceAddressesNotSupported());
         Agent.State storage agent = Agent.get(crt.agentVault);
         Agents.requireAgentVaultOwner(agent);
         // check requirements
@@ -45,12 +51,12 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         require(_proof.data.requestBody.standardPaymentReference == PaymentReference.minting(_crtId) &&
             _proof.data.requestBody.destinationAddressHash == agent.underlyingAddressHash &&
             _proof.data.requestBody.amount == underlyingValueUBA + crt.underlyingFeeUBA,
-            "minting non-payment mismatch");
+            MintingNonpaymentMismatch());
         require(_proof.data.responseBody.firstOverflowBlockNumber > crt.lastUnderlyingBlock &&
             _proof.data.responseBody.firstOverflowBlockTimestamp > crt.lastUnderlyingTimestamp,
-            "minting default too early");
+            MintingDefaultTooEarly());
         require(_proof.data.requestBody.minimalBlockNumber <= crt.firstUnderlyingBlock,
-            "minting non-payment proof window too short");
+            MintingNonpaymentProofWindowTooShort());
         // send event
         uint256 reservedValueUBA = underlyingValueUBA + Minting.calculatePoolFeeUBA(agent, crt);
         emit IAssetManagerEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
@@ -92,7 +98,7 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
             && _proof.data.responseBody.lowestQueryWindowBlockTimestamp > crt.lastUnderlyingTimestamp
             && _proof.data.responseBody.lowestQueryWindowBlockTimestamp + settings.attestationWindowSeconds <=
                 _proof.data.responseBody.blockTimestamp,
-            "cannot unstick minting yet");
+            CannotUnstickMintingYet());
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.unstickMinting)
         Agents.burnDirectNAT(crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI);
         // burn reserved collateral at market price

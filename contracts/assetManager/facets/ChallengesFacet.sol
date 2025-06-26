@@ -28,6 +28,21 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
     using SafePct for uint256;
     using PaymentConfirmations for PaymentConfirmations.State;
 
+    error ChallengeNotDuplicate();
+    error ChlgTwoNotAgentsAddress();
+    error ChlgOneNotAgentsAddress();
+    error ChlgDblSameTransaction();
+    error ChlgDblAlreadyLiquidating();
+    error MatchingOngoingAnnouncedPmt();
+    error MatchingRedemptionActive();
+    error ChlgTransactionConfirmed();
+    error ChlgNotAgentsAddress();
+    error ChlgAlreadyLiquidating();
+    error MultChlgEnoughBalance();
+    error MultChlgAlreadyLiquidating();
+    error MultChlgNotAgentsAddress();
+    error MultChlgRepeatedTransaction();
+
     /**
      * Called with a proof of payment made from agent's underlying address, for which
      * no valid payment reference exists (valid payment references are from redemption and
@@ -47,15 +62,15 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
         Agent.State storage agent = Agent.get(_agentVault);
         // if the agent is already being fully liquidated, no need for more challenges
         // this also prevents double challenges
-        require(agent.status != Agent.Status.FULL_LIQUIDATION, "chlg: already liquidating");
+        require(agent.status != Agent.Status.FULL_LIQUIDATION, ChlgAlreadyLiquidating());
         // verify transaction
         TransactionAttestation.verifyBalanceDecreasingTransaction(_payment);
         // check the payment originates from agent's address
         require(_payment.data.responseBody.sourceAddressHash == agent.underlyingAddressHash,
-            "chlg: not agent's address");
+            ChlgNotAgentsAddress());
         // check that proof of this tx wasn't used before - otherwise we could
         // trigger liquidation for already proved redemption payments
-        require(!state.paymentConfirmations.transactionConfirmed(_payment), "chlg: transaction confirmed");
+        require(!state.paymentConfirmations.transactionConfirmed(_payment), ChlgTransactionConfirmed());
         // check that payment reference is invalid (paymentReference == 0 is always invalid payment)
         bytes32 paymentReference = _payment.data.responseBody.standardPaymentReference;
         if (paymentReference != 0) {
@@ -70,13 +85,13 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
                 bool redemptionActive = redemption.agentVault == _agentVault
                     && (redemption.status == Redemption.Status.ACTIVE ||
                         redemption.status == Redemption.Status.DEFAULTED);
-                require(!redemptionActive, "matching redemption active");
+                require(!redemptionActive, MatchingRedemptionActive());
             }
             if (PaymentReference.isValid(paymentReference, PaymentReference.ANNOUNCED_WITHDRAWAL)) {
                 uint256 announcementId = PaymentReference.decodeId(paymentReference);
                 // valid announced withdrawal cannot have announcementId == 0 and must match the agent's announced id
                 // but PaymentReference.isValid already checks that id in the reference != 0, so no extra check needed
-                require(announcementId != agent.announcedUnderlyingWithdrawalId, "matching ongoing announced pmt");
+                require(announcementId != agent.announcedUnderlyingWithdrawalId, MatchingOngoingAnnouncedPmt());
             }
         }
         // start liquidation and reward challengers
@@ -104,20 +119,20 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
         Agent.State storage agent = Agent.get(_agentVault);
         // if the agent is already being fully liquidated, no need for more challenges
         // this also prevents double challenges
-        require(agent.status != Agent.Status.FULL_LIQUIDATION, "chlg dbl: already liquidating");
+        require(agent.status != Agent.Status.FULL_LIQUIDATION, ChlgDblAlreadyLiquidating());
         // verify transactions
         TransactionAttestation.verifyBalanceDecreasingTransaction(_payment1);
         TransactionAttestation.verifyBalanceDecreasingTransaction(_payment2);
         // check the payments are unique and originate from agent's address
         require(_payment1.data.requestBody.transactionId != _payment2.data.requestBody.transactionId,
-            "chlg dbl: same transaction");
+            ChlgDblSameTransaction());
         require(_payment1.data.responseBody.sourceAddressHash == agent.underlyingAddressHash,
-            "chlg 1: not agent's address");
+            ChlgOneNotAgentsAddress());
         require(_payment2.data.responseBody.sourceAddressHash == agent.underlyingAddressHash,
-            "chlg 2: not agent's address");
+            ChlgTwoNotAgentsAddress());
         // payment references must be equal
         require(_payment1.data.responseBody.standardPaymentReference ==
-            _payment2.data.responseBody.standardPaymentReference, "challenge: not duplicate");
+            _payment2.data.responseBody.standardPaymentReference, ChallengeNotDuplicate());
         // ! no need to check that transaction wasn't confirmed - this is always illegal
         // start liquidation and reward challengers
         _liquidateAndRewardChallenger(agent, msg.sender, agent.mintedAMG);
@@ -145,7 +160,7 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
         Agent.State storage agent = Agent.get(_agentVault);
         // if the agent is already being fully liquidated, no need for more challenges
         // this also prevents double challenges
-        require(agent.status != Agent.Status.FULL_LIQUIDATION, "mult chlg: already liquidating");
+        require(agent.status != Agent.Status.FULL_LIQUIDATION, MultChlgAlreadyLiquidating());
         // check the payments originates from agent's address, are not confirmed already and calculate total
         int256 total = 0;
         for (uint256 i = 0; i < _payments.length; i++) {
@@ -154,10 +169,10 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
             // check there are no duplicate transactions
             for (uint256 j = 0; j < i; j++) {
                 require(_payments[j].data.requestBody.transactionId != pmi.data.requestBody.transactionId,
-                    "mult chlg: repeated transaction");
+                    MultChlgRepeatedTransaction());
             }
             require(pmi.data.responseBody.sourceAddressHash == agent.underlyingAddressHash,
-                "mult chlg: not agent's address");
+                MultChlgNotAgentsAddress());
             if (state.paymentConfirmations.transactionConfirmed(pmi)) {
                 continue;   // ignore payments that have already been confirmed
             }
@@ -175,7 +190,7 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
         // check that total spent free balance is more than actual free underlying balance
         int256 balanceAfterPayments = agent.underlyingBalanceUBA - total;
         uint256 requiredBalance = UnderlyingBalance.requiredUnderlyingUBA(agent);
-        require(balanceAfterPayments < requiredBalance.toInt256(), "mult chlg: enough balance");
+        require(balanceAfterPayments < requiredBalance.toInt256(), MultChlgEnoughBalance());
         // start liquidation and reward challengers
         _liquidateAndRewardChallenger(agent, msg.sender, agent.mintedAMG);
         // emit events

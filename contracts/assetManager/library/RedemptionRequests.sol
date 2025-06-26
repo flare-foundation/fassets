@@ -19,6 +19,10 @@ library RedemptionRequests {
     using SafePct for uint256;
     using SafeCast for uint256;
 
+    error CannotRedeemToAgentsAddress();
+    error UnderlyingAddressTooLong();
+    error ExecutorFeeWithoutExecutor();
+
     struct AgentRedemptionData {
         address agentVault;
         uint64 valueAMG;
@@ -42,17 +46,17 @@ library RedemptionRequests {
         internal
         returns (uint64 _requestId)
     {
-        require(_executorFeeNatGWei == 0 || _executor != address(0), "executor fee without executor");
+        require(_executorFeeNatGWei == 0 || _executor != address(0), ExecutorFeeWithoutExecutor());
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_data.agentVault);
         // validate redemption address
-        require(bytes(_redeemerUnderlyingAddressString).length < 128, "underlying address too long");
+        require(bytes(_redeemerUnderlyingAddressString).length < 128, UnderlyingAddressTooLong());
         bytes32 underlyingAddressHash = keccak256(bytes(_redeemerUnderlyingAddressString));
         // both addresses must be normalized (agent's address is checked at vault creation,
         // and if redeemer address isn't normalized, the agent can trigger rejectInvalidRedemption),
         // so this comparison quarantees the redemption is not to the agent's address
         require(underlyingAddressHash != agent.underlyingAddressHash,
-            "cannot redeem to agent's address");
+            CannotRedeemToAgentsAddress());
         // create request
         uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_data.valueAMG).toUint128();
         _requestId = _newRequestId(_poolSelfClose);

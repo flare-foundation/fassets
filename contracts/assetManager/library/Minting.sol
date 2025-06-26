@@ -17,6 +17,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 library Minting {
     using SafePct for uint256;
 
+    error MintingCapExceeded();
+    error InvalidCrtId();
+
     function distributeCollateralReservationFee(
         Agent.State storage _agent,
         uint256 _fee
@@ -50,7 +53,7 @@ library Minting {
         returns (CollateralReservation.Data storage)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        require(_crtId > 0 && state.crts[_crtId].valueAMG != 0, "invalid crt id");
+        require(_crtId > 0 && state.crts[_crtId].valueAMG != 0, InvalidCrtId());
         return state.crts[_crtId];
     }
 
@@ -65,7 +68,7 @@ library Minting {
         if (mintingCapAMG == 0) return;     // minting cap disabled
         uint256 totalMintedUBA = IERC20(settings.fAsset).totalSupply();
         uint256 totalAMG = state.totalReservedCollateralAMG + Conversion.convertUBAToAmg(totalMintedUBA);
-        require(totalAMG + _increaseAMG <= mintingCapAMG, "minting cap exceeded");
+        require(totalAMG + _increaseAMG <= mintingCapAMG, MintingCapExceeded());
     }
 
     function calculatePoolFeeUBA(

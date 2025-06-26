@@ -7,6 +7,10 @@ import {PaymentReference} from "./PaymentReference.sol";
 
 
 library UnderlyingAddressOwnership {
+    error InvalidAddressOwnershipProof();
+    error EOAProofRequired();
+    error AddressAlreadyClaimed();
+
     struct Ownership {
         address owner;
 
@@ -36,10 +40,10 @@ library UnderlyingAddressOwnership {
             ownership.provedEOA = false;
             ownership.underlyingBlockOfEOAProof = 0;
         } else {
-            require(ownership.owner == _expectedOwner, "address already claimed");
+            require(ownership.owner == _expectedOwner, AddressAlreadyClaimed());
         }
         // if requireEOA, the proof had to be verified in some previous call
-        require(!_requireEOA || ownership.provedEOA, "EOA proof required");
+        require(!_requireEOA || ownership.provedEOA, EOAProofRequired());
         // set the new owner
         ownership.owner = _targetOwner;
     }
@@ -54,9 +58,9 @@ library UnderlyingAddressOwnership {
     {
         assert(_payment.data.responseBody.sourceAddressHash != 0);
         Ownership storage ownership = _state.ownership[_payment.data.responseBody.sourceAddressHash];
-        require(ownership.owner == address(0), "address already claimed");
+        require(ownership.owner == address(0), AddressAlreadyClaimed());
         require(_payment.data.responseBody.standardPaymentReference == PaymentReference.addressOwnership(_owner),
-            "invalid address ownership proof");
+            InvalidAddressOwnershipProof());
         PaymentConfirmations.confirmSourceDecreasingTransaction(_paymentVerification, _payment);
         ownership.owner = _owner;
         ownership.provedEOA = true;

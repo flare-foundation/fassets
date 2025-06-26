@@ -35,6 +35,14 @@ contract AgentVaultManagementFacet is AssetManagerBase {
     uint256 internal constant MIN_SUFFIX_LEN = 2;
     uint256 internal constant MAX_SUFFIX_LEN = 20;
 
+    error AddressInvalid();
+    error AgentStillAvailable();
+    error AgentStillActive();
+    error DestroyNotAnnounced();
+    error DestroyNotAllowedYet();
+    error SuffixReserved();
+    error SuffixInvalidFormat();
+
     /**
      * This method fixes the underlying address to be used by given agent owner.
      * A proof of payment (can be minimal or to itself) from this address must be provided,
@@ -90,7 +98,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         // require valid address
         TransactionAttestation.verifyAddressValidity(_addressProof);
         IAddressValidity.ResponseBody memory avb = _addressProof.data.responseBody;
-        require(avb.isValid, "address invalid");
+        require(avb.isValid, AddressInvalid());
         IIAssetManager assetManager = IIAssetManager(address(this));
         // create agent vault
         IIAgentVaultFactory agentVaultFactory = IIAgentVaultFactory(Globals.getSettings().agentVaultFactory);
@@ -150,8 +158,8 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         Agent.State storage agent = Agent.get(_agentVault);
         // all minting must stop and all minted assets must have been cleared
-        require(agent.availableAgentsPos == 0, "agent still available");
-        require(agent.totalBackedAMG() == 0, "agent still active");
+        require(agent.availableAgentsPos == 0, AgentStillAvailable());
+        require(agent.totalBackedAMG() == 0, AgentStillActive());
         // if not destroying yet, start timing
         if (agent.status != Agent.Status.DESTROYING) {
             agent.status = Agent.Status.DESTROYING;
@@ -184,8 +192,8 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
         // destroy must have been announced enough time before
-        require(agent.status == Agent.Status.DESTROYING, "destroy not announced");
-        require(block.timestamp > agent.destroyAllowedAt, "destroy: not allowed yet");
+        require(agent.status == Agent.Status.DESTROYING, DestroyNotAnnounced());
+        require(block.timestamp > agent.destroyAllowedAt, DestroyNotAllowedYet());
         // cannot have any minting when in destroying status
         assert(agent.totalBackedAMG() == 0);
         // destroy pool
@@ -304,18 +312,18 @@ contract AgentVaultManagementFacet is AssetManagerBase {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         // reserve unique suffix
-        require(!state.reservedPoolTokenSuffixes[_suffix], "suffix already reserved");
+        require(!state.reservedPoolTokenSuffixes[_suffix], SuffixReserved());
         state.reservedPoolTokenSuffixes[_suffix] = true;
         // validate - require only printable ASCII characters (no spaces) and limited length
         bytes memory suffixb = bytes(_suffix);
         uint256 len = suffixb.length;
-        require(len >= MIN_SUFFIX_LEN, "suffix too short");
-        require(len <= MAX_SUFFIX_LEN, "suffix too long");
+        require(len >= MIN_SUFFIX_LEN, SuffixInvalidFormat());
+        require(len <= MAX_SUFFIX_LEN, SuffixInvalidFormat());
         for (uint256 i = 0; i < len; i++) {
             bytes1 ch = suffixb[i];
             // allow A-Z, 0-9 and '-' (but not at start or end)
             require((ch >= "A" && ch <= "Z") || (ch >= "0" && ch <= "9") || (i > 0 && i < len - 1 && ch == "-"),
-                "invalid character in suffix");
+                SuffixInvalidFormat());
         }
     }
 

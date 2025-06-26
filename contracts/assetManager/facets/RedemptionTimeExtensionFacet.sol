@@ -14,6 +14,12 @@ import {IRedemptionTimeExtension} from "../../userInterfaces/IRedemptionTimeExte
 
 contract RedemptionTimeExtensionFacet is AssetManagerBase, IRedemptionTimeExtension {
 
+    error ValueMustBeNonzero();
+    error DecreaseTooBig();
+    error IncreaseTooBig();
+    error AlreadyInitialized();
+    error DiamondNotInitialized();
+
     constructor() {
         // implementation initialization - to prevent reinitialization
         RedemptionTimeExtension.setRedemptionPaymentExtensionSeconds(1);
@@ -25,9 +31,9 @@ contract RedemptionTimeExtensionFacet is AssetManagerBase, IRedemptionTimeExtens
         external
     {
         LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
-        require(ds.supportedInterfaces[type(IERC165).interfaceId], "diamond not initialized");
+        require(ds.supportedInterfaces[type(IERC165).interfaceId], DiamondNotInitialized());
         ds.supportedInterfaces[type(IRedemptionTimeExtension).interfaceId] = true;
-        require(RedemptionTimeExtension.redemptionPaymentExtensionSeconds() == 0, "already initialized");
+        require(RedemptionTimeExtension.redemptionPaymentExtensionSeconds() == 0, AlreadyInitialized());
         // init settings
         RedemptionTimeExtension.setRedemptionPaymentExtensionSeconds(_redemptionPaymentExtensionSeconds);
     }
@@ -40,9 +46,9 @@ contract RedemptionTimeExtensionFacet is AssetManagerBase, IRedemptionTimeExtens
         // validate
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 currentValue = RedemptionTimeExtension.redemptionPaymentExtensionSeconds();
-        require(_value <= currentValue * 4 + settings.averageBlockTimeMS / 1000, "increase too big");
-        require(_value >= currentValue / 4, "decrease too big");
-        require(_value > 0, "value must be nonzero");
+        require(_value <= currentValue * 4 + settings.averageBlockTimeMS / 1000, IncreaseTooBig());
+        require(_value >= currentValue / 4, DecreaseTooBig());
+        require(_value > 0, ValueMustBeNonzero());
         // update
         RedemptionTimeExtension.setRedemptionPaymentExtensionSeconds(_value);
         emit IAssetManagerEvents.SettingChanged("redemptionPaymentExtensionSeconds", _value);

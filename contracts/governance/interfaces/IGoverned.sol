@@ -5,6 +5,15 @@ import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare
 
 
 interface IGoverned {
+
+    error GovernedOnlyExecutor();
+    error GovernedOnlyGovernance();
+    error GovernedTimelockInvalidSelector();
+    error GovernedTimelockNotAllowedYet();
+    error GovernedAlreadyInProductionMode();
+    error GovernedAlreadyInitialized();
+    error GovernedAddressZero();
+
     /**
      * Governance call was timelocked. It can be executed after `allowedAfterTimestamp` by one of the executors.
      * @param encodedCall ABI encoded call data, to be used in executeGovernanceCall

@@ -15,6 +15,9 @@ library CheckPointHistory {
     using SafeMath for uint256;
     using SafeCast for uint256;
 
+    error ValueDoesntFitInOneNinetwoBits();
+    error CheckPointHistoryReadingFromCleanedupBlock();
+
     /**
      * @dev `CheckPoint` is the structure that attaches a block number to a
      *  given value; the block number attached is the one that last changed the
@@ -95,7 +98,7 @@ library CheckPointHistory {
         uint256 startIndex = _self.startIndex;
         if (_blockNumber < _self.checkpoints[startIndex].fromBlock) {
             // reading data before `startIndex` is only safe before first cleanup
-            require(startIndex == 0, "CheckPointHistory: reading from cleaned-up block");
+            require(startIndex == 0, CheckPointHistoryReadingFromCleanedupBlock());
             return 0;
         }
 
@@ -187,7 +190,7 @@ library CheckPointHistory {
 
     // SafeCast lib is missing cast to uint192
     function _toUint192(uint256 _value) internal pure returns (uint192) {
-        require(_value < 2**192, "value doesn't fit in 192 bits");
+        require(_value < 2**192, ValueDoesntFitInOneNinetwoBits());
         return uint192(_value);
     }
 }

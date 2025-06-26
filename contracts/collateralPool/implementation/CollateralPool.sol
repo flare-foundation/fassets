@@ -58,12 +58,12 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     uint256 public totalCollateral;
 
     modifier onlyAssetManager {
-        require(msg.sender == address(assetManager), "only asset manager");
+        require(msg.sender == address(assetManager), OnlyAssetManager());
         _;
     }
 
     modifier onlyAgent {
-        require(isAgentVaultOwner(msg.sender), "only agent");
+        require(isAgentVaultOwner(msg.sender), OnlyAgent());
         _;
     }
 
@@ -87,7 +87,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     )
         public
     {
-        require(!initialized, "already initialized");
+        require(!initialized, AlreadyInitialized());
         initialized = true;
         // init vars
         agentVault = _agentVault;
@@ -99,14 +99,14 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     }
 
     receive() external payable {
-        require(internalWithdrawal, "only internal use");
+        require(internalWithdrawal, OnlyInternalUse());
     }
 
     function setPoolToken(address _poolToken)
         external
         onlyAssetManager
     {
-        require(address(token) == address(0), "pool token already set");
+        require(address(token) == address(0), PoolTokenAlreadySet());
         token = IICollateralPoolToken(_poolToken);
     }
 
@@ -133,19 +133,18 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         nonReentrant
         returns (uint256, uint256)
     {
-        require(msg.value >= MIN_NAT_TO_ENTER, "amount of nat sent is too low");
+        require(msg.value >= MIN_NAT_TO_ENTER, AmountOfNatTooLow());
         uint256 totalPoolTokens = token.totalSupply();
         if (totalPoolTokens == 0) {
             // this conditions are set for keeping a stable token value
-            require(msg.value >= totalCollateral,
-                "if pool has no tokens, but holds collateral, you need to send at least that amount of collateral");
+            require(msg.value >= totalCollateral, AmountOfCollateralTooLow());
             AssetPrice memory assetPrice = _getAssetPrice();
             require(msg.value >= totalFAssetFees.mulDiv(assetPrice.mul, assetPrice.div),
-                "If pool has no tokens, but holds f-asset, you need to send at least f-asset worth of collateral");
+                    AmountOfCollateralTooLow());
         }
         // calculate obtained pool tokens and free f-assets
         uint256 tokenShare = _collateralToTokenShare(msg.value);
-        require(tokenShare > 0, "deposited amount results in zero received tokens");
+        require(tokenShare > 0, DepositResultsInZeroTokens());
         // calculate and create fee debt
         uint256 feeDebt = totalPoolTokens > 0 ?
             _totalVirtualFees().mulDiv(tokenShare, totalPoolTokens) : 0;
@@ -193,14 +192,14 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         private
         returns (uint256)
     {
-        require(_tokenShare > 0, "token share is zero");
-        require(_tokenShare <= token.balanceOf(msg.sender), "token balance too low");
+        require(_tokenShare > 0, TokenShareIsZero());
+        require(_tokenShare <= token.balanceOf(msg.sender), TokenBalanceTooLow());
         _requireMinTokenSupplyAfterExit(_tokenShare);
         // token.totalSupply() >= token.balanceOf(msg.sender) >= _tokenShare > 0
         uint256 natShare = totalCollateral.mulDiv(_tokenShare, token.totalSupply());
-        require(natShare > 0, "amount of sent tokens is too small");
+        require(natShare > 0, SentAmountTooLow());
         _requireMinNatSupplyAfterExit(natShare);
-        require(_staysAboveExitCR(natShare), "collateral ratio falls below exitCR");
+        require(_staysAboveExitCR(natShare), CollateralRatioFallsBelowExitCR());
         // update the fasset fee debt
         uint256 debtFAssetFeeShare = _tokensToVirtualFeeShare(_tokenShare);
         if (debtFAssetFeeShare > 0) {
@@ -265,7 +264,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         nonReentrant
     {
         require(_recipient != address(0) && _recipient != address(this) && _recipient != agentVault,
-            "invalid recipient address");
+            InvalidRecipientAddress());
         _selfCloseExitTo(_tokenShare, _redeemToCollateral, _recipient, _redeemerUnderlyingAddress, _executor);
     }
 
@@ -279,22 +278,22 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     )
         private
     {
-        require(_tokenShare > 0, "token share is zero");
-        require(_tokenShare <= token.balanceOf(msg.sender), "token balance too low");
+        require(_tokenShare > 0, TokenShareIsZero());
+        require(_tokenShare <= token.balanceOf(msg.sender), TokenBalanceTooLow());
         _requireMinTokenSupplyAfterExit(_tokenShare);
         // token.totalSupply() >= token.balanceOf(msg.sender) >= _tokenShare > 0
         uint256 natShare = totalCollateral.mulDiv(_tokenShare, token.totalSupply());
-        require(natShare > 0, "amount of sent tokens is too small");
+        require(natShare > 0, SentAmountTooLow());
         _requireMinNatSupplyAfterExit(natShare);
         uint256 maxAgentRedemption = assetManager.maxRedemptionFromAgent(agentVault);
         uint256 requiredFAssets = _getFAssetRequiredToNotSpoilCR(natShare);
         // Rare case: if agent has too many low-valued open tickets they can't redeem the requiredFAssets
         // in one transaction. In that case, we revert and the user should retry with lower amount.
-        require(maxAgentRedemption > requiredFAssets, "redemption requires closing too many tickets");
+        require(maxAgentRedemption > requiredFAssets, RedemptionRequiresClosingTooManyTickets());
         // get owner f-asset fees to be spent (maximize fee withdrawal to cover the potentially necessary f-assets)
         uint256 debtFAssetFeeShare = _tokensToVirtualFeeShare(_tokenShare);
         // transfer the owner's fassets that will be redeemed
-        require(fAsset.allowance(msg.sender, address(this)) >= requiredFAssets, "f-asset allowance too small");
+        require(fAsset.allowance(msg.sender, address(this)) >= requiredFAssets, FAssetAllowanceTooSmall());
         fAsset.safeTransferFrom(msg.sender, address(this), requiredFAssets);
         // redeem f-assets if necessary
         bool returnFunds = true;
@@ -366,9 +365,9 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     function _withdrawFeesTo(uint256 _fAssets, address _recipient)
         private
     {
-        require(_fAssets > 0, "trying to withdraw zero f-assets");
+        require(_fAssets > 0, WithdrawZeroFAsset());
         uint256 freeFAssetFeeShare = _fAssetFeesOf(msg.sender);
-        require(_fAssets <= freeFAssetFeeShare, "free f-asset balance too small");
+        require(_fAssets <= freeFAssetFeeShare, FreeFAssetBalanceTooSmall());
         _createFAssetFeeDebt(msg.sender, _fAssets);
         _transferFAssetTo(_recipient, _fAssets);
         // emit event
@@ -384,9 +383,9 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         external
         nonReentrant
     {
-        require(_fAssets != 0, "zero f-asset debt payment");
-        require(_fAssets.toInt256() <= _fAssetFeeDebtOf[msg.sender], "payment larger than fee debt");
-        require(fAsset.allowance(msg.sender, address(this)) >= _fAssets, "f-asset allowance too small");
+        require(_fAssets != 0, ZeroFAssetDebtPayment());
+        require(_fAssets.toInt256() <= _fAssetFeeDebtOf[msg.sender], PaymentLargerThanFeeDebt());
+        require(fAsset.allowance(msg.sender, address(this)) >= _fAssets, FAssetAllowanceTooSmall());
         _deleteFAssetFeeDebt(msg.sender, _fAssets);
         _transferFAssetFrom(msg.sender, _fAssets);
         // emit event
@@ -590,7 +589,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     {
         uint256 totalPoolTokens = token.totalSupply();
         require(totalPoolTokens == _tokenShare || totalPoolTokens - _tokenShare >= MIN_TOKEN_SUPPLY_AFTER_EXIT,
-            "token supply left after exit is too low and non-zero");
+            TokenSupplyAfterExitTooLow());
     }
 
     function _requireMinNatSupplyAfterExit(
@@ -599,7 +598,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         internal view
     {
         require(totalCollateral == _natShare || totalCollateral - _natShare >= MIN_NAT_BALANCE_AFTER_EXIT,
-            "collateral left after exit is too low and non-zero");
+            CollateralAfterExitTooLow());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -769,7 +768,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         onlyAssetManager
         nonReentrant
     {
-        require(token.totalSupply() == 0, "cannot destroy a pool with issued tokens");
+        require(token.totalSupply() == 0, CannotDestroyPoolWithIssuedTokens());
         token.destroy(_recipient);
         // transfer native balance as WNat, if any
         Transfers.depositWNat(wNat, _recipient, address(this).balance);
