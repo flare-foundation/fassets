@@ -200,7 +200,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         uint256 natShare = totalCollateral.mulDiv(_tokenShare, token.totalSupply());
         require(natShare > 0, "amount of sent tokens is too small");
         _requireMinNatSupplyAfterExit(natShare);
-        // special case after termination - we don't care about fees or CR anymore and we must avoid fasset transfer
+        // special case after termination - we don't care about fees or CR any more and we must avoid fasset transfer
         if (fAsset.terminated()) {
             token.burn(msg.sender, _tokenShare, true); // when f-asset is terminated all tokens are free tokens
             _withdrawWNatTo(_recipient, natShare);
@@ -458,7 +458,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         internal view
         returns (uint256)
     {
-        // calculate f-assets required for CR to stay above min(exitCR, poolCR) when taking out _natShare
+        // calculate f-assets required for CR to stay above max(exitCR, poolCR) when taking out _natShare
         // if pool is below exitCR, we shouldn't require it be increased above exitCR, only preserved
         // if pool is above exitCR, we require only for it to stay that way (like in the normal exit)
         AssetPrice memory assetPrice = _getAssetPrice();
