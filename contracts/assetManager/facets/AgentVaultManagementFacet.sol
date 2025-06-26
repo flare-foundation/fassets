@@ -6,7 +6,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {Agents} from "../library/Agents.sol";
 import {Globals} from "../library/Globals.sol";
-import {StateUpdater} from "../library/StateUpdater.sol";
+import {UnderlyingBlockUpdater} from "../library/UnderlyingBlockUpdater.sol";
 import {TransactionAttestation} from "../library/TransactionAttestation.sol";
 import {Agent} from "../library/data/Agent.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
@@ -60,11 +60,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         // It prevents the attack where an agent guesses the minting id, pays to the underlying address,
         // then removes all in EOA proof transaction (or a transaction before EOA proof) and finally uses the
         // proof of transaction for minting.
-        // Since we have a proof of the block N, current block is at least N+1.
-        // Payment proof doesn't include confirmation blocks, so we set it to 0. The update happens only when
-        // block and timestamp increase anyway, so this cannot make the block number or timestamp approximation worse.
-        StateUpdater.updateCurrentBlock(_payment.data.responseBody.blockNumber + 1,
-            _payment.data.responseBody.blockTimestamp, 0);
+        UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
     }
 
     /**

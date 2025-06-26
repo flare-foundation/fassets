@@ -21,6 +21,8 @@ import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettin
 import {Globals} from "./Globals.sol";
 import {PaymentReference} from "./data/PaymentReference.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {UnderlyingBlockUpdater} from "../library/UnderlyingBlockUpdater.sol";
+
 
 library Minting {
     using SafePct for uint256;
@@ -61,6 +63,8 @@ library Minting {
         // execute minting
         _performMinting(agent, MintingType.PUBLIC, _crtId, crt.minter, crt.valueAMG,
             uint256(_payment.data.responseBody.receivedAmount), calculatePoolFeeUBA(agent, crt));
+        // update underlying block
+        UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
         // calculate the fee to be paid to the executor (if the executor called this method)
         address payable executor = crt.executor;
         uint256 executorFee = crt.executorFeeNatGWei * Conversion.GWEI;
@@ -104,6 +108,8 @@ library Minting {
         require(_payment.data.responseBody.blockNumber >= agent.underlyingBlockAtCreation,
             "self-mint payment too old");
         state.paymentConfirmations.confirmIncomingPayment(_payment);
+        // update underlying block
+        UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
         // case _lots==0 is allowed for self minting because if lot size increases between the underlying payment
         // and selfMint call, the paid assets would otherwise be stuck; in this way they are converted to free balance
         uint256 receivedAmount = uint256(_payment.data.responseBody.receivedAmount);  // guarded by require

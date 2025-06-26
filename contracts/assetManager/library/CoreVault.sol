@@ -25,7 +25,7 @@ import {Conversion} from "./Conversion.sol";
 import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {TransactionAttestation} from "./TransactionAttestation.sol";
 import {ICoreVault} from "../../userInterfaces/ICoreVault.sol";
-
+import {UnderlyingBlockUpdater} from "./UnderlyingBlockUpdater.sol";
 
 
 library CoreVault {
@@ -204,6 +204,8 @@ library CoreVault {
         Agents.createNewMinting(_agent, remintedAMG);
         // update underlying amount
         UnderlyingBalance.increaseBalance(_agent, receivedAmountUBA);
+        // update underlying block
+        UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
         // clear the reservation
         _deleteReturnFromCoreVaultRequest(_agent);
         // send event

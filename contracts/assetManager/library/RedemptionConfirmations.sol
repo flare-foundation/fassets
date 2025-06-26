@@ -19,6 +19,7 @@ import {TransactionAttestation} from "./TransactionAttestation.sol";
 import {Agents} from "./Agents.sol";
 import {Conversion} from "./Conversion.sol";
 import {PaymentReference} from "./data/PaymentReference.sol";
+import {UnderlyingBlockUpdater} from "../library/UnderlyingBlockUpdater.sol";
 
 
 library RedemptionConfirmations {
@@ -104,6 +105,8 @@ library RedemptionConfirmations {
         Redemptions.burnExecutorFee(request);
         // redemption can make agent healthy, so check and pull out of liquidation
         Liquidation.endLiquidationIfHealthy(agent);
+        // update underlying block
+        UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
         // delete redemption request at end
         Redemptions.deleteRedemptionRequest(_redemptionRequestId);
     }

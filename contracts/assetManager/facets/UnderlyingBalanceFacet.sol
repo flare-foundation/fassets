@@ -15,6 +15,7 @@ import {PaymentReference} from "../library/data/PaymentReference.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {UnderlyingBlockUpdater} from "../library/UnderlyingBlockUpdater.sol";
 
 
 contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
@@ -47,8 +48,12 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
         require(_payment.data.responseBody.blockNumber >= agent.underlyingBlockAtCreation,
             "topup before agent created");
         state.paymentConfirmations.confirmIncomingPayment(_payment);
+        // update state
         uint256 amountUBA = SafeCast.toUint256(_payment.data.responseBody.receivedAmount);
         UnderlyingBalance.increaseBalance(agent, amountUBA.toUint128());
+        // update underlying block
+        UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
+        // notify
         emit IAssetManagerEvents.UnderlyingBalanceToppedUp(_agentVault, _payment.data.requestBody.transactionId,
             amountUBA);
     }
@@ -122,6 +127,8 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
         if (!isAgent) {
             Agents.payForConfirmationByOthers(agent, msg.sender);
         }
+        // update underlying block
+        UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
         // send event
         emit IAssetManagerEvents.UnderlyingWithdrawalConfirmed(_agentVault, announcementId,
             _payment.data.responseBody.spentAmount, _payment.data.requestBody.transactionId);
