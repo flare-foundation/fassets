@@ -209,13 +209,6 @@ export interface AssetManagerParameters {
     vaultCollaterals: CollateralTypeParameters[];
 
     /**
-     * The percentage of minted f-assets that the agent must hold in his underlying address.
-     * @minimum 0
-     * @maximum 10000
-     */
-    minUnderlyingBackingBIPS: integer;
-
-    /**
      * Maximum minted amount of the f-asset, in base unit of underlying asset.
      * @pattern ^[0-9 ]+$
      */
@@ -268,14 +261,6 @@ export interface AssetManagerParameters {
      * @minimum 0
      */
     redemptionDefaultFactorVaultCollateralBIPS: integer;
-
-    /**
-     * On redemption underlying payment failure, redeemer is compensated with
-     * redemption value recalculated times redemption failure factor.
-     * This is the part of factor paid from pool in FLR/SGB.
-     * @minimum 0
-     */
-    redemptionDefaultFactorPoolBIPS: integer;
 
     /**
      * Number of underlying blocks that the minter or agent is allowed to pay underlying value.
@@ -482,31 +467,6 @@ export interface AssetManagerParameters {
      * will reset automatically.
      */
     emergencyPauseDurationResetAfterSeconds: integer;
-
-    /**
-     * The fee paid for FAsset transfers.
-     * Unlike other ratios that are in BIPS, this one is in millionths (1/1000000), which is 1/100 of a BIP.
-     * This is because the values can be very small, just a few BIPS.
-     */
-    transferFeeMillionths: integer;
-
-    /**
-     * Transfer fees are collected for each "epoch" and can be claimed after the epoch ends.
-     * This setting marks the start timestamp of the epoch 0.
-     */
-    transferFeeClaimFirstEpochStartTs: integer;
-
-    /**
-     * Transfer fees are collected for each "epoch" and can be claimed after the epoch ends.
-     * This setting is the epoch duration (in seconds).
-     */
-    transferFeeClaimEpochDurationSeconds: integer;
-
-    /**
-     * After a while, the epochs become unclaimable and the fees in there are transferred to the latest epoch.
-     * This setting is the number of epochs before expiration.
-     */
-    transferFeeClaimMaxUnexpiredEpochs: integer;
 
     /**
      * The address that collects the core vault transfer fee.

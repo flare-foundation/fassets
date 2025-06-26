@@ -91,9 +91,6 @@ interface IIAssetManagerController is
     function setLotSizeAmg(IIAssetManager[] memory _assetManagers, uint256 _value)
         external;
 
-    function setMinUnderlyingBackingBips(IIAssetManager[] memory _assetManagers, uint256 _value)
-        external;
-
     function setTimeForPayment(
         IIAssetManager[] memory _assetManagers,
         uint256 _underlyingBlocks,
@@ -115,7 +112,7 @@ interface IIAssetManagerController is
     function setRedemptionFeeBips(IIAssetManager[] memory _assetManagers, uint256 _value)
         external;
 
-    function setRedemptionDefaultFactorBips(IIAssetManager[] memory _assetManagers, uint256 _vaultF, uint256 _poolF)
+    function setRedemptionDefaultFactorVaultCollateralBIPS(IIAssetManager[] memory _assetManagers, uint256 _value)
         external;
 
     function setConfirmationByOthersAfterSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
@@ -184,12 +181,6 @@ interface IIAssetManagerController is
     function setRedemptionPaymentExtensionSeconds(
         IIAssetManager[] memory _assetManagers,
         uint256 _value
-    ) external;
-
-    function setTransferFeeMillionths(
-        IIAssetManager[] memory _assetManagers,
-        uint256 _value,
-        uint256 _scheduledAt
     ) external;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////

@@ -12,7 +12,7 @@ function isInstance(cls: Function) {
     return (obj: any) => obj instanceof cls;
 }
 
-function isDeepCopyable(object: {}): object is DeepCopyable {
+function isDeepCopyable(object: object): object is DeepCopyable {
     return typeof (object as any).deepCopyThis === 'function';
 }
 
@@ -72,7 +72,7 @@ export function deepCopy<T>(object: T, copiedObjectsMap?: Map<any, any>): T {
     }
 }
 
-export function deepCopyWithObjectCreate<T extends {}>(object: T, copiedObjectsMap: Map<any, any>): T {
+export function deepCopyWithObjectCreate<T extends object>(object: T, copiedObjectsMap: Map<any, any>): T {
     const res = Object.create(object.constructor.prototype, {
         constructor: { value: object.constructor, enumerable: false, writable: true, configurable: true },
     });

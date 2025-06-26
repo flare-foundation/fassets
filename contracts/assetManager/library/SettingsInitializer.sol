@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {Globals} from "./Globals.sol";
 import {SettingsValidators} from "./SettingsValidators.sol";
-import {TransferFeeTracking} from "./data/TransferFeeTracking.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 
+
 library SettingsInitializer {
-    using SafePct for *;
 
     struct SettingsWrapper {
         AssetManagerSettings.Data settings;
@@ -71,13 +70,9 @@ library SettingsInitializer {
         require(_settings.lotSizeAMG > 0, "cannot be zero");
         require(_settings.mintingCapAMG == 0 || _settings.mintingCapAMG >= _settings.lotSizeAMG,
             "minting cap too small");
-        require(_settings.minUnderlyingBackingBIPS > 0, "cannot be zero");
-        require(_settings.minUnderlyingBackingBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_settings.collateralReservationFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_settings.redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
-        uint256 redemptionFactorBIPS =
-            _settings.redemptionDefaultFactorVaultCollateralBIPS + _settings.redemptionDefaultFactorPoolBIPS;
-        require(redemptionFactorBIPS > SafePct.MAX_BIPS, "bips value too low");
+        require(_settings.redemptionDefaultFactorVaultCollateralBIPS > SafePct.MAX_BIPS, "bips value too low");
         require(_settings.attestationWindowSeconds >= 1 days, "window too small");
         require(_settings.confirmationByOthersAfterSeconds >= 2 hours, "must be at least two hours");
         require(_settings.announcedUnderlyingConfirmationMinSeconds <= 1 hours, "confirmation time too big");
@@ -87,6 +82,8 @@ library SettingsInitializer {
         require(_settings.liquidationStepSeconds > 0, "cannot be zero");
         SettingsValidators.validateLiquidationFactors(_settings.liquidationCollateralFactorBIPS,
             _settings.liquidationFactorVaultCollateralBIPS);
+        require(_settings.__minUnderlyingBackingBIPS == 0, "must be zero");
+        require(_settings.__redemptionDefaultFactorPoolBIPS == 0, "must be zero");
         require(_settings.__cancelCollateralReservationAfterSeconds == 0, "must be zero");
         require(_settings.__rejectOrCancelCollateralReservationReturnFactorBIPS == 0, "must be zero");
         require(_settings.__rejectRedemptionRequestWindowSeconds == 0, "must be zero");

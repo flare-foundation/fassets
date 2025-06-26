@@ -25,7 +25,7 @@ export function openNewFile(path: string, openMode: OpenMode, backup: boolean) {
         }
         return openSync(path, openMode);
     } catch (e) {
-        console.error('' + e);
+        console.error(String(e));
         // file might be locked (e.g. open csv) - change it with some random addition
         const random = 100 + Math.floor(Math.random() * 900);
         const newpath = join(dir, `${name}-${random}${ext}`);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -138,84 +138,6 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     }
 
     /**
-     * @dev See {ERC20-transfer}.
-     *
-     * Perform transfer (like ERC20.transfer) and pay fee by subtracting it from the transferred amount.
-     * NOTE: less than `_amount` will be delivered to `_to`.
-     */
-    function transfer(address _to, uint256 _amount)
-        public virtual override(ERC20, IERC20)
-        returns (bool)
-    {
-        address owner = _msgSender();
-        uint256 transferFee = _transferFeeAmount(_amount);
-        _transfer(owner, _to, _amount - transferFee);
-        _payTransferFee(owner, transferFee);
-        return true;
-    }
-
-    /**
-     * @dev See {ERC20-transferFrom}.
-     *
-     * Perform transfer (like ERC20.transferFrom) and pay fee by subtracting it from the transferred amount.
-     * NOTE: less than `_amount` will be delivered to `_to`.
-     */
-    function transferFrom(address _from, address _to, uint256 _amount)
-        public virtual override(ERC20, IERC20)
-        returns (bool)
-    {
-        address spender = _msgSender();
-        uint256 transferFee = _transferFeeAmount(_amount);
-        _spendAllowance(_from, spender, _amount);
-        _transfer(_from, _to, _amount - transferFee);
-        _payTransferFee(_from, transferFee);
-        return true;
-    }
-
-    /**
-     * Perform transfer (like ERC20.transfer) and pay fee by the `msg.sender`.
-     * NOTE: more than `_amount` will be transferred from `msg.sender`.
-     */
-    function transferExactDest(address _to, uint256 _amount)
-        external
-        returns (bool)
-    {
-        address owner = _msgSender();
-        uint256 transferFee = _transferFeeAmountExactDest(_amount);
-        _transfer(owner, _to, _amount);
-        _payTransferFee(owner, transferFee);
-        return true;
-    }
-
-    /**
-     * Perform transfer (like ERC20.transfer) and pay fee by the `_from` account.
-     * NOTE: more than `_amount` will be transferred from the `_from` account.
-     * Preceding call to `approve()` must account for this, otherwise the transfer will fail.
-     */
-    function transferExactDestFrom(address _from, address _to, uint256 _amount)
-        external
-        returns (bool)
-    {
-        address spender = _msgSender();
-        uint256 transferFee = _transferFeeAmountExactDest(_amount);
-        _spendAllowance(_from, spender, _amount + transferFee);
-        _transfer(_from, _to, _amount);
-        _payTransferFee(_from, transferFee);
-        return true;
-    }
-
-    /**
-     * Transfer without charging fee. Used for transferring fees to agents.
-     * Can only be used by asset manager.
-     */
-    function transferInternally(address _to, uint256 _amount)
-        external
-        onlyAssetManager
-    {
-        _transfer(msg.sender, _to, _amount);
-    }
-
-    /**
      * Stops all transfers by setting `terminated` flag to true.
      * Only the assetManager corresponding to this fAsset may call `terminate()`.
      * Stop is irreversible.
@@ -305,28 +227,6 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     }
 
     /**
-     * Return the exact amount the `_to` will receive, if `_from` transfers `_sentAmount`.
-     */
-    function getReceivedAmount(address /*_from*/, address /*_to*/, uint256 _sentAmount)
-        external view
-        returns (uint256 _receivedAmount, uint256 _feeAmount)
-    {
-        _feeAmount = _transferFeeAmount(_sentAmount);
-        _receivedAmount = _sentAmount - _feeAmount;
-    }
-
-    /**
-     * Return the exact amount the `_from` must transfer for  `_to` to receive `_receivedAmount`.
-     */
-    function getSendAmount(address /*_from*/, address /*_to*/, uint256 _receivedAmount)
-        external view
-        returns (uint256 _sendAmount, uint256 _feeAmount)
-    {
-        _feeAmount = _transferFeeAmountExactDest(_receivedAmount);
-        _sendAmount = _receivedAmount + _feeAmount;
-    }
-
-    /**
      * Prevent transfer if FAsset is terminated.
      */
     function _beforeTokenTransfer(address _from, address _to, uint256 _amount)
@@ -340,34 +240,6 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
             "emergency pause of transfers active");
         // update balance history
         _updateBalanceHistoryAtTransfer(_from, _to, _amount);
-    }
-
-    function _payTransferFee(address feePayer, uint256 _transferFee) private {
-        // if fees are not enabled (fee percentage set to 0), do nothing
-        if (_transferFee == 0) return;
-        // The extra require is present so that the caller can tell the difference between too low balance
-        // for the payment and too low balance/allowance for the transfer fee.
-        require(balanceOf(feePayer) >= _transferFee, "balance too low for transfer fee");
-        // Transfer the fee to asset manager which collects the fees that can be later claimed by the agents.
-        _transfer(feePayer, assetManager, _transferFee);
-        // Update fee accounting on asset manager.
-        IIAssetManager(assetManager).fassetTransferFeePaid(_transferFee);
-    }
-
-    function _transferFeeAmount(uint256 _transferAmount)
-        private view
-        returns (uint256)
-    {
-        uint256 feeMillionths = IIAssetManager(assetManager).transferFeeMillionths();
-        return SafePct.mulDivRoundUp(_transferAmount, feeMillionths, 1e6);
-    }
-
-    function _transferFeeAmountExactDest(uint256 _receivedAmount)
-        internal view
-        returns (uint256)
-    {
-        uint256 feeMillionths = IIAssetManager(assetManager).transferFeeMillionths(); // < 1e6
-        return SafePct.mulDivRoundUp(_receivedAmount, feeMillionths, 1e6 - feeMillionths); // 1e6 - feeMillionths > 0
     }
 
     /**

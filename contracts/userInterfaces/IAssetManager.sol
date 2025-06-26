@@ -17,7 +17,6 @@ import {CollateralReservationInfo} from "./data/CollateralReservationInfo.sol";
 import {IAssetManagerEvents} from "./IAssetManagerEvents.sol";
 import {IAgentPing} from "./IAgentPing.sol";
 import {IRedemptionTimeExtension} from "./IRedemptionTimeExtension.sol";
-import {ITransferFees} from "./ITransferFees.sol";
 import {ICoreVault} from "./ICoreVault.sol";
 import {ICoreVaultSettings} from "./ICoreVaultSettings.sol";
 import {IAgentAlwaysAllowedMinters} from "./IAgentAlwaysAllowedMinters.sol";
@@ -33,7 +32,6 @@ interface IAssetManager is
     IAssetManagerEvents,
     IAgentPing,
     IRedemptionTimeExtension,
-    ITransferFees,
     ICoreVault,
     ICoreVaultSettings,
     IAgentAlwaysAllowedMinters
@@ -957,11 +955,11 @@ interface IAssetManager is
      * underlying withdrawal announcement calls).
      * On success, immediately triggers full agent liquidation and rewards the caller.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
-     * @param _transaction proof of a transaction from the agent's underlying address
+     * @param _payment proof of a transaction from the agent's underlying address
      * @param _agentVault agent vault address
      */
     function illegalPaymentChallenge(
-        IBalanceDecreasingTransaction.Proof calldata _transaction,
+        IBalanceDecreasingTransaction.Proof calldata _payment,
         address _agentVault
     ) external;
 

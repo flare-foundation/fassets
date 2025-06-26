@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {Conversion} from "./Conversion.sol";
-import {Agents} from "./Agents.sol";
 import {RedemptionTicketInfo} from "../../userInterfaces/data/RedemptionTicketInfo.sol";
 import {RedemptionQueue} from "./data/RedemptionQueue.sol";
 import {Agent} from "./data/Agent.sol";

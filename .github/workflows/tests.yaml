@@ -13,21 +13,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - TEST_PATH: ./test/unit/fasset/library
-        - TEST_PATH: ./test/unit/fasset/mock
-        - TEST_PATH: ./test/unit/bots
-        - TEST_PATH: ./test/unit/governance
-        - TEST_PATH: ./test/unit/utils
-        - TEST_PATH: ./test/unit/fasset/implementation
+        - TEST_PATH: ./test/unit/assetManager/implementation
+        - TEST_PATH: ./test/unit/assetManager/library
+        - TEST_PATH: ./test/unit/!(assetManager)
         - TEST_ARG: test/unit/gasReport/GasReport.ts
     steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - name: Install Node.js 18
+    - name: Install Node.js 20
       uses: actions/setup-node@v4
       with:
-        node-version: 18
+        node-version: 20
     - name: Install node modules
       run: yarn install --frozen-lockfile
     - name: Compile contracts
@@ -46,10 +43,10 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - name: Install Node.js 18
+    - name: Install Node.js 20
       uses: actions/setup-node@v4
       with:
-        node-version: 18
+        node-version: 20
     - name: Install node modules
       run: yarn install --frozen-lockfile
     - name: Compile contracts
@@ -66,10 +63,10 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - name: Install Node.js 18
+    - name: Install Node.js 20
       uses: actions/setup-node@v4
       with:
-        node-version: 18
+        node-version: 20
     - name: Install node modules
       run: yarn install --frozen-lockfile
     - name: Compile contracts
@@ -86,10 +83,10 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - name: Install Node.js 18
+    - name: Install Node.js 20
       uses: actions/setup-node@v4
       with:
-        node-version: 18
+        node-version: 20
     - name: Setup Python and Slither Analyzer
       run: |
         sudo apt update -y

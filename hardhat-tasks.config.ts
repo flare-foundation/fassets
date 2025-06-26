@@ -20,15 +20,13 @@ import "./type-extensions";
 
 const FASSETS_LIST = "fassets.json";
 
-interface linkCotractsArguments {
-    contracts: string[];
-    mapfile?: string | null;
-}
-
-task<linkCotractsArguments>("link-contracts", "Link contracts with external libraries")
+task("link-contracts", "Link contracts with external libraries")
     .addVariadicPositionalParam("contracts", "The contract names to link")
     .addOptionalParam("mapfile", "Name for the map file with deployed library mapping addresses; if omitted, no map file is read or created")
-    .setAction(async ({ contracts, mapfile }, hre) => {
+    .setAction(async ({ contracts, mapfile }: {
+        contracts: string[],
+        mapfile?: string
+    }, hre) => {
         await linkContracts(hre, contracts, mapfile);
     });
 
@@ -43,7 +41,7 @@ task("deploy-price-reader-v2", "Deploy price reader v2.")
 task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
     .addVariadicPositionalParam("contractNames", `Contract names to deploy`, [])
     .addFlag("all", "Deploy all dependencies (AgentOwnerRegistry, UserWhitelist, AgentVaultFactory, CollateralPoolFactory, CollateralPoolTokenFactory)")
-    .setAction(async ({ contractNames, all }, hre) => {
+    .setAction(async ({ contractNames, all }: {contractNames: string[], all: boolean }, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await hre.run("compile");
@@ -73,7 +71,11 @@ task("deploy-asset-managers", "Deploy some or all asset managers. Optionally als
     .addFlag("deployController", "Also deploy AssetManagerController, AgentVaultFactory and FdcVerification")
     .addFlag("all", `Deploy all asset managers listed in the file ${FASSETS_LIST}`)
     .addVariadicPositionalParam("managers", `Asset manager file names (default extension is .json). Must be in the directory deployment/config/\${networkConfig}. Alternatively, add -all flag to use all parameter files listed in ${FASSETS_LIST}.`, [])
-    .setAction(async ({ managers, deployController, all }, hre) => {
+    .setAction(async ({ managers, deployController, all }: {
+        managers: string[],
+        deployController: boolean,
+        all: boolean
+    }, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         const managerParameterFiles = await getManagerFiles(all, `deployment/config/${networkConfig}`, managers);
@@ -91,7 +93,10 @@ task("deploy-asset-managers", "Deploy some or all asset managers. Optionally als
 task("deploy-core-vault-manager", "Deploy core vault manager for one fasset.")
     .addFlag("set", "Also set the deployed core vault manager to the corresponing asset manager. Only works when asset manager is not in production mode.")
     .addPositionalParam("parametersFile", "The file with core vault manager parameters.")
-    .setAction(async ({ parametersFile, set }, hre) => {
+    .setAction(async ({ parametersFile, set }: {
+        parametersFile: string,
+        set: boolean
+    }, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await hre.run("compile");
@@ -102,7 +107,11 @@ task("verify-contract", "Verify a contract in contracts.json.")
     .addFlag("force", "re-verify partially verified contract")
     .addPositionalParam("contract", "name or address of the contract to verify.")
     .addVariadicPositionalParam("constructorArgs", "constructor arguments", [])
-    .setAction(async ({ force, contract, constructorArgs }, hre) => {
+    .setAction(async ({ force, contract, constructorArgs }: {
+        force: boolean,
+        contract: string,
+        constructorArgs: string[]
+    }, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await verifyContract(hre, contract, contracts, constructorArgs, force);
@@ -110,7 +119,9 @@ task("verify-contract", "Verify a contract in contracts.json.")
 
 task("redeploy-facet", "Redeploy a facet or proxy implementation and update contracts.json.")
     .addPositionalParam("implementationName", "name of the implementation contract to redeploy")
-    .setAction(async ({ implementationName }, hre) => {
+    .setAction(async ({ implementationName }: {
+        implementationName: string
+    }, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await hre.run("compile");
@@ -120,7 +131,10 @@ task("redeploy-facet", "Redeploy a facet or proxy implementation and update cont
 task("verify-asset-managers", "Verify deployed asset managers.")
     .addFlag("all", `Verify all asset managers listed in the file ${FASSETS_LIST}`)
     .addVariadicPositionalParam("managers", `Asset manager file names (default extension is .json). Must be in the directory deployment/config/\${networkConfig}. Alternatively, add -all flag to use all parameter files listed in ${FASSETS_LIST}.`, [])
-    .setAction(async ({ managers, all }, hre) => {
+    .setAction(async ({ managers, all }: {
+        managers: string[],
+        all: boolean
+    }, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         const managerParameterFiles = await getManagerFiles(all, `deployment/config/${networkConfig}`, managers);
@@ -152,7 +166,9 @@ task("verify-asset-manager-facets", "Verify all asset manager facets.")
 
 task("verify-core-vault-manager", "Verify core vault manager for one fasset.")
     .addPositionalParam("parametersFile", "The file with core vault manager parameters.")
-    .setAction(async ({ parametersFile }, hre) => {
+    .setAction(async ({ parametersFile }: {
+        parametersFile: string
+    }, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await hre.run("compile");
@@ -169,7 +185,10 @@ task("switch-to-production", "Switch all deployed files to production mode.")
 task("diamond-cut", "Create diamond cut defined by JSON file.")
     .addPositionalParam("json", "Diamond cut JSON definition file")
     .addFlag("execute", "Execute diamond cut; if not set, just print calldata. Execute is automatically disabled in production mode.")
-    .setAction(async ({ json, execute }, hre) => {
+    .setAction(async ({ json, execute }: {
+        json: string,
+        execute: boolean
+    }, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await hre.run("compile");
@@ -180,7 +199,8 @@ task("diamond-cut", "Create diamond cut defined by JSON file.")
 async function getManagerFiles(all: boolean, configDir: string, managers: string[]) {
     if (all) {
         // read the list for deploy from FASSETS_LIST file
-        managers = JSON.parse(await fs.readFile(path.join(configDir, FASSETS_LIST), "ascii"));
+        const parsedFile = await fs.readFile(path.join(configDir, FASSETS_LIST), "ascii")
+        managers = JSON.parse(parsedFile) as string[];
     } else if (managers.length === 0) {
         console.error(`Provide a nonempty list of managers to deploy or --all to use all parameter files listed in ${FASSETS_LIST}.`);
         process.exit(1);

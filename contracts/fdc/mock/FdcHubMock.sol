@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+// solhint-disable no-empty-blocks
+pragma solidity ^0.8.27;
 
 import {IFdcHub} from "@flarenetwork/flare-periphery-contracts/flare/IFdcHub.sol";
 import {FdcRequestFeeConfigurationsMock} from "./FdcRequestFeeConfigurationsMock.sol";

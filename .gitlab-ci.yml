@@ -22,7 +22,7 @@ default:
 
 .test-node-sc:
   stage: test
-  image: node:18
+  image: node:20
   timeout: 3h
   needs:
   - build-smart-contracts
@@ -60,7 +60,7 @@ default:
 build-smart-contracts:
   stage: build
   needs: []
-  image: node:18
+  image: node:20
   cache:
     policy: pull-push
     when: on_success
@@ -88,8 +88,8 @@ test-unit:
   parallel:
     matrix:
     - TEST_PATH:
-      - ./test/unit/fasset/!(implementation)
-      - ./test/unit/!(fasset)
+      - ./test/unit/assetManager/library
+      - ./test/unit/!(assetManager)
   script:
   - yarn hardhat test --network hardhat
 
@@ -100,7 +100,7 @@ test-unit-lg:
   parallel:
     matrix:
     - TEST_PATH:
-      - ./test/unit/fasset/implementation
+      - ./test/unit/assetManager/implementation
 
 
 test-contract-integration:
@@ -115,6 +115,7 @@ test-linter:
   extends: .test-node-sc-noschedule
   script:
   - yarn lint
+  - yarn eslint
 
 
 test-slither-check:
@@ -141,7 +142,7 @@ coverage:schedule:
   - flarenetwork-lg
   retry: 2
   script:
-  - yarn cov
+  - yarn test-with-coverage
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
   artifacts:
     when: always
@@ -171,11 +172,11 @@ fuzzer:schedule:
     CHANGE_PRICE_AT: '300,600,...'
     # CHANGE_PRICE_FACTOR: '{"default": [0.9, 1.1]}'
   script:
-  - yarn fuzzing_fasset
+  - yarn fasset_simulation
   artifacts:
     paths:
-    - test_logs/fasset-fuzzing.log
-    name: fasset-fuzzing
+    - test_logs/fasset-simulation.log
+    name: fasset-simulation
     when: always
     expire_in: 30 days
   rules:

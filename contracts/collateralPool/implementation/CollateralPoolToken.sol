@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -125,7 +125,7 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20, UUPSUpgradeable {
     )
         external
         onlyCollateralPool
-    {
+    { // solhint-disable-line no-empty-blocks
         // do nothing since selfdestruct is deprecated
     }
 

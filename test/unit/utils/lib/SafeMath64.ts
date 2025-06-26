@@ -1,7 +1,7 @@
-import { expectRevert } from "@openzeppelin/test-helpers";
+import { expectRevert } from "../../../../lib/test-utils/test-helpers";
+import { getTestFile } from "../../../../lib/test-utils/test-suite-helpers";
 import { toBN } from "../../../../lib/utils/helpers";
 import { SafeMath64MockInstance } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/test-helpers";
 
 const SafeMath64 = artifacts.require("SafeMath64Mock");
 

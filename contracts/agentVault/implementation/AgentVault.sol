@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
-import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {IIAgentVault} from "../../agentVault/interfaces/IIAgentVault.sol";
 import {IAgentVault} from "../../userInterfaces/IAgentVault.sol";
 import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
@@ -54,7 +53,7 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     function buyCollateralPoolTokens()
         external payable
     {
-        collateralPool().enter{value: msg.value}(0, false);
+        collateralPool().enter{value: msg.value}();
     }
 
     function withdrawPoolFees(uint256 _amount, address _recipient)
@@ -71,7 +70,7 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     {
         ICollateralPool pool = collateralPool();
         assetManager.beforeCollateralWithdrawal(pool.poolToken(), _amount);
-        pool.exitTo(_amount, _recipient, ICollateralPool.TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
+        pool.exitTo(_amount, _recipient);
     }
 
     // must call `token.approve(vault, amount)` before for each token in _tokens
@@ -122,10 +121,6 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
 
     function undelegateAll(IVPToken _token) external override onlyOwner {
         _token.undelegateAll();
-    }
-
-    function revokeDelegationAt(IVPToken _token, address _who, uint256 _blockNumber) external override onlyOwner {
-        _token.revokeDelegationAt(_who, _blockNumber);
     }
 
     function delegateGovernance(IVPToken _token, address _to) external override onlyOwner {
@@ -204,6 +199,6 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     function _authorizeUpgrade(address /* _newImplementation */)
         internal virtual override
         onlyAssetManager
-    {
+    { // solhint-disable-line no-empty-blocks
     }
 }

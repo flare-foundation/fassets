@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+// solhint-disable gas-custom-errors
+
+pragma solidity ^0.8.27;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {FtsoV2PriceStore} from "../implementation/FtsoV2PriceStore.sol";
@@ -8,7 +10,7 @@ import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare
 
 
 contract FtsoV2PriceStoreMock is FtsoV2PriceStore {
-    using SafeCast for *;
+    using SafeCast for uint256;
 
     constructor(
         IGovernanceSettings _governanceSettings,

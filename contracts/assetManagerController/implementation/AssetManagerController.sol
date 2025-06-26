@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
@@ -23,7 +23,6 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IIAddressUpdatable}
     from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdatable.sol";
 import {IAddressUpdatable} from "../../flareSmartContracts/interfaces/IAddressUpdatable.sol";
-import {ITransferFees} from "../../userInterfaces/ITransferFees.sol";
 import {IRedemptionTimeExtension} from "../../userInterfaces/IRedemptionTimeExtension.sol";
 import {GovernedBase} from "../../governance/implementation/GovernedBase.sol";
 
@@ -164,6 +163,7 @@ contract AssetManagerController is
      * Unused. just to present to satisfy UUPSUpgradeable requirement.
      * The real check is in onlyGovernance modifier on upgradeTo and upgradeToAndCall.
      */
+    // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override {}
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -278,14 +278,6 @@ contract AssetManagerController is
             IISettingsManagement.setLotSizeAmg.selector, _value);
     }
 
-    function setMinUnderlyingBackingBips(IIAssetManager[] memory _assetManagers, uint256 _value)
-        external
-        onlyGovernance
-    {
-        _setValueOnManagers(_assetManagers,
-            IISettingsManagement.setMinUnderlyingBackingBips.selector, _value);
-    }
-
     function setTimeForPayment(
         IIAssetManager[] memory _assetManagers,
         uint256 _underlyingBlocks,
@@ -334,12 +326,12 @@ contract AssetManagerController is
             IISettingsManagement.setRedemptionFeeBips.selector, _value);
     }
 
-    function setRedemptionDefaultFactorBips(IIAssetManager[] memory _assetManagers, uint256 _vaultF, uint256 _poolF)
+    function setRedemptionDefaultFactorVaultCollateralBIPS(IIAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyImmediateGovernance
     {
-        _callOnManagers(_assetManagers,
-            abi.encodeCall(IISettingsManagement.setRedemptionDefaultFactorBips, (_vaultF, _poolF)));
+        _setValueOnManagers(_assetManagers,
+            IISettingsManagement.setRedemptionDefaultFactorVaultCollateralBIPS.selector, _value);
     }
 
     function setConfirmationByOthersAfterSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
@@ -516,18 +508,6 @@ contract AssetManagerController is
     {
         _setValueOnManagers(_assetManagers,
             IRedemptionTimeExtension.setRedemptionPaymentExtensionSeconds.selector, _value);
-    }
-
-    function setTransferFeeMillionths(
-        IIAssetManager[] memory _assetManagers,
-        uint256 _value,
-        uint256 _scheduledAt
-    )
-        external
-        onlyImmediateGovernance
-    {
-        _callOnManagers(_assetManagers,
-            abi.encodeCall(ITransferFees.setTransferFeeMillionths, (_value, _scheduledAt)));
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////

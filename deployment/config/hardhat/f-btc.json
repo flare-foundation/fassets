@@ -42,7 +42,6 @@
             "safetyMinCollateralRatioBIPS": 16000
         }
     ],
-    "minUnderlyingBackingBIPS": 10000,
     "mintingCap": "0",
     "lotSize": "1 00000000",
     "requireEOAAddressProof": false,
@@ -51,7 +50,6 @@
     "maxRedeemedTickets": 20,
     "redemptionFeeBIPS": 100,
     "redemptionDefaultFactorVaultCollateralBIPS": 12500,
-    "redemptionDefaultFactorPoolBIPS": 0,
     "underlyingBlocksForPayment": 10,
     "underlyingSecondsForPayment": 6000,
     "attestationWindowSeconds": 86400,
@@ -89,10 +87,6 @@
     "maxEmergencyPauseDurationSeconds": 86400,
     "emergencyPauseDurationResetAfterSeconds": 604800,
     "redemptionPaymentExtensionSeconds": 30,
-    "transferFeeMillionths": 0,
-    "transferFeeClaimFirstEpochStartTs": 1727784000,
-    "transferFeeClaimEpochDurationSeconds": 604800,
-    "transferFeeClaimMaxUnexpiredEpochs": 16,
     "coreVaultNativeAddress": "0xfeC5BF0a64963E6b2EbA8153235E40f9e5a8c8Ae",
     "coreVaultTransferTimeExtensionSeconds": 7200,
     "coreVaultMinimumAmountLeftBIPS": 2000,

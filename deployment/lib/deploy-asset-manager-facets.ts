@@ -38,7 +38,6 @@ export const assetManagerFacets = [
 
 export const assetManagerFacetsDeployedByDiamondCut = [
     'RedemptionTimeExtensionFacet',
-    'TransferFeeFacet',
     'CoreVaultFacet',
     'CoreVaultSettingsFacet',
 ]
@@ -54,8 +53,8 @@ export async function deployFacet(hre: HardhatRuntimeEnvironment, facetName: str
     const artifact = hre.artifacts.readArtifactSync(facetArtifactName);
     const alreadyDeployed = await deployedCodeMatches(hre, artifact, contracts.get(facetName)?.address);
     if (!alreadyDeployed) {
-        const contractFactory = hre.artifacts.require(facetArtifactName);
-        const instance = await waitFinalize(hre, deployer, () => contractFactory.new({ from: deployer })) as Truffle.ContractInstance;
+        const contractFactory: Truffle.Contract<any> = hre.artifacts.require(facetArtifactName);
+        const instance: Truffle.ContractInstance = await waitFinalize(hre, deployer, () => contractFactory.new({ from: deployer }));
         contracts.add(facetName, `${facetArtifactName}.sol`, instance.address);
         console.log(facetArtifactName === facetName ? `Deployed facet ${facetName}` : `Deployed facet ${facetName} from ${facetArtifactName}.sol`);
         return instance.address;

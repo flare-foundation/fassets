@@ -19,7 +19,6 @@ interface IIFAsset is IFAsset, IICheckPointable, IICleanable {
      */
     function burn(address _owner, uint256 _amount) external;
 
-
     /**
      * Stops all transfers by setting `terminated` flag to true.
      * Only the assetManager corresponding to this fAsset may call `terminate()`.
@@ -37,9 +36,4 @@ interface IIFAsset is IFAsset, IICheckPointable, IICleanable {
      * Usually this will be an instance of CleanupBlockNumberManager.
      */
     function cleanupBlockNumberManager() external view returns (address);
-
-    /**
-     * Transfer without charging fee. Used for transferring fees to agents.
-     */
-    function transferInternally(address _to, uint256 _amount) external;
 }

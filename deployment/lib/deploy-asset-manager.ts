@@ -12,7 +12,9 @@ import { deployCutsOnDiamond } from "./deploy-cuts";
 import { ZERO_ADDRESS, abiEncodeCall, encodeContractNames, loadDeployAccounts, waitFinalize } from './deploy-utils';
 import { CoreVaultManagerParameters } from "./core-vault-manager-parameters";
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 export const assetManagerParameters = new JsonParameterSchema<AssetManagerParameters>(require('../config/asset-manager-parameters.schema.json'));
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 export const coreVaultManagerParameters = new JsonParameterSchema<CoreVaultManagerParameters>(require('../config/core-vault-manager-parameters.schema.json'));
 
 export async function deployAssetManagerController(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore, managerParameterFiles: string[]) {
@@ -88,17 +90,6 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
         },
         { execute: true, verbose: false });
 
-    await deployCutsOnDiamond(hre, contracts,
-        {
-            diamond: assetManager.address,
-            facets: [{ contract: "TransferFeeFacet", exposedInterfaces: ["ITransferFees"] }],
-            init: {
-                contract: "TransferFeeFacet",
-                method: "initTransferFeeFacet",
-                args: [parameters.transferFeeMillionths, parameters.transferFeeClaimFirstEpochStartTs, parameters.transferFeeClaimEpochDurationSeconds, parameters.transferFeeClaimMaxUnexpiredEpochs]
-            },
-        },
-        { execute: true, verbose: false });
     await deployCutsOnDiamond(hre, contracts,
         {
             diamond: assetManager.address,
@@ -239,7 +230,7 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         assetUnitUBA: assetUnitUBA,
         assetMintingDecimals: parameters.assetMintingDecimals,
         assetMintingGranularityUBA: assetMintingGranularityUBA,
-        minUnderlyingBackingBIPS: parameters.minUnderlyingBackingBIPS,
+        __minUnderlyingBackingBIPS: 0,
         mintingCapAMG: parseBN(parameters.mintingCap).div(assetMintingGranularityUBA),
         lotSizeAMG: parseBN(parameters.lotSize).div(assetMintingGranularityUBA),
         requireEOAAddressProof: parameters.requireEOAAddressProof,
@@ -248,7 +239,7 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         maxRedeemedTickets: parameters.maxRedeemedTickets,
         redemptionFeeBIPS: parameters.redemptionFeeBIPS,
         redemptionDefaultFactorVaultCollateralBIPS: parameters.redemptionDefaultFactorVaultCollateralBIPS,
-        redemptionDefaultFactorPoolBIPS: parameters.redemptionDefaultFactorPoolBIPS,
+        __redemptionDefaultFactorPoolBIPS: 0,
         underlyingBlocksForPayment: parameters.underlyingBlocksForPayment,
         underlyingSecondsForPayment: parameters.underlyingSecondsForPayment,
         attestationWindowSeconds: parameters.attestationWindowSeconds,

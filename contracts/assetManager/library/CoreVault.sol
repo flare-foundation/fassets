@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {IICoreVaultManager} from "../../coreVaultManager/interfaces/IICoreVaultManager.sol";
 import {MathUtils} from "../../utils/library/MathUtils.sol";
@@ -23,14 +23,13 @@ import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettin
 import {Globals} from "./Globals.sol";
 import {Conversion} from "./Conversion.sol";
 import {SafeMath64} from "../../utils/library/SafeMath64.sol";
-import {Transfers} from "../../utils/library/Transfers.sol";
 import {TransactionAttestation} from "./TransactionAttestation.sol";
 import {ICoreVault} from "../../userInterfaces/ICoreVault.sol";
 
 
 
 library CoreVault {
-    using SafePct for *;
+    using SafePct for uint256;
     using SafeCast for *;
     using Agent for Agent.State;
     using AgentCollateral for Collateral.CombinedData;

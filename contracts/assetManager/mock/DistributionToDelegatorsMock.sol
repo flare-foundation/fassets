@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+// solhint-disable gas-custom-errors
+
+pragma solidity ^0.8.27;
 
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 

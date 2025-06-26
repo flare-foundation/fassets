@@ -1,21 +1,22 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
+import {CollateralReservations} from "../library/CollateralReservations.sol";
+import {Conversion} from "../library/Conversion.sol";
 import {Globals} from "../library/Globals.sol";
 import {RedemptionQueueInfo} from "../library/RedemptionQueueInfo.sol";
 import {Redemptions} from "../library/Redemptions.sol";
-import {CollateralReservations} from "../library/CollateralReservations.sol";
-import {AssetManagerBase} from "./AssetManagerBase.sol";
-import {RedemptionTicketInfo} from "../../userInterfaces/data/RedemptionTicketInfo.sol";
 import {Agent} from "../library/data/Agent.sol";
-import {CollateralReservationInfo} from "../../userInterfaces/data/CollateralReservationInfo.sol";
-import {RedemptionRequestInfo} from "../../userInterfaces/data/RedemptionRequestInfo.sol";
 import {CollateralReservation} from "../library/data/CollateralReservation.sol";
-import {Conversion} from "../library/Conversion.sol";
 import {PaymentReference} from "../library/data/PaymentReference.sol";
 import {Redemption} from "../library/data/Redemption.sol";
+import {CollateralReservationInfo} from "../../userInterfaces/data/CollateralReservationInfo.sol";
+import {RedemptionRequestInfo} from "../../userInterfaces/data/RedemptionRequestInfo.sol";
+import {RedemptionTicketInfo} from "../../userInterfaces/data/RedemptionTicketInfo.sol";
+
 
 contract SystemInfoFacet is AssetManagerBase {
     /**

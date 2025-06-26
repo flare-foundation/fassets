@@ -32,7 +32,6 @@
             "safetyMinCollateralRatioBIPS": 13000
         }
     ],
-    "minUnderlyingBackingBIPS": 9800,
     "mintingCap": "750 000 000000",
     "lotSize": "10 000000",
     "requireEOAAddressProof": false,
@@ -41,7 +40,6 @@
     "maxRedeemedTickets": 20,
     "redemptionFeeBIPS": 50,
     "redemptionDefaultFactorVaultCollateralBIPS": 10500,
-    "redemptionDefaultFactorPoolBIPS": 0,
     "underlyingBlocksForPayment": 225,
     "underlyingSecondsForPayment": 900,
     "averageBlockTimeMS": 4000,
@@ -79,10 +77,6 @@
     "diamondCutMinTimelockSeconds": 3600,
     "maxEmergencyPauseDurationSeconds": 259200,
     "emergencyPauseDurationResetAfterSeconds": 604800,
-    "transferFeeMillionths": 0,
-    "transferFeeClaimFirstEpochStartTs": 1733122800,
-    "transferFeeClaimEpochDurationSeconds": 302400,
-    "transferFeeClaimMaxUnexpiredEpochs": 30,
     "coreVaultNativeAddress": "0x000000000000000000000000000000000000dEaD",
     "coreVaultTransferTimeExtensionSeconds": 7200,
     "coreVaultMinimumAmountLeftBIPS": 1500,

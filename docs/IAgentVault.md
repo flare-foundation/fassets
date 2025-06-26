@@ -25,9 +25,6 @@ NOTE: only the owner of the agent vault may call this method.
 **undelegateAll** - Undelegate FTSO vote power for a collateral token held in this vault.
 NOTE: only the owner of the agent vault may call this method.
 
-**revokeDelegationAt** - Revoke FTSO vote power delegation for a block in the past for a collateral token held in this vault.
-NOTE: only the owner of the agent vault may call this method.
-
 **delegateGovernance** - Delegate governance vote power for possible NAT collateral token held in this vault.
 NOTE: only the owner of the agent vault may call this method.
 

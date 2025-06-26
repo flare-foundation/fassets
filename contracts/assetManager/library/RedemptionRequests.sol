@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {RedemptionTimeExtension} from "./data/RedemptionTimeExtension.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {Conversion} from "./Conversion.sol";
 import {Redemptions} from "./Redemptions.sol";
-import {RedemptionFailures} from "./RedemptionFailures.sol";
 import {Liquidation} from "./Liquidation.sol";
 import {TransactionAttestation} from "./TransactionAttestation.sol";
 import {RedemptionQueue} from "./data/RedemptionQueue.sol";
@@ -25,7 +23,7 @@ import {PaymentReference} from "./data/PaymentReference.sol";
 
 
 library RedemptionRequests {
-    using SafePct for *;
+    using SafePct for uint256;
     using SafeCast for uint256;
     using RedemptionQueue for RedemptionQueue.State;
 
@@ -267,7 +265,7 @@ library RedemptionRequests {
             _lastPaymentBlock(_data.agentVault, _additionalPaymentTime);
         request.timestamp = block.timestamp.toUint64();
         request.underlyingFeeUBA = _transferToCoreVault ?
-            0 : redeemedValueUBA.mulBips(Globals.getSettings().redemptionFeeBIPS).toUint128();
+            0 : uint256(redeemedValueUBA).mulBips(Globals.getSettings().redemptionFeeBIPS).toUint128();
         request.redeemer = _redeemer;
         request.agentVault = _data.agentVault;
         request.valueAMG = _data.valueAMG;

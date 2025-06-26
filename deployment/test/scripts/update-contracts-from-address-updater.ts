@@ -2,7 +2,7 @@ import { runDeployScript } from "../../lib/deploy-scripts";
 import { ZERO_ADDRESS } from "../../lib/deploy-utils";
 
 runDeployScript(async ({ hre, artifacts, contracts }) => {
-    const AddressUpdater = artifacts.require("AddressUpdater");
+    const AddressUpdater = artifacts.require("IIAddressUpdater");
 
     // get the freshest address updater
     let addressUpdater = await AddressUpdater.at(contracts.AddressUpdater.address);

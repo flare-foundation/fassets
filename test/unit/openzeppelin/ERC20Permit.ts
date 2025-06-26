@@ -1,11 +1,11 @@
-import { constants, expectRevert, time } from '@openzeppelin/test-helpers';
 import { expect } from 'chai';
-import { abiEncodeCall, toBN } from '../../../lib/utils/helpers';
-import { ERC20PermitMockInstance } from '../../../typechain-truffle';
-import { getChainId } from '../../utils/contract-test-helpers';
-import { assertWeb3DeepEqual, assertWeb3Equal } from '../../utils/web3assertions';
+import { getChainId } from '../../../lib/test-utils/contract-test-helpers';
+import { expectRevert, time } from '../../../lib/test-utils/test-helpers';
+import { assertWeb3DeepEqual, assertWeb3Equal } from '../../../lib/test-utils/web3assertions';
 import { domainSeparator, getDomain } from '../../../lib/utils/eip712';
 import { Permit, signPermit } from '../../../lib/utils/erc20permits';
+import { abiEncodeCall, MAX_UINT256, toBN } from '../../../lib/utils/helpers';
+import { ERC20PermitMockInstance } from '../../../typechain-truffle';
 
 const ERC20UpgradableToken = artifacts.require('ERC20UpgradableTokenMock');
 const ERC20PermitToken = artifacts.require('ERC20PermitMock');
@@ -29,7 +29,7 @@ contract('ERC20Permit', function (accounts) {
         const owner = wallet.address;
         const value = toBN(42);
         const nonce = toBN(0);
-        const maxDeadline = constants.MAX_UINT256;
+        const maxDeadline = MAX_UINT256;
 
         const testPermit: Permit = { owner, spender, value, nonce, deadline: maxDeadline };
 
@@ -109,7 +109,7 @@ contract('ERC20Permit', function (accounts) {
             const amounts2 = { initialHolder: await token.balanceOf(initialHolder), wallet: await token.balanceOf(wallet.address), supply: await token.totalSupply() };
             // erc20 permit is not enabled now
             const value = toBN(200);
-            const permit: Permit = { owner: wallet.address, spender, value, nonce: toBN(0), deadline: constants.MAX_UINT256 };
+            const permit: Permit = { owner: wallet.address, spender, value, nonce: toBN(0), deadline: MAX_UINT256 };
             await expectRevert(signPermit(token, wallet.privateKey, permit), "function selector was not recognized and there's no fallback function");
             // upgrade to ERC20Permit
             const tokenImpl2 = await ERC20PermitToken.new("", "");

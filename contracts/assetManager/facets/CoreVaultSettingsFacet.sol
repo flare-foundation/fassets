@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {CoreVault} from "../library/CoreVault.sol";
+import {IICoreVaultManager} from "../../coreVaultManager/interfaces/IICoreVaultManager.sol";
 import {LibDiamond} from "../../diamond/library/LibDiamond.sol";
 import {GovernedProxyImplementation} from "../../governance/implementation/GovernedProxyImplementation.sol";
-import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
-import {CoreVault} from "../library/CoreVault.sol";
-import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {ICoreVaultSettings} from "../../userInterfaces/ICoreVaultSettings.sol";
-import {IICoreVaultManager} from "../../coreVaultManager/interfaces/IICoreVaultManager.sol";
-import {SafePct} from "../../utils/library/SafePct.sol";
-import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {ICoreVault} from "../../userInterfaces/ICoreVault.sol";
-import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
 
 
 contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation, ICoreVaultSettings {

@@ -4,7 +4,6 @@ pragma abicoder v2;
 
 import {IAgentVault} from "../../userInterfaces/IAgentVault.sol";
 import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
-import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 

@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeMath64} from "../../utils/library/SafeMath64.sol";
-import {Transfers} from "../../utils/library/Transfers.sol";
 import {IIAgentVault} from "../../agentVault/interfaces/IIAgentVault.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {Collateral} from "./data/Collateral.sol";
@@ -14,7 +13,6 @@ import {Globals} from "./Globals.sol";
 import {Conversion} from "./Conversion.sol";
 import {CollateralTypes} from "./CollateralTypes.sol";
 import {AgentCollateral} from "./AgentCollateral.sol";
-import {TransferFees} from "./TransferFees.sol";
 import {Agent} from "./data/Agent.sol";
 import {RedemptionQueue} from "./data/RedemptionQueue.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -22,6 +20,8 @@ import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
+import {AgentInfo} from "../../userInterfaces/data/AgentInfo.sol";
+import {Liquidation} from "./Liquidation.sol";
 
 library Agents {
     using SafeCast for uint256;
@@ -116,16 +116,6 @@ library Agents {
         _agent.collateralPool.setExitCollateralRatioBIPS(_poolExitCollateralRatioBIPS);
     }
 
-    function allocateMintedAssets(
-        Agent.State storage _agent,
-        uint64 _valueAMG
-    )
-        internal
-    {
-        _agent.mintedAMG = _agent.mintedAMG + _valueAMG;
-        TransferFees.updateMintingHistory(_agent.vaultAddress(), _agent.mintedAMG);
-    }
-
     function releaseMintedAssets(
         Agent.State storage _agent,
         uint64 _valueAMG
@@ -133,7 +123,6 @@ library Agents {
         internal
     {
         _agent.mintedAMG = SafeMath64.sub64(_agent.mintedAMG, _valueAMG, "not enough minted");
-        TransferFees.updateMintingHistory(_agent.vaultAddress(), _agent.mintedAMG);
     }
 
     function startRedeemingAssets(
@@ -169,6 +158,9 @@ library Agents {
     )
         internal
     {
+        // allocate minted assets
+        _agent.mintedAMG += _valueAMG;
+
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // Add value with dust, then take the whole number of lots from it to create the new ticket,
         // and the remainder as new dust. At the end, there will always be less than 1 lot of dust left.
@@ -176,7 +168,6 @@ library Agents {
         uint64 newDustAMG = valueWithDustAMG % settings.lotSizeAMG;
         uint64 ticketValueAMG = valueWithDustAMG - newDustAMG;
         // create ticket and change dust
-        allocateMintedAssets(_agent, _valueAMG);
         if (ticketValueAMG > 0) {
             createRedemptionTicket(_agent, ticketValueAMG);
         }
@@ -504,5 +495,42 @@ library Agents {
         // would need `max(redeemingAMG, poolRedeemingAMG)`
         assert(_agent.poolRedeemingAMG <= _agent.redeemingAMG);
         return _agent.mintedAMG + _agent.reservedAMG + _agent.redeemingAMG;
+    }
+
+    function getAgentStatus(
+        Agent.State storage _agent
+    )
+        internal view
+        returns (AgentInfo.Status)
+    {
+        Agent.Status status = _agent.status;
+        if (status == Agent.Status.NORMAL) {
+            return AgentInfo.Status.NORMAL;
+        } else if (status == Agent.Status.LIQUIDATION) {
+            Agent.LiquidationPhase phase = Liquidation.currentLiquidationPhase(_agent);
+            return phase == Agent.LiquidationPhase.CCB ? AgentInfo.Status.CCB : AgentInfo.Status.LIQUIDATION;
+        } else if (status == Agent.Status.FULL_LIQUIDATION) {
+            return AgentInfo.Status.FULL_LIQUIDATION;
+        } else {
+            assert (status == Agent.Status.DESTROYING);
+            return AgentInfo.Status.DESTROYING;
+        }
+    }
+
+    function getAllAgents(
+        uint256 _start,
+        uint256 _end
+    )
+        internal view
+        returns (address[] memory _agents, uint256 _totalLength)
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        _totalLength = state.allAgents.length;
+        _end = Math.min(_end, _totalLength);
+        _start = Math.min(_start, _end);
+        _agents = new address[](_end - _start);
+        for (uint256 i = _start; i < _end; i++) {
+            _agents[i - _start] = state.allAgents[i];
+        }
     }
 }

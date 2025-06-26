@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -10,10 +10,13 @@ import {AddressUpdatable} from "../../flareSmartContracts/implementation/Address
 import {IICoreVaultManager} from "../interfaces/IICoreVaultManager.sol";
 import {IFdcVerification, IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
-import {ICoreVaultManager} from "../../userInterfaces/ICoreVaultManager.sol";
 import {GovernedBase} from "../../governance/implementation/GovernedBase.sol";
 import {IIAddressUpdatable}
     from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdatable.sol";
+
+// TODO:(matej) this is needed for inherited docs and needs to be looked into
+// maybe we should inherit from IICoreVaultManager instead
+import {ICoreVaultManager} from "../../userInterfaces/ICoreVaultManager.sol"; // solhint-disable-line no-unused-import
 
 //solhint-disable-next-line max-states-count
 contract CoreVaultManager is
@@ -828,6 +831,7 @@ contract CoreVaultManager is
      * Unused. just to present to satisfy UUPSUpgradeable requirement.
      * The real check is in onlyGovernance modifier on upgradeTo and upgradeToAndCall.
      */
+    // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override {}
 
     /**

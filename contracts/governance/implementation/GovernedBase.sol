@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 import {IGoverned} from "../interfaces/IGoverned.sol";
@@ -47,6 +47,7 @@ abstract contract GovernedBase is IGoverned {
         _;
     }
 
+    // solhint-disable-next-line no-empty-blocks
     constructor() {
     }
 

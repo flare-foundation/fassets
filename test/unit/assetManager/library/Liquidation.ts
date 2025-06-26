@@ -1,0 +1,352 @@
+import { AgentSettings, AgentStatus, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
+import { AssetManagerInitSettings, newAssetManager } from "../../../../lib/test-utils/fasset/CreateAssetManager";
+import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/MockChain";
+import { MockFlareDataConnectorClient } from "../../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
+import { expectRevert, time } from "../../../../lib/test-utils/test-helpers";
+import { createTestAgent, createTestCollaterals, createTestContracts, createTestSettings, TestSettingsContracts } from "../../../../lib/test-utils/test-settings";
+import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
+import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
+import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
+import { toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
+import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../../typechain-truffle";
+
+contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`, accounts => {
+    const governance = accounts[10];
+    const assetManagerController = accounts[11];
+    let contracts: TestSettingsContracts;
+    let assetManager: IIAssetManagerInstance;
+    let fAsset: FAssetInstance;
+    let wNat: WNatMockInstance;
+    let usdc: ERC20MockInstance;
+    let settings: AssetManagerInitSettings;
+    let collaterals: CollateralType[];
+    let chain: MockChain;
+    let wallet: MockChainWallet;
+    let flareDataConnectorClient: MockFlareDataConnectorClient;
+    let attestationProvider: AttestationHelper;
+
+    // addresses
+    const agentOwner1 = accounts[20];
+    const minterAddress1 = accounts[30];
+    const redeemerAddress1 = accounts[40];
+    const noExecutorAddress = ZERO_ADDRESS;
+    const liquidatorAddress1 = accounts[60];
+
+    // addresses on mock underlying chain can be any string, as long as it is unique
+    const underlyingAgent1 = "Agent1";
+    const underlyingMinter1 = "Minter1";
+    const underlyingRedeemer1 = "Redeemer1";
+
+
+    function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
+        const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
+        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, vaultCollateralToken, options);
+    }
+
+    async function depositCollateral(owner: string, agentVault: AgentVaultInstance, amount: BN, token: ERC20MockInstance = usdc) {
+        await token.mintAmount(owner, amount);
+        await token.approve(agentVault.address, amount, { from: owner });
+        await agentVault.depositCollateral(token.address, amount, { from: owner });
+    }
+
+    async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string, fullAgentCollateral: BN = toWei(3e8)) {
+        await depositCollateral(owner, agentVault, fullAgentCollateral);
+        await agentVault.buyCollateralPoolTokens({ from: owner, value: fullAgentCollateral });  // add pool collateral and agent pool tokens
+        await assetManager.makeAgentAvailable(agentVault.address, { from: owner });
+    }
+
+    async function mint(agentVault: AgentVaultInstance, underlyingMinterAddress: string, minterAddress: string) {
+        // minter
+        chain.mint(underlyingMinterAddress, toBNExp(10000, 18));
+        // perform minting
+        const lots = 3;
+        const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, noExecutorAddress, { from: minterAddress, value: crFee });
+        const crt = requiredEventArgs(resAg, 'CollateralReserved');
+        const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+        const txHash = await wallet.addTransaction(underlyingMinterAddress, crt.paymentAddress, paymentAmount, crt.paymentReference);
+        const proof = await attestationProvider.provePayment(txHash, underlyingMinterAddress, crt.paymentAddress);
+        const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress });
+        return requiredEventArgs(res, 'MintingExecuted');
+    }
+
+    async function redeem(underlyingRedeemerAddress: string, redeemerAddress: string) {
+        const lots = 3;
+        const resR = await assetManager.redeem(lots, underlyingRedeemerAddress, noExecutorAddress, { from: redeemerAddress });
+        const redemptionRequests = filterEvents(resR, 'RedemptionRequested').map(e => e.args);
+        const request = redemptionRequests[0];
+        return request;
+    }
+
+    async function initialize() {
+        const ci = testChainInfo.eth;
+        contracts = await createTestContracts(governance);
+        // save some contracts as globals
+        ({ wNat } = contracts);
+        usdc = contracts.stablecoins.USDC;
+        // create mock chain and attestation provider
+        chain = new MockChain(await time.latest());
+        wallet = new MockChainWallet(chain);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
+        // create asset manager
+        collaterals = createTestCollaterals(contracts, ci);
+        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
+        return { contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+    }
+
+    beforeEach(async () => {
+        ({ contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
+    });
+
+    it("should not liquidate if collateral ratio is ok", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        await mint(agentVault, underlyingMinter1, minterAddress1);
+        // act
+        const promise = assetManager.liquidate(agentVault.address, 500);
+        // assert
+        await expectRevert(promise, "not in liquidation");
+    });
+
+    it("should not start full liquidation if agent is in status DESTROYING", async () => {
+        // init
+        chain.mint(underlyingAgent1, 100);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        // act
+        await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
+        const tx = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer1, 100, null);
+        const proof = await attestationProvider.proveBalanceDecreasingTransaction(tx, underlyingAgent1);
+        await assetManager.illegalPaymentChallenge(proof, agentVault.address);
+        // assert
+        const info = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info.status, 4);
+        //Calling start liquidation again won't change anything
+        await assetManager.startLiquidation(agentVault.address);
+        //Calling liquite won't liquidate anything
+        await assetManager.liquidate(agentVault.address, 1, { from: liquidatorAddress1});
+        // assert
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info1.status, 4);
+    });
+
+    it("should not change liquidationStartedAt timestamp when liquidation phase does not change (liquidation -> full_liquidation)", async () => {
+        // init
+        chain.mint(underlyingAgent1, 200);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
+        await mint(agentVault, underlyingMinter1, minterAddress1);
+        // act
+        const assetName = await fAsset.symbol();
+        await contracts.priceStore.setCurrentPrice(assetName, 4294967295, 0);
+        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, 4294967295, 0);
+
+        await assetManager.startLiquidation(agentVault.address);
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        const tx = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer1, 100, null);
+        const proof = await attestationProvider.proveBalanceDecreasingTransaction(tx, underlyingAgent1);
+        await assetManager.illegalPaymentChallenge(proof, agentVault.address);
+        const info2 = await assetManager.getAgentInfo(agentVault.address);
+        // assert
+        assertWeb3Equal(info1.liquidationStartTimestamp, info2.liquidationStartTimestamp);
+        assertWeb3Equal(info1.status, 2);
+        assertWeb3Equal(info2.status, 3);
+        //Calling start liquidation again won't change anything
+        await assetManager.startLiquidation(agentVault.address);
+        // assert
+        const info3 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info3.status, 3);
+    });
+
+    it("should revert if callig startLiquidation twice", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
+        const minted = await mint(agentVault, underlyingMinter1, minterAddress1);
+        const assetName = await fAsset.symbol();
+        // act
+        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(3.521, 9), 0);
+        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(3.521, 9), 0);
+
+        await assetManager.startLiquidation(agentVault.address);
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        // liquidator "buys" f-assets
+        await fAsset.transfer(liquidatorAddress1, minted.mintedAmountUBA.divn(2), { from: minterAddress1 });
+        await assetManager.liquidate(agentVault.address, minted.mintedAmountUBA.divn(2), { from: liquidatorAddress1 });
+        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(3.521, 5), 0);
+
+        await expectRevert(assetManager.startLiquidation(agentVault.address), "liquidation not started");
+        const info2 = await assetManager.getAgentInfo(agentVault.address);
+        await assetManager.endLiquidation(agentVault.address);
+        const info3 = await assetManager.getAgentInfo(agentVault.address);
+        // assert
+        assertWeb3Equal(info1.liquidationStartTimestamp, info2.liquidationStartTimestamp);
+        assertWeb3Equal(info1.status, 2);
+        assertWeb3Equal(info2.status, 2);
+        assertWeb3Equal(info3.status, 0);
+    });
+
+    it("should transition from CCB to liquidation phase because of price changes", async () => {
+        // init
+        chain.mint(underlyingAgent1, 200);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
+        await mint(agentVault, underlyingMinter1, minterAddress1);
+        //Starting liquidation now should revert, because it can't change status
+        await expectRevert(assetManager.startLiquidation(agentVault.address), "liquidation not started");
+        const info = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info.status, 0);
+        const assetName = await fAsset.symbol();
+        // act
+        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(7, 8), 0);
+        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(7, 8), 0);
+        // await ftsos.asset.setCurrentPrice(toBNExp(7, 10), 0);
+        // await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(7, 10), 0);
+        await assetManager.startLiquidation(agentVault.address);
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        chain.skipTimeTo(toBN(info1.ccbStartTimestamp).toNumber());
+        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(8, 8), 0);
+        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(8, 8), 0);
+        // await ftsos.asset.setCurrentPrice(toBNExp(8, 10), 0);
+        // await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(8, 10), 0);
+        await assetManager.startLiquidation(agentVault.address);
+        const info2 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info1.status, 1);
+        assertWeb3Equal(info2.status, 2);
+    });
+
+    it("agent should be able to get from ccb to normal by depositing more collateral", async () => {
+        // init
+        chain.mint(underlyingAgent1, 200);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
+        await mint(agentVault, underlyingMinter1, minterAddress1);
+        const assetName = await fAsset.symbol();
+        // act
+        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(7, 8), 0);
+        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(7, 8), 0);
+        await assetManager.startLiquidation(agentVault.address);
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+
+        //Deposit more collateral
+        await depositCollateral(agentOwner1, agentVault, toWei(3e10));
+        await agentVault.buyCollateralPoolTokens({ from: agentOwner1, value: toWei(3e10) });
+        const info2 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info1.status, 1);
+        assertWeb3Equal(info2.status, 0);
+    });
+
+    it("agent should be able to get from ccb to normal if the price rises", async () => {
+        // init
+        chain.mint(underlyingAgent1, 200);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
+        await mint(agentVault, underlyingMinter1, minterAddress1);
+        const assetName = await fAsset.symbol();
+        const { 0: initial_price } = await contracts.priceReader.getPrice(assetName);
+        // Change price to put agent in ccb
+        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(7, 8), 0);
+        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(7, 8), 0);
+
+        //Change phase to ccb
+        await assetManager.startLiquidation(agentVault.address);
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        //Set price back to initial value
+        await contracts.priceStore.setCurrentPrice(assetName, initial_price, 0);
+        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, initial_price, 0);
+
+        await assetManager.endLiquidation(agentVault.address);
+        const info2 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info1.status, 1);
+        assertWeb3Equal(info2.status, 0);
+    });
+
+    it("agent in ccb, calling getAgentInfo after CR falls under CCB CR should return new Phase", async () => {
+        // init
+        chain.mint(underlyingAgent1, 200);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
+        await mint(agentVault, underlyingMinter1, minterAddress1);
+        const assetName = await fAsset.symbol();
+        const initial_price = await contracts.priceReader.getPrice(assetName);
+        const price = initial_price[0];
+        // Change price to put agent in ccb
+        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(7, 8), 0);
+        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(7, 8), 0);
+        //Change phase to ccb
+        await assetManager.startLiquidation(agentVault.address);
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info1.status, 1);
+        //Price falls event lower
+        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(9, 8), 0);
+        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(9, 8), 0);
+
+        //Getting agent info should still show status CCB
+        const info2 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info2.status, 1);
+        // call startLiquidation again
+        await assetManager.startLiquidation(agentVault.address);
+        //Getting agent info should show status in Liquidation
+        const info3 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info3.status, 2);
+    });
+
+    it("agent in ccb, after waiting enough should automatically progress to Liquidation", async () => {
+        // init
+        chain.mint(underlyingAgent1, 200);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
+        await mint(agentVault, underlyingMinter1, minterAddress1);
+        const assetName = await fAsset.symbol();
+        const initial_price = await contracts.priceReader.getPrice(assetName);
+        const price = initial_price[0];
+        // Change price to put agent in ccb
+        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(7, 8), 0);
+        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(7, 8), 0);
+        //Change phase to ccb
+        await assetManager.startLiquidation(agentVault.address);
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info1.status, 1);
+        //Skip time
+        await time.deterministicIncrease(200);
+        //Getting agent info should show status in Liquidation
+        const info2 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info2.status, 2);
+    });
+
+    it("should not start liquidation if trusted price is ok for agent", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
+        const minted = await mint(agentVault, underlyingMinter1, minterAddress1);
+        const assetName = await fAsset.symbol();
+        // act
+        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(8, 8), 0);
+        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(3, 8), 0);
+
+        await expectRevert(assetManager.startLiquidation(agentVault.address), "liquidation not started");
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        // liquidator "buys" f-assets
+        assertWeb3Equal(info1.status, AgentStatus.NORMAL);
+    });
+
+    it("should ignore trusted price if it is too old", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
+        const minted = await mint(agentVault, underlyingMinter1, minterAddress1);
+        const assetName = await fAsset.symbol();
+        // act
+        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(8, 8), 0);
+        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(3, 8), 10000);
+        await assetManager.startLiquidation(agentVault.address);
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        // liquidator "buys" f-assets
+        assertWeb3Equal(info1.status, AgentStatus.LIQUIDATION);
+    });
+});

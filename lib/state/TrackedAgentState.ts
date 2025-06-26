@@ -16,10 +16,6 @@ import { ILogger } from "../utils/logging";
 import { Prices } from "./Prices";
 import { TrackedState } from "./TrackedState";
 
-export interface ExtendedAgentInfo extends AgentInfo {
-    redemptionPoolFeeShareBIPS: BN;
-}
-
 const MAX_UINT256 = toBN(1).shln(256).subn(1);
 
 export type InitialAgentData = EventArgs<AgentVaultCreated>;
@@ -38,7 +34,7 @@ export class TrackedAgentState {
         this.poolWNatCollateral = parent.collaterals.get(CollateralClass.POOL, data.creationData.poolWNatToken);
         this.feeBIPS = toBN(data.creationData.feeBIPS);
         this.poolFeeShareBIPS = toBN(data.creationData.poolFeeShareBIPS);
-        this.redemptionPoolFeeShareBIPS = BN_ZERO;  // always zero initially
+        this.redemptionPoolFeeShareBIPS = toBN(data.creationData.redemptionPoolFeeShareBIPS);
         this.mintingVaultCollateralRatioBIPS = toBN(data.creationData.mintingVaultCollateralRatioBIPS);
         this.mintingPoolCollateralRatioBIPS = toBN(data.creationData.mintingPoolCollateralRatioBIPS);
         this.buyFAssetByAgentFactorBIPS = toBN(data.creationData.buyFAssetByAgentFactorBIPS);
@@ -89,8 +85,7 @@ export class TrackedAgentState {
     // calculated getters
 
     get requiredUnderlyingBalanceUBA() {
-        const backedUBA = this.mintedUBA.add(this.redeemingUBA);
-        return backedUBA.mul(toBN(this.parent.settings.minUnderlyingBackingBIPS)).divn(MAX_BIPS);
+        return this.mintedUBA.add(this.redeemingUBA);
     }
 
     get freeUnderlyingBalanceUBA() {
@@ -99,7 +94,7 @@ export class TrackedAgentState {
 
     // init
 
-    initializeState(agentInfo: ExtendedAgentInfo) {
+    initializeState(agentInfo: AgentInfo) {
         this.status = Number(agentInfo.status);
         this.publiclyAvailable = agentInfo.publiclyAvailable;
         this.redemptionPoolFeeShareBIPS = toBN(agentInfo.redemptionPoolFeeShareBIPS);

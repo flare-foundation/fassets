@@ -1,15 +1,27 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
-import {UnderlyingBalance} from "../library/UnderlyingBalance.sol";
-import {UnderlyingWithdrawalAnnouncements} from "../library/UnderlyingWithdrawalAnnouncements.sol";
-import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
-
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
+import {Agents} from "../library/Agents.sol";
+import {Globals} from "../library/Globals.sol";
+import {TransactionAttestation} from "../library/TransactionAttestation.sol";
+import {UnderlyingBalance} from "../library/UnderlyingBalance.sol";
+import {Agent} from "../library/data/Agent.sol";
+import {PaymentConfirmations} from "../library/data/PaymentConfirmations.sol";
+import {PaymentReference} from "../library/data/PaymentReference.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {AssetManagerState} from "../library/data/AssetManagerState.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 
 
 contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
+    using SafeCast for uint256;
+    using PaymentConfirmations for PaymentConfirmations.State;
+
+
     /**
      * When the agent tops up his underlying address, it has to be confirmed by calling this method,
      * which updates the underlying free balance value.
@@ -23,8 +35,22 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
         address _agentVault
     )
         external
+        onlyAgentVaultOwner(_agentVault)
     {
-        UnderlyingBalance.confirmTopupPayment(_payment, _agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
+        AssetManagerState.State storage state = AssetManagerState.get();
+        TransactionAttestation.verifyPaymentSuccess(_payment);
+        require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
+            "not underlying address");
+        require(_payment.data.responseBody.standardPaymentReference == PaymentReference.topup(_agentVault),
+            "not a topup payment");
+        require(_payment.data.responseBody.blockNumber >= agent.underlyingBlockAtCreation,
+            "topup before agent created");
+        state.paymentConfirmations.confirmIncomingPayment(_payment);
+        uint256 amountUBA = SafeCast.toUint256(_payment.data.responseBody.receivedAmount);
+        UnderlyingBalance.increaseBalance(agent, amountUBA.toUint128());
+        emit IAssetManagerEvents.UnderlyingBalanceToppedUp(_agentVault, _payment.data.requestBody.transactionId,
+            amountUBA);
     }
 
     /**
@@ -39,8 +65,17 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
         address _agentVault
     )
         external
+        onlyAgentVaultOwner(_agentVault)
     {
-        UnderlyingWithdrawalAnnouncements.announceUnderlyingWithdrawal(_agentVault);
+        AssetManagerState.State storage state = AssetManagerState.get();
+        Agent.State storage agent = Agent.get(_agentVault);
+        require(agent.announcedUnderlyingWithdrawalId == 0, "announced underlying withdrawal active");
+        state.newPaymentAnnouncementId += PaymentReference.randomizedIdSkip();
+        uint64 announcementId = state.newPaymentAnnouncementId;
+        agent.announcedUnderlyingWithdrawalId = announcementId;
+        agent.underlyingWithdrawalAnnouncedAt = block.timestamp.toUint64();
+        bytes32 paymentReference = PaymentReference.announcedWithdrawal(announcementId);
+        emit IAssetManagerEvents.UnderlyingWithdrawalAnnounced(_agentVault, announcementId, paymentReference);
     }
 
     /**
@@ -59,7 +94,37 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
         external
         nonReentrant
     {
-        UnderlyingWithdrawalAnnouncements.confirmUnderlyingWithdrawal(_payment, _agentVault);
+        AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        TransactionAttestation.verifyPayment(_payment);
+        Agent.State storage agent = Agent.get(_agentVault);
+        bool isAgent = Agents.isOwner(agent, msg.sender);
+        uint64 announcementId = agent.announcedUnderlyingWithdrawalId;
+        require(announcementId != 0, "no active announcement");
+        bytes32 paymentReference = PaymentReference.announcedWithdrawal(announcementId);
+        require(_payment.data.responseBody.standardPaymentReference == paymentReference,
+            "wrong announced pmt reference");
+        require(_payment.data.responseBody.sourceAddressHash == agent.underlyingAddressHash,
+            "wrong announced pmt source");
+        require(isAgent || block.timestamp >
+                agent.underlyingWithdrawalAnnouncedAt + settings.confirmationByOthersAfterSeconds,
+            "only agent vault owner");
+        require(block.timestamp >
+            agent.underlyingWithdrawalAnnouncedAt + settings.announcedUnderlyingConfirmationMinSeconds,
+            "confirmation too soon");
+        // make sure withdrawal cannot be challenged as invalid
+        state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
+        // clear active withdrawal announcement
+        agent.announcedUnderlyingWithdrawalId = 0;
+        // update free underlying balance and trigger liquidation if negative
+        UnderlyingBalance.updateBalance(agent, -_payment.data.responseBody.spentAmount);
+        // if the confirmation was done by someone else than agent, pay some reward from agent's vault
+        if (!isAgent) {
+            Agents.payForConfirmationByOthers(agent, msg.sender);
+        }
+        // send event
+        emit IAssetManagerEvents.UnderlyingWithdrawalConfirmed(_agentVault, announcementId,
+            _payment.data.responseBody.spentAmount, _payment.data.requestBody.transactionId);
     }
 
     /**
@@ -74,7 +139,18 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
         address _agentVault
     )
         external
+        onlyAgentVaultOwner(_agentVault)
     {
-        UnderlyingWithdrawalAnnouncements.cancelUnderlyingWithdrawal(_agentVault);
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        Agent.State storage agent = Agent.get(_agentVault);
+        uint64 announcementId = agent.announcedUnderlyingWithdrawalId;
+        require(announcementId != 0, "no active announcement");
+        require(block.timestamp >
+            agent.underlyingWithdrawalAnnouncedAt + settings.announcedUnderlyingConfirmationMinSeconds,
+            "cancel too soon");
+        // clear active withdrawal announcement
+        agent.announcedUnderlyingWithdrawalId = 0;
+        // send event
+        emit IAssetManagerEvents.UnderlyingWithdrawalCancelled(_agentVault, announcementId);
     }
 }

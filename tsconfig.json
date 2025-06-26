@@ -13,7 +13,6 @@
         "newLine": "lf",
         "outDir": "build",
         "typeRoots": [
-            "test/types",
             "node_modules/@types"
         ],
         "lib": [

@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import {AssetManagerState} from "../library/data/AssetManagerState.sol";
-import {Globals} from "../library/Globals.sol";
-import {AssetManagerBase} from "./AssetManagerBase.sol";
-import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {Globals} from "../library/Globals.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 
 
 contract SettingsReaderFacet is AssetManagerBase {
@@ -15,7 +13,7 @@ contract SettingsReaderFacet is AssetManagerBase {
      * @return the current settings
      */
     function getSettings()
-        external view
+        external pure
         returns (AssetManagerSettings.Data memory)
     {
         return Globals.getSettings();

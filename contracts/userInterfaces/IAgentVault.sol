@@ -77,12 +77,6 @@ interface IAgentVault {
     function undelegateAll(IVPToken _token) external;
 
     /**
-     * Revoke WNat vote power delegation for a block in the past for a collateral token held in this vault.
-     * NOTE: only the owner of the agent vault may call this method.
-     */
-    function revokeDelegationAt(IVPToken _token, address _who, uint256 _blockNumber) external;
-
-    /**
      * Delegate governance vote power for possible NAT collateral token held in this vault.
      * NOTE: only the owner of the agent vault may call this method.
      */

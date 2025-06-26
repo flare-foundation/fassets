@@ -134,5 +134,12 @@ library AgentInfo {
         // (this is CR that must be left after exit).
         // Must be higher than system minimum collateral ratio for pool collateral.
         uint256 poolExitCollateralRatioBIPS;
+        // The redemption fee share paid to the pool (as FAssets).
+        // In redemption dominated situations (when agent requests return from core vault to earn
+        // from redemption fees), pool can get some share to make it sustainable for pool users.
+        // NOTE: the pool fee share is locked at the redemption request time, but is charged at the redemption
+        // confirmation time. If agent uses all the redemption fee for transaction fees, this could make the
+        // agent's free underlying balance negative.
+        uint256 redemptionPoolFeeShareBIPS;
     }
 }

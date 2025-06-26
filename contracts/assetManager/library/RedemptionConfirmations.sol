@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
@@ -23,7 +22,7 @@ import {PaymentReference} from "./data/PaymentReference.sol";
 
 
 library RedemptionConfirmations {
-    using SafePct for *;
+    using SafePct for uint256;
     using Agent for Agent.State;
     using PaymentConfirmations for PaymentConfirmations.State;
 
@@ -116,7 +115,7 @@ library RedemptionConfirmations {
     )
         private
     {
-        uint256 poolFeeUBA = _request.underlyingFeeUBA.mulBips(_request.poolFeeShareBIPS);
+        uint256 poolFeeUBA = uint256(_request.underlyingFeeUBA).mulBips(_request.poolFeeShareBIPS);
         if (poolFeeUBA > 0) {
             Agents.createNewMinting(_agent, Conversion.convertUBAToAmg(poolFeeUBA));
             Globals.getFAsset().mint(address(_agent.collateralPool), poolFeeUBA);

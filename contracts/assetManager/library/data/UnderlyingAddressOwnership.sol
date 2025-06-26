@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import {IFdcVerification, IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {PaymentConfirmations} from "./PaymentConfirmations.sol";
 import {PaymentReference} from "./PaymentReference.sol";
 

@@ -1,5 +1,6 @@
 import { readFileSync } from "fs";
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const Ajv = require('ajv');
 const ajv = new Ajv();
 

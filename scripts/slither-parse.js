@@ -1,6 +1,5 @@
 const fs = require("fs");
 const { sortBy } = require("lodash");
-const axios = require("axios")
 
 const priorities = { High: 1, Medium: 2, Low: 3, Informational: 4, Optimization: 5 };
 

@@ -1,10 +1,10 @@
-import { expectRevert } from '@openzeppelin/test-helpers';
-import { DiamondCutFacetInstance, DiamondLoupeFacetInstance } from '../../../typechain-truffle';
+import { expectRevert } from '../../../lib/test-utils/test-helpers';
+import { TestSettingsContracts, createTestContracts } from '../../../lib/test-utils/test-settings';
+import { loadFixtureCopyVars } from '../../../lib/test-utils/test-suite-helpers';
 import { DiamondCut, DiamondSelectors, FacetCutAction } from '../../../lib/utils/diamond';
-import { TestSettingsContracts, createTestContracts } from '../../utils/test-settings';
-import { deployDiamond } from './deploy';
-import { loadFixtureCopyVars } from '../../utils/test-helpers';
 import { ZERO_ADDRESS, requireNotNull } from '../../../lib/utils/helpers';
+import { DiamondCutFacetInstance, DiamondLoupeFacetInstance } from '../../../typechain-truffle';
+import { deployDiamond } from './deploy';
 
 const DiamondCutFacet = artifacts.require('DiamondCutFacet');
 const MockDiamond = artifacts.require('MockDiamond');
@@ -187,10 +187,10 @@ contract('DiamondTest', function (accounts) {
         assert.isDefined(cutFacet);
         const loupeFacet = facets.find(f => f.facetAddress === diamondLoupeAddr);
         assert.isDefined(loupeFacet);
-        assert.equal(cutFacet!.facetAddress, diamondCutAddr);
-        assert.sameMembers(cutFacet!.functionSelectors, ['0x1f931c1c']);
-        assert.equal(loupeFacet!.facetAddress, diamondLoupeAddr);
-        assert.sameMembers(loupeFacet!.functionSelectors, ['0x7a0ed627']);
+        assert.equal(cutFacet.facetAddress, diamondCutAddr);
+        assert.sameMembers(cutFacet.functionSelectors, ['0x1f931c1c']);
+        assert.equal(loupeFacet.facetAddress, diamondLoupeAddr);
+        assert.sameMembers(loupeFacet.functionSelectors, ['0x7a0ed627']);
     });
 
     it('re-add most functions and facets', async () => {

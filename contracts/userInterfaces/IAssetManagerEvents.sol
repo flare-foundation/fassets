@@ -18,6 +18,7 @@ interface IAssetManagerEvents {
         uint256 mintingPoolCollateralRatioBIPS;
         uint256 buyFAssetByAgentFactorBIPS;
         uint256 poolExitCollateralRatioBIPS;
+        uint256 redemptionPoolFeeShareBIPS;
     }
 
     /**

@@ -1,20 +1,19 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import {AssetManagerState} from "../library/data/AssetManagerState.sol";
-import {AgentsExternal} from "../library/AgentsExternal.sol";
-import {Agents} from "../library/Agents.sol";
-import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
-import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {Agents} from "../library/Agents.sol";
 import {Conversion} from "../library/Conversion.sol";
 import {Globals} from "../library/Globals.sol";
-import {Agent} from "../../assetManager/library/data/Agent.sol";
-
+import {Agent} from "../library/data/Agent.sol";
+import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 
 
 contract AgentVaultAndPoolSupportFacet is AssetManagerBase {
+    using Agents for Agent.State;
+
     /**
      * Returns price of asset (UBA) in NAT Wei as a fraction.
      */
@@ -36,14 +35,16 @@ contract AgentVaultAndPoolSupportFacet is AssetManagerBase {
         external view
         returns (bool)
     {
-        return AgentsExternal.isLockedVaultToken(_agentVault, _token);
+        Agent.State storage agent = Agent.get(_agentVault);
+        return _token == agent.getVaultCollateralToken() || _token == agent.collateralPool.poolToken();
     }
 
     function getFAssetsBackedByPool(address _agentVault)
         external view
         returns (uint256)
     {
-        return AgentsExternal.getFAssetsBackedByPool(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
+        return Conversion.convertAmgToUBA(agent.reservedAMG + agent.mintedAMG + agent.poolRedeemingAMG);
     }
 
     function isAgentVaultOwner(address _agentVault, address _address)

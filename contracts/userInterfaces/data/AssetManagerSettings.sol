@@ -107,7 +107,7 @@ library AssetManagerSettings {
         uint64 lotSizeAMG;
 
         // The percentage of minted f-assets that the agent must hold in his underlying address.
-        uint16 minUnderlyingBackingBIPS;
+        uint16 __minUnderlyingBackingBIPS; // only storage placeholder
 
         // for some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address
         // this must be done by presenting a payment proof from that address
@@ -149,7 +149,7 @@ library AssetManagerSettings {
 
         // This is the part of redemption factor paid from agent's pool collateral.
         // rate-limited
-        uint32 redemptionDefaultFactorPoolBIPS;
+        uint32 __redemptionDefaultFactorPoolBIPS; // only storage placeholder
 
         // If the agent or redeemer becomes unresponsive, we still need payment or non-payment confirmations
         // to be presented eventually to properly track agent's underlying balance.

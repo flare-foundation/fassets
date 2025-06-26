@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {IIAgentVault} from "../../agentVault/interfaces/IIAgentVault.sol";
 import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {Transfers} from "../../utils/library/Transfers.sol";
@@ -26,7 +25,7 @@ import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettin
 
 
 library CollateralReservations {
-    using SafePct for *;
+    using SafePct for uint256;
     using SafeCast for uint256;
     using AgentCollateral for Collateral.CombinedData;
     using Agent for Agent.State;

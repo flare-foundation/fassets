@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+// solhint-disable no-empty-blocks
+pragma solidity ^0.8.27;
 
-import {IFdcVerification} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {IRelay} from "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
 
 

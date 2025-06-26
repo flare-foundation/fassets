@@ -1,26 +1,25 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
-import {IUpgradableProxy} from "../../utils/interfaces/IUpgradableProxy.sol";
-import {SafePct} from "../../utils/library/SafePct.sol";
-import {IISettingsManagement} from "../../assetManager/interfaces/IISettingsManagement.sol";
-import {Globals} from "../library/Globals.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {IISettingsManagement} from "../interfaces/IISettingsManagement.sol";
 import {CollateralTypes} from "../library/CollateralTypes.sol";
+import {Globals} from "../library/Globals.sol";
 import {SettingsUpdater} from "../library/SettingsUpdater.sol";
 import {SettingsValidators} from "../library/SettingsValidators.sol";
-import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {IIFAsset} from "../../fassetToken/interfaces/IIFAsset.sol";
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
-import {IIFAsset} from "../../fassetToken/interfaces/IIFAsset.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {IUpgradableProxy} from "../../utils/interfaces/IUpgradableProxy.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
 
 
 contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISettingsManagement {
     using SafeCast for uint256;
-    using SafePct for *;
+    using SafePct for uint256;
 
     struct UpdaterState {
         mapping (bytes4 => uint256) lastUpdate;
@@ -252,24 +251,6 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         emit SettingChanged("lotSizeAMG", _value);
     }
 
-    function setMinUnderlyingBackingBips(uint256 _value)
-        external
-        onlyAssetManagerController
-        rateLimited
-    {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        // validate
-        // huge lot size increase is very dangerous, because it breaks redemption
-        // (converts all tickets to dust)
-        require(_value > 0, "cannot be zero");
-        require(_value <= SafePct.MAX_BIPS, "must be below 1");
-        require(_value <= settings.minUnderlyingBackingBIPS * 2, "increase too big");
-        require(_value >= settings.minUnderlyingBackingBIPS / 2, "decrease too big");
-        // update
-        settings.minUnderlyingBackingBIPS = _value.toUint16();
-        emit SettingChanged("minUnderlyingBackingBIPS", _value);
-    }
-
     function setMaxTrustedPriceAgeSeconds(uint256 _value)
         external
         onlyAssetManagerController
@@ -317,28 +298,22 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         emit SettingChanged("redemptionFeeBIPS", _value);
     }
 
-    function setRedemptionDefaultFactorBips(uint256 _vaultFactor, uint256 _poolFactor)
+    function setRedemptionDefaultFactorVaultCollateralBIPS(uint256 _value)
         external
         onlyAssetManagerController
         rateLimited
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
-        require(_vaultFactor + _poolFactor > SafePct.MAX_BIPS,
+        require(_value > SafePct.MAX_BIPS,
             "bips value too low");
-        require(_vaultFactor <= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(12000) + 1000,
+        require(_value <= uint256(settings.redemptionDefaultFactorVaultCollateralBIPS).mulBips(12000) + 1000,
             "fee increase too big");
-        require(_vaultFactor >= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(8333),
-            "fee decrease too big");
-        require(_poolFactor <= settings.redemptionDefaultFactorPoolBIPS.mulBips(12000) + 1000,
-            "fee increase too big");
-        require(_poolFactor >= settings.redemptionDefaultFactorPoolBIPS.mulBips(8333),
+        require(_value >= uint256(settings.redemptionDefaultFactorVaultCollateralBIPS).mulBips(8333),
             "fee decrease too big");
         // update
-        settings.redemptionDefaultFactorVaultCollateralBIPS = _vaultFactor.toUint32();
-        emit SettingChanged("redemptionDefaultFactorVaultCollateralBIPS", _vaultFactor);
-        settings.redemptionDefaultFactorPoolBIPS = _poolFactor.toUint32();
-        emit SettingChanged("redemptionDefaultFactorPoolBIPS", _poolFactor);
+        settings.redemptionDefaultFactorVaultCollateralBIPS = _value.toUint32();
+        emit SettingChanged("redemptionDefaultFactorVaultCollateralBIPS", _value);
     }
 
     function setConfirmationByOthersAfterSeconds(uint256 _value)

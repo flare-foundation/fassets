@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+// solhint-disable gas-custom-errors
+
+pragma solidity ^0.8.27;
 
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
-import {IIAgentVault} from "../../agentVault/interfaces/IIAgentVault.sol";
-import {IICollateralPool} from "../../collateralPool/interfaces/IICollateralPool.sol";
 import {IIFAsset} from "../../fassetToken/interfaces/IIFAsset.sol";
 
 contract AssetManagerMock {
@@ -122,17 +122,6 @@ contract AssetManagerMock {
 
     function getAgentMinPoolCollateralRatioBIPS(address /* _agentVault */) external view returns (uint256) {
         return minPoolCollateralRatioBIPS;
-    }
-
-    function transferFeeMillionths() public pure returns (uint256) {
-        return 200;
-    }
-
-    function fassetTransferFeePaid(uint256 _fee)
-        external
-    {
-        // TransferFeeTracking.Data storage data = _getTransferFeeData();
-        // data.addFees(_fee);
     }
 
     /////////////////////////////////////////////////////////////////////////////

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+// solhint-disable gas-custom-errors
+
+pragma solidity ^0.8.27;
 
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -8,7 +10,7 @@ import {IPriceChangeEmitter} from "../interfaces/IPriceChangeEmitter.sol";
 
 
 contract FakePriceReader is IPriceReader, IPriceChangeEmitter, IERC165 {
-    using SafeCast for *;
+    using SafeCast for uint256;
 
     struct PricingData {
         uint8 decimals;
@@ -61,7 +63,6 @@ contract FakePriceReader is IPriceReader, IPriceChangeEmitter, IERC165 {
         external
         onlyDataProvider
     {
-        emit PriceEpochFinalized(address(0), 0);
         emit PricesPublished(0);
     }
 

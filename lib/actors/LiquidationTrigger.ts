@@ -1,10 +1,9 @@
-import { time } from "@openzeppelin/test-helpers";
 import { MintingExecuted, SelfMint } from "../../typechain-truffle/IIAssetManager";
 import { TrackedAgentState } from "../state/TrackedAgentState";
 import { TrackedState } from "../state/TrackedState";
 import { EvmEventArgs } from "../utils/events/IEvmEvents";
 import { ScopedRunner } from "../utils/events/ScopedRunner";
-import { expectErrors } from "../utils/helpers";
+import { expectErrors, latestBlockTimestamp, toBN } from "../utils/helpers";
 import { ActorBase } from "./ActorBase";
 
 export class LiquidationTrigger extends ActorBase {
@@ -25,11 +24,13 @@ export class LiquidationTrigger extends ActorBase {
         this.assetManagerEvent('SelfMint').subscribe(args => this.handleMintingExecuted(args));
     }
 
-    async checkAllAgentsForLiquidation() {
-        for (const agent of this.state.agents.values()) {
-            await this.checkAgentForLiquidation(agent)
-                .catch(e => expectErrors(e, ["cannot stop liquidation"]));
-        }
+    checkAllAgentsForLiquidation() {
+        this.runner.startThread(async (scope) => {
+            for (const agent of this.state.agents.values()) {
+                await this.checkAgentForLiquidation(agent)
+                    .catch(e => expectErrors(e, ["cannot stop liquidation"]));
+            }
+        });
     }
 
     handleMintingExecuted(args: EvmEventArgs<MintingExecuted> | EvmEventArgs<SelfMint>) {
@@ -42,7 +43,7 @@ export class LiquidationTrigger extends ActorBase {
     }
 
     private async checkAgentForLiquidation(agent: TrackedAgentState) {
-        const timestamp = await time.latest();
+        const timestamp = toBN(await latestBlockTimestamp());
         const newStatus = agent.possibleLiquidationTransition(timestamp);
         if (newStatus > agent.status) {
             await this.context.assetManager.startLiquidation(agent.address, { from: this.address });

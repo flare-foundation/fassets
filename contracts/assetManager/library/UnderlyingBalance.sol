@@ -1,53 +1,19 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {IFdcVerification} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
-import {MathUtils} from "../../utils/library/MathUtils.sol";
-import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
-import {Agents} from "./Agents.sol";
 import {Agent} from "./data/Agent.sol";
 import {Liquidation} from "./Liquidation.sol";
-import {TransactionAttestation} from "./TransactionAttestation.sol";
-import {PaymentConfirmations} from "./data/PaymentConfirmations.sol";
-import {IFdcVerification, IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
-import {PaymentReference} from "../../assetManager/library/data/PaymentReference.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {Globals} from "./Globals.sol";
 
 
 library UnderlyingBalance {
-    using SafeMath for uint256;
     using SafeCast for *;
-    using SafePct for *;
-    using PaymentConfirmations for PaymentConfirmations.State;
+    using SafePct for uint256;
     using Agent for Agent.State;
-
-    function confirmTopupPayment(
-        IPayment.Proof calldata _payment,
-        address _agentVault
-    )
-        internal
-    {
-        Agent.State storage agent = Agent.get(_agentVault);
-        Agents.requireAgentVaultOwner(_agentVault);
-        AssetManagerState.State storage state = AssetManagerState.get();
-        TransactionAttestation.verifyPaymentSuccess(_payment);
-        require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
-            "not underlying address");
-        require(_payment.data.responseBody.standardPaymentReference == PaymentReference.topup(_agentVault),
-            "not a topup payment");
-        require(_payment.data.responseBody.blockNumber >= agent.underlyingBlockAtCreation,
-            "topup before agent created");
-        state.paymentConfirmations.confirmIncomingPayment(_payment);
-        uint256 amountUBA = SafeCast.toUint256(_payment.data.responseBody.receivedAmount);
-        increaseBalance(agent, amountUBA.toUint128());
-        emit IAssetManagerEvents.UnderlyingBalanceToppedUp(_agentVault, _payment.data.requestBody.transactionId,
-            amountUBA);
-    }
 
     function updateBalance(
         Agent.State storage _agent,
@@ -84,7 +50,6 @@ library UnderlyingBalance {
         returns (uint256)
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        uint256 backedUBA = uint256(_agent.mintedAMG + _agent.redeemingAMG) * settings.assetMintingGranularityUBA;
-        return backedUBA.mulBips(settings.minUnderlyingBackingBIPS);
+        return uint256(_agent.mintedAMG + _agent.redeemingAMG) * settings.assetMintingGranularityUBA;
     }
 }

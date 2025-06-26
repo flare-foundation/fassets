@@ -1,16 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {LibDiamond} from "../../diamond/library/LibDiamond.sol";
-import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
-import {CoreVault} from "../library/CoreVault.sol";
-import {AssetManagerBase} from "./AssetManagerBase.sol";
-import {ICoreVault} from "../../userInterfaces/ICoreVault.sol";
 import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
-import {Agent} from "../library/data/Agent.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
 import {Conversion} from "../library/Conversion.sol";
-
+import {CoreVault} from "../library/CoreVault.sol";
+import {Agent} from "../library/data/Agent.sol";
+import {ICoreVault} from "../../userInterfaces/ICoreVault.sol";
 
 
 contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {

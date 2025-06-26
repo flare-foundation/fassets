@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import {IFdcVerification, IPayment, IBalanceDecreasingTransaction, IConfirmedBlockHeightExists,
         IReferencedPaymentNonexistence, IAddressValidity}
     from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
-import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {Globals} from "./Globals.sol";
 import {PaymentConfirmations} from "./data/PaymentConfirmations.sol";
