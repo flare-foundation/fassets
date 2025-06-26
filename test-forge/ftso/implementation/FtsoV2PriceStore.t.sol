@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 import {Test} from "forge-std/Test.sol";
-import {FtsoV2PriceStore, IPricePublisher} from "../contracts/ftso/implementation/FtsoV2PriceStore.sol";
+import {FtsoV2PriceStore, IPricePublisher} from "../../../contracts/ftso/implementation/FtsoV2PriceStore.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 import {IRelay} from "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
 
@@ -29,7 +29,6 @@ contract FtsoV2PriceStoreTest is Test {
 
     bytes32[] private leaves = new bytes21[](4);
 
-    // Add these mappings to your test contract to track previous timestamps:
     mapping(string => uint256) private previousTimestamps;
     mapping(string => uint256) private previousTrustedTimestamps;
 
@@ -88,7 +87,6 @@ contract FtsoV2PriceStoreTest is Test {
                 decimals: trustedDecimals[i]
             });
         }
-        // set trusted providers
         address[] memory trustedProviders = new address[](1);
         trustedProviders[0] = makeAddr("trustedProvider");
         vm.prank(governance);
@@ -99,15 +97,12 @@ contract FtsoV2PriceStoreTest is Test {
         votingRoundId = uint32(bound(votingRoundId, ftsoV2PriceStore.lastPublishedVotingRoundId() + 1,
             type(uint32).max));
 
-        // Advance time to after submission window
         uint256 endTimestamp = _getEndTimestamp(votingRoundId);
         vm.warp(endTimestamp + ftsoV2PriceStore.submitTrustedPricesWindowSeconds() + 1);
 
-        // Create values and decimals arrays
         uint32[] memory values = new uint32[](numFeeds);
         int8[] memory decimals = new int8[](numFeeds);
 
-        // Create FeedWithProof array
         IPricePublisher.FeedWithProof[] memory proofs = new IPricePublisher.FeedWithProof[](numFeeds);
         for (uint256 i = 0; i < numFeeds; i++) {
             values[i] = uint32(bound(valueSeeds[i], 0, type(uint32).max/2));
@@ -206,8 +201,8 @@ contract FtsoV2PriceStoreTest is Test {
         proof = new bytes32[](2);
 
         if (_index == 0) {
-            proof[0] = leaves[1]; // sibling
-            proof[1] = _hashPair(leaves[2], leaves[3]); // uncle hash
+            proof[0] = leaves[1];
+            proof[1] = _hashPair(leaves[2], leaves[3]);
         } else if (_index == 1) {
             proof[0] = leaves[0];
             proof[1] = _hashPair(leaves[2], leaves[3]);

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
-import {Test,console} from "forge-std/Test.sol";
-import {FtsoV2PriceStore, IPricePublisher} from "../../contracts/ftso/implementation/FtsoV2PriceStore.sol";
+import {Test} from "forge-std/Test.sol";
+import {FtsoV2PriceStore, IPricePublisher} from "../../../contracts/ftso/implementation/FtsoV2PriceStore.sol";
 import {IRelay} from "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
 
 contract FtsoV2PriceStoreHandler is Test {
@@ -34,7 +34,7 @@ contract FtsoV2PriceStoreHandler is Test {
         votingEpochDurationSeconds = _votingEpochDurationSeconds;
         ftsoProtocolId = _ftsoProtocolId;
 
-        // Initialize fixed feeds for testing
+        // initialize fixed feeds for testing
         fixedFeedIds = new bytes21[](4);
         fixedSymbols = new string[](4);
         fixedTrustedDecimals = new int8[](4);
@@ -47,7 +47,7 @@ contract FtsoV2PriceStoreHandler is Test {
         fixedTrustedDecimals[2] = 4;
         fixedTrustedDecimals[3] = -12;
 
-        // Initialize feeds
+        // initialize feeds
         vm.prank(governance);
         ftsoV2PriceStore.updateSettings(fixedFeedIds, fixedSymbols, fixedTrustedDecimals, 1000);
     }
@@ -55,13 +55,10 @@ contract FtsoV2PriceStoreHandler is Test {
     function submitTrustedPrices(
         uint32[4] memory values
     ) public {
-        console.log("sadasdas");
         uint8 numFeeds = 4;
         uint32 votingRoundId = _getPreviousVotingEpochId();
         uint256 startTimestamp = _getEndTimestamp(votingRoundId);
         vm.warp(startTimestamp + 1);
-        console.log("round", votingRoundId);
-        console.log("startTimestamp", startTimestamp);
 
         IPricePublisher.TrustedProviderFeed[] memory trustedFeeds =
             new IPricePublisher.TrustedProviderFeed[](numFeeds);

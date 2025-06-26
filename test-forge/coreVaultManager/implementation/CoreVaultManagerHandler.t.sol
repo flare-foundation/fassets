@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity 0.8.27;
 
 import {Test} from "forge-std/Test.sol";
-import {CoreVaultManager} from "../../contracts/coreVaultManager/implementation/CoreVaultManager.sol";
+import {CoreVaultManager} from "../../../contracts/coreVaultManager/implementation/CoreVaultManager.sol";
 import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {IPaymentVerification} from "@flarenetwork/flare-periphery-contracts/flare/IPaymentVerification.sol";
 
@@ -33,18 +33,15 @@ contract CoreVaultManagerHandler is Test {
         coreVaultAddress = _coreVaultAddress;
         coreVaultAddressHash = keccak256(bytes(_coreVaultAddress));
 
-        // Add a default allowed destination address
         allowedDestinations.push("destination1");
         vm.prank(governance);
         coreVaultManager.addAllowedDestinationAddresses(allowedDestinations);
 
-        // Add this handler as a triggering account
         address[] memory triggeringAccounts = new address[](1);
         triggeringAccounts[0] = address(this);
         vm.prank(governance);
         coreVaultManager.addTriggeringAccounts(triggeringAccounts);
 
-        // add preimage hashes
         bytes32[] memory preimageHashes = new bytes32[](10);
         for (uint256 i = 0; i < preimageHashes.length; i++) {
             preimageHashes[i] = keccak256(abi.encodePacked("preimage", i));
@@ -89,53 +86,45 @@ contract CoreVaultManagerHandler is Test {
         _destIndex = bound(_destIndex, 0, allowedDestinations.length - 1);
         string memory destination = allowedDestinations[_destIndex];
 
-        // Ensure sufficient funds
         (, , , uint128 fee) = coreVaultManager.getSettings();
         uint256 totalRequestAmount = coreVaultManager.totalRequestAmountWithFee() + _amount + fee;
         if (totalRequestAmount > coreVaultManager.availableFunds() + coreVaultManager.escrowedFunds()) {
-            // Simulate adding funds via confirmPayment
             vm.warp(block.timestamp + 1);
             confirmPayment(uint128(totalRequestAmount * 2), keccak256(abi.encodePacked(block.timestamp)));
         }
 
-        // Call as assetManager
         vm.prank(assetManager);
         coreVaultManager.requestTransferFromCoreVault(destination, _paymentReference, _amount, _cancelable);
     }
 
     function triggerInstructions() public {
-        // Ensure there are transfer requests
         if (
             coreVaultManager.getCancelableTransferRequests().length == 0 &&
             coreVaultManager.getNonCancelableTransferRequests().length == 0
         ) {
-            // Create a transfer request
             vm.warp(block.timestamp + 1);
             requestTransferFromCoreVault(0, keccak256(abi.encodePacked(block.timestamp)), 1000, true);
         }
 
         uint128 preAvailable = coreVaultManager.availableFunds();
 
-        // Call as triggering account
         vm.prank(address(this));
         coreVaultManager.triggerInstructions();
 
         uint128 postAvailable = coreVaultManager.availableFunds();
         uint128 fundsMoved = preAvailable - postAvailable;
-        availableFunds -= fundsMoved; // Reduce available funds
+        availableFunds -= fundsMoved;
     }
 
     function setEscrowsFinished(bytes32 _preimageHash) public {
         CoreVaultManager.Escrow[] memory escrows = coreVaultManager.getUnprocessedEscrows();
         if (escrows.length == 0) {
-            // Create an escrow via triggerInstructions
             triggerInstructions();
             escrows = coreVaultManager.getUnprocessedEscrows();
         }
 
         CoreVaultManager.Escrow memory escrow = coreVaultManager.getEscrowByPreimageHash(_preimageHash);
 
-        // Optionally warp time to expire escrow
         if (block.timestamp < escrow.expiryTs) {
             vm.warp(escrow.expiryTs + 1);
         }
