@@ -399,6 +399,32 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         emit CPFeeDebtPaid(msg.sender, _fAssets);
     }
 
+    // support for liquidation / redmption default payments
+    // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
+    function payout(
+        address _recipient,
+        uint256 _amount,
+        uint256 _agentResponsibilityWei
+    )
+        external
+        onlyAssetManager
+        nonReentrant
+    {
+        // slash agent vault's pool tokens worth _agentResponsibilityWei in FLR (or less if there is not enough)
+        uint256 agentTokenBalance = token.balanceOf(agentVault);
+        uint256 maxSlashedTokens = totalCollateral > 0 ?
+             token.totalSupply().mulDiv(_agentResponsibilityWei, totalCollateral) : agentTokenBalance;
+        uint256 slashedTokens = Math.min(maxSlashedTokens, agentTokenBalance);
+        if (slashedTokens > 0) {
+            uint256 debtFAssetFeeShare = _tokensToVirtualFeeShare(slashedTokens);
+            _deleteFAssetFeeDebt(agentVault, debtFAssetFeeShare);
+            token.burn(agentVault, slashedTokens, true);
+        }
+        // transfer collateral to the recipient
+        _transferWNatTo(_recipient, _amount);
+        emit CPPaidOut(_recipient, _amount, slashedTokens);
+    }
+
     function _collateralToTokenShare(
         uint256 _collateral
     )
@@ -742,7 +768,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Methods to allow for liquidation/destruction of the pool by AssetManager or agent
+    // Methods to allow for management and destruction of the pool
 
     function destroy(address payable _recipient)
         external
@@ -762,31 +788,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         if (untrackedFAsset > 0) {
             fAsset.safeTransfer(_recipient, untrackedFAsset);
         }
-    }
-
-    // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
-    function payout(
-        address _recipient,
-        uint256 _amount,
-        uint256 _agentResponsibilityWei
-    )
-        external
-        onlyAssetManager
-        nonReentrant
-    {
-        // slash agent vault's pool tokens worth _agentResponsibilityWei in FLR (or less if there is not enough)
-        uint256 agentTokenBalance = token.balanceOf(agentVault);
-        uint256 maxSlashedTokens = totalCollateral > 0 ?
-             token.totalSupply().mulDiv(_agentResponsibilityWei, totalCollateral) : agentTokenBalance;
-        uint256 slashedTokens = Math.min(maxSlashedTokens, agentTokenBalance);
-        if (slashedTokens > 0) {
-            uint256 debtFAssetFeeShare = _tokensToVirtualFeeShare(slashedTokens);
-            _deleteFAssetFeeDebt(agentVault, debtFAssetFeeShare);
-            token.burn(agentVault, slashedTokens, true);
-        }
-        // transfer collateral to the recipient
-        _transferWNatTo(_recipient, _amount);
-        emit CPPaidOut(_recipient, _amount, slashedTokens);
     }
 
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
