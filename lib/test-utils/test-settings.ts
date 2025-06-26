@@ -1,4 +1,3 @@
-import { time } from "./test-helpers";
 import {
     AddressUpdaterMockInstance,
     AgentOwnerRegistryInstance,
@@ -21,13 +20,14 @@ import { ChainInfo } from "../fasset/ChainInfo";
 import { PaymentReference } from "../fasset/PaymentReference";
 import { AttestationHelper } from "../underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../utils/events/truffle";
-import { BNish, DAYS, HOURS, MAX_BIPS, MINUTES, requireNotNull, toBIPS, toBNExp, WEEKS, ZERO_ADDRESS } from "../utils/helpers";
+import { BNish, DAYS, HOURS, MINUTES, requireNotNull, toBIPS, toBNExp, WEEKS, ZERO_ADDRESS } from "../utils/helpers";
 import { web3DeepNormalize } from "../utils/web3normalize";
 import { CoreVaultManagerSettings } from "./actors/MockCoreVaultBot";
 import { testChainInfo, TestChainInfo } from "./actors/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";
 import { AssetManagerInitSettings, waitForTimelock } from "./fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "./fasset/MockChain";
+import { time } from "./test-helpers";
 
 const AgentVault = artifacts.require("AgentVault");
 const WNat = artifacts.require("WNatMock");

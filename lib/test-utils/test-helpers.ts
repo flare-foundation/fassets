@@ -128,8 +128,8 @@ export function ether(value: BN | number | string): BN {
 export async function expectRevert(promise: Promise<unknown>, message: string): Promise<void> {
     try {
         await promise;
-    } catch (error: any) {
-        const actualMessage: string = error?.message ?? "";
+    } catch (error) {
+        const actualMessage: string = (error as Error)?.message ?? "";
         if (!actualMessage.includes(message)) {
             // this gives nicer error message
             const revertMessage = actualMessage.replace(/^VM Exception while processing transaction: reverted with reason string '|'$/g, "");
@@ -256,11 +256,11 @@ function matchEventListArgs<T extends Truffle.AnyEvent>(events: TruffleExtractEv
 
 function matchEventArgs<T extends Truffle.AnyEvent>(event: TruffleExtractEvent<T, T["name"]>, eventArgs: Partial<StringForBN<T["args"]>>) {
     for (const [name, expected] of Object.entries(eventArgs)) {
-        const actual = event.args[name];
+        const actual = event.args[name];        // eslint-disable-line @typescript-eslint/no-unsafe-assignment
         if (actual === undefined) {
             assert.fail(`Event argument '${name}' not found`);
         }
-        const [expectedS, actualS] = web3DeepNormalize([expected, actual]);
+        const [expectedS, actualS] = web3DeepNormalize([expected, actual]);     // eslint-disable-line @typescript-eslint/no-unsafe-assignment
         assert.deepStrictEqual(actualS, expectedS, `expected event argument '${name}' to have value ${expectedS} but got ${actualS}`);
     }
 }

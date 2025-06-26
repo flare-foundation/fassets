@@ -195,7 +195,7 @@ export class EventExecutionQueue {
             try {
                 item();
             } catch (e) {
-                this.logger?.log(`!!! HANDLER ERROR ${filterStackTrace(e)}`);
+                this.logger?.log(`!!! HANDLER ERROR ${filterStackTrace(e as Error)}`);
             }
         }
     }

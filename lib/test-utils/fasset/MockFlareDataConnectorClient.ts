@@ -192,7 +192,7 @@ export class MockFlareDataConnectorClient implements IFlareDataConnectorClient {
                 sourceId: parsedRequest.sourceId,
                 votingRound: '0',                   // must be 0 for hash, later set to correct value
                 lowestUsedTimestamp: String(0),     // no window limit in mock
-                requestBody: parsedRequest.requestBody,
+                requestBody: parsedRequest.requestBody,     // eslint-disable-line @typescript-eslint/no-unsafe-assignment
                 responseBody: responseBody,
             };
         } catch (e) {

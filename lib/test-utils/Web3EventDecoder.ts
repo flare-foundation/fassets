@@ -19,6 +19,7 @@ export class Web3EventDecoder extends EventFormatter {
             this.contractNames.set(contract.address, contractName);
             for (const item of contract.abi) {
                 if (item.type === 'event' && (filter == null || filter.includes(item.name!))) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
                     this.eventTypes.set((item as any).signature, item);
                 }
             }
@@ -32,13 +33,13 @@ export class Web3EventDecoder extends EventFormatter {
             return null;
         // based on web3 docs, first topic has to be removed for non-anonymous events
         const topics = evtType.anonymous ? event.topics : event.topics.slice(1);
-        const decodedArgs: any = web3.eth.abi.decodeLog(evtType.inputs!, event.data, topics);
+        const decodedArgs: Record<string, unknown> = web3.eth.abi.decodeLog(evtType.inputs!, event.data, topics);
         // convert parameters based on type (BN for now)
         evtType.inputs!.forEach((arg, i) => {
             if (/^u?int\d*$/.test(arg.type)) {
-                decodedArgs[i] = decodedArgs[arg.name] = toBN(decodedArgs[i]);
+                decodedArgs[i] = decodedArgs[arg.name] = toBN(decodedArgs[i] as string);
             } else if (/^u?int\d*\[\]$/.test(arg.type)) {
-                decodedArgs[i] = decodedArgs[arg.name] = decodedArgs[i].map(toBN);
+                decodedArgs[i] = decodedArgs[arg.name] = (decodedArgs[i] as string[]).map(toBN);
             }
         });
         return {
@@ -55,10 +56,12 @@ export class Web3EventDecoder extends EventFormatter {
         };
     }
 
-    decodeEvents(tx: Truffle.TransactionResponse<any> | TransactionReceipt): EvmEvent[] {
+    decodeEvents(tx: Truffle.TransactionResponse<Truffle.AnyEvent> | TransactionReceipt): EvmEvent[] {
         // for truffle, must decode tx.receipt.rawLogs to also obtain logs from indirectly called contracts
         // for plain web3, just decode receipt.logs
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const receipt: TransactionReceipt = 'receipt' in tx ? tx.receipt : tx;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         const rawLogs: RawEvent[] = 'rawLogs' in receipt ? (receipt as any).rawLogs : receipt.logs;
         // decode all events
         return rawLogs.map(raw => this.decodeEvent(raw)).filter(isNotNull);
@@ -66,28 +69,30 @@ export class Web3EventDecoder extends EventFormatter {
 
     findEvent<E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N): TruffleExtractEvent<E, N> | undefined {
         const logs = this.decodeEvents(response);
-        return logs.find(e => e.event === name) as any;
+        return logs.find(e => e.event === name) as TruffleExtractEvent<E, N> | undefined;
     }
 
-    findEventFrom<C extends Truffle.ContractInstance, E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<any>, contract: ContractWithEvents<C, E>, eventName: N): TruffleExtractEvent<E, N> | undefined {
+    findEventFrom<C extends Truffle.ContractInstance, E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<Truffle.AnyEvent>, contract: ContractWithEvents<C, E>, eventName: N): TruffleExtractEvent<E, N> | undefined {
         const logs = this.decodeEvents(response);
         if (!this.contractNames.has(contract.address)) throw new Error(`Contract at ${contract.address} not registered`);
-        return logs.find(e => e.address === contract.address && e.event === eventName) as any;
+        return logs.find(e => e.address === contract.address && e.event === eventName) as TruffleExtractEvent<E, N> | undefined;
     }
 
     filterEvents<E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N): TruffleExtractEvent<E, N>[] {
         const logs = this.decodeEvents(response);
-        return logs.filter(e => e.event === name) as any;
+        return logs.filter(e => e.event === name) as unknown[] as TruffleExtractEvent<E, N>[];
     }
 
-    filterEventsFrom<C extends Truffle.ContractInstance, E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<any>, contract: ContractWithEvents<C, E>, eventName: N): TruffleExtractEvent<E, N>[] {
+    filterEventsFrom<C extends Truffle.ContractInstance, E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<Truffle.AnyEvent>, contract: ContractWithEvents<C, E>, eventName: N): TruffleExtractEvent<E, N>[] {
         const logs = this.decodeEvents(response);
         if (!this.contractNames.has(contract.address)) throw new Error(`Contract at ${contract.address} not registered`);
-        return logs.filter(e => e.address === contract.address && e.event === eventName) as any;
+        return logs.filter(e => e.address === contract.address && e.event === eventName) as unknown[] as TruffleExtractEvent<E, N>[];
     }
 }
 
-export function findRequiredEventFrom<C extends Truffle.ContractInstance, E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<any>, contract: ContractWithEvents<C, E>, name: N): TruffleExtractEvent<E, N> {
+export function findRequiredEventFrom<C extends Truffle.ContractInstance, E extends EventSelector, N extends E['name']>(
+    response: Truffle.TransactionResponse<Truffle.AnyEvent>, contract: ContractWithEvents<C, E>, name: N
+): TruffleExtractEvent<E, N> {
     const eventDecoder = new Web3EventDecoder({ contract });
     const event = eventDecoder.findEventFrom(response, contract, name);
     if (event == null) {
@@ -96,6 +101,9 @@ export function findRequiredEventFrom<C extends Truffle.ContractInstance, E exte
     return event;
 }
 
-export function requiredEventArgsFrom<C extends Truffle.ContractInstance, E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<any>, contract: ContractWithEvents<C, E>, name: N): TruffleExtractEvent<E, N>['args'] {
+export function requiredEventArgsFrom<C extends Truffle.ContractInstance, E extends EventSelector, N extends E['name']>(
+    response: Truffle.TransactionResponse<Truffle.AnyEvent>, contract: ContractWithEvents<C, E>, name: N
+): TruffleExtractEvent<E, N>['args'] {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return findRequiredEventFrom(response, contract, name).args;
 }

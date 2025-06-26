@@ -1,19 +1,19 @@
 // same as Trufle.AnyEvent
 export interface EventSelector {
     name: string;
-    args: any;
+    args: any;  // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 export interface BaseEvent {
     address: string;
     event: string;
-    args: any;
+    args: any;  // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 export interface EvmEvent {
     address: string;
     event: string;
-    args: any;
+    args: any;  // eslint-disable-line @typescript-eslint/no-explicit-any
     blockHash: string;
     blockNumber: number;
     logIndex: number;

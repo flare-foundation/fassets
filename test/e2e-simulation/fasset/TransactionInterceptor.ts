@@ -9,6 +9,8 @@ import { MultiStateLock } from "./MultiStateLock";
 
 export type EventHandler = (event: EvmEvent) => void;
 
+type AnyFunction = (...args: any[]) => any;
+
 export class TransactionInterceptor {
     logger?: ILogger;
     eventHandlers: Map<string, EventHandler> = new Map();
@@ -188,7 +190,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
         }
     }
 
-    private callMethod(contract: Truffle.ContractInstance, name: string, originalMethod: Function, args: unknown[], methodAbi: AbiItem) {
+    private callMethod(contract: Truffle.ContractInstance, name: string, originalMethod: AnyFunction, args: unknown[], methodAbi: AbiItem) {
         const txLog: string[] = [];
         const callStartTime = currentRealTime();
         // log method call
@@ -222,7 +224,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
         return promise;
     }
 
-    private async directCall(originalMethod: Function, args: unknown[], methodAbi: AbiItem, txLog: string[]) {
+    private async directCall(originalMethod: AnyFunction, args: unknown[], methodAbi: AbiItem, txLog: string[]) {
         if (this.lock && !methodAbi.constant) {
             await this.lock.acquire("execute");
         }
@@ -235,7 +237,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
         }
     }
 
-    private async instrumentedCall(originalMethod: Function, args: unknown[], methodAbi: AbiItem) {
+    private async instrumentedCall(originalMethod: AnyFunction, args: unknown[], methodAbi: AbiItem) {
         const inputLen = methodAbi.inputs?.length ?? 0;
         const options = (args[inputLen] ?? {}) as Truffle.TransactionDetails;
         const from = options.from ?? this.defaultAccount;
@@ -248,6 +250,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
         } catch (e: any) {
             if (e.constructor?.name === 'StatusError') {
                 // using static call should throw correct exception
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-call
                 await (originalMethod as any).call(...fixedArgs);
             }
             throw e; // rethrow e if it was acceptable error or if method.call didn't throw

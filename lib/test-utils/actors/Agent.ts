@@ -5,7 +5,7 @@ import { AssetManagerEvents } from "../../fasset/IAssetContext";
 import { PaymentReference } from "../../fasset/PaymentReference";
 import { IBlockChainWallet } from "../../underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../utils/events/common";
-import { checkEventNotEmited, optionalEventArgs, filterEvents, requiredEventArgs } from "../../utils/events/truffle";
+import { checkEventNotEmited, filterEvents, optionalEventArgs, requiredEventArgs } from "../../utils/events/truffle";
 import { BN_ZERO, BNish, MAX_BIPS, randomAddress, requireNotNull, toBIPS, toBN, toBNExp, toWei } from "../../utils/helpers";
 import { web3DeepNormalize } from "../../utils/web3normalize";
 import { Approximation, assertApproximateMatch } from "../approximation";
@@ -624,7 +624,7 @@ export class Agent extends AssetContextClient {
             check = { ...this.lastAgentInfoCheck, ...check };
         }
         for (const key of Object.keys(check) as Array<keyof CheckAgentInfo>) {
-            let value: any;
+            let value: BN | string | boolean;
             if (key === 'actualUnderlyingBalance') {
                 value = await this.chain.getBalance(this.underlyingAddress);
             } else {
@@ -632,6 +632,7 @@ export class Agent extends AssetContextClient {
             }
             const expected = check[key];
             if (expected instanceof Approximation) {
+                assert(typeof value !== "boolean");
                 expected.assertMatches(value, `Agent info mismatch at '${key}'`);
             } else {
                 assertWeb3Equal(value, expected, `Agent info mismatch at '${key}'`);

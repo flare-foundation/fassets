@@ -3,7 +3,7 @@ import { waitForTimelock } from "../../../lib/test-utils/fasset/CreateAssetManag
 import { expectEvent, expectRevert } from "../../../lib/test-utils/test-helpers";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { erc165InterfaceId, ZERO_ADDRESS } from "../../../lib/utils/helpers";
-import { IERC165Contract, WhitelistInstance } from "../../../typechain-truffle";
+import { WhitelistInstance } from "../../../typechain-truffle";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettingsMock');
@@ -146,7 +146,7 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, acc
 
     describe("ERC-165 interface identification for Agent Vault", () => {
         it("should properly respond to supportsInterface", async () => {
-            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
             const IWhitelist = artifacts.require("IWhitelist");
             const iERC165 = await IERC165.at(whitelist.address);
             const iWhitelist = await IWhitelist.at(whitelist.address);

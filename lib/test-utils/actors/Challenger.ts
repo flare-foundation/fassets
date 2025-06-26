@@ -1,7 +1,8 @@
-import { EventArgs } from "../../utils/events/common";
-import { checkEventNotEmited, optionalEventArgs, findRequiredEvent, requiredEventArgs } from "../../utils/events/truffle";
-import { BNish, MAX_BIPS, toBN } from "../../utils/helpers";
+import { BalanceDecreasingTransaction } from "@flarenetwork/state-connector-protocol";
 import { FullLiquidationStarted, RedemptionDefault, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/IIAssetManager";
+import { EventArgs } from "../../utils/events/common";
+import { checkEventNotEmited, findRequiredEvent, requiredEventArgs } from "../../utils/events/truffle";
+import { BNish, MAX_BIPS, toBN } from "../../utils/helpers";
 import { Agent } from "./Agent";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 
@@ -36,7 +37,7 @@ export class Challenger extends AssetContextClient {
     }
 
     async freeBalanceNegativeChallenge(agent: Agent, txHashes: string[]): Promise<EventArgs<FullLiquidationStarted>> {
-        const proofs: any[] = [];
+        const proofs: BalanceDecreasingTransaction.Proof[] = [];
         for (const txHash of txHashes) {
             proofs.push(await this.attestationProvider.proveBalanceDecreasingTransaction(txHash, agent.underlyingAddress));
         }

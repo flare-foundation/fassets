@@ -1,4 +1,10 @@
 import {
+    AddressUpdaterMockInstance, AgentVaultFactoryInstance, CollateralPoolFactoryInstance,
+    CollateralPoolTokenFactoryInstance, ERC20MockInstance, FdcHubMockInstance, FdcVerificationMockInstance,
+    FtsoV2PriceStoreMockInstance, GovernanceSettingsMockInstance,
+    IIAssetManagerControllerInstance, IPriceReaderInstance, RelayMockInstance, WNatMockInstance
+} from "../../../typechain-truffle";
+import {
     AddressUpdaterEvents, AgentVaultFactoryEvents,
     CollateralPoolFactoryEvents, CollateralPoolTokenFactoryEvents, ERC20Events, FdcHubEvents,
     FdcVerificationEvents, FtsoV2PriceStoreEvents,
@@ -6,16 +12,10 @@ import {
 } from "../../fasset/IAssetContext";
 import { ContractWithEvents } from "../../utils/events/truffle";
 import { ZERO_ADDRESS } from "../../utils/helpers";
-import {
-    AddressUpdaterMockInstance, AgentVaultFactoryInstance, CollateralPoolFactoryInstance,
-    CollateralPoolTokenFactoryInstance, ERC20MockInstance, FdcHubMockInstance, FdcVerificationMockInstance,
-    FtsoV2PriceStoreMockInstance, GovernanceSettingsMockInstance,
-    IIAssetManagerControllerInstance, IPriceReaderInstance, RelayMockInstance, WNatMockInstance
-} from "../../../typechain-truffle";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../constants";
 import { newAssetManagerController } from "../fasset/CreateAssetManager";
-import { testChainInfo, TestNatInfo, testNatInfo } from "./TestChainInfo";
 import { createMockFtsoV2PriceStore } from "../test-settings";
+import { testChainInfo, TestNatInfo, testNatInfo } from "./TestChainInfo";
 
 const AgentVault = artifacts.require("AgentVault");
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');

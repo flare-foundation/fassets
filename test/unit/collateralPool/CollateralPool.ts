@@ -1,23 +1,19 @@
 import BN from "bn.js";
-import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
+import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
 import { impersonateContract, transferWithSuicide } from "../../../lib/test-utils/contract-test-helpers";
 import { calcGasCost, calculateReceivedNat } from "../../../lib/test-utils/eth";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestContracts } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
-import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { MAX_BIPS, ZERO_ADDRESS, erc165InterfaceId, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
-
 import {
     AgentVaultMockInstance,
     AssetManagerMockInstance,
     CollateralPoolInstance, CollateralPoolTokenInstance,
     DistributionToDelegatorsMockInstance,
     ERC20MockInstance,
-    FAssetInstance,
-    IERC165Contract
+    FAssetInstance
 } from "../../../typechain-truffle";
-import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
 
 function assertEqualBN(a: BN, b: BN, message?: string) {
     assert.equal(a.toString(), b.toString(), message);
@@ -1316,7 +1312,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
     describe("ERC-165 interface identification for Collateral Pool", () => {
         it("should properly respond to supportsInterface", async () => {
-            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
             const ICollateralPool = artifacts.require("ICollateralPool");
             const IICollateralPool = artifacts.require("IICollateralPool");
             const iERC165 = await IERC165.at(agentVault.address);

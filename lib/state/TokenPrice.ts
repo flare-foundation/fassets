@@ -1,11 +1,11 @@
-import { IERC20Contract, IERC20Instance, IPriceReaderInstance } from "../../typechain-truffle";
+import { IERC20Instance, IPriceReaderInstance } from "../../typechain-truffle";
 import { AMGSettings, amgToTokenWeiPrice } from "../fasset/Conversions";
 import { ERC20Events } from "../fasset/IAssetContext";
 import { ContractWithEvents } from "../utils/events/truffle";
 import { BN_ZERO, BNish, exp10, getOrCreateAsync, minBN, requireNotNull, toBN } from "../utils/helpers";
 
 const IPriceReader = artifacts.require("IPriceReader");
-const IERC20 = artifacts.require('@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20' as any) as any as IERC20Contract;
+const IERC20 = artifacts.require('@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20' as 'IERC20');
 
 export async function tokenContract(tokenAddress: string) {
     return await IERC20.at(tokenAddress) as ContractWithEvents<IERC20Instance, ERC20Events>;

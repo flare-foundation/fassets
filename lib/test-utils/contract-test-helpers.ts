@@ -44,7 +44,7 @@ export async function emptyAddressBalance(address: string, toAccount: string) {
     await stopImpersonatingContract(address);
 }
 
-export async function executeTimelockedGovernanceCall(contract: Truffle.ContractInstance, methodCall: (governance: string) => Promise<Truffle.TransactionResponse<any>>) {
+export async function executeTimelockedGovernanceCall<R extends Truffle.AnyEvent>(contract: Truffle.ContractInstance, methodCall: (governance: string) => Promise<Truffle.TransactionResponse<R>>) {
     const contractGoverned = await GovernedBase.at(contract.address);           // hack because when contract is an instance of interface, it doesn't expose methods of GovernedBase
     const eventDecoder = new Web3EventDecoder({ contract, contractGoverned });  // also needed to decode events from GovernedBase artifact
     const governanceSettings = await GovernanceSettings.at(await contractGoverned.governanceSettings());
@@ -76,6 +76,6 @@ export async function testDeployGovernanceSettings(governance: string, timelock:
 }
 
 export async function getChainId() {
-    const chainIdHex = await network.provider.send('eth_chainId', []);
+    const chainIdHex = await network.provider.send('eth_chainId', []) as string;
     return Number(chainIdHex);
 }

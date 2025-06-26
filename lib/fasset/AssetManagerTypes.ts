@@ -40,3 +40,13 @@ export type AgentSetting =
 
 type _RedemptionTicketInfo = Awaited<ReturnType<IIAssetManagerInstance['redemptionQueue']>>[0][0];
 export interface RedemptionTicketInfo extends _RedemptionTicketInfo {}
+
+// explicit conversions
+
+export function collateralClass(value: BN | number | string) {
+    return Number(value) as CollateralClass;
+}
+
+export function agentStatus(value: BN | number | string) {
+    return Number(value) as AgentStatus;
+}
