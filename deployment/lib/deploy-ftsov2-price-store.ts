@@ -67,7 +67,7 @@ export function encodeFeedIds(feedIds: IFeedId[]): string[] {
 function readFtsoV2Parameters(hre: HardhatRuntimeEnvironment): FtsoV2PriceStoreParameters {
     const networkConfig = networkConfigName(hre);
     const paramFileName = `deployment/config/${networkConfig}/ftsov2.json`;
-    return JSON.parse(readFileSync(paramFileName, { encoding: "ascii" }));
+    return JSON.parse(readFileSync(paramFileName, { encoding: "ascii" })) as FtsoV2PriceStoreParameters;
 }
 
 export async function verifyFtsoV2PriceStore(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {

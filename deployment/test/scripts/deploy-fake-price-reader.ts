@@ -23,7 +23,7 @@ async function deployFakePriceReader(contracts: FAssetContractStore) {
     // set initial prices
     const ftsoPriceReader = await IPriceReader.at(contracts.PriceReader!.address);
     for (const symbol of SUPPORTED_SYMBOLS) {
-        const { 0: price, 1: timestamp, 2: decimals } = await ftsoPriceReader.getPrice(symbol);
+        const { 0: price, 2: decimals } = await ftsoPriceReader.getPrice(symbol);
         console.log(`Setting price for ${symbol}, decimals=${decimals} price=${price}`);
         await waitFinalize(hre, deployer, () => priceReader.setDecimals(symbol, decimals, { from: deployer }));
         await waitFinalize(hre, deployer, () => priceReader.setPrice(symbol, price, { from: deployer }));
