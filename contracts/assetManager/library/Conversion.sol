@@ -86,14 +86,14 @@ library Conversion {
     }
 
     function convertLotsToUBA(
-        uint64 _lots
+        uint256 _lots
     )
         internal view
         returns (uint256)
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        // safe multiplication - all values are 64 bit
-        return uint256(_lots) * settings.lotSizeAMG * settings.assetMintingGranularityUBA;
+        // safe multiplication - all values are 64 bit (except _lots which is limited by minetd lots)
+        return _lots * settings.lotSizeAMG * settings.assetMintingGranularityUBA;
     }
 
     function convert(

@@ -135,7 +135,7 @@ library Redemptions {
         Agents.createNewMinting(_agent, _request.valueAMG);
     }
 
-    function deleteRedemptionRequest(uint64 _redemptionRequestId)
+    function deleteRedemptionRequest(uint256 _redemptionRequestId)
         internal
     {
         releaseTransferToCoreVault(_redemptionRequestId);
@@ -143,7 +143,7 @@ library Redemptions {
         delete state.redemptionRequests[_redemptionRequestId];
     }
 
-    function releaseTransferToCoreVault(uint64 _redemptionRequestId)
+    function releaseTransferToCoreVault(uint256 _redemptionRequestId)
         internal
     {
         Redemption.Request storage request = getRedemptionRequest(_redemptionRequestId);
@@ -155,25 +155,7 @@ library Redemptions {
         }
     }
 
-    function maxClosedFromAgentPerTransaction(
-        Agent.State storage _agent
-    )
-        internal view
-        returns (uint256)
-    {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        uint64 resultAMG = _agent.dustAMG;
-        uint256 maxRedeemedTickets = Globals.getSettings().maxRedeemedTickets;
-        uint64 ticketId = state.redemptionQueue.agents[_agent.vaultAddress()].firstTicketId;
-        for (uint256 i = 0; ticketId != 0 && i < maxRedeemedTickets; i++) {
-            RedemptionQueue.Ticket storage ticket = state.redemptionQueue.getTicket(ticketId);
-            resultAMG += ticket.valueAMG;
-            ticketId = ticket.nextForAgent;
-        }
-        return Conversion.convertAmgToUBA(resultAMG);
-    }
-
-    function getRedemptionRequest(uint64 _redemptionRequestId)
+    function getRedemptionRequest(uint256 _redemptionRequestId)
         internal view
         returns (Redemption.Request storage _request)
     {

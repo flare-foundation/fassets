@@ -7,25 +7,17 @@ import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {RedemptionTimeExtension} from "./data/RedemptionTimeExtension.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {Conversion} from "./Conversion.sol";
-import {Redemptions} from "./Redemptions.sol";
-import {Liquidation} from "./Liquidation.sol";
-import {TransactionAttestation} from "./TransactionAttestation.sol";
-import {RedemptionQueue} from "./data/RedemptionQueue.sol";
-import {IAddressValidity} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {Redemption} from "./data/Redemption.sol";
 import {Agent} from "./data/Agent.sol";
 import {Globals} from "./Globals.sol";
 import {Agents} from "./Agents.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
-import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {PaymentReference} from "./data/PaymentReference.sol";
-
 
 
 library RedemptionRequests {
     using SafePct for uint256;
     using SafeCast for uint256;
-    using RedemptionQueue for RedemptionQueue.State;
 
     struct AgentRedemptionData {
         address agentVault;
@@ -35,198 +27,6 @@ library RedemptionRequests {
     struct AgentRedemptionList {
         AgentRedemptionData[] items;
         uint256 length;
-    }
-
-    function redeem(
-        address _redeemer,
-        uint64 _lots,
-        string memory _redeemerUnderlyingAddress,
-        address payable _executor
-    )
-        internal
-        returns (uint256)
-    {
-        uint256 maxRedeemedTickets = Globals.getSettings().maxRedeemedTickets;
-        AgentRedemptionList memory redemptionList = AgentRedemptionList({
-            length: 0,
-            items: new AgentRedemptionData[](maxRedeemedTickets)
-        });
-        uint64 redeemedLots = 0;
-        for (uint256 i = 0; i < maxRedeemedTickets && redeemedLots < _lots; i++) {
-            // redemption queue empty?
-            if (AssetManagerState.get().redemptionQueue.firstTicketId == 0) {
-                require(redeemedLots != 0, "redeem 0 lots");
-                break;
-            }
-            // each loop, firstTicketId will change since we delete the first ticket
-            redeemedLots += _redeemFirstTicket(_lots - redeemedLots, redemptionList);
-        }
-        uint256 executorFeeNatGWei = msg.value / Conversion.GWEI;
-        for (uint256 i = 0; i < redemptionList.length; i++) {
-            // distribute executor fee over redemption request with at most 1 gwei leftover
-            uint256 currentExecutorFeeNatGWei = executorFeeNatGWei / (redemptionList.length - i);
-            executorFeeNatGWei -= currentExecutorFeeNatGWei;
-            createRedemptionRequest(redemptionList.items[i], _redeemer, _redeemerUnderlyingAddress, false,
-                _executor, currentExecutorFeeNatGWei.toUint64(), 0, false);
-        }
-        // notify redeemer of incomplete requests
-        if (redeemedLots < _lots) {
-            emit IAssetManagerEvents.RedemptionRequestIncomplete(_redeemer, _lots - redeemedLots);
-        }
-        // burn the redeemed value of fassets
-        uint256 redeemedUBA = Conversion.convertLotsToUBA(redeemedLots);
-        Redemptions.burnFAssets(msg.sender, redeemedUBA);
-        return redeemedUBA;
-    }
-
-    function redeemFromAgent(
-        address _agentVault,
-        address _redeemer,
-        uint256 _amountUBA,
-        string memory _receiverUnderlyingAddress,
-        address payable _executor
-    )
-        internal
-    {
-        Agent.State storage agent = Agent.get(_agentVault);
-        Agents.requireCollateralPool(agent);
-        require(_amountUBA != 0, "redemption of 0");
-        // close redemption tickets
-        uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, false, false);
-        // create redemption request
-        AgentRedemptionData memory redemption = AgentRedemptionData(_agentVault, closedAMG);
-        createRedemptionRequest(redemption, _redeemer, _receiverUnderlyingAddress, true,
-            _executor, (msg.value / Conversion.GWEI).toUint64(), 0, false);
-        // burn the closed assets
-        Redemptions.burnFAssets(msg.sender, closedUBA);
-    }
-
-    function redeemFromAgentInCollateral(
-        address _agentVault,
-        address _redeemer,
-        uint256 _amountUBA
-    )
-        internal
-    {
-        Agent.State storage agent = Agent.get(_agentVault);
-        Agents.requireCollateralPool(agent);
-        require(_amountUBA != 0, "redemption of 0");
-        // close redemption tickets
-        uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true, false);
-        // pay in collateral
-        uint256 priceAmgToWei = Conversion.currentAmgPriceInTokenWei(agent.vaultCollateralIndex);
-        uint256 paymentWei = Conversion.convertAmgToTokenWei(closedAMG, priceAmgToWei)
-            .mulBips(agent.buyFAssetByAgentFactorBIPS);
-        Agents.payoutFromVault(agent, _redeemer, paymentWei);
-        emit IAssetManagerEvents.RedeemedInCollateral(_agentVault, _redeemer, closedUBA, paymentWei);
-        // burn the closed assets
-        Redemptions.burnFAssets(msg.sender, closedUBA);
-    }
-
-    function selfClose(
-        address _agentVault,
-        uint256 _amountUBA
-    )
-        internal
-        returns (uint256)
-    {
-        Agent.State storage agent = Agent.get(_agentVault);
-        Agents.requireAgentVaultOwner(agent);
-        require(_amountUBA != 0, "self close of 0");
-        uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true, false);
-        // burn the self-closed assets
-        Redemptions.burnFAssets(msg.sender, closedUBA);
-        // try to pull agent out of liquidation
-        Liquidation.endLiquidationIfHealthy(agent);
-        // send event
-        emit IAssetManagerEvents.SelfClose(_agentVault, closedUBA);
-        return closedUBA;
-    }
-
-    function rejectInvalidRedemption(
-        IAddressValidity.Proof calldata _proof,
-        uint64 _redemptionRequestId
-    )
-        internal
-    {
-        Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
-        assert(!request.transferToCoreVault);   // we have a problem if core vault has invalid address
-        Agent.State storage agent = Agent.get(request.agentVault);
-        // check status
-        require(request.status == Redemption.Status.ACTIVE, "invalid redemption status");
-        // only owner can call
-        Agents.requireAgentVaultOwner(agent);
-        // check proof
-        TransactionAttestation.verifyAddressValidity(_proof);
-        // the actual redeemer's address must be validated
-        bytes32 addressHash = keccak256(bytes(_proof.data.requestBody.addressStr));
-        require(addressHash == request.redeemerUnderlyingAddressHash, "wrong address");
-        // and the address must be invalid or not normalized
-        bool valid = _proof.data.responseBody.isValid &&
-            _proof.data.responseBody.standardAddressHash == request.redeemerUnderlyingAddressHash;
-        require(!valid, "address valid");
-        // release agent collateral
-        Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
-        // burn the executor fee
-        Redemptions.burnExecutorFee(request);
-        // emit event
-        uint256 valueUBA = Conversion.convertAmgToUBA(request.valueAMG);
-        emit IAssetManagerEvents.RedemptionRejected(request.agentVault, request.redeemer,
-            _redemptionRequestId, valueUBA);
-        // delete redemption request at end
-        Redemptions.deleteRedemptionRequest(_redemptionRequestId);
-    }
-
-    function maxRedemptionFromAgent(
-        address _agentVault
-    )
-        internal view
-        returns (uint256)
-    {
-        Agent.State storage agent = Agent.get(_agentVault);
-        return Redemptions.maxClosedFromAgentPerTransaction(agent);
-    }
-
-    function _redeemFirstTicket(
-        uint64 _lots,
-        AgentRedemptionList memory _list
-    )
-        private
-        returns (uint64 _redeemedLots)
-    {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        uint64 ticketId = state.redemptionQueue.firstTicketId;
-        if (ticketId == 0) {
-            return 0;    // empty redemption queue
-        }
-        RedemptionQueue.Ticket storage ticket = state.redemptionQueue.getTicket(ticketId);
-        address agentVault = ticket.agentVault;
-        Agent.State storage agent = Agent.get(agentVault);
-        uint64 maxRedeemLots = (ticket.valueAMG + agent.dustAMG) / settings.lotSizeAMG;
-        _redeemedLots = SafeMath64.min64(_lots, maxRedeemLots);
-        if (_redeemedLots > 0) {
-            uint64 redeemedAMG = _redeemedLots * settings.lotSizeAMG;
-            // find list index for ticket's agent
-            uint256 index = 0;
-            while (index < _list.length && _list.items[index].agentVault != agentVault) {
-                ++index;
-            }
-            // add to list item or create new item
-            if (index < _list.length) {
-                _list.items[index].valueAMG = _list.items[index].valueAMG + redeemedAMG;
-            } else {
-                _list.items[_list.length++] = AgentRedemptionData({ agentVault: agentVault, valueAMG: redeemedAMG });
-            }
-            // _removeFromTicket may delete ticket data, so we call it at end
-            Redemptions.removeFromTicket(ticketId, redeemedAMG);
-        } else {
-            // this will just convert ticket to dust
-            Redemptions.removeFromTicket(ticketId, 0);
-        }
     }
 
     function createRedemptionRequest(

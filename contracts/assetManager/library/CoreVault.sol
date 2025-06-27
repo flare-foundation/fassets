@@ -100,7 +100,7 @@ library CoreVault {
     function confirmTransferToCoreVault(
         IPayment.Proof calldata _payment,
         Agent.State storage _agent,
-        uint64 _redemptionRequestId
+        uint256 _redemptionRequestId
     )
         internal
         onlyEnabled
@@ -111,11 +111,11 @@ library CoreVault {
         emit ICoreVault.TransferToCoreVaultSuccessful(_agent.vaultAddress(), _redemptionRequestId, receivedAmount);
     }
 
-    // only called by RedemptionFailures, RedemptionConfirmations etc., so all checks are done there
+    // only called by RedemptionDefaults, RedemptionConfirmations etc., so all checks are done there
     function cancelTransferToCoreVault(
         Agent.State storage _agent,
         Redemption.Request storage _request,
-        uint64 _redemptionRequestId
+        uint256 _redemptionRequestId
     )
         internal
         onlyEnabled
