@@ -13,7 +13,7 @@ export interface BaseEvent {
 export interface EvmEvent {
     address: string;
     event: string;
-    args: any;  // eslint-disable-line @typescript-eslint/no-explicit-any
+    args: Record<string, unknown>;
     blockHash: string;
     blockNumber: number;
     logIndex: number;

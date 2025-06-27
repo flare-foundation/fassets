@@ -3,6 +3,7 @@ import { lotSize } from "../../../../lib/fasset/Conversions";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { precomputeContractAddress } from "../../../../lib/test-utils/contract-test-helpers";
+import { calcGasCost } from "../../../../lib/test-utils/eth";
 import { AgentCollateral } from "../../../../lib/test-utils/fasset/AgentCollateral";
 import { AssetManagerInitSettings, newAssetManager } from "../../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/MockChain";
@@ -204,7 +205,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: executorAddress1 });
         const executorBalanceEnd = toBN(await web3.eth.getBalance(executorAddress1));
         const executorWNatBalanceEnd = await wNat.balanceOf(executorAddress1);
-        const gasFee = toBN(res.receipt.gasUsed).mul(toBN(res.receipt.effectiveGasPrice));
+        const gasFee = calcGasCost(res);
         assertWeb3Equal(executorBalanceStart.sub(executorBalanceEnd), gasFee);
         assertWeb3Equal(executorWNatBalanceEnd.sub(executorWNatBalanceStart), toWei(0.1));
         // assert

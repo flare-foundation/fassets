@@ -3,6 +3,7 @@ import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { assertApproximatelyEqual } from "../../../../lib/test-utils/approximation";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../../lib/test-utils/constants";
+import { calcGasCost } from "../../../../lib/test-utils/eth";
 import { AssetManagerInitSettings, deployAssetManagerFacets, newAssetManager, newAssetManagerDiamond } from "../../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
@@ -11,9 +12,10 @@ import { TestSettingsContracts, createTestAgentSettings, createTestCollaterals, 
 import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { deepCopy } from "../../../../lib/utils/deepCopy";
 import { DiamondCut } from "../../../../lib/utils/diamond";
 import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, WEEKS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, WEEKS, ZERO_ADDRESS, abiEncodeCall, contractMetadata, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentVaultInstance, AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../../typechain-truffle";
 
@@ -586,7 +588,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     describe("collateral tokens", () => {
 
         it("should correctly add collateral token", async () => {
-            const collateral = JSON.parse(JSON.stringify(web3DeepNormalize(collaterals[1]))); // make a deep copy
+            const collateral = deepCopy(web3DeepNormalize(collaterals[1]));
             collateral.token = (await ERC20Mock.new("New Token", "NT")).address;
             collateral.tokenFtsoSymbol = "NT";
             collateral.assetFtsoSymbol = "NT";
@@ -1359,7 +1361,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const executorBalanceStart = toBN(await web3.eth.getBalance(executor));
             const minterBalanceStart = toBN(await web3.eth.getBalance(minter));
             const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minter });
-            const gasFee = toBN(res.receipt.gasUsed).mul(toBN(res.receipt.effectiveGasPrice));
+            const gasFee = calcGasCost(res);
             const executorBalanceEnd = toBN(await web3.eth.getBalance(executor));
             const minterBalanceEnd = toBN(await web3.eth.getBalance(minter));
             const fassets = await fAsset.balanceOf(minter);
@@ -1393,7 +1395,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: executor });
             const executorBalanceEnd = toBN(await web3.eth.getBalance(executor));
             const executorWNatBalanceEnd = await wNat.balanceOf(executor);
-            const gasFee = toBN(res.receipt.gasUsed).mul(toBN(res.receipt.effectiveGasPrice));
+            const gasFee = calcGasCost(res);
             const fassets = await fAsset.balanceOf(minter);
             assertWeb3Equal(fassets, crt.valueUBA);
             assertWeb3Equal(executorBalanceStart.sub(executorBalanceEnd), gasFee);
@@ -1592,7 +1594,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const redemptionDefaultTx = await assetManager.redemptionPaymentDefault(proof, redemptionRequest.requestId, { from: executor });
             const executorBalanceEnd = toBN(await web3.eth.getBalance(executor));
             const executorWNatBalanceEnd = await wNat.balanceOf(executor);
-            const gasFee = toBN(redemptionDefaultTx.receipt.gasUsed).mul(toBN(redemptionDefaultTx.receipt.effectiveGasPrice));
+            const gasFee = calcGasCost(redemptionDefaultTx);
             // expect events
             const redemptionDefault = findRequiredEvent(redemptionDefaultTx, "RedemptionDefault").args;
             expect(redemptionDefault.agentVault).to.equal(agentVault.address);
@@ -1962,10 +1964,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     });
 
     describe("ERC-165 interface identification", () => {
-        function erc165InterfaceIdLog(verbose: boolean, mainInterface: Truffle.Contract<any>, inheritedInterfaces: Truffle.Contract<any>[] = []) {
+        function erc165InterfaceIdLog(verbose: boolean, mainInterface: Truffle.Contract<unknown>, inheritedInterfaces: Truffle.Contract<unknown>[] = []) {
             const interfaceId = erc165InterfaceId(mainInterface, inheritedInterfaces);
             if (verbose) {
-                console.log(`${(mainInterface as any)._json?.contractName}: ${interfaceId}`);
+                console.log(`${contractMetadata(mainInterface)?.contractName}: ${interfaceId}`);
             }
             return interfaceId;
         }
@@ -2209,7 +2211,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("random address shouldn't be able to add collateral token", async () => {
-            const collateral = JSON.parse(JSON.stringify(web3DeepNormalize(collaterals[1]))); // make a deep copy
+            const collateral = deepCopy(web3DeepNormalize(collaterals[1]));
             collateral.token = (await ERC20Mock.new("New Token", "NT")).address;
             collateral.tokenFtsoSymbol = "NT";
             collateral.assetFtsoSymbol = "NT";

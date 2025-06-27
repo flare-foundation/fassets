@@ -497,11 +497,11 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
                 feeds2.push({ id: feedIds[i], value: 123456, decimals: feedDecimals[i] });
             }
             const tx1 = await priceStore.submitTrustedPrices(1, feeds0, { from: trustedProviders[0] });
-            console.log(`submitTrustedPrices1 gas used: ${tx1.receipt.gasUsed}`);
+            console.log(`submitTrustedPrices1 gas used: ${tx1.receipt.gasUsed}`);   // eslint-disable-line @typescript-eslint/no-unsafe-member-access
             const tx2 = await priceStore.submitTrustedPrices(1, feeds1, { from: trustedProviders[1] });
-            console.log(`submitTrustedPrices2 gas used: ${tx2.receipt.gasUsed}`);
+            console.log(`submitTrustedPrices2 gas used: ${tx2.receipt.gasUsed}`);   // eslint-disable-line @typescript-eslint/no-unsafe-member-access
             const tx3 = await priceStore.submitTrustedPrices(1, feeds2, { from: trustedProviders[2] });
-            console.log(`submitTrustedPrices3 gas used: ${tx3.receipt.gasUsed}`);
+            console.log(`submitTrustedPrices3 gas used: ${tx3.receipt.gasUsed}`);   // eslint-disable-line @typescript-eslint/no-unsafe-member-access
 
             await publishPrices(true, undefined, undefined, undefined, undefined, undefined, undefined, undefined, -2);
 
@@ -638,19 +638,19 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
         if (zeroRoot) {
             await relayMock.givenCalldataReturn(
-                web3.eth.abi.encodeFunctionCall({ type: "function", name: "merkleRoots", inputs: [{ name: "_protocolId", type: "uint256" }, { name: "_votingRoundId", type: "uint256" }] } as AbiItem, [ftsoScalingProtocolId, votingRound1] as any[]),
+                web3.eth.abi.encodeFunctionCall({ type: "function", name: "merkleRoots", inputs: [{ name: "_protocolId", type: "uint256" }, { name: "_votingRoundId", type: "uint256" }] } as AbiItem, [String(ftsoScalingProtocolId), String(votingRound1)]),
                 web3.eth.abi.encodeParameter("bytes32", "0x" + "00".repeat(32))
             );
         }
         else {
             await relayMock.givenCalldataReturn(
-                web3.eth.abi.encodeFunctionCall({ type: "function", name: "merkleRoots", inputs: [{ name: "_protocolId", type: "uint256" }, { name: "_votingRoundId", type: "uint256" }] } as AbiItem, [ftsoScalingProtocolId, votingRound1] as any[]),
+                web3.eth.abi.encodeFunctionCall({ type: "function", name: "merkleRoots", inputs: [{ name: "_protocolId", type: "uint256" }, { name: "_votingRoundId", type: "uint256" }] } as AbiItem, [String(ftsoScalingProtocolId), String(votingRound1)]),
                 web3.eth.abi.encodeParameter("bytes32", merkleRoot)
             );
         }
 
         const tx = await priceStore.publishPrices([{ proof: [leaf1], body: feed0 }, { proof: [leaf0], body: feed1 }]);
-        console.log(`publishPrices gas used: ${tx.receipt.gasUsed}`);
+        console.log(`publishPrices gas used: ${tx.receipt.gasUsed}`);   // eslint-disable-line @typescript-eslint/no-unsafe-member-access
     }
 
 });

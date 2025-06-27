@@ -10,7 +10,7 @@ import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-s
 import { assertWeb3Equal, web3ResultStruct } from "../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, randomAddress, toBIPS, toBN, toStringExp } from "../../../lib/utils/helpers";
+import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, randomAddress, toBN, toStringExp } from "../../../lib/utils/helpers";
 import { AddressUpdatableInstance, ERC20MockInstance, FAssetInstance, GovernanceSettingsMockInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance, TestUUPSProxyImplInstance, WNatMockInstance, WhitelistInstance } from "../../../typechain-truffle";
 
 const AddressUpdater = artifacts.require('AddressUpdaterMock');
@@ -148,7 +148,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should set whitelist address", async () => {
-            const encodedCall: string = assetManagerController.contract.methods.setWhitelist([assetManager.address], whitelist.address).encodeABI();
+            const encodedCall: string = abiEncodeCall(assetManagerController, (amc) => amc.setWhitelist([assetManager.address], whitelist.address));
             const res = await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
             const allowedAfterTimestamp = (await time.latest()).addn(60);
             expectEvent(res, "GovernanceCallTimelocked", { encodedCallHash: web3.utils.keccak256(encodedCall), allowedAfterTimestamp, encodedCall });

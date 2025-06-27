@@ -8,6 +8,8 @@ export type Nullable<T> = T | null | undefined;
 
 export type Dict<T> = { [key: string]: T };
 
+export type AnyFunction<R = any> = (...args: any[]) => R;       // eslint-disable-line @typescript-eslint/no-explicit-any
+
 export type ConstructorFor<T> = { new(...args: any[]): T };    // eslint-disable-line @typescript-eslint/no-explicit-any
 
 export const BN_ZERO = Web3.utils.toBN(0);

@@ -1368,6 +1368,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         const tx = await coreVaultManager.triggerInstructions({
           from: accounts[1],
         });
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         console.log("triggering 50 payment + 50 escrow instructions - gas used: ", tx.receipt.gasUsed);
 
         const currentTimestamp = await time.latest();

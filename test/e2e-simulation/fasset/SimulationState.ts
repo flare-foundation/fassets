@@ -93,6 +93,7 @@ export class SimulationState extends TrackedState {
         for (const [key, value] of Object.entries(actualSettings)) {
             if (/^\d+$/.test(key)) continue;   // all properties are both named and with index
             if (['assetManagerController'].includes(key)) continue;   // special properties, not changed in normal way
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
             checker.checkEquality(`settings.${key}`, value, (this.settings as any)[key]);
         }
         // check agents' state

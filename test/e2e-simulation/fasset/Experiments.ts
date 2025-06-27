@@ -81,9 +81,10 @@ contract(`Experiments; ${getTestFile(__filename)}`, accounts => {
                 const receiptF = new Future<TransactionReceipt>();
                 const startTm = currentRealTime();
                 const account = accounts[i % 10 + 1];
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
                 void wNat.contract.methods.deposit().send({ from: account, value: toBN(10_000), gas: 500_000 })
-                    .once('transactionHash', (hash: string) => txHashF.resolve(hash))
-                    .once('receipt', (receipt: TransactionReceipt) => receiptF.resolve(receipt));
+                    .once('transactionHash', (hash: string) => txHashF.resolve(hash))               // eslint-disable-line @typescript-eslint/no-unsafe-member-access
+                    .once('receipt', (receipt: TransactionReceipt) => receiptF.resolve(receipt));   // eslint-disable-line @typescript-eslint/no-unsafe-member-access
                     // .on('confirmation', (confirmation: number, receipt: TransactionReceipt) => { console.log(`Confirmation ${confirmation} for tx ${receipt.transactionHash}`); });
                 void receiptF.promise.then((receipt) => console.log("Minted 10_000", i, "block:", receipt.blockNumber, "time:", elapsedTime(startTm)));
                 const txHash = await txHashF.promise;

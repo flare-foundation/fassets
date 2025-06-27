@@ -3,13 +3,11 @@ import { TransactionReceipt } from "web3-core";
 import { Web3EventDecoder } from "../../../lib/test-utils/Web3EventDecoder";
 import { EvmEvent } from "../../../lib/utils/events/common";
 import { currentRealTime, Statistics, truffleResultAsJson } from "../../../lib/test-utils/simulation-utils";
-import { filterStackTrace, getOrCreate, reportError, sorted, sum, tryCatch } from "../../../lib/utils/helpers";
+import { AnyFunction, filterStackTrace, getOrCreate, reportError, sorted, sum, tryCatch } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
 import { MultiStateLock } from "./MultiStateLock";
 
 export type EventHandler = (event: EvmEvent) => void;
-
-type AnyFunction = (...args: any[]) => any;
 
 export class TransactionInterceptor {
     logger?: ILogger;
@@ -25,7 +23,7 @@ export class TransactionInterceptor {
         }
     }
 
-    logUnexpectedError(e: any, prefix = '    !!! UNEXPECTED') {
+    logUnexpectedError(e: unknown, prefix = '    !!! UNEXPECTED') {
         reportError(e);
         const indent = prefix.match(/^\s*/)?.[0] ?? '';
         this.log(`${prefix} ${filterStackTrace(e).replace(/\n/g, '\n' + indent)}`);
@@ -56,7 +54,7 @@ export class TransactionInterceptor {
         }
     }
 
-    increaseErrorCount(error: any) {
+    increaseErrorCount(error: unknown) {
         let errorKey = String(error);
         const match = errorKey.match(/^.*:\s*reverted with reason string\s*'(.*)'\s*$/)
             || errorKey.match(/^.*:\s*revert\s*(.*)$/);
@@ -153,6 +151,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
         }
     }
 
+    /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
     private instrumentContractForEventCapture(contract: Truffle.ContractInstance) {
         //const abiDict = this.buildAbiDict(contract);
         const sendTransactionAbi: AbiItem = { type: 'function', name: 'sendTransaction', stateMutability: 'payable', inputs: [], outputs: [] };
@@ -189,6 +188,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             }
         }
     }
+    /* eslint-enable */
 
     private callMethod(contract: Truffle.ContractInstance, name: string, originalMethod: AnyFunction, args: unknown[], methodAbi: AbiItem) {
         const txLog: string[] = [];
@@ -202,7 +202,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             : this.instrumentedCall(originalMethod, args, methodAbi);
         // handle success/failure
         const decodePromise = promise
-            .then((result: any) => {
+            .then((result: Truffle.TransactionResponse<Truffle.AnyEvent> | TransactionReceipt | null) => {
                 const receipt = this.getTransactionReceipt(result);
                 if (receipt != null) {
                     this.handleMethodSuccess(contract, name, txLog, callStartTime, receipt);
@@ -229,6 +229,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             await this.lock.acquire("execute");
         }
         try {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
             return await originalMethod(...args);
         } finally {
             if (this.lock && !methodAbi.constant) {
@@ -237,7 +238,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
         }
     }
 
-    private async instrumentedCall(originalMethod: AnyFunction, args: unknown[], methodAbi: AbiItem) {
+    private async instrumentedCall(originalMethod: AnyFunction<unknown>, args: unknown[], methodAbi: AbiItem) {
         const inputLen = methodAbi.inputs?.length ?? 0;
         const options = (args[inputLen] ?? {}) as Truffle.TransactionDetails;
         const from = options.from ?? this.defaultAccount;
@@ -247,10 +248,10 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
         try {
             await this.waitNewNonce(from);
             return await originalMethod(...fixedArgs);
-        } catch (e: any) {
-            if (e.constructor?.name === 'StatusError') {
+        } catch (e) {
+            if ((e as Error).constructor?.name === 'StatusError') {
                 // using static call should throw correct exception
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
                 await (originalMethod as any).call(...fixedArgs);
             }
             throw e; // rethrow e if it was acceptable error or if method.call didn't throw
@@ -270,13 +271,13 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
         }
     }
 
-    private getTransactionReceipt(result: any): TransactionReceipt | null {
+    private getTransactionReceipt(result: Truffle.TransactionResponse<Truffle.AnyEvent> | TransactionReceipt | null): TransactionReceipt | null {
         // (approximately) detect if the returned result is either TransactionResponse or TransactionReceipt and in this case extract receipt
         if (result == null) {
             return null;
-        } else if (typeof result.tx === 'string' && result.receipt != null && Array.isArray(result.logs)) {
-            return result.receipt; // result is TransactionResponse
-        } else if (typeof result.status === 'boolean' && typeof result.transactionHash === 'string' && Array.isArray(result.logs)) {
+        } else if ('tx' in result && typeof result.tx === 'string' && result.receipt != null && Array.isArray(result.logs)) {
+            return result.receipt as TransactionReceipt; // result is TransactionResponse
+        } else if ('status' in result && typeof result.status === 'boolean' && typeof result.transactionHash === 'string' && Array.isArray(result.logs)) {
             return result; // result is TransactionReceipt
         }
         return null;
@@ -313,7 +314,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
         }
     }
 
-    private handleViewMethodSuccess(contract: Truffle.ContractInstance, method: string, txLog: string[], callStartTime: number, result: any) {
+    private handleViewMethodSuccess(contract: Truffle.ContractInstance, method: string, txLog: string[], callStartTime: number, result: unknown) {
         try {
             const callEndTime = currentRealTime();
             if (this.logger != null) {

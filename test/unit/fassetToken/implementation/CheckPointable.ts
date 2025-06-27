@@ -1,5 +1,6 @@
 import { expectRevert, time } from '../../../../lib/test-utils/test-helpers';
 import { getTestFile } from '../../../../lib/test-utils/test-suite-helpers';
+import { assertWeb3Equal } from '../../../../lib/test-utils/web3assertions';
 import { toBN } from '../../../../lib/utils/helpers';
 import { CheckPointableMockInstance } from '../../../../typechain-truffle';
 
@@ -23,7 +24,7 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
         // Act
         const value = await checkPointable.balanceOfAt(accounts[1], b[0]);
         // Assert
-        assert.equal(value as any, 10);
+        assertWeb3Equal(value, 10);
     });
 
     it("Should store historic supply", async () => {
@@ -36,7 +37,7 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
         // Act
         const value = await checkPointable.totalSupplyAt(b[0]);
         // Assert
-        assert.equal(value as any, 30);
+        assertWeb3Equal(value, 30);
     });
 
     it("Should transmit value now for historic retrieval", async () => {
@@ -52,8 +53,8 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
         // Assert
         const account2PastValue = await checkPointable.balanceOfAt(accounts[2], b[0]);
         const account2Value = await checkPointable.balanceOfAt(accounts[2], b[1]);
-        assert.equal(account2PastValue as any, 10);
-        assert.equal(account2Value as any, 0);
+        assertWeb3Equal(account2PastValue, 10);
+        assertWeb3Equal(account2Value, 0);
     });
 
     it("Should set cleanup block", async () => {

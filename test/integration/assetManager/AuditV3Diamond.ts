@@ -2,7 +2,7 @@ import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
-import { ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { abiEncodeCall, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 
 contract(`AuditV3Diamond.ts; ${getTestFile(__filename)}; FAsset diamond design audit tests`, accounts => {
     const governance = accounts[10];
@@ -38,12 +38,14 @@ contract(`AuditV3Diamond.ts; ${getTestFile(__filename)}; FAsset diamond design a
         const SuicidalContract = artifacts.require("SuicidalMock");
         const suicidalContract = await SuicidalContract.new(ZERO_ADDRESS);
         // Call initialise directly on the implementation
+        // initialise is now internal so the call cannot even be made
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
         await (iGovernedBase as any).initialise(fakeGovSettings.address, accounts[1]);
         // Execute the call to selfdestruct the AssetManagerDiamondCutFacet
         // getTimelock() == 0 from the FakeGovernanceSettings
         // No call will be enqueued as it will be executed directly
         // get init parameters for the diamondCut call
-        const initParametersEncodedCall = suicidalContract.contract.methods.die().encodeABI();
+        const initParametersEncodedCall = abiEncodeCall(suicidalContract, (sc) => sc.die());
         // Fetch the contract's bytecode
         let bytecode = await web3.eth.getCode(iGovernedBase.address);
         // Calculate the size of the bytecode (subtract 2 for the '0x', divide by 2 to go from hex digits to bytes)
@@ -76,6 +78,7 @@ contract(`AuditV3Diamond.ts; ${getTestFile(__filename)}; FAsset diamond design a
         const suicidalContract = await SuicidalContract.new(ZERO_ADDRESS);
         // Call initialise directly on the implementation
         // initialise is now internal so the call cannot even be made
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
         assert.throw(() => (iGovernedBase as any).initialise(fakeGovSettings.address, accounts[1]), "iGovernedBase.initialise is not a function");
     });
 });

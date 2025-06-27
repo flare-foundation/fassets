@@ -2,6 +2,7 @@ import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManag
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { TestChainInfo, testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { impersonateContract, stopImpersonatingContract } from "../../../../lib/test-utils/contract-test-helpers";
+import { calcGasCost } from "../../../../lib/test-utils/eth";
 import { AssetManagerInitSettings, newAssetManager } from "../../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
@@ -437,7 +438,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const res = await assetManager.redemptionPaymentDefault(proof, request.requestId, { from: executorAddress1 });
         const executorBalanceEnd = toBN(await web3.eth.getBalance(executorAddress1));
         const executorWNatBalanceEnd = await wNat.balanceOf(executorAddress1);
-        const gasFee = toBN(res.receipt.gasUsed).mul(toBN(res.receipt.effectiveGasPrice));
+        const gasFee = calcGasCost(res);
         expectEvent(res, 'RedemptionDefault');
         assertWeb3Equal(executorBalanceStart.sub(executorBalanceEnd), gasFee);
         assertWeb3Equal(executorWNatBalanceEnd.sub(executorWNatBalanceStart), executorFee);
@@ -639,6 +640,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await fAsset.transfer(redeemerAddress1, minted.mintedAmountUBA, { from: minterAddress1 });
         // redemption request
         const resR = await assetManager.redeem(lots, underlyingRedeemer1, executorAddress1, { from: redeemerAddress1, value: executorFee });
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         console.log(resR.receipt.gasUsed);
     });
 

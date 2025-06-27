@@ -122,6 +122,7 @@ contract(`test-helpers.ts; ${getTestFile(__filename)}; Test library helpers unit
 
         it("should fail if event arg not found", async () => {
             const response = await token.deposit({ from: accounts[1], value: toBN(100) });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
             assert.throws(() => expectEvent(response, "Transfer", { amount: "50" } as any), /Event argument 'amount' not found/);
         });
 
@@ -162,6 +163,7 @@ contract(`test-helpers.ts; ${getTestFile(__filename)}; Test library helpers unit
         it("should fail if event arg not found", async () => {
             const response = await token.deposit({ from: accounts[1], value: toBN(100) });
             await expectRevert(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
                 expectEvent.inTransaction(response.tx, token, "Transfer", { amount: "50" } as any),
                 `Event argument 'amount' not found`);
         });
