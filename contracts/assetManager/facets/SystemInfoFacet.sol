@@ -4,10 +4,10 @@ pragma solidity ^0.8.27;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
-import {CollateralReservations} from "../library/CollateralReservations.sol";
 import {Conversion} from "../library/Conversion.sol";
 import {Globals} from "../library/Globals.sol";
 import {RedemptionQueueInfo} from "../library/RedemptionQueueInfo.sol";
+import {Minting} from "../library/Minting.sol";
 import {Redemptions} from "../library/Redemptions.sol";
 import {Agent} from "../library/data/Agent.sol";
 import {CollateralReservation} from "../library/data/CollateralReservation.sol";
@@ -93,7 +93,7 @@ contract SystemInfoFacet is AssetManagerBase {
         returns (CollateralReservationInfo.Data memory)
     {
         uint64 crtId = SafeCast.toUint64(_collateralReservationId);
-        CollateralReservation.Data storage crt = CollateralReservations.getCollateralReservation(crtId);
+        CollateralReservation.Data storage crt = Minting.getCollateralReservation(crtId);
         Agent.State storage agent = Agent.get(crt.agentVault);
         return CollateralReservationInfo.Data({
             collateralReservationId: crtId,

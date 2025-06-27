@@ -34,7 +34,7 @@ library AssetManagerState {
         UnderlyingAddressOwnership.State underlyingAddressOwnership;
 
         // Type: mapping collateralReservationId => collateralReservation
-        mapping(uint64 => CollateralReservation.Data) crts;
+        mapping(uint256 => CollateralReservation.Data) crts;
 
         // redemption queue
         RedemptionQueue.State redemptionQueue;
