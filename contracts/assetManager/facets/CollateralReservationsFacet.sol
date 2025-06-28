@@ -70,7 +70,7 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
         require(agent.status == Agent.Status.NORMAL, "rc: invalid agent status");
         require(collateralData.freeCollateralLots(agent) >= _lots, "not enough free collateral");
         require(_maxMintingFeeBIPS >= agent.feeBIPS, "agent's fee too high");
-        uint64 valueAMG = _lots.toUint64() * Globals.getSettings().lotSizeAMG;
+        uint64 valueAMG = Conversion.convertLotsToAMG(_lots);
         _reserveCollateral(agent, valueAMG + _currentPoolFeeAMG(agent, valueAMG));
         // - only charge reservation fee for public minting, not for alwaysAllowedMinters on non-public agent
         // - poolCollateral is WNat, so we can use its price for calculation of CR fee
@@ -125,9 +125,8 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
         returns (uint256 _reservationFeeNATWei)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(state.poolCollateralIndex);
-        return _reservationFee(amgToTokenWeiPrice, _lots.toUint64() * settings.lotSizeAMG);
+        return _reservationFee(amgToTokenWeiPrice, Conversion.convertLotsToAMG(_lots));
     }
 
     function _reserveCollateral(

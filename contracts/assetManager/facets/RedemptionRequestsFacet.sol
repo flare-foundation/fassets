@@ -302,7 +302,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         uint256 maxRedeemLots = (ticket.valueAMG + agent.dustAMG) / settings.lotSizeAMG;
         _redeemedLots = Math.min(_lots, maxRedeemLots);
         if (_redeemedLots > 0) {
-            uint64 redeemedAMG = _redeemedLots.toUint64() * settings.lotSizeAMG;
+            uint64 redeemedAMG = Conversion.convertLotsToAMG(_redeemedLots);
             // find list index for ticket's agent
             uint256 index = 0;
             while (index < _list.length && _list.items[index].agentVault != agentVault) {

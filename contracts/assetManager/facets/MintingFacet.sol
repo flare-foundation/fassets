@@ -120,7 +120,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         require(state.mintingPausedAt == 0, "minting paused");
         require(agent.status == Agent.Status.NORMAL, "self-mint invalid agent status");
         require(collateralData.freeCollateralLots(agent) >= _lots, "not enough free collateral");
-        uint64 valueAMG = _lots.toUint64() * Globals.getSettings().lotSizeAMG;
+        uint64 valueAMG = Conversion.convertLotsToAMG(_lots);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
         uint256 poolFeeUBA = Minting.calculateCurrentPoolFeeUBA(agent, mintValueUBA);
         Minting.checkMintingCap(valueAMG + Conversion.convertUBAToAmg(poolFeeUBA));
@@ -172,7 +172,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         require(_lots > 0, "cannot mint 0 lots");
         require(agent.status == Agent.Status.NORMAL, "self-mint invalid agent status");
         require(collateralData.freeCollateralLots(agent) >= _lots, "not enough free collateral");
-        uint64 valueAMG = _lots * Globals.getSettings().lotSizeAMG;
+        uint64 valueAMG = Conversion.convertLotsToAMG(_lots);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
         uint256 poolFeeUBA = Minting.calculateCurrentPoolFeeUBA(agent, mintValueUBA);
         Minting.checkMintingCap(valueAMG + Conversion.convertUBAToAmg(poolFeeUBA));
