@@ -90,7 +90,7 @@ interface ICoreVaultClient {
      * @param _agentVault the agent vault address
      * @param _lots number of lots (same lots as for minting and redemptions)
      */
-    function requestReturnFromCoreVault(address _agentVault, uint64 _lots)
+    function requestReturnFromCoreVault(address _agentVault, uint256 _lots)
         external;
 
     /**
@@ -118,7 +118,7 @@ interface ICoreVaultClient {
      *      must have been added to the `allowedDestinations` list in the core vault manager by
      *      the governance before the redemption request.
      */
-    function redeemFromCoreVault(uint64 _lots, string memory _redeemerUnderlyingAddress)
+    function redeemFromCoreVault(uint256 _lots, string memory _redeemerUnderlyingAddress)
         external;
 
     /**
