@@ -14,6 +14,7 @@ export const assetManagerFacets = [
     'AvailableAgentsFacet',
     'CollateralReservationsFacet',
     'MintingFacet',
+    'MintingDefaultsFacet',
     'RedemptionRequestsFacet',
     'RedemptionConfirmationsFacet',
     'RedemptionDefaultsFacet',
