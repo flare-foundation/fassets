@@ -4,23 +4,23 @@ pragma solidity ^0.8.27;
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
-import {CoreVault} from "../library/CoreVault.sol";
+import {CoreVaultClient} from "../library/CoreVaultClient.sol";
 import {IICoreVaultManager} from "../../coreVaultManager/interfaces/IICoreVaultManager.sol";
 import {LibDiamond} from "../../diamond/library/LibDiamond.sol";
 import {GovernedProxyImplementation} from "../../governance/implementation/GovernedProxyImplementation.sol";
-import {ICoreVaultSettings} from "../../userInterfaces/ICoreVaultSettings.sol";
+import {ICoreVaultClientSettings} from "../../userInterfaces/ICoreVaultClientSettings.sol";
 import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
-import {ICoreVault} from "../../userInterfaces/ICoreVault.sol";
+import {ICoreVaultClient} from "../../userInterfaces/ICoreVaultClient.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 
 
-contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation, ICoreVaultSettings {
+contract CoreVaultClientSettingsFacet is AssetManagerBase, GovernedProxyImplementation, ICoreVaultClientSettings {
     using SafeCast for uint256;
 
     // prevent initialization of implementation contract
     constructor() {
-        CoreVault.getState().initialized = true;
+        CoreVaultClient.getState().initialized = true;
     }
 
     function initCoreVaultFacet(
@@ -37,7 +37,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         // init settings
         require(_redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_minimumAmountLeftBIPS <= SafePct.MAX_BIPS, "bips value too high");
-        CoreVault.State storage state = CoreVault.getState();
+        CoreVaultClient.State storage state = CoreVaultClient.getState();
         require(!state.initialized, "already initialized");
         state.initialized = true;
         state.coreVaultManager = _coreVaultManager;
@@ -53,11 +53,11 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
     {
         LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
         require(ds.supportedInterfaces[type(IERC165).interfaceId], "diamond not initialized");
-        // IAssetManager has new methods (at CoreVault deploy on Songbird)
+        // IAssetManager has new methods (at CoreVaultClient deploy on Songbird)
         ds.supportedInterfaces[type(IAssetManager).interfaceId] = true;
         // Core Vault interfaces added
-        ds.supportedInterfaces[type(ICoreVault).interfaceId] = true;
-        ds.supportedInterfaces[type(ICoreVaultSettings).interfaceId] = true;
+        ds.supportedInterfaces[type(ICoreVaultClient).interfaceId] = true;
+        ds.supportedInterfaces[type(ICoreVaultClientSettings).interfaceId] = true;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
@@ -74,7 +74,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         require(_coreVaultManager != address(0), "cannot disable");
         IICoreVaultManager coreVaultManager = IICoreVaultManager(_coreVaultManager);
         require(coreVaultManager.assetManager() == address(this), "wrong asset manager");
-        CoreVault.State storage state = CoreVault.getState();
+        CoreVaultClient.State storage state = CoreVaultClient.getState();
         state.coreVaultManager = coreVaultManager;
         emit IAssetManagerEvents.ContractChanged("coreVaultManager", _coreVaultManager);
     }
@@ -85,7 +85,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         external
         onlyImmediateGovernance
     {
-        CoreVault.State storage state = CoreVault.getState();
+        CoreVaultClient.State storage state = CoreVaultClient.getState();
         state.nativeAddress = _nativeAddress;
         // not really a contract, but works for any address - event name is a bit unfortunate
         // but we don't want to change it now to keep backward compatibility
@@ -98,7 +98,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         external
         onlyImmediateGovernance
     {
-        CoreVault.State storage state = CoreVault.getState();
+        CoreVaultClient.State storage state = CoreVaultClient.getState();
         state.transferTimeExtensionSeconds = _transferTimeExtensionSeconds.toUint64();
         emit IAssetManagerEvents.SettingChanged("coreVaultTransferTimeExtensionSeconds",
             _transferTimeExtensionSeconds);
@@ -111,7 +111,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         onlyImmediateGovernance
     {
         require(_redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
-        CoreVault.State storage state = CoreVault.getState();
+        CoreVaultClient.State storage state = CoreVaultClient.getState();
         state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint16();
         emit IAssetManagerEvents.SettingChanged("coreVaultRedemptionFeeBIPS", _redemptionFeeBIPS);
     }
@@ -123,7 +123,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         onlyImmediateGovernance
     {
         require(_minimumAmountLeftBIPS <= SafePct.MAX_BIPS, "bips value too high");
-        CoreVault.State storage state = CoreVault.getState();
+        CoreVaultClient.State storage state = CoreVaultClient.getState();
         state.minimumAmountLeftBIPS = _minimumAmountLeftBIPS.toUint16();
         emit IAssetManagerEvents.SettingChanged("coreVaultMinimumAmountLeftBIPS", _minimumAmountLeftBIPS);
     }
@@ -134,7 +134,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         external
         onlyImmediateGovernance
     {
-        CoreVault.State storage state = CoreVault.getState();
+        CoreVaultClient.State storage state = CoreVaultClient.getState();
         state.minimumRedeemLots = _minimumRedeemLots.toUint64();
         emit IAssetManagerEvents.SettingChanged("coreVaultMinimumRedeemLots", _minimumRedeemLots);
     }
@@ -143,7 +143,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         external view
         returns (address)
     {
-        CoreVault.State storage state = CoreVault.getState();
+        CoreVaultClient.State storage state = CoreVaultClient.getState();
         return address(state.coreVaultManager);
     }
 
@@ -151,7 +151,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         external view
         returns (address)
     {
-        CoreVault.State storage state = CoreVault.getState();
+        CoreVaultClient.State storage state = CoreVaultClient.getState();
         return state.nativeAddress;
     }
 
@@ -159,7 +159,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         external view
         returns (uint256)
     {
-        CoreVault.State storage state = CoreVault.getState();
+        CoreVaultClient.State storage state = CoreVaultClient.getState();
         return state.transferTimeExtensionSeconds;
     }
 
@@ -167,7 +167,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         external view
         returns (uint256)
     {
-        CoreVault.State storage state = CoreVault.getState();
+        CoreVaultClient.State storage state = CoreVaultClient.getState();
         return state.redemptionFeeBIPS;
     }
 
@@ -175,7 +175,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         external view
         returns (uint256)
     {
-        CoreVault.State storage state = CoreVault.getState();
+        CoreVaultClient.State storage state = CoreVaultClient.getState();
         return state.minimumAmountLeftBIPS;
     }
 
@@ -183,7 +183,7 @@ contract CoreVaultSettingsFacet is AssetManagerBase, GovernedProxyImplementation
         external view
         returns (uint256)
     {
-        CoreVault.State storage state = CoreVault.getState();
+        CoreVaultClient.State storage state = CoreVaultClient.getState();
         return state.minimumRedeemLots;
     }
 }

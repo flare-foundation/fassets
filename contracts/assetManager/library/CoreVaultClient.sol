@@ -6,7 +6,7 @@ import {MathUtils} from "../../utils/library/MathUtils.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {ICoreVault} from "../../userInterfaces/ICoreVault.sol";
+import {ICoreVaultClient} from "../../userInterfaces/ICoreVaultClient.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {PaymentReference} from "./data/PaymentReference.sol";
 import {AgentCollateral} from "./AgentCollateral.sol";
@@ -24,11 +24,11 @@ import {Globals} from "./Globals.sol";
 import {Conversion} from "./Conversion.sol";
 import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {TransactionAttestation} from "./TransactionAttestation.sol";
-import {ICoreVault} from "../../userInterfaces/ICoreVault.sol";
+import {ICoreVaultClient} from "../../userInterfaces/ICoreVaultClient.sol";
 import {UnderlyingBlockUpdater} from "./UnderlyingBlockUpdater.sol";
 
 
-library CoreVault {
+library CoreVaultClient {
     using SafePct for uint256;
     using SafeCast for *;
     using Agent for Agent.State;
@@ -93,7 +93,7 @@ library CoreVault {
         _agent.activeTransferToCoreVault = redemptionRequestId;
         // send event
         uint256 transferredUBA = Conversion.convertAmgToUBA(transferredAMG);
-        emit ICoreVault.TransferToCoreVaultStarted(agentVault, redemptionRequestId, transferredUBA);
+        emit ICoreVaultClient.TransferToCoreVaultStarted(agentVault, redemptionRequestId, transferredUBA);
     }
 
     // only called by RedemptionConfirmations.confirmRedemptionPayment, so all checks are done there
@@ -108,7 +108,8 @@ library CoreVault {
         State storage state = getState();
         state.coreVaultManager.confirmPayment(_payment);
         uint256 receivedAmount = _payment.data.responseBody.receivedAmount.toUint256();
-        emit ICoreVault.TransferToCoreVaultSuccessful(_agent.vaultAddress(), _redemptionRequestId, receivedAmount);
+        emit ICoreVaultClient.TransferToCoreVaultSuccessful(_agent.vaultAddress(), _redemptionRequestId,
+            receivedAmount);
     }
 
     // only called by RedemptionDefaults, RedemptionConfirmations etc., so all checks are done there
@@ -123,7 +124,7 @@ library CoreVault {
         // core vault transfer default - re-create tickets
         Redemptions.releaseTransferToCoreVault(_redemptionRequestId);
         Redemptions.reCreateRedemptionTicket(_agent, _request);
-        emit ICoreVault.TransferToCoreVaultDefaulted(_agent.vaultAddress(), _redemptionRequestId,
+        emit ICoreVaultClient.TransferToCoreVaultDefaulted(_agent.vaultAddress(), _redemptionRequestId,
             _request.underlyingValueUBA);
     }
 
@@ -158,7 +159,8 @@ library CoreVault {
         uint128 amountUBA = Conversion.convertAmgToUBA(amountAMG).toUint128();
         state.coreVaultManager.requestTransferFromCoreVault(
             _agent.underlyingAddressString, paymentReference, amountUBA, true);
-        emit ICoreVault.ReturnFromCoreVaultRequested(_agent.vaultAddress(), requestId, paymentReference, amountUBA);
+        emit ICoreVaultClient.ReturnFromCoreVaultRequested(_agent.vaultAddress(), requestId,
+            paymentReference, amountUBA);
     }
 
     function cancelReturnFromCoreVault(
@@ -172,7 +174,7 @@ library CoreVault {
         require(requestId != 0, "no active return request");
         state.coreVaultManager.cancelTransferRequestFromCoreVault(_agent.underlyingAddressString);
         _deleteReturnFromCoreVaultRequest(_agent);
-        emit ICoreVault.ReturnFromCoreVaultCancelled(_agent.vaultAddress(), requestId);
+        emit ICoreVaultClient.ReturnFromCoreVaultCancelled(_agent.vaultAddress(), requestId);
     }
 
     function confirmReturnFromCoreVault(
@@ -210,7 +212,8 @@ library CoreVault {
         _deleteReturnFromCoreVaultRequest(_agent);
         // send event
         uint256 remintedUBA = Conversion.convertAmgToUBA(remintedAMG);
-        emit ICoreVault.ReturnFromCoreVaultConfirmed(_agent.vaultAddress(), requestId, receivedAmountUBA, remintedUBA);
+        emit ICoreVaultClient.ReturnFromCoreVaultConfirmed(_agent.vaultAddress(), requestId,
+            receivedAmountUBA, remintedUBA);
     }
 
     function redeemFromCoreVault(
@@ -241,7 +244,7 @@ library CoreVault {
         // transfer from core vault (paymentReference may change when the request is merged)
         paymentReference = state.coreVaultManager.requestTransferFromCoreVault(
             _redeemerUnderlyingAddress, paymentReference, paymentUBA, false);
-        emit ICoreVault.CoreVaultRedemptionRequested(msg.sender, _redeemerUnderlyingAddress, paymentReference,
+        emit ICoreVaultClient.CoreVaultRedemptionRequested(msg.sender, _redeemerUnderlyingAddress, paymentReference,
             redeemedUBA, redemptionFeeUBA);
     }
 
@@ -326,7 +329,7 @@ library CoreVault {
         require(address(state.coreVaultManager) != address(0), "core vault not enabled");
     }
 
-    bytes32 internal constant STATE_POSITION = keccak256("fasset.CoreVault.State");
+    bytes32 internal constant STATE_POSITION = keccak256("fasset.CoreVaultClient.State");
 
     function getState()
         internal pure

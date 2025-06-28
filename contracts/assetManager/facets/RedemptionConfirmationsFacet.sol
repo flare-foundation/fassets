@@ -12,7 +12,7 @@ import {Redemptions} from "../library/Redemptions.sol";
 import {RedemptionDefaults} from "../library/RedemptionDefaults.sol";
 import {Liquidation} from "../library/Liquidation.sol";
 import {UnderlyingBalance} from "../library/UnderlyingBalance.sol";
-import {CoreVault} from "../library/CoreVault.sol";
+import {CoreVaultClient} from "../library/CoreVaultClient.sol";
 import {Agent} from "../library/data/Agent.sol";
 import {PaymentConfirmations} from "../library/data/PaymentConfirmations.sol";
 import {Redemption} from "../library/data/Redemption.sol";
@@ -92,7 +92,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
                     _redemptionRequestId, _payment.data.requestBody.transactionId, request.underlyingValueUBA,
                     _payment.data.responseBody.spentAmount);
                 if (request.transferToCoreVault) {
-                    CoreVault.confirmTransferToCoreVault(_payment, agent, _redemptionRequestId);
+                    CoreVaultClient.confirmTransferToCoreVault(_payment, agent, _redemptionRequestId);
                 }
             } else {    // _payment.status == TransactionAttestation.PAYMENT_BLOCKED
                 emit IAssetManagerEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer,

@@ -94,11 +94,11 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
         {
             diamond: assetManager.address,
             facets: [
-                { contract: "CoreVaultFacet", exposedInterfaces: ["ICoreVault"] },
-                { contract: "CoreVaultSettingsFacet", exposedInterfaces: ["ICoreVaultSettings"] }
+                { contract: "CoreVaultClientFacet", exposedInterfaces: ["ICoreVaultClient"] },
+                { contract: "CoreVaultClientSettingsFacet", exposedInterfaces: ["ICoreVaultClientSettings"] }
             ],
             init: {
-                contract: "CoreVaultSettingsFacet",
+                contract: "CoreVaultClientSettingsFacet",
                 method: "initCoreVaultFacet",
                 args: [ZERO_ADDRESS, parameters.coreVaultNativeAddress,
                     parameters.coreVaultTransferTimeExtensionSeconds, parameters.coreVaultRedemptionFeeBIPS,

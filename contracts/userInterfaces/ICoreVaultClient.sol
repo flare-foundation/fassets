@@ -7,7 +7,7 @@ import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerifi
 /**
  * Core vault
  */
-interface ICoreVault {
+interface ICoreVaultClient {
     /**
      * Agent has requested transfer of (some of) their backing to the core vault.
      */

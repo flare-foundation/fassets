@@ -69,8 +69,8 @@ export async function newAssetManager(
     // extra facets
     await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("RedemptionTimeExtensionFacet"), ["IRedemptionTimeExtension"],
         (c) => c.initRedemptionTimeExtensionFacet(assetManagerSettings.redemptionPaymentExtensionSeconds));
-    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("CoreVaultFacet"), ["ICoreVault"]);
-    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("CoreVaultSettingsFacet"), ["ICoreVaultSettings"],
+    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("CoreVaultClientFacet"), ["ICoreVaultClient"]);
+    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("CoreVaultClientSettingsFacet"), ["ICoreVaultClientSettings"],
         (c) => c.initCoreVaultFacet(ZERO_ADDRESS, assetManagerSettings.coreVaultNativeAddress,
             assetManagerSettings.coreVaultTransferTimeExtensionSeconds, assetManagerSettings.coreVaultRedemptionFeeBIPS,
             assetManagerSettings.coreVaultMinimumAmountLeftBIPS, assetManagerSettings.coreVaultMinimumRedeemLots));

@@ -6,17 +6,17 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
 import {Conversion} from "../library/Conversion.sol";
-import {CoreVault} from "../library/CoreVault.sol";
+import {CoreVaultClient} from "../library/CoreVaultClient.sol";
 import {Agent} from "../library/data/Agent.sol";
-import {ICoreVault} from "../../userInterfaces/ICoreVault.sol";
+import {ICoreVaultClient} from "../../userInterfaces/ICoreVaultClient.sol";
 
 
-contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
+contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultClient {
     using SafeCast for uint256;
 
     // prevent initialization of implementation contract
     constructor() {
-        CoreVault.getState().initialized = true;
+        CoreVaultClient.getState().initialized = true;
     }
 
     /**
@@ -38,7 +38,7 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
     {
         Agent.State storage agent = Agent.get(_agentVault);
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        CoreVault.transferToCoreVault(agent, amountAMG);
+        CoreVaultClient.transferToCoreVault(agent, amountAMG);
     }
 
     /**
@@ -61,7 +61,7 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
         onlyAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        CoreVault.requestReturnFromCoreVault(agent, _lots);
+        CoreVaultClient.requestReturnFromCoreVault(agent, _lots);
     }
 
     /**
@@ -76,7 +76,7 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
         onlyAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        CoreVault.cancelReturnFromCoreVault(agent);
+        CoreVaultClient.cancelReturnFromCoreVault(agent);
     }
 
     /**
@@ -94,7 +94,7 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
         onlyAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        CoreVault.confirmReturnFromCoreVault(_payment, agent);
+        CoreVaultClient.confirmReturnFromCoreVault(_payment, agent);
     }
 
     /**
@@ -114,7 +114,7 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
         notEmergencyPaused
         nonReentrant
     {
-        CoreVault.redeemFromCoreVault(_lots, _redeemerUnderlyingAddress);
+        CoreVaultClient.redeemFromCoreVault(_lots, _redeemerUnderlyingAddress);
     }
 
     function maximumTransferToCoreVault(
@@ -125,7 +125,7 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
     {
         Agent.State storage agent = Agent.get(_agentVault);
         (uint256 _maximumTransferAMG, uint256 _minimumLeftAmountAMG) =
-             CoreVault.getMaximumTransferToCoreVaultAMG(agent);
+             CoreVaultClient.getMaximumTransferToCoreVaultAMG(agent);
         _maximumTransferUBA = Conversion.convertAmgToUBA(_maximumTransferAMG.toUint64());
         _minimumLeftAmountUBA = Conversion.convertAmgToUBA(_minimumLeftAmountAMG.toUint64());
     }
@@ -134,6 +134,6 @@ contract CoreVaultFacet is AssetManagerBase, ReentrancyGuard, ICoreVault {
         external view
         returns (uint256 _immediatelyAvailableUBA, uint256 _totalAvailableUBA)
     {
-        return CoreVault.getCoreVaultAvailableAmount();
+        return CoreVaultClient.getCoreVaultAvailableAmount();
     }
 }

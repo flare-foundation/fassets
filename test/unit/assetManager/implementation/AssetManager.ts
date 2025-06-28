@@ -246,7 +246,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             settings.assetManagerController = assetManagerController;
             // add RedemptionTimeExtensionFacet settings
             resInitSettings.redemptionPaymentExtensionSeconds = await assetManager.redemptionPaymentExtensionSeconds();
-            // add CoreVault settings
+            // add CoreVaultClient settings
             resInitSettings.coreVaultNativeAddress = await assetManager.getCoreVaultNativeAddress();
             resInitSettings.coreVaultTransferTimeExtensionSeconds = await assetManager.getCoreVaultTransferTimeExtensionSeconds();
             resInitSettings.coreVaultRedemptionFeeBIPS = await assetManager.getCoreVaultRedemptionFeeBIPS();
@@ -1981,8 +1981,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const IGoverned = artifacts.require("IGoverned");
             const IAgentPing = artifacts.require("IAgentPing");
             const IRedemptionTimeExtension = artifacts.require("IRedemptionTimeExtension");
-            const ICoreVault = artifacts.require("ICoreVault");
-            const ICoreVaultSettings = artifacts.require("ICoreVaultSettings");
+            const ICoreVaultClient = artifacts.require("ICoreVaultClient");
+            const ICoreVaultClientSettings = artifacts.require("ICoreVaultClientSettings");
             const IISettingsManagement = artifacts.require("IISettingsManagement");
             const IAgentAlwaysAllowedMinters = artifacts.require("IAgentAlwaysAllowedMinters");
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IERC165)));
@@ -1991,10 +1991,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IGoverned)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IAgentPing)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IRedemptionTimeExtension)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, ICoreVault)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, ICoreVaultSettings)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, ICoreVaultClient)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, ICoreVaultClientSettings)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IAssetManager,
-                [IERC165, IDiamondLoupe, IAgentPing, IRedemptionTimeExtension, ICoreVault, ICoreVaultSettings, IAgentAlwaysAllowedMinters])));
+                [IERC165, IDiamondLoupe, IAgentPing, IRedemptionTimeExtension, ICoreVaultClient, ICoreVaultClientSettings, IAgentAlwaysAllowedMinters])));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IIAssetManager,
                 [IAssetManager, IGoverned, IDiamondCut, IISettingsManagement])));
             assert.isFalse(await assetManager.supportsInterface('0xFFFFFFFF'));     // must not support invalid interface

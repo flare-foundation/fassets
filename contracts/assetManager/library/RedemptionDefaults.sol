@@ -6,7 +6,7 @@ import {SafePct} from "../../utils/library/SafePct.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {Conversion} from "./Conversion.sol";
 import {AgentCollateral} from "./AgentCollateral.sol";
-import {CoreVault} from "./CoreVault.sol";
+import {CoreVaultClient} from "./CoreVaultClient.sol";
 import {Agent} from "./data/Agent.sol";
 import {Agents} from "./Agents.sol";
 import {Collateral} from "./data/Collateral.sol";
@@ -52,7 +52,7 @@ library RedemptionDefaults {
             emit IAssetManagerEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _redemptionRequestId,
                 _request.underlyingValueUBA, 0, 0);
             // core vault transfer default - re-create tickets
-            CoreVault.cancelTransferToCoreVault(_agent, _request, _redemptionRequestId);
+            CoreVaultClient.cancelTransferToCoreVault(_agent, _request, _redemptionRequestId);
         }
     }
 

@@ -17,8 +17,8 @@ import {CollateralReservationInfo} from "./data/CollateralReservationInfo.sol";
 import {IAssetManagerEvents} from "./IAssetManagerEvents.sol";
 import {IAgentPing} from "./IAgentPing.sol";
 import {IRedemptionTimeExtension} from "./IRedemptionTimeExtension.sol";
-import {ICoreVault} from "./ICoreVault.sol";
-import {ICoreVaultSettings} from "./ICoreVaultSettings.sol";
+import {ICoreVaultClient} from "./ICoreVaultClient.sol";
+import {ICoreVaultClientSettings} from "./ICoreVaultClientSettings.sol";
 import {IAgentAlwaysAllowedMinters} from "./IAgentAlwaysAllowedMinters.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -32,8 +32,8 @@ interface IAssetManager is
     IAssetManagerEvents,
     IAgentPing,
     IRedemptionTimeExtension,
-    ICoreVault,
-    ICoreVaultSettings,
+    ICoreVaultClient,
+    ICoreVaultClientSettings,
     IAgentAlwaysAllowedMinters
 {
     ////////////////////////////////////////////////////////////////////////////////////
