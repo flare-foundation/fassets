@@ -415,7 +415,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
             const IERC20 = artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20" as "IERC20");
             const IERC20Metadata = artifacts.require("@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol:IERC20Metadata" as "IERC20Metadata");
-            const IICleanable = artifacts.require("@flarenetwork/flare-periphery-contracts/flare/token/interface/IICleanable.sol:IICleanable" as "IICleanable");
+            const IICleanable = artifacts.require("@flarenetwork/flare-periphery-contracts/flare/token/interfaces/IICleanable.sol:IICleanable" as "IICleanable");
             const ICheckPointable = artifacts.require("ICheckPointable");
             const IFasset = artifacts.require("IFAsset");
             const IIFasset = artifacts.require("IIFAsset");

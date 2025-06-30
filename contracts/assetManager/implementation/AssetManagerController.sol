@@ -4,7 +4,7 @@ pragma solidity 0.8.23;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdater.sol";
+import "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interfaces/IIAddressUpdater.sol";
 import "../interfaces/IWNat.sol";
 import "../interfaces/IISettingsManagement.sol";
 import "../interfaces/IIAssetManagerController.sol";
