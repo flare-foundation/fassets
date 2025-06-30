@@ -13,7 +13,6 @@ import {Agent} from "../library/data/Agent.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
-import {RedemptionTimeExtension} from "../library/data/RedemptionTimeExtension.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {Conversion} from "../library/Conversion.sol";
 import {Redemptions} from "../library/Redemptions.sol";
@@ -21,8 +20,6 @@ import {Liquidation} from "../library/Liquidation.sol";
 import {TransactionAttestation} from "../library/TransactionAttestation.sol";
 import {RedemptionQueue} from "../library/data/RedemptionQueue.sol";
 import {Redemption} from "../library/data/Redemption.sol";
-import {SafeMath64} from "../../utils/library/SafeMath64.sol";
-import {PaymentReference} from "../library/data/PaymentReference.sol";
 
 
 contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {

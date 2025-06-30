@@ -6,7 +6,7 @@ import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {Globals} from "./Globals.sol";
 import {TransactionAttestation} from "./TransactionAttestation.sol";
-import {IConfirmedBlockHeightExists, IPayment, IBalanceDecreasingTransaction} from
+import {IConfirmedBlockHeightExists, IPayment} from
     "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 
 

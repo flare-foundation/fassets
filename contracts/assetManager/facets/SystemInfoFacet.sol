@@ -5,7 +5,6 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 import {Conversion} from "../library/Conversion.sol";
-import {Globals} from "../library/Globals.sol";
 import {RedemptionQueueInfo} from "../library/RedemptionQueueInfo.sol";
 import {Minting} from "../library/Minting.sol";
 import {Redemptions} from "../library/Redemptions.sol";

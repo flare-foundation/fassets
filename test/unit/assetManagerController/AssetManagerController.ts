@@ -826,11 +826,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectEvent.inTransaction(timelock_info.tx, assetManager, "SettingChanged", { name: "vaultCollateralBuyForFlareFactorBIPS", value: toBN(vaultCollateralBuyForFlareFactorBIPS_new) });
         });
 
-        it("should revert setting agent exit available timelock seconds when value is too big", async () => {
+        it("should revert setting agent exit available timelock seconds when increase is too big", async () => {
             const currentSettings = await assetManager.getSettings();
             const agentExitAvailableTimelockSeconds_tooBig = toBN(currentSettings.agentExitAvailableTimelockSeconds).muln(5).addn(WEEKS);
             const res = assetManagerController.setAgentExitAvailableTimelockSeconds([assetManager.address], agentExitAvailableTimelockSeconds_tooBig, { from: governance });
-            await expectRevert.unspecified(res);
+            await expectRevert(res, "increase too big");
         });
 
         it("should set agent exit available timelock seconds", async () => {
@@ -839,11 +839,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "agentExitAvailableTimelockSeconds", value: toBN(agentExitAvailableTimelockSeconds_new) });
         });
 
-        it("should revert setting agent fee change timelock seconds when value is too big", async () => {
+        it("should revert setting agent fee change timelock seconds when increase is too big", async () => {
             const currentSettings = await assetManager.getSettings();
             const agentFeeChangeTimelockSeconds_tooBig = toBN(currentSettings.agentFeeChangeTimelockSeconds).muln(5).addn(WEEKS);
             const res = assetManagerController.setAgentFeeChangeTimelockSeconds([assetManager.address], agentFeeChangeTimelockSeconds_tooBig, { from: governance });
-            await expectRevert.unspecified(res);
+            await expectRevert(res, "increase too big");
         });
 
         it("should set agent exit available timelock seconds", async () => {
@@ -852,11 +852,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "agentFeeChangeTimelockSeconds", value: toBN(agentFeeChangeTimelockSeconds_new) });
         });
 
-        it("should revert setting agent minting CR change timelock seconds when value is too big", async () => {
+        it("should revert setting agent minting CR change timelock seconds when increase is too big", async () => {
             const currentSettings = await assetManager.getSettings();
             const agentMintingCRChangeTimelockSeconds_tooBig = toBN(currentSettings.agentMintingCRChangeTimelockSeconds).muln(5).addn(WEEKS);
             const res = assetManagerController.setAgentMintingCRChangeTimelockSeconds([assetManager.address], agentMintingCRChangeTimelockSeconds_tooBig, { from: governance });
-            await expectRevert.unspecified(res);
+            await expectRevert(res, "increase too big");
         });
 
         it("should set agent minting CR change timelock seconds", async () => {
@@ -865,11 +865,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "agentMintingCRChangeTimelockSeconds", value: toBN(agentMintingCRChangeTimelockSeconds_new) });
         });
 
-        it("should revert setting pool exit CR timelock seconds when value is too big", async () => {
+        it("should revert setting pool exit CR timelock seconds when increase is too big", async () => {
             const currentSettings = await assetManager.getSettings();
             const poolExitCRChangeTimelockSeconds_tooBig = toBN(currentSettings.poolExitCRChangeTimelockSeconds).muln(5).addn(WEEKS);
             const res = assetManagerController.setPoolExitCRChangeTimelockSeconds([assetManager.address], poolExitCRChangeTimelockSeconds_tooBig, { from: governance });
-            await expectRevert.unspecified(res);
+            await expectRevert(res, "increase too big");
         });
 
         it("should set pool exit CR timelock seconds", async () => {

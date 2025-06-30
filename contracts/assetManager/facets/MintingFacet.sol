@@ -19,10 +19,8 @@ import {Collateral} from "../library/data/Collateral.sol";
 import {Agent} from "../library/data/Agent.sol";
 import {CollateralReservation} from "../library/data/CollateralReservation.sol";
 import {Conversion} from "../library/Conversion.sol";
-import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {Globals} from "../library/Globals.sol";
 import {PaymentReference} from "../library/data/PaymentReference.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {UnderlyingBlockUpdater} from "../library/UnderlyingBlockUpdater.sol";
 
 
