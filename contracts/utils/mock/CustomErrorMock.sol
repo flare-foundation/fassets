@@ -13,4 +13,9 @@ contract CustomErrorMock {
     function emitErrorWithArgs(uint256 value, string memory text) external {
         revert ErrorWithArgs(value, text);
     }
+
+    function emitErrorWithString() external {
+        // solhint-disable-next-line gas-custom-errors
+        revert("string type error");
+    }
 }

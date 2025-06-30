@@ -102,6 +102,13 @@ contract(`test-helpers.ts; ${getTestFile(__filename)}; Test library helpers unit
                 expectRevert.custom(errorMock.emitErrorWithArgs(123, "amount too low"), "ErrorWithArgs", [125, "amount too low"]),
                 "Wrong kind of exception received");
         });
+
+        it("should not match by type with with string error messages, but should match plain string", async () => {
+            await expectRevert(errorMock.emitErrorWithString(), "string type error");
+            await expectRevert(
+                expectRevert.custom(errorMock.emitErrorWithString(), "Error", ["string type error"]),
+                "Wrong kind of exception received");
+        });
     })
 
     describe("testing expectEvent", () => {
