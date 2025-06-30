@@ -200,12 +200,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         uint256 natShare = totalCollateral.mulDiv(_tokenShare, token.totalSupply());
         require(natShare > 0, "amount of sent tokens is too small");
         _requireMinNatSupplyAfterExit(natShare);
-        // special case after termination - we don't care about fees or CR any more and we must avoid fasset transfer
-        if (fAsset.terminated()) {
-            token.burn(msg.sender, _tokenShare, true); // when f-asset is terminated all tokens are free tokens
-            _withdrawWNatTo(_recipient, natShare);
-            return natShare;
-        }
         require(_staysAboveExitCR(natShare), "collateral ratio falls below exitCR");
         // update the fasset fee debt
         uint256 debtFAssetFeeShare = _tokensToVirtualFeeShare(_tokenShare);

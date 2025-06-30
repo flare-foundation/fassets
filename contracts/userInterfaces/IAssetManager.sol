@@ -149,19 +149,6 @@ interface IAssetManager is
         external view
         returns (bool);
 
-    /**
-     * True if the asset manager is terminated.
-     * In terminated state almost all operations (minting, redeeming, liquidation) are disabled and f-assets are
-     * not transferable any more. The only operation still permitted is for agents to release the locked collateral
-     * by calling `buybackAgentCollateral`.
-     * An asset manager can be terminated after being paused for at least a month
-     * (to redeem as many f-assets as possible).
-     * The terminated asset manager can not be revived anymore.
-     */
-    function terminated()
-        external view
-        returns (bool);
-
     ////////////////////////////////////////////////////////////////////////////////////
     // Timekeeping for underlying chain
 
@@ -426,24 +413,6 @@ interface IAssetManager is
     function cancelUnderlyingWithdrawal(
         address _agentVault
     ) external;
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    // Terminated asset manager support
-
-    /**
-     * When f-asset is terminated, an agent can burn the market price of backed f-assets with his collateral,
-     * to release the remaining collateral (and, formally, underlying assets).
-     * This method ONLY works when f-asset is terminated, which will only be done when the asset manager
-     * is already paused at least for a month and most f-assets are already burned and the only ones
-     * remaining are unrecoverable.
-     * NOTE: may only be called by the agent vault owner.
-     * NOTE: the agent (management address) receives the vault collateral and NAT is burned instead. Therefore
-     *      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral
-     *      amount multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
-     */
-    function buybackAgentCollateral(
-        address _agentVault
-    ) external payable;
 
     ////////////////////////////////////////////////////////////////////////////////////
     // Agent information

@@ -10,8 +10,6 @@
 
 **paused** - True if the asset manager is paused. In the paused state, minting is disabled, but all other operations (e.g. redemptions, liquidation) still work. Paused asset manager can be later unpaused.
 
-**terminated** - True if the asset manager is terminated. In terminated state almost all operations (minting, redeeming, liquidation) are disabled and f-assets are not transferable any more. The only operation still permitted is for agents to release the locked collateral by calling `buybackAgentCollateral`. An asset manager can be terminated after being paused for at least a month (to redeem as many f-assets as possible). The terminated asset manager can not be revived anymore.
-
 **updateCurrentBlock** - Prove that a block with given number and timestamp exists and update the current underlying block info if the provided data is higher. This method should be called by minters before minting and by agent's regularly to prevent current block being too outdated, which gives too short time for minting or redemption payment.
 NOTE: anybody can call.
 
@@ -62,9 +60,6 @@ NOTE: may only be called by the owner of the agent vault   except if enough time
 
 **cancelUnderlyingWithdrawal** - Cancel ongoing withdrawal of underlying currency. Needed in order to reset announcement timestamp, so that others cannot front-run the agent at `confirmUnderlyingWithdrawal` call. This could happen if withdrawal would be performed more than `confirmationByOthersAfterSeconds` seconds after announcement.
 NOTE: may only be called by the agent vault owner.
-
-**buybackAgentCollateral** - When f-asset is terminated, an agent can burn the market price of backed f-assets with his collateral, to release the remaining collateral (and, formally, underlying assets). This method ONLY works when f-asset is terminated, which will only be done when the asset manager is already paused at least for a month and most f-assets are already burned and the only ones remaining are unrecoverable.
-NOTE: may only be called by the agent vault owner. NOTE: the agent (management address) receives the vault collateral and NAT is burned instead. Therefore      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral amount      multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
 
 **getAllAgents** - Get (a part of) the list of all agents. The list must be retrieved in parts since retrieving the whole list can consume too much gas for one block.
 

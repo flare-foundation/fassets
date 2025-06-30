@@ -379,13 +379,6 @@ export interface AssetManagerParameters {
     announcedUnderlyingConfirmationMinSeconds: integer;
 
     /**
-     * Ratio at which the agents can buy back their collateral when f-asset is terminated.
-     * Typically a bit more than 1 to incentivize agents to buy f-assets and self-close instead.
-     * @minimum 0
-     */
-    buybackCollateralFactorBIPS: integer;
-
-    /**
      * On some rare occasions (stuck minting, locked fassets after termination), the agent has to unlock
      * collateral. For this, part of collateral corresponding to FTSO asset value is burned and the rest is released.
      * However, we cannot burn typical vault collateral (stablecoins), so the agent must buy them for NAT

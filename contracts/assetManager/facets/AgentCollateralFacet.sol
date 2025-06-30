@@ -6,7 +6,6 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {AgentCollateral} from "../library/AgentCollateral.sol";
-import {Conversion} from "../library/Conversion.sol";
 import {Globals} from "../library/Globals.sol";
 import {Liquidation} from "../library/Liquidation.sol";
 import {Agents} from "../library/Agents.sol";
@@ -16,7 +15,6 @@ import {Collateral} from "../library/data/Collateral.sol";
 import {CollateralTypeInt} from "../library/data/CollateralTypeInt.sol";
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
-import {Transfers} from "../../utils/library/Transfers.sol";
 import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
@@ -182,48 +180,6 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
             emit IAssetManagerEvents.AgentCollateralTypeChanged(_agentVault,
                 uint8(CollateralType.Class.POOL), address(wNat));
         }
-    }
-
-    /**
-     * When f-asset is terminated, agent can burn the market price of backed f-assets with his collateral,
-     * to release the remaining collateral (and, formally, underlying assets).
-     * This method ONLY works when f-asset is terminated, which will only be done when AssetManager is already paused
-     * at least for a month and most f-assets are already burned and the only ones remaining are unrecoverable.
-     * NOTE: may only be called by the agent vault owner.
-     * NOTE: the agent (management address) receives the vault collateral (if not NAT) and NAT is burned instead.
-     *      Therefore this method is `payable` and the caller must provide enough NAT to cover the received vault
-     *      collateral amount multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
-     *      If vault collateral is NAT, it is simply burned and msg.value must be zero.
-     */
-    function buybackAgentCollateral(
-        address _agentVault
-    )
-        external payable
-        onlyAgentVaultOwner(_agentVault)
-        nonReentrant
-    {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        Agent.State storage agent = Agent.get(_agentVault);
-        require(Globals.getFAsset().terminated(), "f-asset not terminated");
-        // Types of various collateral types:
-        // - reservedAMG should be 0, since asset manager had to be paused for a month, so all collateral
-        //   reservation requests must have been minted or defaulted by now.
-        //   However, it may be nonzero due to some forgotten payment proof, so we burn and clear it.
-        // - redeemingAMG and poolRedeemingAMG corresponds to redemptions where f-assets were already burned,
-        //   so the redemption can finish normally even if f-asset is now terminated
-        //   If there are stuck redemptions due to lack of proof, agent should use finishRedemptionWithoutPayment.
-        // - mintedAMG must be burned and cleared
-        uint64 mintingAMG = agent.reservedAMG + agent.mintedAMG;
-        CollateralTypeInt.Data storage collateral = agent.getVaultCollateral();
-        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(collateral);
-        uint256 buybackCollateral = Conversion.convertAmgToTokenWei(mintingAMG, amgToTokenWeiPrice)
-            .mulBips(Globals.getSettings().buybackCollateralFactorBIPS);
-        uint256 burnedNatWei = agent.burnVaultCollateral(buybackCollateral);
-        agent.releaseMintedAssets(agent.mintedAMG); // release all
-        state.totalReservedCollateralAMG -= agent.reservedAMG;
-        agent.reservedAMG = 0;
-        // If there is some overpaid NAT, send it back.
-        Transfers.transferNAT(payable(msg.sender), msg.value - burnedNatWei);
     }
 
     function _announceWithdrawal(

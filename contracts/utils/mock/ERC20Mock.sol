@@ -37,11 +37,6 @@ contract ERC20Mock is ERC20 {
         payable(msg.sender).transfer(amount);
     }
 
-    // to simulate FAsset in some collateral pool tests
-    function terminated() external pure returns (bool) {
-        return false;
-    }
-
     function _beforeTokenTransfer(address from, address to, uint256) internal virtual override {
         require(!sanctionedAddresses[from] && !sanctionedAddresses[to], "sanctioned address");
     }

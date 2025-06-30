@@ -1343,32 +1343,14 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
     });
 
-    describe("pause, unpause and terminate", () => {
-        it("should pause and terminate only after 30 days", async () => {
-            const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
+    describe("pause and unpause", () => {
+        it("should pause", async () => {
             assert.isFalse(await assetManager.mintingPaused());
             await assetManagerController.pauseMinting([assetManager.address], { from: governance });
             assert.isTrue(await assetManager.mintingPaused());
-            await time.deterministicIncrease(MINIMUM_PAUSE_BEFORE_STOP / 2);
-            await assetManagerController.pauseMinting([assetManager.address], { from: governance });
-            assert.isTrue(await assetManager.mintingPaused());
-            await expectRevert(assetManagerController.terminate([assetManager.address], { from: governance }), "asset manager not paused enough");
-            await time.deterministicIncrease(MINIMUM_PAUSE_BEFORE_STOP / 2);
-            assert.isFalse(await fAsset.terminated());
-            assert.isFalse(await assetManager.terminated());
-            await assetManagerController.terminate([assetManager.address], { from: governance })
-            assert.isTrue(await fAsset.terminated());
-            assert.isTrue(await assetManager.terminated());
-            await expectRevert(assetManagerController.unpauseMinting([assetManager.address], { from: governance }), "f-asset terminated");
         });
 
-        it("controler shouldn't be able to terminate asset manager that he is not managing", async () => {
-            const [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, "Ether", "ETH", { governanceSettings, updateExecutor });
-            //Shouldn't be able to terminate unmanaged asset manager
-            await expectRevert(assetManagerController.terminate([assetManager2.address], { from: governance }), "Asset manager not managed");
-        });
-
-        it("should unpause if not yet terminated", async () => {
+        it("should unpause", async () => {
             await assetManagerController.pauseMinting([assetManager.address], { from: governance });
             assert.isTrue(await assetManager.mintingPaused());
             await assetManagerController.unpauseMinting([assetManager.address], { from: governance });
@@ -1387,33 +1369,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const promise = assetManagerController.unpauseMinting([assetManager.address], { from: accounts[0] })
             await expectRevert(promise, "only governance");
             assert.isTrue(await assetManager.mintingPaused());
-        });
-
-        it("should not terminate if not called from governance", async () => {
-            const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
-            assert.isFalse(await assetManager.mintingPaused());
-            await assetManagerController.pauseMinting([assetManager.address], { from: governance });
-            assert.isTrue(await assetManager.mintingPaused());
-            await time.deterministicIncrease(MINIMUM_PAUSE_BEFORE_STOP);
-            const promise = assetManagerController.terminate([assetManager.address], { from: accounts[0] })
-            await expectRevert(promise, "only governance");
-            assert.isFalse(await fAsset.terminated());
-        });
-
-        it("should not upgrade terminated FAsset", async () => {
-            // terminate
-            const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
-            await assetManagerController.pauseMinting([assetManager.address], { from: governance });
-            assert.isTrue(await assetManager.mintingPaused());
-            await time.deterministicIncrease(MINIMUM_PAUSE_BEFORE_STOP);
-            assert.isFalse(await fAsset.terminated());
-            await assetManagerController.terminate([assetManager.address], { from: governance })
-            assert.isTrue(await fAsset.terminated());
-            // should not upgrade
-            const FAsset = artifacts.require('FAsset');
-            const impl = await FAsset.new();
-            const res = await assetManagerController.upgradeFAssetImplementation([assetManager.address], impl.address, "0x", { from: governance });
-            await expectRevert(waitForTimelock(res, assetManagerController, updateExecutor), "f-asset terminated");
         });
     });
 

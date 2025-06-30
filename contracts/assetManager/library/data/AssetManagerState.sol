@@ -66,7 +66,6 @@ library AssetManagerState {
 
         // If non-zero, minting is paused and has been paused at the time indicated by timestamp mintingPausedAt.
         // When asset manager is paused, no new mintings can be done, but redemptions still work.
-        // It is usually used when the asset manager is going to be terminated and upgraded afterwards.
         uint64 mintingPausedAt;
 
         // If non-zero, asset manager is paused and will be paused until the time indicated.

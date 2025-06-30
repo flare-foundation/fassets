@@ -3,7 +3,8 @@
 
 pragma solidity ^0.8.27;
 
-import "../../governance/implementation/Governed.sol";
+import {Governed} from "../../governance/implementation/Governed.sol";
+import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 import {IIAddressUpdater}
     from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdater.sol";
 import {IIAddressUpdatable}

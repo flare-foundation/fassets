@@ -255,7 +255,7 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         maxTrustedPriceAgeSeconds: parameters.maxTrustedPriceAgeSeconds,
         withdrawalWaitMinSeconds: parameters.withdrawalWaitMinSeconds,
         announcedUnderlyingConfirmationMinSeconds: parameters.announcedUnderlyingConfirmationMinSeconds,
-        buybackCollateralFactorBIPS: parameters.buybackCollateralFactorBIPS,
+        __buybackCollateralFactorBIPS: 0,
         vaultCollateralBuyForFlareFactorBIPS: parameters.vaultCollateralBuyForFlareFactorBIPS,
         minUpdateRepeatTimeSeconds: parameters.minUpdateRepeatTimeSeconds,
         tokenInvalidationTimeMinSeconds: parameters.tokenInvalidationTimeMinSeconds,

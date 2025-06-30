@@ -204,7 +204,7 @@ library AssetManagerSettings {
         // Ratio at which the agents can buy back their collateral when f-asset is terminated.
         // Typically a bit more than 1 to incentivize agents to buy f-assets and self-close instead.
         // immutable
-        uint64 buybackCollateralFactorBIPS;
+        uint64 __buybackCollateralFactorBIPS; // only storage placeholder
 
         // Minimum time that has to pass between underlying withdrawal announcement and the confirmation.
         // Any value is ok, but higher values give more security against multiple announcement attack by a miner.
@@ -218,9 +218,8 @@ library AssetManagerSettings {
         // timelocked
         uint64 tokenInvalidationTimeMinSeconds;
 
-        // On some rare occasions (stuck minting, locked fassets after termination), the agent has to unlock
-        // collateral. For this, part of collateral corresponding to FTSO asset value is burned and the rest
-        // is released.
+        // On some rare occasions (stuck minting), the agent has to unlock collateral.
+        // For this, part of collateral corresponding to FTSO asset value is burned and the rest is released.
         // However, we cannot burn typical vault collateral (stablecoins), so the agent must buy them for NAT
         // at FTSO price multiplied with this factor (should be a bit above 1) and then we burn the NATs.
         // timelocked

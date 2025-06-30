@@ -247,19 +247,6 @@ export class Agent extends AssetContextClient {
         }
     }
 
-    async exitAndDestroyWithTerminatedFAsset(collateral: BNish) {
-        await this.exitAvailable();
-        // note that here we can't redeem anything from the pool as f-asset is terminated
-        // TODO: we should still be able to withdraw pool collateral (and leave pool fees behind)
-        const destroyAllowedAt = await this.announceDestroy();
-        await time.increaseTo(destroyAllowedAt);
-        const vaultCollateralToken = this.vaultCollateralToken();
-        const ownerVaultCollateralBalance = await vaultCollateralToken.balanceOf(this.ownerWorkAddress);
-        await this.destroy();
-        const ownerVaultCollateralBalanceAfterDestroy = await vaultCollateralToken.balanceOf(this.ownerWorkAddress);
-        assertWeb3Equal(ownerVaultCollateralBalanceAfterDestroy.sub(ownerVaultCollateralBalance), collateral);
-    }
-
     async announceVaultCollateralWithdrawal(amountWei: BNish) {
         const res = await this.assetManager.announceVaultCollateralWithdrawal(this.vaultAddress, amountWei, { from: this.ownerWorkAddress });
         return requiredEventArgs(res, 'VaultCollateralWithdrawalAnnounced');
@@ -586,21 +573,6 @@ export class Agent extends AssetContextClient {
     async endLiquidation() {
         const res = await this.assetManager.endLiquidation(this.vaultAddress, { from: this.ownerWorkAddress });
         assert.equal(requiredEventArgs(res, 'LiquidationEnded').agentVault, this.vaultAddress);
-    }
-
-    async getBuybackAgentCollateralValue() {
-        const agentInfo = await this.getAgentInfo();
-        const totalUBA = toBN(agentInfo.mintedUBA).add(toBN(agentInfo.reservedUBA));
-        const totalUBAWithBuybackPremium = totalUBA.mul(toBN(this.context.settings.buybackCollateralFactorBIPS)).divn(MAX_BIPS);
-        const priceVaultCollateral = await this.context.getCollateralPrice(this.vaultCollateral());
-        const natBurned = await this.vaultCollateralToNatBurnedInUBA(totalUBAWithBuybackPremium);
-        const buybackCollateral = priceVaultCollateral.convertUBAToTokenWei(totalUBAWithBuybackPremium);
-        return [buybackCollateral, totalUBA, natBurned];
-    }
-
-    async buybackAgentCollateral() {
-        const [, , buybackCost] = await this.getBuybackAgentCollateralValue()
-        await this.assetManager.buybackAgentCollateral(this.agentVault.address, { from: this.ownerWorkAddress, value: buybackCost });
     }
 
     lastAgentInfoCheck: CheckAgentInfo = CHECK_DEFAULTS;

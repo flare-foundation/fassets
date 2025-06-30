@@ -39,16 +39,6 @@ contract SystemInfoFacet is AssetManagerBase {
     }
 
     /**
-     * True if asset manager is terminated.
-     */
-    function terminated()
-        external view
-        returns (bool)
-    {
-        return Globals.getFAsset().terminated();
-    }
-
-    /**
      * Return (part of) the redemption queue.
      * @param _firstRedemptionTicketId the ticket id to start listing from; if 0, starts from the beginning
      * @param _pageSize the maximum number of redemption tickets to return

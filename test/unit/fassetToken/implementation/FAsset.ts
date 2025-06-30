@@ -61,20 +61,6 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, accounts 
             await expectRevert(promise, "cannot replace asset manager")
         });
 
-        it('should only be terminated by asset manager', async function () {
-            await fAsset.setAssetManager(assetManager, { from: governance });
-            const promise = fAsset.terminate({ from: governance });
-            await expectRevert(promise, "only asset manager");
-            assert.isFalse(await fAsset.terminated());
-            await fAsset.terminate({ from: assetManager });
-            assert.isTrue(await fAsset.terminated());
-            const terminatedAt = await fAsset.terminatedAt();
-            await time.deterministicIncrease(100);
-            await fAsset.terminate({ from: assetManager });
-            const terminatedAt2 = await fAsset.terminatedAt();
-            assertWeb3Equal(terminatedAt, terminatedAt2);
-        });
-
         it('should mint FAsset', async function () {
             await fAsset.setAssetManager(assetManager, { from: governance });
             const amount = 100;
@@ -123,15 +109,6 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, accounts 
             await fAsset.mint(accounts[1], mint_amount,{ from: assetManager });
             const res = fAsset.burn(accounts[1], burn_amount,{ from: assetManager } );
             await expectRevert(res, "f-asset balance too low");
-        });
-
-        it('should not be able to transfer if terminated', async function () {
-            await fAsset.setAssetManager(assetManager, { from: governance });
-            const mint_amount = 100;
-            await fAsset.mint(accounts[1], mint_amount,{ from: assetManager });
-            await fAsset.terminate({ from: assetManager });
-            const res = fAsset.transfer(accounts[2], 50, { from: accounts[1]});
-            await expectRevert(res, "f-asset terminated");
         });
     });
 

@@ -20,12 +20,6 @@ interface IIFAsset is IFAsset, IICheckPointable, IICleanable {
     function burn(address _owner, uint256 _amount) external;
 
     /**
-     * Stops all transfers by setting `terminated` flag to true.
-     * Only the assetManager corresponding to this fAsset may call `terminate()`.
-     */
-    function terminate() external;
-
-    /**
      * Set the contract that is allowed to set cleanupBlockNumber.
      * Usually this will be an instance of CleanupBlockNumberManager.
      */

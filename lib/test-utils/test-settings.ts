@@ -115,7 +115,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         minUpdateRepeatTimeSeconds: 1 * DAYS,
         attestationWindowSeconds: 1 * DAYS,
         averageBlockTimeMS: Math.round(ci.blockTime * 1000),
-        buybackCollateralFactorBIPS: toBIPS(1.1),               // 1.1
+        __buybackCollateralFactorBIPS: 0,
         announcedUnderlyingConfirmationMinSeconds: 0,           // should be higher in production (~ Flare data connector response time, in tests sc response time is 0)
         agentFeeChangeTimelockSeconds: 6 * HOURS,
         agentMintingCRChangeTimelockSeconds: 1 * HOURS,

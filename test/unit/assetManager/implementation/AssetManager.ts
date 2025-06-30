@@ -807,26 +807,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
     });
 
-    describe("pause minting and terminate fasset", () => {
-        it("should pause and terminate only after 30 days", async () => {
-            const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
+    describe("pause and unpause minting", () => {
+        it("should pause", async () => {
             assert.isFalse(await assetManager.mintingPaused());
             await assetManager.pauseMinting({ from: assetManagerController });
             assert.isTrue(await assetManager.mintingPaused());
-            await time.deterministicIncrease(MINIMUM_PAUSE_BEFORE_STOP / 2);
-            await assetManager.pauseMinting({ from: assetManagerController });
-            assert.isTrue(await assetManager.mintingPaused());
-            await expectRevert(assetManager.terminate({ from: assetManagerController }), "asset manager not paused enough");
-            await time.deterministicIncrease(MINIMUM_PAUSE_BEFORE_STOP / 2);
-            assert.isFalse(await fAsset.terminated());
-            assert.isFalse(await assetManager.terminated());
-            await assetManager.terminate({ from: assetManagerController });
-            assert.isTrue(await fAsset.terminated());
-            assert.isTrue(await assetManager.terminated());
-            await expectRevert(assetManager.unpauseMinting({ from: assetManagerController }), "f-asset terminated");
         });
 
-        it("should unpause if not yet terminated", async () => {
+        it("should unpause", async () => {
             await assetManager.pauseMinting({ from: assetManagerController });
             assert.isTrue(await assetManager.mintingPaused());
             await assetManager.unpauseMinting({ from: assetManagerController });
@@ -845,62 +833,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const promise = assetManager.unpauseMinting({ from: accounts[0] });
             await expectRevert(promise, "only asset manager controller");
             assert.isTrue(await assetManager.mintingPaused());
-        });
-
-        it("should not terminate if not called from asset manager controller", async () => {
-            const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
-            assert.isFalse(await assetManager.mintingPaused());
-            await assetManager.pauseMinting({ from: assetManagerController });
-            assert.isTrue(await assetManager.mintingPaused());
-            await time.deterministicIncrease(MINIMUM_PAUSE_BEFORE_STOP);
-            const promise = assetManager.terminate({ from: accounts[0] });
-            await expectRevert(promise, "only asset manager controller");
-            assert.isFalse(await fAsset.terminated());
-        });
-
-        it("should buy back agent collateral", async () => {
-            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e8));
-            await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(1));
-            // terminate f-asset
-            const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
-            await assetManager.pauseMinting({ from: assetManagerController });
-            await time.deterministicIncrease(MINIMUM_PAUSE_BEFORE_STOP);
-            await assetManager.terminate({ from: assetManagerController });
-            // buy back the collateral
-            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            const mintedUSD = await ubaToC1Wei(toBN(agentInfo.mintedUBA));
-            // random address can't buy back agent collateral
-            const res = assetManager.buybackAgentCollateral(agentVault.address, { from: accounts[12], value: toWei(3e6) });
-            await expectRevert(res, "only agent vault owner");
-            // buy back agent collateral from owner address
-            await assetManager.buybackAgentCollateral(agentVault.address, { from: agentOwner1, value: toWei(3e6) });
-            const buybackPriceUSD = mulBIPS(mintedUSD, toBN(settings.buybackCollateralFactorBIPS));
-            assertEqualWithNumError(await usdc.balanceOf(agentOwner1), buybackPriceUSD, toBN(1));
-        });
-
-        it("should buy back agent collateral when vault collateral token is the same as pool token", async () => {
-            const ci = testChainInfo.eth;
-            // create asset manager where pool and vault collateral is nat
-            collaterals = createTestCollaterals(contracts, ci);
-            collaterals[1].token = collaterals[0].token;
-            collaterals[1].tokenFtsoSymbol = collaterals[0].tokenFtsoSymbol;
-            settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
-            [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
-            const agentVault = await createAvailableAgentWithEOANAT(agentOwner1, underlyingAgent1, toWei(3e8));
-            await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(10));
-            // terminate f-asset
-            const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
-            await assetManager.pauseMinting({ from: assetManagerController });
-            await time.deterministicIncrease(MINIMUM_PAUSE_BEFORE_STOP);
-            await assetManager.terminate({ from: assetManagerController });
-            // buy back the collateral
-            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            const mintedCollateral = await ubaToPoolWei(toBN(agentInfo.mintedUBA));
-            const wnatBalanceBefore = await wNat.balanceOf(agentOwner1);
-            await assetManager.buybackAgentCollateral(agentVault.address, { from: agentOwner1, value: toWei(3e6) });
-            const wnatBalanceAfter = await wNat.balanceOf(agentOwner1);
-            const buybackPrice = mulBIPS(mintedCollateral, toBN(settings.buybackCollateralFactorBIPS));
-            assertEqualWithNumError(wnatBalanceAfter.sub(wnatBalanceBefore), buybackPrice, toBN(1));
         });
     });
 
@@ -1014,11 +946,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(res15, "cannot be zero");
         });
 
-        it("should validate settings - cannot be zero (buybackCollateralFactorBIPS)", async () => {
+        it("should validate settings - must be zero (__buybackCollateralFactorBIPS)", async () => {
             const newSettings16 = createTestSettings(contracts, testChainInfo.eth);
-            newSettings16.buybackCollateralFactorBIPS = 0;
+            newSettings16.__buybackCollateralFactorBIPS = 1;
             const res16 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings16, collaterals);
-            await expectRevert(res16, "cannot be zero");
+            await expectRevert(res16, "must be zero");
         });
 
         it("should validate settings - cannot be zero (withdrawalWaitMinSeconds)", async () => {

@@ -88,20 +88,10 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsMan
     function pauseMinting() external;
 
     /**
-     * If f-asset was not terminated yet, minting can continue.
+     * Minting can continue.
      * NOTE: may not be called directly - only through asset manager controller by governance.
      */
     function unpauseMinting() external;
-
-    /**
-     * When f-asset is terminated, no transfers can be made anymore.
-     * This is an extreme measure to be used only when the asset manager minting has been already paused
-     * for a long time but there still exist unredeemable f-assets. In such case, the f-asset contract is
-     * terminated and then agents can buy back the collateral at market rate (i.e. they burn market value
-     * of backed f-assets in collateral to release the rest of the collateral).
-     * NOTE: may not be called directly - only through asset manager controller by governance.
-     */
-    function terminate() external;
 
     /**
      * When agent vault, collateral pool or collateral pool token factory is upgraded, new agent vaults

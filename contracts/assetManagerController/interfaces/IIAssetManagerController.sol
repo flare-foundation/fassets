@@ -23,7 +23,7 @@ interface IIAssetManagerController is
     /**
      * New address in case this controller was replaced.
      * Note: this code contains no checks that replacedBy==0, because when replaced,
-     * all calls to AssetManager's updateSettings/pause/terminate will fail anyway
+     * all calls to AssetManager's updateSettings/pause will fail anyway
      * since they will arrive from wrong controller address.
      */
     function replacedBy() external view returns (address);
@@ -218,19 +218,9 @@ interface IIAssetManagerController is
         external;
 
     /**
-     * If f-asset was not terminated yet, minting can continue.
+     * Minting can continue.
      */
     function unpauseMinting(IIAssetManager[] calldata _assetManagers)
-        external;
-
-    /**
-     * When f-asset is terminated, no transfers can be made anymore.
-     * This is an extreme measure to be used only when the asset manager minting has been already paused
-     * for a long time but there still exist unredeemable f-assets. In such case, the f-asset contract is
-     * terminated and then agents can buy back the collateral at market rate (i.e. they burn market value
-     * of backed f-assets in collateral to release the rest of the collateral).
-     */
-    function terminate(IIAssetManager[] calldata _assetManagers)
         external;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////

@@ -9,8 +9,6 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IERC5267} from "@openzeppelin/contracts/interfaces/IERC5267.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {IIFAsset} from "../interfaces/IIFAsset.sol";
-import {SafePct} from "../../utils/library/SafePct.sol";
-import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
 import {ERC20Permit} from "../../openzeppelin/token/ERC20Permit.sol";
 import {CheckPointable} from "./CheckPointable.sol";
 import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
@@ -42,18 +40,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
      */
     address public override assetManager;
 
-    /**
-     * Nonzero if f-asset is terminated (in that case its value is terminate timestamp).
-     * Stopped f-asset can never be re-enabled.
-     *
-     * When f-asset is terminated, no transfers can be made anymore.
-     * This is an extreme measure to be used as an optional last phase of asset manager upgrade,
-     * when the asset manager minting has already been paused for a long time but there still exist
-     * unredeemable f-assets, which at this point are considered unrecoverable (lost wallet keys etc.).
-     * In such case, the f-asset contract is terminated and then agents can buy back their collateral at market rate
-     * (i.e. they burn market value of backed f-assets in collateral to release the rest of the collateral).
-     */
-    uint64 public terminatedAt = 0;
+    uint64 private __terminatedAt; // only storage placeholder
 
     string private _name;
     string private _symbol;
@@ -138,30 +125,6 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     }
 
     /**
-     * Stops all transfers by setting `terminated` flag to true.
-     * Only the assetManager corresponding to this fAsset may call `terminate()`.
-     * Stop is irreversible.
-     */
-    function terminate()
-        external override
-        onlyAssetManager
-    {
-        if (terminatedAt == 0) {
-            terminatedAt = uint64(block.timestamp);    // safe, block timestamp can never exceed 64bit
-        }
-    }
-
-    /**
-     * True if f-asset is terminated.
-     */
-    function terminated()
-        external view override
-        returns (bool)
-    {
-        return terminatedAt != 0;
-    }
-
-    /**
      * Returns the name of the token.
      */
     function name() public view virtual override(ERC20, IERC20Metadata) returns (string memory) {
@@ -226,13 +189,9 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
         cleanupBlockNumberManager = _cleanupBlockNumberManager;
     }
 
-    /**
-     * Prevent transfer if FAsset is terminated.
-     */
     function _beforeTokenTransfer(address _from, address _to, uint256 _amount)
         internal override
     {
-        require(terminatedAt == 0, "f-asset terminated");
         require(_from == address(0) || balanceOf(_from) >= _amount, "f-asset balance too low");
         require(_from != _to, "Cannot transfer to self");
         // mint and redeem are allowed on transfer pause, but not transfer
@@ -281,7 +240,6 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     function _authorizeUpgrade(address /* _newImplementation */)
         internal virtual override
         onlyAssetManager
-    {
-        require(terminatedAt == 0, "f-asset terminated");
+    { // solhint-disable-line no-empty-blocks
     }
 }
