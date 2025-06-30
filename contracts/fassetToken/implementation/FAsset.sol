@@ -12,7 +12,7 @@ import {IIFAsset} from "../interfaces/IIFAsset.sol";
 import {ERC20Permit} from "../../openzeppelin/token/ERC20Permit.sol";
 import {CheckPointable} from "./CheckPointable.sol";
 import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
-import {IICleanable} from "@flarenetwork/flare-periphery-contracts/flare/token/interface/IICleanable.sol";
+import {IICleanable} from "@flarenetwork/flare-periphery-contracts/flare/token/interfaces/IICleanable.sol";
 import {IFAsset} from "../../userInterfaces/IFAsset.sol";
 import {IICheckPointable} from "../interfaces/IICheckPointable.sol";
 
