@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@flarenetwork/flare-periphery-contracts/flare/ftso/interface/IIFtso.sol";
+import "@flarenetwork/flare-periphery-contracts/flare/ftso/interfaces/IIFtso.sol";
 
 
 contract FtsoMock is IIFtso {
