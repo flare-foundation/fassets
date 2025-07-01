@@ -9,7 +9,6 @@
     "fAssetSymbol": "FTestXRP",
     "poolTokenSuffix": "TXRP",
     "assetMintingDecimals": 6,
-    "userWhitelist": null,
     "poolCollateral": {
         "token": "WNat",
         "decimals": 18,

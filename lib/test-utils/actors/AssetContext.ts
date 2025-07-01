@@ -1,7 +1,7 @@
-import { AgentOwnerRegistryInstance, CoreVaultManagerInstance, FAssetInstance, IIAssetManagerInstance, WhitelistInstance } from "../../../typechain-truffle";
+import { AgentOwnerRegistryInstance, CoreVaultManagerInstance, FAssetInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings, CollateralType, RedemptionTicketInfo } from "../../fasset/AssetManagerTypes";
 import { convertAmgToTokenWei, convertAmgToUBA, convertTokenWeiToAMG, convertUBAToAmg } from "../../fasset/Conversions";
-import { AgentOwnerRegistryEvents, AssetManagerEvents, CoreVaultManagerEvents, FAssetEvents, IAssetContext, WhitelistEvents } from "../../fasset/IAssetContext";
+import { AgentOwnerRegistryEvents, AssetManagerEvents, CoreVaultManagerEvents, FAssetEvents, IAssetContext } from "../../fasset/IAssetContext";
 import { CollateralPrice } from "../../state/CollateralPrice";
 import { Prices } from "../../state/Prices";
 import { TokenPriceReader } from "../../state/TokenPrice";
@@ -22,14 +22,12 @@ import { TestChainInfo } from "./TestChainInfo";
 
 const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
 const MockContract = artifacts.require('MockContract');
-const Whitelist = artifacts.require('Whitelist');
 
 export interface SettingsOptions {
     // optional settings
     collaterals?: CollateralType[];
     testSettings?: TestSettingOptions;
     // optional contracts
-    whitelist?: ContractWithEvents<WhitelistInstance, WhitelistEvents>;
     agentOwnerRegistry?: ContractWithEvents<AgentOwnerRegistryInstance, AgentOwnerRegistryEvents>;
 }
 
@@ -44,7 +42,6 @@ export class AssetContext implements IAssetContext {
         public chainEvents: UnderlyingChainEvents,
         public flareDataConnectorClient: IFlareDataConnectorClient,
         public attestationProvider: AttestationHelper,
-        public whitelist: ContractWithEvents<WhitelistInstance, WhitelistEvents> | undefined,
         public agentOwnerRegistry: ContractWithEvents<AgentOwnerRegistryInstance, AgentOwnerRegistryEvents>,
         public assetManager: ContractWithEvents<IIAssetManagerInstance, AssetManagerEvents>,
         public fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>,
@@ -114,12 +111,6 @@ export class AssetContext implements IAssetContext {
         await this.refreshSettings();
     }
 
-    async setWhitelist(whitelist: WhitelistInstance) {
-        this.whitelist = whitelist;
-        await waitForTimelock(this.assetManagerController.setWhitelist([this.assetManager.address], whitelist.address, { from: this.governance }), this.assetManagerController, this.governance);
-        await this.refreshSettings();
-    }
-
     async setCollateralPoolTokenTimelockSeconds(value: BNish) {
         await waitForTimelock(this.assetManagerController.setCollateralPoolTokenTimelockSeconds([this.assetManager.address], value, { from: this.governance }), this.assetManagerController, this.governance);
         await this.refreshSettings();
@@ -131,11 +122,8 @@ export class AssetContext implements IAssetContext {
         await this.refreshSettings();
     }
 
-    async createWhitelists() {
-        const whitelist = await Whitelist.new(this.common.governanceSettings.address, this.governance, true);
-        await whitelist.switchToProductionMode({ from: this.governance });
-        await this.setWhitelist(whitelist);
-        const agentOwnerRegistry = await AgentOwnerRegistry.new(this.common.governanceSettings.address, this.governance, true);
+    async createAgentOwnerRegistry() {
+        const agentOwnerRegistry = await AgentOwnerRegistry.new(this.common.governanceSettings.address, this.governance);
         await agentOwnerRegistry.switchToProductionMode({ from: this.governance });
         await this.setAgentOwnerRegistry(agentOwnerRegistry);
     }
@@ -271,7 +259,7 @@ export class AssetContext implements IAssetContext {
         const flareDataConnectorClient = new MockFlareDataConnectorClient(common.fdcHub, common.relay, { [chainInfo.chainId]: chain }, 'on_wait');
         const attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, chainInfo.chainId);
         // create allow-all agent owner registry
-        const agentOwnerRegistry = await AgentOwnerRegistry.new(common.governanceSettings.address, common.governance, true);
+        const agentOwnerRegistry = await AgentOwnerRegistry.new(common.governanceSettings.address, common.governance);
         await agentOwnerRegistry.setAllowAll(true, { from: common.governance });
         // create collaterals
         const testSettingsContracts = { ...common, agentOwnerRegistry };
@@ -284,7 +272,7 @@ export class AssetContext implements IAssetContext {
             { governanceSettings: common.governanceSettings.address });
         // collect
         return new AssetContext(common, chainInfo, chain, chainEvents, flareDataConnectorClient, attestationProvider,
-            options.whitelist, agentOwnerRegistry ?? options.agentOwnerRegistry, assetManager, fAsset, settings, collaterals);
+            agentOwnerRegistry ?? options.agentOwnerRegistry, assetManager, fAsset, settings, collaterals);
     }
 }
 

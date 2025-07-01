@@ -11,10 +11,9 @@ import { assertWeb3Equal, web3ResultStruct } from "../../../lib/test-utils/web3a
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, randomAddress, toBN, toStringExp } from "../../../lib/utils/helpers";
-import { AddressUpdatableInstance, ERC20MockInstance, FAssetInstance, GovernanceSettingsMockInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance, TestUUPSProxyImplInstance, WNatMockInstance, WhitelistInstance } from "../../../typechain-truffle";
+import { AddressUpdatableInstance, ERC20MockInstance, FAssetInstance, GovernanceSettingsMockInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance, TestUUPSProxyImplInstance, WNatMockInstance } from "../../../typechain-truffle";
 
 const AddressUpdater = artifacts.require('AddressUpdaterMock');
-const Whitelist = artifacts.require('Whitelist');
 const AddressUpdatableMock = artifacts.require('AddressUpdatableMock');
 
 contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager controller basic tests`, accounts => {
@@ -32,7 +31,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
     let wallet: MockChainWallet;
     let flareDataConnectorClient: MockFlareDataConnectorClient;
     let attestationProvider: AttestationHelper;
-    let whitelist: WhitelistInstance;
     let addressUpdatableMock : AddressUpdatableInstance;
     let governanceSettings: GovernanceSettingsMockInstance;
 
@@ -49,9 +47,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         wallet = new MockChainWallet(chain);
         flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
-        // create whitelist
-        whitelist = await Whitelist.new(contracts.governanceSettings.address, governance, false);
-        await whitelist.switchToProductionMode({ from: governance });
         // create asset manager controller
         assetManagerController = await newAssetManagerController(contracts.governanceSettings.address, governance, contracts.addressUpdater.address);
         await assetManagerController.switchToProductionMode({ from: governance });
@@ -60,11 +55,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol, { governanceSettings, updateExecutor });
         addressUpdatableMock = await AddressUpdatableMock.new(contracts.addressUpdater.address);
-        return { contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, addressUpdatableMock };
+        return { contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, assetManagerController, collaterals, settings, assetManager, fAsset, addressUpdatableMock };
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, addressUpdatableMock } =
+        ({ contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, assetManagerController, collaterals, settings, assetManager, fAsset, addressUpdatableMock } =
             await loadFixtureCopyVars(initialize));
     });
 
@@ -140,33 +135,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await waitForTimelock(assetManagerController.removeAssetManager(assetManager2.address, { from: governance }), assetManagerController, updateExecutor);
             const managers_remove2 = await assetManagerController.getAssetManagers();
             assert.equal(managers_current.length, managers_remove2.length);
-        });
-
-        it("should revert setting whitelist without governance", async () => {
-            const res = assetManagerController.setWhitelist([assetManager.address], randomAddress());
-            await expectRevert(res, "only governance")
-        });
-
-        it("should set whitelist address", async () => {
-            const encodedCall: string = abiEncodeCall(assetManagerController, (amc) => amc.setWhitelist([assetManager.address], whitelist.address));
-            const res = await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
-            const allowedAfterTimestamp = (await time.latest()).addn(60);
-            expectEvent(res, "GovernanceCallTimelocked", { encodedCallHash: web3.utils.keccak256(encodedCall), allowedAfterTimestamp, encodedCall });
-        });
-
-        it("should execute set whitelist", async () => {
-            const res = await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
-            await waitForTimelock(res, assetManagerController, updateExecutor);
-            // assert
-            const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            assertWeb3Equal(newSettings.whitelist, whitelist.address);
-        });
-
-        it("should not execute set whitelist", async () => {
-            const res1 = await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
-            const timelock = requiredEventArgs(res1, 'GovernanceCallTimelocked');
-            const res = assetManagerController.executeGovernanceCall(timelock.encodedCall, { from: updateExecutor });
-            await expectRevert(res, "timelock: not allowed yet");
         });
 
         it("should revert setting lot size when increase or decrease is too big", async () => {

@@ -11,7 +11,6 @@ import {
     IFdcVerificationInstance,
     IIAssetManagerInstance,
     IPriceReaderInstance,
-    IWhitelistInstance,
     RelayMockInstance,
     WNatMockInstance
 } from "../../typechain-truffle";
@@ -57,7 +56,6 @@ export interface TestSettingsCommonContracts {
     fdcHub: FdcHubMockInstance;
     fdcVerification: IFdcVerificationInstance;
     priceReader: IPriceReaderInstance,
-    whitelist?: IWhitelistInstance;
     agentOwnerRegistry: AgentOwnerRegistryInstance;
     wNat: WNatMockInstance,
     stablecoins: Record<string, ERC20MockInstance>,
@@ -85,7 +83,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         collateralPoolTokenFactory: contracts.collateralPoolTokenFactory.address,
         fdcVerification: contracts.fdcVerification.address,
         priceReader: contracts.priceReader.address,
-        whitelist: contracts.whitelist?.address ?? ZERO_ADDRESS,
+        __whitelist: ZERO_ADDRESS,
         agentOwnerRegistry: contracts.agentOwnerRegistry?.address ?? ZERO_ADDRESS,
         burnAddress: ZERO_ADDRESS,
         chainId: ci.chainId,
@@ -259,7 +257,7 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     const collateralPoolTokenImplementation = await CollateralPoolToken.new(ZERO_ADDRESS, "", "");
     const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new(collateralPoolTokenImplementation.address);
     // create allow-all agent whitelist
-    const agentOwnerRegistry = await AgentOwnerRegistry.new(governanceSettings.address, governance, true);
+    const agentOwnerRegistry = await AgentOwnerRegistry.new(governanceSettings.address, governance);
     await agentOwnerRegistry.setAllowAll(true, { from: governance });
     //
     return {

@@ -13,7 +13,6 @@ export type FdcHubEvents = import('../../typechain-truffle/IFdcHub').AllEvents;
 export type AgentVaultFactoryEvents = import('../../typechain-truffle/AgentVaultFactory').AllEvents;
 export type CollateralPoolFactoryEvents = import('../../typechain-truffle/CollateralPoolFactory').AllEvents;
 export type CollateralPoolTokenFactoryEvents = import('../../typechain-truffle/CollateralPoolTokenFactory').AllEvents;
-export type WhitelistEvents = import('../../typechain-truffle/IWhitelist').AllEvents;
 export type FdcVerificationEvents = import('../../typechain-truffle/IFdcVerification').AllEvents;
 export type PriceReaderEvents = import('../../typechain-truffle/IPriceReader').AllEvents;
 export type FtsoV2PriceStoreEvents = import('../../typechain-truffle/FtsoV2PriceStore').AllEvents;

@@ -48,9 +48,6 @@ interface IIAssetManagerController is
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Setters
 
-    function setWhitelist(IIAssetManager[] memory _assetManagers, address _value)
-        external;
-
     function setAgentOwnerRegistry(IIAssetManager[] memory _assetManagers, address _value)
         external;
 

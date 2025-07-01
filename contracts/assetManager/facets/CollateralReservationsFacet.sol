@@ -36,7 +36,6 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
      * Then the minter has to pay `value + fee` on the underlying chain.
      * If the minter pays the underlying amount, minter obtains f-assets.
      * The collateral reservation fee is split between the agent and the collateral pool.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * NOTE: the owner of the agent vault must be in the AgentOwnerRegistry.
      * @param _agentVault agent vault address
      * @param _lots the number of lots for which to reserve collateral
@@ -54,7 +53,6 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
     )
         external payable
         onlyAttached
-        onlyWhitelistedSender
         notEmergencyPaused
         nonReentrant
         returns (uint256 _collateralReservationId)

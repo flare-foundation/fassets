@@ -53,18 +53,6 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         }
     }
 
-    function setWhitelist(address _value)
-        external
-        onlyAssetManagerController
-        rateLimited
-    {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        // validate
-        // update
-        settings.whitelist = _value;
-        emit ContractChanged("whitelist", _value);
-    }
-
     function setAgentOwnerRegistry(address _value)
         external
         onlyAssetManagerController

@@ -9,7 +9,6 @@
     "fAssetSymbol": "FDOGE",
     "poolTokenSuffix": "DOGE",
     "assetMintingDecimals": 8,
-    "userWhitelist": null,
     "poolCollateral": {
         "token": "WNat",
         "decimals": 18,

@@ -19,7 +19,6 @@ import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, WEEKS, ZERO_ADDRESS, abiEncodeCa
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentVaultInstance, AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../../typechain-truffle";
 
-const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettingsMock');
 const AgentVault = artifacts.require('AgentVault');
 const CollateralPool = artifacts.require('CollateralPool');
@@ -789,9 +788,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const governanceSettings = await GovernanceSettings.new();
             await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
             // create whitelist
-            const agentOwnerRegistry = await AgentOwnerRegistry.new(governanceSettings.address, governance, false);
+            const agentOwnerRegistry = await AgentOwnerRegistry.new(governanceSettings.address, governance);
             await agentOwnerRegistry.switchToProductionMode({ from: governance });
-            await agentOwnerRegistry.addAddressToWhitelist(whitelistedAccount, { from: governance });
+            await agentOwnerRegistry.whitelistAndDescribeAgent(whitelistedAccount, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
             await assetManager.setAgentOwnerRegistry(agentOwnerRegistry.address, { from: assetManagerController });
             // assert
             const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
@@ -1977,29 +1976,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(r, "not attached");
         });
 
-        it("when whitelist is enabled, address not whitelisted can't do collateral reservations", async () => {
-            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
-            // create governance settings
-            const governanceSettings = await GovernanceSettings.new();
-            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
-            // create whitelist
-            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
-            await whitelist.switchToProductionMode({ from: governance });
-            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
-            await assetManager.setWhitelist(whitelist.address, { from: assetManagerController });
-            const minter = accounts[80];
-            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            const reservationFee = await assetManager.collateralReservationFee(1);
-            // Try to reserve collateral from non whitelisted address
-            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, ZERO_ADDRESS,
-                { from: minter, value: reservationFee });
-            await expectRevert(r, "not whitelisted");
-            //Whitelisted account should be able to reserve collateral
-            const res = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, ZERO_ADDRESS,
-                { from: whitelistedAccount, value: reservationFee });
-            expectEvent(res,"CollateralReserved");
-        });
-
         it("agent can't self mint if asset manager is not attached", async () => {
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             //unattach
@@ -2019,129 +1995,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(r, "not attached");
         });
 
-        it("when whitelist is enabled, address not whitelisted can't redeem", async () => {
-            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
-            // create governance settings
-            const governanceSettings = await GovernanceSettings.new();
-            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
-            // create whitelist
-            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
-            await whitelist.switchToProductionMode({ from: governance });
-            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
-            await assetManager.setWhitelist(whitelist.address, { from: assetManagerController });
-            const redeemer = accounts[83];
-            const underlyingRedeemer = "redeemer"
-            await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
-            // default a redemption
-            const r = assetManager.redeem(1, underlyingRedeemer, ZERO_ADDRESS, { from: redeemer });
-            await expectRevert(r, "not whitelisted");
-        });
-
-        it("when whitelist is enabled, address not whitelisted can't challenge illegal payment", async () => {
-            const challenger = accounts[83];
-            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
-            await depositUnderlyingAsset(agentVault, agentOwner1, underlyingAgent1, toWei(10));
-            // make unannounced (illegal) payment
-            const txHash = await wallet.addTransaction(underlyingAgent1, "random_address", 1000, PaymentReference.announcedWithdrawal(1));
-            const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
-            const governanceSettings = await GovernanceSettings.new();
-            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
-            // create whitelist
-            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
-            await whitelist.switchToProductionMode({ from: governance });
-            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
-            await assetManager.setWhitelist(whitelist.address, { from: assetManagerController });
-            const r = assetManager.illegalPaymentChallenge(proof, agentVault.address, { from: challenger });
-            await expectRevert(r, "not whitelisted");
-        });
-
-        it("when whitelist is enabled, address not whitelisted can't challenge illegal double payment", async () => {
-            const challenger = accounts[83];
-            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
-            // announce ONE underlying withdrawal
-            await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
-            // make two identical payments
-            const txHash1 = await wallet.addTransaction(underlyingAgent1, "random_address", 500, PaymentReference.announcedWithdrawal(1));
-            const txHash2 = await wallet.addTransaction(underlyingAgent1, "random_address", 500, PaymentReference.announcedWithdrawal(1));
-            const proof1 = await attestationProvider.proveBalanceDecreasingTransaction(txHash1, underlyingAgent1);
-            const proof2 = await attestationProvider.proveBalanceDecreasingTransaction(txHash2, underlyingAgent1);
-            const governanceSettings = await GovernanceSettings.new();
-            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
-            // create whitelist
-            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
-            await whitelist.switchToProductionMode({ from: governance });
-            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
-            await assetManager.setWhitelist(whitelist.address, { from: assetManagerController });
-            const r = assetManager.doublePaymentChallenge(proof1, proof2, agentVault.address, { from: challenger });
-            await expectRevert(r, "not whitelisted");
-        });
-
-        it("when whitelist is enabled, address not whitelisted can't challenge free balance negative", async () => {
-            const challenger = accounts[83];
-            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
-            // mint one lot of f-assets
-            const lots = toBN(1);
-            const { underlyingPaymentUBA } = await mintFassets(agentVault, agentOwner1, underlyingAgent1, agentVault.address, lots);
-            // announce withdrawal
-            const _tx = await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
-            const underlyingWithdrawalAnnouncement = findRequiredEvent(_tx, "UnderlyingWithdrawalAnnounced").args;
-            // make payment that would make free balance negative
-            const txHash = await wallet.addTransaction(underlyingAgent1, "random_address", lotsToUBA(lots),
-                underlyingWithdrawalAnnouncement.paymentReference);
-            const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
-            const governanceSettings = await GovernanceSettings.new();
-            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
-            // create whitelist
-            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
-            await whitelist.switchToProductionMode({ from: governance });
-            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
-            await assetManager.setWhitelist(whitelist.address, { from: assetManagerController });
-            // make a challenge
-            const r = assetManager.freeBalanceNegativeChallenge([proof], agentVault.address, { from: challenger });
-            await expectRevert(r, "not whitelisted");
-        });
-
-        it("when whitelist is enabled, address not whitelisted can't start liquidation", async () => {
-            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e6), toWei(3e6))
-            // mint some f-assets that require backing
-            await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[82], toBN(5));
-            // price change
-            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(9, 8), 0);
-            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, toBNExp(9, 8), 0);
-            // start liquidation
-            const governanceSettings = await GovernanceSettings.new();
-            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
-            // create whitelist
-            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
-            await whitelist.switchToProductionMode({ from: governance });
-            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
-            await assetManager.setWhitelist(whitelist.address, { from: assetManagerController });
-            const r = assetManager.startLiquidation(agentVault.address, { from: accounts[83] });
-            await expectRevert(r, "not whitelisted");
-        });
-
-        it("when whitelist is enabled, address not whitelisted can't liquidate", async () => {
-            const liquidator = accounts[83];
-            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e6), toWei(3e6))
-            await mintFassets(agentVault, agentOwner1, underlyingAgent1, liquidator, toBN(5));
-            // simulate liquidation (set cr to eps > 0)
-            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(9, 8), 0);
-            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, toBNExp(9, 8), 0);
-            await assetManager.startLiquidation(agentVault.address, { from: liquidator });
-            // calculate liquidation value and liquidate liquidate
-            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            const liquidationUBA = lotsToUBA(2);
-            const governanceSettings = await GovernanceSettings.new();
-            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
-            // create whitelist
-            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
-            await whitelist.switchToProductionMode({ from: governance });
-            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
-            await assetManager.setWhitelist(whitelist.address, { from: assetManagerController });
-            const r = assetManager.liquidate(agentVault.address, lotsToUBA(2), { from: liquidator });
-            await expectRevert(r, "not whitelisted");
-        });
-
         it("random address shouldn't be able to add collateral token", async () => {
             const collateral = deepCopy(web3DeepNormalize(collaterals[1]));
             collateral.token = (await ERC20Mock.new("New Token", "NT")).address;
@@ -2149,7 +2002,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             collateral.assetFtsoSymbol = "NT";
             const r = assetManager.addCollateralType(web3DeepNormalize(collateral), { from: accounts[99]});
             await expectRevert(r, "only asset manager controller");
-
         });
 
         it("random address shouldn't be able to add collateral ratios for token", async () => {
@@ -2358,11 +2210,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.equal(r3,true);
         });
 
-        it("should not set whitelist if not from asset manager controller", async () => {
-            const promise = assetManager.setWhitelist(accounts[0]);
-            await expectRevert(promise, "only asset manager controller");
-        });
-
         it("should not set agent owner registry if not from asset manager controller", async () => {
             const promise = assetManager.setAgentOwnerRegistry(accounts[0]);
             await expectRevert(promise, "only asset manager controller");
@@ -2566,18 +2413,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         it("should not setAgentFeeChangeTimelockSeconds if not from asset manager controller", async () => {
             const promise = assetManager.setAgentFeeChangeTimelockSeconds(0);
             await expectRevert(promise, "only asset manager controller");
-        });
-
-        // rate limited
-        it("should not set whitelist if rate limited", async () => {
-            await assetManager.setWhitelist(accounts[1], { from: assetManagerController });
-            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
-            // skip time
-            await time.deterministicIncrease(toBN(minUpdateTime).subn(2));
-            const promise = assetManager.setWhitelist(accounts[0], { from: assetManagerController });
-            await expectRevert(promise, "too close to previous update");
-            await time.deterministicIncrease(1);
-            await assetManager.setWhitelist(accounts[0], { from: assetManagerController });
         });
 
         it("should not set agent owner registry if rate limited", async () => {

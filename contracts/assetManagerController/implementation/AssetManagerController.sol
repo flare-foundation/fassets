@@ -169,14 +169,6 @@ contract AssetManagerController is
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Setters
 
-    function setWhitelist(IIAssetManager[] memory _assetManagers, address _value)
-        external
-        onlyGovernance
-    {
-        _setValueOnManagers(_assetManagers,
-            IISettingsManagement.setWhitelist.selector, _value);
-    }
-
     function setAgentOwnerRegistry(IIAssetManager[] memory _assetManagers, address _value)
         external
         onlyGovernance

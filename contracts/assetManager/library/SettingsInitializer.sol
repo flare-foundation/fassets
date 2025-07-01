@@ -81,6 +81,9 @@ library SettingsInitializer {
         require(_settings.liquidationStepSeconds > 0, "cannot be zero");
         SettingsValidators.validateLiquidationFactors(_settings.liquidationCollateralFactorBIPS,
             _settings.liquidationFactorVaultCollateralBIPS);
+
+        // removed settings
+        require(_settings.__whitelist == address(0), "must be zero");
         require(_settings.__buybackCollateralFactorBIPS == 0, "must be zero");
         require(_settings.__minUnderlyingBackingBIPS == 0, "must be zero");
         require(_settings.__redemptionDefaultFactorPoolBIPS == 0, "must be zero");

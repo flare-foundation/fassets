@@ -40,7 +40,6 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
      * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
      * The agent can also reject the redemption request. In that case any other agent can take over the redemption.
      * If no agent takes over the redemption, the redeemer can request the default payment.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _lots number of lots to redeem
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
@@ -53,7 +52,6 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         address payable _executor
     )
         external payable
-        onlyWhitelistedSender
         notEmergencyPaused
         nonReentrant
         returns (uint256 _redeemedAmountUBA)

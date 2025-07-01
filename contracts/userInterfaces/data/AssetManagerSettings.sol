@@ -39,7 +39,7 @@ library AssetManagerSettings {
         // This can be `address(0)`, in which case no whitelist checks are done.
         // Type: IWhitelist
         // timelocked
-        address whitelist;
+        address __whitelist; // only storage placeholder
 
         // If set, the owner address registry contains a list of allowed agent owner's
         // management addresses and mappings from management to work address.

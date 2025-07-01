@@ -135,15 +135,6 @@ export interface AssetManagerParameters {
      */
     agentOwnerRegistry?: string;
 
-    /**
-     * If non-null, the whitelist contains a list of accounts that can call public methods
-     * (minting, redeeming, challenging, etc.)
-     * If null, there will be no user whitelisting.
-     * Can be a contract address (0x...) or a name in contracts.json.
-     * @pattern ^\w+$
-     */
-    userWhitelist: string | null;
-
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////
     // F-asset (chain) specific parameters
 

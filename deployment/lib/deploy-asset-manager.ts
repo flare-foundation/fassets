@@ -221,7 +221,7 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         collateralPoolTokenFactory: contracts.getAddress(parameters.collateralPoolTokenFactory ?? 'CollateralPoolTokenFactory'),
         fdcVerification: contracts.getAddress(parameters.fdcVerification ?? 'FdcVerification'),
         priceReader: contracts.getAddress(parameters.priceReader ?? 'PriceReader'),
-        whitelist: parameters.userWhitelist ? contracts.getAddress(parameters.userWhitelist) : ZERO_ADDRESS,
+        __whitelist: ZERO_ADDRESS,
         agentOwnerRegistry: contracts.getAddress(parameters.agentOwnerRegistry ?? 'AgentOwnerRegistry'),
         burnAddress: parameters.burnAddress,
         chainId: encodeAttestationName(parameters.chainName),

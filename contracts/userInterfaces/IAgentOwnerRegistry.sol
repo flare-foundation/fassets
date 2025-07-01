@@ -2,12 +2,14 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
-import {IWhitelist} from "./IWhitelist.sol";
-
 /**
  * Agent owner management and work address management
  */
-interface IAgentOwnerRegistry is IWhitelist {
+interface IAgentOwnerRegistry {
+
+    event Whitelisted(address value);
+    event WhitelistingRevoked(address value);
+
     /**
      * Agent owner's work address has been set.
      */
@@ -22,6 +24,13 @@ interface IAgentOwnerRegistry is IWhitelist {
         string description,
         string iconUrl,
         string termsOfUseUrl);
+
+
+    /**
+     * Returns true if the address is whitelisted, false otherwise.
+     * @param _address address to check
+     */
+    function isWhitelisted(address _address) external view returns (bool);
 
     /**
      * Return agent owner's name.

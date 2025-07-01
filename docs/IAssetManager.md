@@ -84,7 +84,7 @@ NOTE: may only be called by the agent vault owner and after announcement.
 NOTE: agent's available collateral can change anytime due to price changes, minting, or changes in agent's min collateral ratio, so it is only to be used as an estimate.
 
 **reserveCollateral** - Before paying underlying assets for minting, minter has to reserve collateral and pay collateral reservation fee. Collateral is reserved at ratio of agent's agentMinCollateralRatio to requested lots NAT market price. On success the minter receives instructions for underlying payment (value, fee and payment reference) in event `CollateralReserved`. Then the minter has to pay `value + fee` on the underlying chain. If the minter pays the underlying amount, the collateral reservation fee is burned and the minter obtains f-assets. Otherwise the agent collects the collateral reservation fee.
-NOTE: may only be called by a whitelisted caller when whitelisting is enabled. NOTE: the owner of the agent vault must be on the allowed agent list.
+NOTE: the owner of the agent vault must be on the allowed agent list.
 
 **collateralReservationFee** - Return the collateral reservation fee amount that has to be passed to the `reserveCollateral` method.
 
@@ -101,7 +101,7 @@ NOTE: may only be called by the owner of the agent vault in the collateral reser
 NOTE: may only be called by the agent vault owner. NOTE: the caller must be a whitelisted agent.
 
 **redeem** - Redeem (up to) `_lots` lots of f-assets. The corresponding amount of the f-assets belonging to the redeemer will be burned and the redeemer will get paid by the agent in underlying currency (or, in case of agent's payment default, by agent's collateral with a premium).
-NOTE: in some cases not all sent f-assets can be redeemed (either there are not enough tickets or more than a fixed limit of tickets should be redeemed). In this case only part of the approved assets are burned and redeemed and the redeemer can execute this method again for the remaining lots. In such a case the `RedemptionRequestIncomplete` event will be emitted, indicating the number of remaining lots. Agent receives redemption request id and instructions for underlying payment in RedemptionRequested event and has to pay `value - fee` and use the provided payment reference. NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
+NOTE: in some cases not all sent f-assets can be redeemed (either there are not enough tickets or more than a fixed limit of tickets should be redeemed). In this case only part of the approved assets are burned and redeemed and the redeemer can execute this method again for the remaining lots. In such a case the `RedemptionRequestIncomplete` event will be emitted, indicating the number of remaining lots. Agent receives redemption request id and instructions for underlying payment in RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
 
 **confirmRedemptionPayment** - After paying to the redeemer, the agent must call this method to unlock the collateral and to make sure that the redeemer cannot demand payment in collateral on timeout. The same method must be called for any payment status (SUCCESS, FAILED, BLOCKED). In case of FAILED, it just releases the agent's underlying funds and the redeemer gets paid in collateral after calling redemptionPaymentDefault. In case of SUCCESS or BLOCKED, remaining underlying funds and collateral are released to the agent. If the agent doesn't confirm payment in enough time (several hours, setting `confirmationByOthersAfterSeconds`), anybody can do it and get rewarded from the agent's vault.
 NOTE: may only be called by the owner of the agent vault in the redemption request   except if enough time has passed without confirmation - then it can be called by anybody
@@ -119,19 +119,14 @@ NOTE: may only be called by the agent vault owner.
 NOTE: we do NOT check that the caller is the agent vault owner, since we want to allow anyone to convert dust to tickets to increase asset fungibility. NOTE: dust above 1 lot is actually added to ticket at every minting, so this function need only be called when the agent doesn't have any minting.
 
 **startLiquidation** - Checks that the agent's collateral is too low and if true, starts the agent's liquidation.
-NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
 
 **liquidate** - Burns up to `_amountUBA` f-assets owned by the caller and pays the caller the corresponding amount of native currency with premium (premium depends on the liquidation state). If the agent isn't in liquidation yet, but satisfies conditions, automatically puts the agent in liquidation status.
-NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
 
 **endLiquidation** - When the agent's collateral reaches the safe level during liquidation, the liquidation process can be stopped by calling this method. Full liquidation (i.e. the liquidation triggered by illegal underlying payment) cannot be stopped.
 NOTE: anybody can call.
 
 **illegalPaymentChallenge** - Called with a proof of payment made from the agent's underlying address, for which no valid payment reference exists (valid payment references are from redemption and underlying withdrawal announcement calls). On success, immediately triggers full agent liquidation and rewards the caller.
-NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
 
 **doublePaymentChallenge** - Called with proofs of two payments made from the agent's underlying address with the same payment reference (each payment reference is valid for only one payment). On success, immediately triggers full agent liquidation and rewards the caller.
-NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
 
 **freeBalanceNegativeChallenge** - Called with proofs of several (otherwise legal) payments, which together make the agent's underlying free balance negative (i.e. the underlying address balance is less than the total amount of backed f-assets). On success, immediately triggers full agent liquidation and rewards the caller.
-NOTE: may only be called by a whitelisted caller when whitelisting is enabled.

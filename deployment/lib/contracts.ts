@@ -29,7 +29,6 @@ export interface FAssetContracts {
     CollateralPoolTokenFactory?: Contract;
     AssetManagerController?: Contract;
     PriceReader?: Contract;
-    UserWhitelist?: Contract;
     AgentOwnerRegistry?: Contract;
 }
 
@@ -142,7 +141,6 @@ export class FAssetContractStore extends ContractStore implements FAssetContract
     get CollateralPoolTokenFactory() { return this.get('CollateralPoolTokenFactory'); }
     get AssetManagerController() { return this.get('AssetManagerController'); }
     get PriceReader() { return this.get('PriceReader'); }
-    get UserWhitelist() { return this.get('UserWhitelist'); }
     get AgentOwnerRegistry() { return this.get('AgentOwnerRegistry'); }
 }
 
