@@ -5,7 +5,7 @@ import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, w
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
-import { TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings } from "../../../lib/test-utils/test-settings";
+import { TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings, whitelistAgentOwner } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../../../lib/utils/events/truffle";
@@ -39,6 +39,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
     const underlyingAgent1 = "Agent1";
 
     async function createAgentVaultWithEOA(owner: string, underlyingAddress: string): Promise<AgentVaultInstance> {
+        await whitelistAgentOwner(agentOwnerRegistry.address, owner);
         chain.mint(underlyingAddress, toBNExp(100, 18));
         const txHash = await wallet.addTransaction(underlyingAddress, underlyingBurnAddr, 1, PaymentReference.addressOwnership(owner));
         const proof = await attestationProvider.provePayment(txHash, underlyingAddress, underlyingBurnAddr);
@@ -142,22 +143,6 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             expectEvent.notEmitted(res3w, "WhitelistingRevoked");
             const res4w = await agentOwnerRegistry.revokeAddress(accounts[5], { from: governance });
             expectEvent.notEmitted(res4w, "WhitelistingRevoked");
-        });
-
-        it("should set allowAll", async () => {
-            assert.isFalse(await agentOwnerRegistry.allowAll());
-            await waitForTimelock(agentOwnerRegistry.setAllowAll(true, { from: governance }), agentOwnerRegistry, governance);
-            assert.isTrue(await agentOwnerRegistry.allowAll());
-        });
-
-        it("should allow any address when allowAll is true", async () => {
-            assert.isFalse(await agentOwnerRegistry.isWhitelisted("0x5c0cA8E3e3168e56615B69De71ED6BB113822BE2"));
-            await waitForTimelock(agentOwnerRegistry.setAllowAll(true, { from: governance }), agentOwnerRegistry, governance);
-            assert.isTrue(await agentOwnerRegistry.isWhitelisted("0x5c0cA8E3e3168e56615B69De71ED6BB113822BE2"));
-        });
-
-        it("only governance can set allowAll", async () => {
-            await expectRevert(agentOwnerRegistry.setAllowAll(true, { from: accounts[1] }), "only governance");
         });
 
         it("governance can assign manager", async () => {

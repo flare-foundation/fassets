@@ -12,12 +12,6 @@ contract AgentOwnerRegistry is Governed, IERC165, IAgentOwnerRegistry {
     event ManagerChanged(address manager);
 
     /**
-     * When true, all addresses are whitelisted.
-     * Default is false.
-     */
-    bool public allowAll;
-
-    /**
      * When nonzero, this is the address that can perform whitelisting operations
      * instead of the governance.
      */
@@ -40,16 +34,11 @@ contract AgentOwnerRegistry is Governed, IERC165, IAgentOwnerRegistry {
 
     constructor(IGovernanceSettings _governanceSettings, address _initialGovernance)
         Governed(_governanceSettings, _initialGovernance)
-    {
-        allowAll = false;
+    { // solhint-disable-line no-empty-blocks
     }
 
     function revokeAddress(address _address) external onlyGovernanceOrManager {
         _removeAddressFromWhitelist(_address);
-    }
-
-    function setAllowAll(bool _allowAll) external onlyGovernance {
-        allowAll = _allowAll;
     }
 
     function setManager(address _manager) external onlyGovernance {
@@ -224,7 +213,7 @@ contract AgentOwnerRegistry is Governed, IERC165, IAgentOwnerRegistry {
     }
 
     function isWhitelisted(address _address) public view override returns (bool) {
-        return whitelist[_address] || allowAll;
+        return whitelist[_address];
     }
 
     function _addAddressToWhitelist(address _address) internal {

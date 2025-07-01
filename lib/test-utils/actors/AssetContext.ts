@@ -258,9 +258,8 @@ export class AssetContext implements IAssetContext {
         // create mock attestation provider
         const flareDataConnectorClient = new MockFlareDataConnectorClient(common.fdcHub, common.relay, { [chainInfo.chainId]: chain }, 'on_wait');
         const attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, chainInfo.chainId);
-        // create allow-all agent owner registry
+        // create agent owner registry
         const agentOwnerRegistry = await AgentOwnerRegistry.new(common.governanceSettings.address, common.governance);
-        await agentOwnerRegistry.setAllowAll(true, { from: common.governance });
         // create collaterals
         const testSettingsContracts = { ...common, agentOwnerRegistry };
         // create settings

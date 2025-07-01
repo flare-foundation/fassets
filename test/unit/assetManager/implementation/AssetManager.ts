@@ -8,7 +8,7 @@ import { AssetManagerInitSettings, deployAssetManagerFacets, newAssetManager, ne
 import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectEvent, expectRevert, time } from "../../../../lib/test-utils/test-helpers";
-import { TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings } from "../../../../lib/test-utils/test-settings";
+import { TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings, whitelistAgentOwner } from "../../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
@@ -116,14 +116,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     }
 
     async function createAgentVaultWithEOA(owner: string, underlyingAddress: string): Promise<AgentVaultInstance> {
+        await whitelistAgentOwner(settings.agentOwnerRegistry, owner);
         chain.mint(underlyingAddress, toBNExp(100, 18));
         const txHash = await wallet.addTransaction(underlyingAddress, underlyingBurnAddr, 1, PaymentReference.addressOwnership(owner));
         const proof = await attestationProvider.provePayment(txHash, underlyingAddress, underlyingBurnAddr);
         await assetManager.proveUnderlyingAddressEOA(proof, { from: owner });
         const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAddress);
         assert.isTrue(addressValidityProof.data.responseBody.isValid);
-        const settings = createTestAgentSettings(usdc.address);
-        const response = await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(settings), { from: owner });
+        const agentSettings = createTestAgentSettings(usdc.address);
+        const response = await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: owner });
         return AgentVault.at(findRequiredEvent(response, 'AgentVaultCreated').args.agentVault);
     }
 
@@ -142,14 +143,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
     //For creating agent where vault collateral and pool wnat are the same
     async function createAgentVaultWithEOANatVaultCollateral(owner: string, underlyingAddress: string): Promise<AgentVaultInstance> {
+        await whitelistAgentOwner(settings.agentOwnerRegistry, owner);
         chain.mint(underlyingAddress, toBNExp(100, 18));
         const txHash = await wallet.addTransaction(underlyingAddress, underlyingBurnAddr, 1, PaymentReference.addressOwnership(owner));
         const proof = await attestationProvider.provePayment(txHash, underlyingAddress, underlyingBurnAddr);
         await assetManager.proveUnderlyingAddressEOA(proof, { from: owner });
         const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAddress);
         assert.isTrue(addressValidityProof.data.responseBody.isValid);
-        const settings = createTestAgentSettings(collaterals[0].token);
-        const response = await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(settings), { from: owner });
+        const agentSettings = createTestAgentSettings(collaterals[0].token);
+        const response = await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: owner });
         return AgentVault.at(findRequiredEvent(response, 'AgentVaultCreated').args.agentVault);
     }
 
@@ -2084,6 +2086,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             Settings.confirmationByOthersRewardUSD5 = 0;
             const res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals);
             await expectRevert(res, "cannot be zero");
+        });
+
+        it("validate settings - must be zero (__whitelist)", async () => {
+            const Collaterals = web3DeepNormalize(collaterals);
+            const Settings = web3DeepNormalize(settings);
+            Settings.fAsset = accounts[5];
+            Settings.__whitelist = accounts[5];
+            const res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals);
+            await expectRevert(res, "must be zero");
         });
 
         it("validate settings - must be zero (__minUnderlyingBackingBIPS)", async () => {

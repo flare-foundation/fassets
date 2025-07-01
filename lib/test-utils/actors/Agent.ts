@@ -5,14 +5,14 @@ import { AssetManagerEvents } from "../../fasset/IAssetContext";
 import { PaymentReference } from "../../fasset/PaymentReference";
 import { IBlockChainWallet } from "../../underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../utils/events/common";
-import { checkEventNotEmited, filterEvents, optionalEventArgs, requiredEventArgs } from "../../utils/events/truffle";
+import { checkEventNotEmited, filterEvents, findRequiredEvent, optionalEventArgs, requiredEventArgs } from "../../utils/events/truffle";
 import { BN_ZERO, BNish, MAX_BIPS, randomAddress, requireNotNull, toBIPS, toBN, toBNExp, toWei } from "../../utils/helpers";
 import { web3DeepNormalize } from "../../utils/web3normalize";
 import { Approximation, assertApproximateMatch } from "../approximation";
 import { AgentCollateral } from "../fasset/AgentCollateral";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../fasset/MockChain";
 import { time } from "../test-helpers";
-import { createTestAgentSettings } from "../test-settings";
+import { createTestAgentSettings, whitelistAgentOwner } from "../test-settings";
 import { assertWeb3Equal } from "../web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
@@ -88,6 +88,9 @@ export class Agent extends AssetContextClient {
     }
 
     static async create(ctx: AssetContext, ownerAddress: string, underlyingAddress: string, wallet: IBlockChainWallet, settings: AgentSettings) {
+        const ownerManagementAddress = Agent.getManagementAddress(ownerAddress);
+        // whitelist agent management address if not already whitelisted
+        await whitelistAgentOwner(ctx.agentOwnerRegistry.address, ownerManagementAddress);
         // create and prove transaction from underlyingAddress if EOA required
         if (ctx.chainInfo.requireEOAProof) {
             const txHash = await wallet.addTransaction(underlyingAddress, underlyingAddress, 1, PaymentReference.addressOwnership(ownerAddress));
@@ -110,7 +113,6 @@ export class Agent extends AssetContextClient {
         // get pool token
         const collateralPoolToken = await CollateralPoolToken.at(args.creationData.collateralPoolToken);
         // create object
-        const ownerManagementAddress = Agent.getManagementAddress(ownerAddress);
         return new Agent(ctx, ownerManagementAddress, agentVault, collateralPool, collateralPoolToken, wallet, settings,
             addressValidityProof.data.responseBody.standardAddress);
     }

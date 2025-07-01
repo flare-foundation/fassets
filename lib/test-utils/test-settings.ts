@@ -256,9 +256,8 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     // create collateral pool token factory
     const collateralPoolTokenImplementation = await CollateralPoolToken.new(ZERO_ADDRESS, "", "");
     const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new(collateralPoolTokenImplementation.address);
-    // create allow-all agent whitelist
+    // create agent owner registry
     const agentOwnerRegistry = await AgentOwnerRegistry.new(governanceSettings.address, governance);
-    await agentOwnerRegistry.setAllowAll(true, { from: governance });
     //
     return {
         governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, collateralPoolTokenFactory, relay, fdcHub, fdcVerification,
@@ -296,6 +295,8 @@ export interface CreateTestAgentDeps {
 }
 
 export async function createTestAgent(deps: CreateTestAgentDeps, owner: string, underlyingAddress: string, vaultCollateralTokenAddress: string, options?: Partial<AgentSettings>) {
+    // whitelist agent management address if not already whitelisted
+    await whitelistAgentOwner(deps.settings.agentOwnerRegistry, owner);
     if (deps.settings.requireEOAAddressProof) {
         if (!deps.chain || !deps.wallet) throw new Error("Missing chain data for EOA proof");
         // mint some funds on underlying address (just enough to make EOA proof)
@@ -349,4 +350,13 @@ export async function createMockFtsoV2PriceStore(governanceSettingsAddress: stri
     }
     //
     return priceStore;
+}
+
+export async function whitelistAgentOwner(agentOwnerRegistryAddress: string, owner: string) {
+    const agentOwnerRegistry = await AgentOwnerRegistry.at(agentOwnerRegistryAddress);
+    if (!(await agentOwnerRegistry.isWhitelisted(owner))) {
+        const governance = await agentOwnerRegistry.governance();
+        const res = await agentOwnerRegistry.whitelistAndDescribeAgent(owner, "", "", "", "", { from: governance });
+        findRequiredEvent(res, 'Whitelisted');
+    }
 }
