@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import {IICheckPointable} from "../interfaces/IICheckPointable.sol";
 import {CheckPointHistory} from "../library/CheckPointHistory.sol";
 import {CheckPointsByAddress} from "../library/CheckPointsByAddress.sol";
@@ -18,7 +17,6 @@ abstract contract CheckPointable is IICheckPointable {
 
     using CheckPointHistory for CheckPointHistory.CheckPointHistoryState;
     using CheckPointsByAddress for CheckPointsByAddress.CheckPointsByAddressState;
-    using SafeMath for uint256;
 
     // The number of history cleanup steps executed for every write operation.
     // It is more than 1 to make as certain as possible that all history gets cleaned eventually.
@@ -76,10 +74,10 @@ abstract contract CheckPointable is IICheckPointable {
      * @param _amount The amount to burn.
      */
     function _burnForAtNow(address _owner, uint256 _amount) internal virtual {
-        uint256 newBalance = balanceOfAt(_owner, block.number).sub(_amount, "Burn too big for owner");
+        uint256 newBalance = balanceOfAt(_owner, block.number) - _amount;
         balanceHistory.writeValue(_owner, newBalance);
         balanceHistory.cleanupOldCheckpoints(_owner, CLEANUP_COUNT, cleanupBlockNumber);
-        totalSupply.writeValue(totalSupplyAt(block.number).sub(_amount, "Burn too big for total supply"));
+        totalSupply.writeValue(totalSupplyAt(block.number) - _amount);
         totalSupply.cleanupOldCheckpoints(CLEANUP_COUNT, cleanupBlockNumber);
     }
 
@@ -89,10 +87,10 @@ abstract contract CheckPointable is IICheckPointable {
      * @param _amount The amount to burn.
      */
     function _mintForAtNow(address _owner, uint256 _amount) internal virtual {
-        uint256 newBalance = balanceOfAt(_owner, block.number).add(_amount);
+        uint256 newBalance = balanceOfAt(_owner, block.number) + _amount;
         balanceHistory.writeValue(_owner, newBalance);
         balanceHistory.cleanupOldCheckpoints(_owner, CLEANUP_COUNT, cleanupBlockNumber);
-        totalSupply.writeValue(totalSupplyAt(block.number).add(_amount));
+        totalSupply.writeValue(totalSupplyAt(block.number) + _amount);
         totalSupply.cleanupOldCheckpoints(CLEANUP_COUNT, cleanupBlockNumber);
     }
 

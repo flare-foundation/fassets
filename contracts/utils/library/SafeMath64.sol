@@ -22,16 +22,6 @@ library SafeMath64 {
         return int64(int256(a));
     }
 
-    // 64 bit subtraction with error message on overflow
-    function sub64(uint64 a, uint64 b, string memory message) internal pure returns (uint64) {
-        // TODO:(matej) dynamic error needs to be changed to custom error
-        require(a >= b, message);
-        unchecked {
-            uint256 c = uint256(a) - uint256(b);
-            return uint64(c);
-        }
-    }
-
     function max64(uint64 a, uint64 b) internal pure returns (uint64) {
         return a >= b ? a : b;
     }

@@ -4,7 +4,6 @@ pragma solidity ^0.8.27;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {IIAgentVault} from "../../agentVault/interfaces/IIAgentVault.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {Collateral} from "./data/Collateral.sol";
@@ -134,7 +133,7 @@ library Agents {
     )
         internal
     {
-        _agent.mintedAMG = SafeMath64.sub64(_agent.mintedAMG, _valueAMG, "not enough minted");
+        _agent.mintedAMG = _agent.mintedAMG - _valueAMG;
     }
 
     function startRedeemingAssets(
@@ -158,9 +157,9 @@ library Agents {
     )
         internal
     {
-        _agent.redeemingAMG = SafeMath64.sub64(_agent.redeemingAMG, _valueAMG, "not enough redeeming");
+        _agent.redeemingAMG = _agent.redeemingAMG - _valueAMG;
         if (!_poolSelfCloseRedemption) {
-            _agent.poolRedeemingAMG = SafeMath64.sub64(_agent.poolRedeemingAMG, _valueAMG, "not enough redeeming");
+            _agent.poolRedeemingAMG = _agent.poolRedeemingAMG - _valueAMG;
         }
     }
 
@@ -228,7 +227,7 @@ library Agents {
     )
         internal
     {
-        uint64 newDustAMG = SafeMath64.sub64(_agent.dustAMG, _dustDecreaseAMG, "not enough dust");
+        uint64 newDustAMG = _agent.dustAMG - _dustDecreaseAMG;
         changeDust(_agent, newDustAMG);
     }
 

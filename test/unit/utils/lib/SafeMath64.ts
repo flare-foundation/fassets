@@ -30,10 +30,4 @@ contract(`SafeMath64.sol; ${getTestFile(__filename)};  SafeMath64 unit tests`, a
         await safeMath64.toUint64(MAX_UINT64.subn(1));
         await safeMath64.toInt64(MAX_INT64.subn(1));
     });
-
-    it("should revert", async () => {
-        const res =  safeMath64.sub64(1, 2, "invalid input");
-        await expectRevert(res, "invalid input");
-    });
-
 });

@@ -2,7 +2,6 @@
 pragma solidity ^0.8.27;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 
@@ -12,7 +11,6 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
  * @dev Store value history by block number with detachable state.
  **/
 library CheckPointHistory {
-    using SafeMath for uint256;
     using SafeCast for uint256;
 
     error ValueDoesntFitInOneNinetwoBits();
@@ -58,13 +56,13 @@ library CheckPointHistory {
     {
         // Binary search of the value by given block number in the array
         uint256 min = _startIndex;
-        uint256 max = _endIndex.sub(1);
+        uint256 max = _endIndex - 1;
         while (max > min) {
-            uint256 mid = (max.add(min).add(1)).div(2);
+            uint256 mid = (max + min + 1) / 2;
             if (_checkpoints[mid].fromBlock <= _blockNumber) {
                 min = mid;
             } else {
-                max = mid.sub(1);
+                max = mid - 1;
             }
         }
         return min;
@@ -175,7 +173,7 @@ library CheckPointHistory {
         if (length == 0) return 0;
         uint256 startIndex = _self.startIndex;
         // length - 1 is safe, since length != 0 (check above)
-        uint256 endIndex = Math.min(startIndex.add(_count), length - 1);    // last element can never be deleted
+        uint256 endIndex = Math.min(startIndex + _count, length - 1);    // last element can never be deleted
         uint256 index = startIndex;
         // we can delete `checkpoint[index]` while the next checkpoint is at `_cleanupBlockNumber` or before
         while (index < endIndex && _self.checkpoints[index + 1].fromBlock <= _cleanupBlockNumber) {

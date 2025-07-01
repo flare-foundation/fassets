@@ -2,7 +2,6 @@
 pragma solidity ^0.8.27;
 
 import {SafePct} from "../../utils/library/SafePct.sol";
-import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {Transfers} from "../../utils/library/Transfers.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {Agents} from "./Agents.sol";
@@ -41,7 +40,7 @@ library Minting {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(crt.agentVault);
         uint64 reservationAMG = crt.valueAMG + Conversion.convertUBAToAmg(Minting.calculatePoolFeeUBA(agent, crt));
-        agent.reservedAMG = SafeMath64.sub64(agent.reservedAMG, reservationAMG, "invalid reservation");
+        agent.reservedAMG = agent.reservedAMG - reservationAMG;
         state.totalReservedCollateralAMG -= reservationAMG;
         delete state.crts[_crtId];
     }

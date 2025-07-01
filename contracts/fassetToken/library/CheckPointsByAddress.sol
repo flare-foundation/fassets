@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import {CheckPointHistory} from "./CheckPointHistory.sol";
 
 
@@ -11,7 +10,6 @@ import {CheckPointHistory} from "./CheckPointHistory.sol";
  * @dev Store value history by address, and then by block number.
  **/
 library CheckPointsByAddress {
-    using SafeMath for uint256;
     using CheckPointHistory for CheckPointHistory.CheckPointHistoryState;
 
     struct CheckPointsByAddressState {
@@ -44,14 +42,14 @@ library CheckPointsByAddress {
         // Update transferer value
         if (_from != address(0)) {
             // Compute the new from balance
-            uint256 newValueFrom = valueOfAtNow(_self, _from).sub(_amount);
+            uint256 newValueFrom = valueOfAtNow(_self, _from) - _amount;
             writeValue(_self, _from, newValueFrom);
         }
 
         // Update transferee value
         if (_to != address(0)) {
             // Compute the new to balance
-            uint256 newValueTo = valueOfAtNow(_self, _to).add(_amount);
+            uint256 newValueTo = valueOfAtNow(_self, _to) + _amount;
             writeValue(_self, _to, newValueTo);
         }
     }
