@@ -66,7 +66,7 @@ contract CollateralPoolHandler is Test {
         vm.prank(account);
         collateralPool.enter{value: _amount}();
 
-        for each account except the one that entered, exit
+        // for each account except the one that entered, exit
         for (uint256 i = 0; i < accounts.length; i++) {
             if (i != _accIndex) {
                 account = accounts[_accIndex];
