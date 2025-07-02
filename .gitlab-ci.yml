@@ -144,6 +144,9 @@ test-forge:
   before_script:
   - forge install --no-git
   - forge build
+  - mkdir -p cache/invariant/failures
+  - find cache -type d -exec chmod 755 {} +
+  - find cache -type f -exec chmod 644 {} +
   script:
   - forge test --no-match-test '^test(1Func|2Func|Result)' -vvv
 
