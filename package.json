@@ -84,7 +84,7 @@
     "gas": "cat .gas-report.txt"
   },
   "dependencies": {
-    "@flarenetwork/flare-periphery-contracts": "0.1.28",
+    "@flarenetwork/flare-periphery-contracts": "0.1.29",
     "@openzeppelin/contracts": "4.9.2"
   },
   "devDependencies": {
