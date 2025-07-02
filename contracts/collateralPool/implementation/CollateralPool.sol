@@ -607,6 +607,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     function depositNat()
         external payable
         onlyAssetManager
+        nonReentrant
     {
         _depositWNat();
     }
