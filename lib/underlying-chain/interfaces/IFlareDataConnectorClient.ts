@@ -1,4 +1,4 @@
-import { ARBase, ARESBase } from "@flarenetwork/state-connector-protocol";
+import { ARBase, ARESBase } from "@flarenetwork/js-flare-common";
 
 export interface AttestationRequestId {
     round: number;

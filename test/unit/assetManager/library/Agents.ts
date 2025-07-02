@@ -1,4 +1,4 @@
-import { ARESBase, AddressValidity, Payment } from "@flarenetwork/state-connector-protocol";
+import { ARESBase, AddressValidity, Payment } from "@flarenetwork/js-flare-common";
 import { AgentSetting, AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";

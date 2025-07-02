@@ -1,4 +1,4 @@
-import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MerkleTree, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/state-connector-protocol";
+import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MerkleTree, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/js-flare-common";
 import { SourceId } from "./SourceId";
 import { IBlockChain, TxInputOutput } from "./interfaces/IBlockChain";
 import { AttestationNotProved, AttestationProof, AttestationRequestId, IFlareDataConnectorClient, OptionalAttestationProof } from "./interfaces/IFlareDataConnectorClient";

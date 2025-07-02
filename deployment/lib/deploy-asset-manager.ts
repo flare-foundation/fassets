@@ -1,4 +1,4 @@
-import { encodeAttestationName } from "@flarenetwork/state-connector-protocol";
+import { encodeAttestationName } from "@flarenetwork/js-flare-common";
 import BN from "bn.js";
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { AssetManagerSettings, CollateralClass, CollateralType } from '../../lib/fasset/AssetManagerTypes';

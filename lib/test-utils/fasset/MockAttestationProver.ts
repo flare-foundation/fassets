@@ -1,5 +1,5 @@
 import Web3 from "web3";
-import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/state-connector-protocol";
+import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/js-flare-common";
 import { TX_FAILED, TX_SUCCESS, TxInputOutput } from "../../underlying-chain/interfaces/IBlockChain";
 import { BN_ZERO, sumBN, ZERO_BYTES32 } from "../../utils/helpers";
 import { MockChain, MockChainTransaction } from "./MockChain";

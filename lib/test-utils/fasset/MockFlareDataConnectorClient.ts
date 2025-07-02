@@ -1,4 +1,4 @@
-import { ARBase, ARESBase, AddressValidity, AttestationDefinitionStore, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MIC_SALT, MerkleTree, Payment, ReferencedPaymentNonexistence, decodeAttestationName } from "@flarenetwork/state-connector-protocol";
+import { ARBase, ARESBase, AddressValidity, AttestationDefinitionStore, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MIC_SALT, MerkleTree, Payment, ReferencedPaymentNonexistence, decodeAttestationName } from "@flarenetwork/js-flare-common";
 import { SourceId } from "../../underlying-chain/SourceId";
 import { AttestationNotProved, AttestationRequestId, IFlareDataConnectorClient, OptionalAttestationProof } from "../../underlying-chain/interfaces/IFlareDataConnectorClient";
 import { findRequiredEvent } from "../../utils/events/truffle";

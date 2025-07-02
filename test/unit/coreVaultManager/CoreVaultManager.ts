@@ -1,5 +1,4 @@
-import { ZERO_BYTES_32 } from "@flarenetwork/state-connector-protocol";
-import { Payment } from "@flarenetwork/state-connector-protocol/dist/generated/types/typescript/Payment";
+import { Payment, ZERO_BYTES_32 } from "@flarenetwork/js-flare-common";;
 import { ZERO_ADDRESS } from "../../../deployment/lib/deploy-utils";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../lib/test-utils/constants";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";

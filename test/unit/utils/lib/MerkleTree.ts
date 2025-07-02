@@ -1,4 +1,4 @@
-import { MerkleTree } from "@flarenetwork/state-connector-protocol/dist/libs/ts/MerkleTree";
+import { MerkleTree } from "@flarenetwork/js-flare-common";
 import { expectRevert } from "../../../../lib/test-utils/test-helpers";
 import { getTestFile } from "../../../../lib/test-utils/test-suite-helpers";
 import { MerkleTreeMockInstance } from "../../../../typechain-truffle";

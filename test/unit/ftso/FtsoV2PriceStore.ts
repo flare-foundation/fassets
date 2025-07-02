@@ -1,5 +1,5 @@
 /* eslint-disable no-var */
-import { ZERO_BYTES_20 } from "@flarenetwork/state-connector-protocol";
+import { ZERO_BYTES_20 } from "@flarenetwork/js-flare-common";
 import { expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestContracts } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";

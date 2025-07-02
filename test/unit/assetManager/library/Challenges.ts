@@ -1,4 +1,4 @@
-import { BalanceDecreasingTransaction } from "@flarenetwork/state-connector-protocol";
+import { BalanceDecreasingTransaction } from "@flarenetwork/js-flare-common";
 import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";

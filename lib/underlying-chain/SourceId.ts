@@ -1,4 +1,4 @@
-import { encodeAttestationName } from "@flarenetwork/state-connector-protocol";
+import { encodeAttestationName } from "@flarenetwork/js-flare-common";
 
 export type SourceId = string;
 
