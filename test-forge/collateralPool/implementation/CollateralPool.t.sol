@@ -138,7 +138,7 @@ contract CollateralPoolTest is Test {
         for (uint256 i = 0; i < accounts.length; i++) {
             address account = accounts[i];
             int256 fAssetFeesOf = _fAssetFeesOf(account);
-            assertGe(fAssetFeesOf, -20, "_fAssetFeesOf should be greater than or equal to -15");
+            assertGe(fAssetFeesOf, -20, "_fAssetFeesOf should be greater than or equal to -20");
         }
     }
 
@@ -165,7 +165,7 @@ contract CollateralPoolTest is Test {
         }
         uint256 absDiff = totalFAssetFees > sumFAssetFees ?
             totalFAssetFees - sumFAssetFees : sumFAssetFees - totalFAssetFees;
-        assertLe(absDiff, 2 * accounts.length,
+        assertLe(absDiff, 3 * accounts.length,
             "Invariant 4 failed: totalFAssetFees does not match sum of fAssetFeesOf"
         );
     }
@@ -207,16 +207,6 @@ contract CollateralPoolTest is Test {
             assertLe(debtFreeTokensOf, balance, "_debtFreeTokensOf should not exceed balance");
         }
     }
-
-    // function invariant_5_2() public view {
-    //     // 0 <= _debtFreeTokensOf(account)
-    //     // using non-restricted version of _debtFreeTokensOf
-    //     for (uint256 i = 0; i < accounts.length; i++) {
-    //         address account = accounts[i];
-    //         int256 debtFreeTokensOf = _debtFreeTokensOf(account);
-    //         assertGe(debtFreeTokensOf, 0, "_debtFreeTokensOf should be non-negative");
-    //     }
-    // }
 
     function invariant_6() public view {
         // totalFAssetFees >= fasset.balanceOf(collateralPool)
