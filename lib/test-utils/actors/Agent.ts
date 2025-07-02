@@ -5,7 +5,7 @@ import { AssetManagerEvents } from "../../fasset/IAssetContext";
 import { PaymentReference } from "../../fasset/PaymentReference";
 import { IBlockChainWallet } from "../../underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../utils/events/common";
-import { checkEventNotEmited, filterEvents, findRequiredEvent, optionalEventArgs, requiredEventArgs } from "../../utils/events/truffle";
+import { checkEventNotEmited, filterEvents, optionalEventArgs, requiredEventArgs } from "../../utils/events/truffle";
 import { BN_ZERO, BNish, MAX_BIPS, randomAddress, requireNotNull, toBIPS, toBN, toBNExp, toWei } from "../../utils/helpers";
 import { web3DeepNormalize } from "../../utils/web3normalize";
 import { Approximation, assertApproximateMatch } from "../approximation";

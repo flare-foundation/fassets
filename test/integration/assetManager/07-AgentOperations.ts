@@ -1,3 +1,4 @@
+import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { Challenger } from "../../../lib/test-utils/actors/Challenger";
@@ -7,10 +8,10 @@ import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { expectRevert, time } from "../../../lib/test-utils/test-helpers";
+import { ether, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
-import { DAYS, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
+import { DAYS, MAX_BIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
     const governance = accounts[10];
@@ -354,6 +355,46 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             //Agent shouldn't be able to withdraw if it would make CR too low
             const res = agent.withdrawVaultCollateral(withdrawalAmount);
             await expectRevert.custom(res, "WithdrawalCRTooLow", []);
+        });
+
+        it("read operations and withdrawing tokens after destroy", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            // make agent available
+            const fullCollateral = await agent.requiredCollateralForLots(10);
+            await agent.depositCollateralsAndMakeAvailable(fullCollateral.vault, fullCollateral.pool);
+            // mine some blocks to skip the agent creation time
+            mockChain.mine(5);
+            await context.updateUnderlyingBlock();
+            // perform minting
+            await minter.performMinting(agent.vaultAddress, 3);
+            // transfer minted fassets
+            await minter.transferFAsset(redeemer.address, context.convertLotsToUBA(3));
+            // perform redemption
+            const [rrqs] = await redeemer.requestRedemption(3);
+            await agent.performRedemptions(rrqs);
+            // agent can exit now
+            await agent.exitAndDestroy();
+            // can still read status
+            const info2 = await agent.getAgentInfo();
+            assertWeb3Equal(info2.status, AgentStatus.DESTROYED);
+            assertWeb3Equal(info2.publiclyAvailable, false);
+            assertWeb3Equal(info2.mintedUBA, 0);
+            assertWeb3Equal(info2.totalPoolCollateralNATWei, 0);
+            assertWeb3Equal(info2.totalVaultCollateralWei, 0);
+            // can withdraw from the vault (by owner)
+            await context.usdc.transfer(agent.vaultAddress, 2e6, { from: agent.ownerWorkAddress });
+            await expectRevert.custom(agent.agentVault.withdrawCollateral(context.usdc.address, 1e6, agent.ownerWorkAddress, { from: accounts[0] }), "OnlyOwner", []);
+            await agent.agentVault.withdrawCollateral(context.usdc.address, 1e6, agent.ownerWorkAddress, { from: agent.ownerWorkAddress });
+            await expectRevert.custom(agent.agentVault.transferExternalToken(context.usdc.address, 1e6, { from: accounts[0] }), "OnlyOwner", []);
+            await agent.agentVault.transferExternalToken(context.usdc.address, 1e6, { from: agent.ownerWorkAddress });
+            // cannot reuse vault by depositing collateral and entering
+            await context.usdc.approve(agent.vaultAddress, 1e6, { from: agent.ownerWorkAddress });
+            await expectRevert.custom(agent.agentVault.depositCollateral(context.usdc.address, 1e6, { from: agent.ownerWorkAddress }), "InvalidAgentVaultAddress", []);
+            await expectRevert.custom(agent.makeAvailable(), "InvalidAgentVaultAddress", []);
+            // cannot enter pool after destroy
+            await expectRevert.custom(agent.collateralPool.enter({ from: accounts[0], value: ether(2) }), "InvalidAgentVaultAddress", []);
         });
     });
 });

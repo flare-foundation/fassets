@@ -13,7 +13,8 @@ library Agent {
         NORMAL,
         LIQUIDATION,        // CCB or liquidation due to CR - ends when agent is healthy
         FULL_LIQUIDATION,   // illegal payment liquidation - must liquidate all and close vault
-        DESTROYING          // agent announced destroy, cannot mint again
+        DESTROYING,         // agent announced destroy, cannot mint again
+        DESTROYED           // agent has been destroyed, cannot do anything except return info
     }
 
     enum LiquidationPhase {
@@ -201,8 +202,30 @@ library Agent {
 
     bytes32 internal constant AGENTS_POSITION = keccak256("fasset.AssetManager.Agent");
 
+    // only return valid agent - fail if status is EMPTY or DESTROYED
     function get(address _address)
         internal view
+        returns (Agent.State storage)
+    {
+        Agent.State storage agent = getWithoutCheck(_address);
+        Agent.Status status = agent.status;
+        require(status != Agent.Status.EMPTY && status != Agent.Status.DESTROYED, InvalidAgentVaultAddress());
+        return agent;
+    }
+
+    // Like get, but only fail if status is EMPTY.
+    // This is usefule for reading agent info after the agent has been destroyed.
+    function getAllowDestroyed(address _address)
+        internal view
+        returns (Agent.State storage)
+    {
+        Agent.State storage agent = getWithoutCheck(_address);
+        require(agent.status != Agent.Status.EMPTY, InvalidAgentVaultAddress());
+        return agent;
+    }
+
+    function getWithoutCheck(address _address)
+        internal pure
         returns (Agent.State storage _agent)
     {
         bytes32 position = bytes32(uint256(AGENTS_POSITION) ^ (uint256(uint160(_address)) << 64));
@@ -210,38 +233,17 @@ library Agent {
         assembly {
             _agent.slot := position
         }
-        require(_agent.status != Agent.Status.EMPTY, InvalidAgentVaultAddress());
     }
 
-    function getWithoutCheck(address _address) internal pure returns (Agent.State storage _agent) {
-        bytes32 position = bytes32(uint256(AGENTS_POSITION) ^ (uint256(uint160(_address)) << 64));
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            _agent.slot := position
-        }
-    }
-
-    function vaultAddress(Agent.State storage _agent) internal pure returns (address) {
+    function vaultAddress(Agent.State storage _agent)
+        internal pure
+        returns (address)
+    {
         bytes32 position;
         // solhint-disable-next-line no-inline-assembly
         assembly {
             position := _agent.slot
         }
         return address(uint160((uint256(position) ^ uint256(AGENTS_POSITION)) >> 64));
-    }
-
-    // Using `delete` doesn't work for storage pointers, so this is a workaround for
-    // clearing agent storage at calculated location. The last member of the agent struct
-    // must always be empty `_endMarker` for calculating the size to delete.
-    function deleteStorage(Agent.State storage _agent) internal {
-        uint256[1] storage endMarker = _agent._endMarker;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            let pos := _agent.slot
-            let end := endMarker.slot
-            for { } lt(pos, end) { pos := add(pos, 1) } {
-                sstore(pos, 0)
-            }
-        }
     }
 }

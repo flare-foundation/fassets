@@ -1,4 +1,4 @@
-import { AssetManagerSettings, CollateralClass, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { AgentStatus, AssetManagerSettings, CollateralClass, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { assertApproximatelyEqual } from "../../../../lib/test-utils/approximation";
@@ -1868,8 +1868,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
             await time.deterministicIncrease(time.duration.hours(3));
             await assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 });
-            const tx = assetManager.getAgentInfo(agentVault.address);
-            await expectRevert.custom(tx, "InvalidAgentVaultAddress", []);
+            const info = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(info.status, AgentStatus.DESTROYED);
         });
 
         it("should not be able to announce destroy if agent is backing fassets", async () => {

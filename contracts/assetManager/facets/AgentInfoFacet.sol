@@ -65,7 +65,7 @@ contract AgentInfoFacet is AssetManagerBase {
         external view
         returns (AgentInfo.Info memory _info)
     {
-        Agent.State storage agent = Agent.get(_agentVault);
+        Agent.State storage agent = Agent.getAllowDestroyed(_agentVault);
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         CollateralTypeInt.Data storage collateral = agent.getVaultCollateral();
         CollateralTypeInt.Data storage poolCollateral = agent.getPoolCollateral();
@@ -122,14 +122,14 @@ contract AgentInfoFacet is AssetManagerBase {
         external view
         returns (address)
     {
-        return address(Agent.get(_agentVault).collateralPool);
+        return address(Agent.getAllowDestroyed(_agentVault).collateralPool);
     }
 
     function getAgentVaultOwner(address _agentVault)
         external view
         returns (address _ownerManagementAddress)
     {
-        return Agent.get(_agentVault).ownerManagementAddress;
+        return Agent.getAllowDestroyed(_agentVault).ownerManagementAddress;
     }
 
     function getAgentVaultCollateralToken(address _agentVault)
@@ -184,7 +184,8 @@ contract AgentInfoFacet is AssetManagerBase {
         private view
         returns (uint256)
     {
-        Collateral.Data memory collateral = AgentCollateral.singleCollateralData(Agent.get(_agentVault), _kind);
+        Agent.State storage agent = Agent.get(_agentVault);
+        Collateral.Data memory collateral = AgentCollateral.singleCollateralData(agent, _kind);
         return collateral.fullCollateral;
     }
 
@@ -192,7 +193,8 @@ contract AgentInfoFacet is AssetManagerBase {
         private view
         returns (uint256)
     {
-        (, uint256 sysMinCR) = AgentCollateral.mintingMinCollateralRatio(Agent.get(_agentVault), _kind);
+        Agent.State storage agent = Agent.get(_agentVault);
+        (, uint256 sysMinCR) = AgentCollateral.mintingMinCollateralRatio(agent, _kind);
         return sysMinCR;
     }
 

@@ -5,6 +5,7 @@ pragma solidity ^0.8.27;
 
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {IIFAsset} from "../../fassetToken/interfaces/IIFAsset.sol";
+import {Agent} from "../library/data/Agent.sol";
 
 contract AssetManagerMock {
     IWNat private wNat;
@@ -12,9 +13,6 @@ contract AssetManagerMock {
     address private commonOwner;
     bool private checkForValidAgentVaultAddress = true;
     address private collateralPool;
-
-    // errors from asset manager
-    error InvalidAgentVaultAddress();
 
     // allow correct decoding of passed errors
     error PoolTokenAlreadySet();
@@ -60,7 +58,7 @@ contract AssetManagerMock {
 
     function updateCollateral(address /* _agentVault */, IIFAsset /*_token*/) external {
         commonOwner = commonOwner;  // just to prevent mutability warning
-        require(!checkForValidAgentVaultAddress, InvalidAgentVaultAddress());
+        require(!checkForValidAgentVaultAddress, Agent.InvalidAgentVaultAddress());
     }
 
     function setCheckForValidAgentVaultAddress(bool _check) external {

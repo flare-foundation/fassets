@@ -58,9 +58,11 @@ library Agents {
             return phase == Agent.LiquidationPhase.CCB ? AgentInfo.Status.CCB : AgentInfo.Status.LIQUIDATION;
         } else if (status == Agent.Status.FULL_LIQUIDATION) {
             return AgentInfo.Status.FULL_LIQUIDATION;
-        } else {
-            assert (status == Agent.Status.DESTROYING);
+        } else if (status == Agent.Status.DESTROYING) {
             return AgentInfo.Status.DESTROYING;
+        } else {
+            assert (status == Agent.Status.DESTROYED);
+            return AgentInfo.Status.DESTROYED;
         }
     }
 

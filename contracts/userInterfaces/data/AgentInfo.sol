@@ -14,7 +14,10 @@ library AgentInfo {
         // illegal payment liquidation - always liquidates all and then agent must close vault
         FULL_LIQUIDATION,
         // agent announced destroy, cannot mint again; all existing mintings have been redeemed before
-        DESTROYING
+        DESTROYING,
+        // agent has been destroyed, cannot do anything except return info
+        // owner can still withdraw tokens from the vault
+        DESTROYED
     }
 
     struct Info {

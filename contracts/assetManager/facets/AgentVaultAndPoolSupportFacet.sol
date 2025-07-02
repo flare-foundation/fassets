@@ -51,7 +51,8 @@ contract AgentVaultAndPoolSupportFacet is AssetManagerBase {
         external view
         returns (bool)
     {
-        return Agents.isOwner(Agent.get(_agentVault), _address);
+        Agent.State storage agent = Agent.getAllowDestroyed(_agentVault);
+        return Agents.isOwner(agent, _address);
     }
 
     function getWorkAddress(address _managementAddress)

@@ -177,8 +177,8 @@ contract AgentVaultManagementFacet is AssetManagerBase {
             movedAgent.allAgentsPos = uint32(ind);
         }
         state.allAgents.pop();
-        // delete agent data
-        Agent.deleteStorage(agent);
+        // mark as destroyed
+        agent.status = Agent.Status.DESTROYED;
         // notify
         emit IAssetManagerEvents.AgentDestroyed(_agentVault);
     }

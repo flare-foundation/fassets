@@ -24,7 +24,8 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     bool private __internalWithdrawal; // only storage placeholder
 
     bool private destroyed;
-    address private ownerAfterDestroy;
+
+    address private __ownerAfterDestroy;
 
     modifier onlyOwner {
         require(isOwner(msg.sender), OnlyOwner());
@@ -125,7 +126,6 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         nonReentrant
     {
         destroyed = true;
-        ownerAfterDestroy = assetManager.getAgentVaultOwner(address(this));
     }
 
     // Used by asset manager for liquidation and failed redemption.
@@ -149,11 +149,7 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         public view
         returns (bool)
     {
-        if (ownerAfterDestroy == address(0)) {
-            return assetManager.isAgentVaultOwner(address(this), _address);
-        } else {
-            return ownerAfterDestroy == _address || assetManager.getWorkAddress(ownerAfterDestroy) == _address;
-        }
+        return assetManager.isAgentVaultOwner(address(this), _address);
     }
 
     /**
