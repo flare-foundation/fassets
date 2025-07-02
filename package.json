@@ -34,6 +34,7 @@
     "compile": "yarn hardhat compile && yarn typechain-truffle-v5",
     "c": "yarn compile && yarn lint",
     "lint": "yarn solhint \"contracts/**/*.sol\"",
+    "lint-forge": "yarn solhint \"test-forge/**/*.sol\"",
     "solhint-watch": "node scripts/solhint-watch.js",
     "typechain-truffle-v5": "yarn typechain --target=truffle-v5 --out-dir typechain-truffle \"artifacts/!(build-info)/**/+([a-zA-Z0-9_]).json\"",
     "size": "yarn run hardhat size-contracts",

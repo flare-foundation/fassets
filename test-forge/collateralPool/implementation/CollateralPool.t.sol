@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-import {Test,console} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {CollateralPool} from "../../../contracts/collateralPool/implementation/CollateralPool.sol";
 import {FAsset} from "../../../contracts/fassetToken/implementation/FAsset.sol";
 import {FAssetProxy} from "../../../contracts/fassetToken/implementation/FAssetProxy.sol";
@@ -10,7 +10,6 @@ import {CollateralPoolHandler} from "./CollateralPoolHandler.t.sol";
 import {AssetManagerMock} from "../../../contracts/assetManager/mock/AssetManagerMock.sol";
 import {WNatMock} from "../../../contracts/flareSmartContracts/mock/WNatMock.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafePct} from "../../../contracts/utils/library/SafePct.sol";
 import {MathUtils} from "../../../contracts/utils/library/MathUtils.sol";
 

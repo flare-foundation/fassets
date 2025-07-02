@@ -134,6 +134,19 @@ test-slither-check:
     - source .venv/bin/activate
     - yarn slither
 
+test-forge:
+  extends: .test-node-sc
+  tags:
+  - flarenetwork-md
+  image: ghcr.io/foundry-rs/foundry:stable
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+  before_script:
+  - forge install --no-git
+  - forge build
+  script:
+  - forge test --no-match-test '^test(1Func|2Func|Result)' -vvv
+
 
 coverage:schedule:
   extends: .test-node-sc
