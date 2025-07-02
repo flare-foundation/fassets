@@ -145,7 +145,7 @@ test-forge:
   - forge install --no-git
   - forge build
   script:
-  - forge test --no-match-test '^test(1Func|2Func|Result)' -vvv
+  - forge test --no-match-test '^test(1Func|2Func|Result)'
 
 
 coverage:schedule:
