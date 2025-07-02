@@ -53,7 +53,6 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci);
-        settings.announcedUnderlyingConfirmationMinSeconds = toBN(60);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
         return { contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
     }
@@ -107,7 +106,6 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(announcementId));
         const blockId = (await chain.getTransactionBlock(txHash))!.number;
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
-        await time.deterministicIncrease(settings.announcedUnderlyingConfirmationMinSeconds);
         const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
         // assert
         expectEvent(res, "UnderlyingWithdrawalConfirmed", { agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash });
@@ -124,7 +122,6 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(announcementId));
         const blockId = (await chain.getTransactionBlock(txHash))!.number;
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
-        await time.deterministicIncrease(settings.announcedUnderlyingConfirmationMinSeconds);
         const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
         //Announce underlying withdrawal again and confirm. Because agent is in full liquidation
         //it will stay in full liquidation
@@ -133,7 +130,6 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const txHash2 = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(announcementId2));
         const blockId2 = (await chain.getTransactionBlock(txHash2))!.number;
         const proof2 = await attestationProvider.provePayment(txHash2, underlyingAgent1, null);
-        await time.deterministicIncrease(settings.announcedUnderlyingConfirmationMinSeconds);
         const res2 = await assetManager.confirmUnderlyingWithdrawal(proof2, agentVault.address, { from: agentOwner1 });
         // assert
         expectEvent(res, "UnderlyingWithdrawalConfirmed", { agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash });
@@ -146,7 +142,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         // init
         const ci = testChainInfo.eth;
         collaterals = createTestCollaterals(contracts, ci);
-        settings = createTestSettings(contracts, ci, { announcedUnderlyingConfirmationMinSeconds: 10 });
+        settings = createTestSettings(contracts, ci);
         //Make vault collateral token have no ftso symbol and a direct price pair (relevant when calculating reward for confirmation later)
         collaterals[1].tokenFtsoSymbol = "";
         collaterals[1].directPricePair = true;
@@ -247,7 +243,6 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const announceRes = await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announceArgs = requiredEventArgs(announceRes, "UnderlyingWithdrawalAnnounced");
         // act
-        await time.deterministicIncrease(settings.announcedUnderlyingConfirmationMinSeconds);
         const res = await assetManager.cancelUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         // assert
         expectEvent(res, "UnderlyingWithdrawalCancelled", { agentVault: agentVault.address, announcementId: announceArgs.announcementId })
@@ -278,28 +273,5 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         await expectRevert.custom(promise, "NoActiveAnnouncement", []);
         const info = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info.announcedUnderlyingWithdrawalId, 0);
-    });
-
-    it("should not be able to cancel underlying withdrawal if called to soon", async () => {
-        // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        chain.mint(underlyingAgent1, 500);
-        const announceRes = await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
-        const promise = assetManager.cancelUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
-        await expectRevert.custom(promise, "CancelTooSoon", []);
-    });
-
-    it("should not confirm underlying withdrawal if called too soon", async () => {
-        // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        chain.mint(underlyingAgent1, 500);
-        await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
-        const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
-        // act
-        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(announcementId));
-        const blockId = (await chain.getTransactionBlock(txHash))!.number;
-        const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
-        const res = assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
-        await expectRevert.custom(res, "ConfirmationTooSoon", []);
     });
 });

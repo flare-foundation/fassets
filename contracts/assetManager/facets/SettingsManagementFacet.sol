@@ -422,19 +422,6 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         emit SettingChanged("averageBlockTimeMS", _value);
     }
 
-    function setAnnouncedUnderlyingConfirmationMinSeconds(uint256 _value)
-        external
-        onlyAssetManagerController
-        rateLimited
-    {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        // validate
-        require(_value <= 1 hours, ConfirmationTimeTooBig());
-        // update
-        settings.announcedUnderlyingConfirmationMinSeconds = _value.toUint64();
-        emit SettingChanged("announcedUnderlyingConfirmationMinSeconds", _value);
-    }
-
     function setMintingPoolHoldingsRequiredBIPS(uint256 _value)
         external
         onlyAssetManagerController

@@ -133,9 +133,6 @@ interface IIAssetManagerController is
     function setAverageBlockTimeMS(IIAssetManager[] memory _assetManagers, uint256 _value)
         external;
 
-    function setAnnouncedUnderlyingConfirmationMinSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
-        external;
-
     function setMintingPoolHoldingsRequiredBIPS(IIAssetManager[] memory _assetManagers, uint256 _value)
         external;
 

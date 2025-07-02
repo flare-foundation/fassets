@@ -386,14 +386,6 @@ contract AssetManagerController is
             IISettingsManagement.setAverageBlockTimeMS.selector, _value);
     }
 
-    function setAnnouncedUnderlyingConfirmationMinSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
-        external
-        onlyImmediateGovernance
-    {
-        _setValueOnManagers(_assetManagers,
-            IISettingsManagement.setAnnouncedUnderlyingConfirmationMinSeconds.selector, _value);
-    }
-
     function setMintingPoolHoldingsRequiredBIPS(IIAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyImmediateGovernance

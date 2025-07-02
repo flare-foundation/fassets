@@ -80,7 +80,6 @@
     ],
     "maxTrustedPriceAgeSeconds": 600,
     "withdrawalWaitMinSeconds": 60,
-    "announcedUnderlyingConfirmationMinSeconds": 250,
     "vaultCollateralBuyForFlareFactorBIPS": 10000,
     "minUpdateRepeatTimeSeconds": 60,
     "tokenInvalidationTimeMinSeconds": 86400,

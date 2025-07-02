@@ -20,7 +20,6 @@ library SettingsInitializer {
     error BipsValueTooHigh();
     error BipsValueTooLow();
     error MustBeTwoHours();
-    error ConfirmationTimeTooBig();
     error ZeroAddress();
     error MintingCapTooSmall();
 
@@ -85,7 +84,6 @@ library SettingsInitializer {
         require(_settings.redemptionDefaultFactorVaultCollateralBIPS > SafePct.MAX_BIPS, BipsValueTooLow());
         require(_settings.attestationWindowSeconds >= 1 days, WindowTooSmall());
         require(_settings.confirmationByOthersAfterSeconds >= 2 hours, MustBeTwoHours());
-        require(_settings.announcedUnderlyingConfirmationMinSeconds <= 1 hours, ConfirmationTimeTooBig());
         require(_settings.vaultCollateralBuyForFlareFactorBIPS >= SafePct.MAX_BIPS, ValueTooSmall());
         require(_settings.agentTimelockedOperationWindowSeconds >= 1 hours, ValueTooSmall());
         require(_settings.collateralPoolTokenTimelockSeconds >= 1 minutes, ValueTooSmall());
@@ -94,6 +92,7 @@ library SettingsInitializer {
             _settings.liquidationFactorVaultCollateralBIPS);
         // removed settings
         require(_settings.__whitelist == address(0), MustBeZero());
+        require(_settings.__announcedUnderlyingConfirmationMinSeconds == 0, MustBeZero());
         require(_settings.__buybackCollateralFactorBIPS == 0, MustBeZero());
         require(_settings.__minUnderlyingBackingBIPS == 0, MustBeZero());
         require(_settings.__redemptionDefaultFactorPoolBIPS == 0, MustBeZero());

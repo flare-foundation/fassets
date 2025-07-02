@@ -81,9 +81,6 @@ interface IISettingsManagement {
     function setAverageBlockTimeMS(uint256 _value)
         external;
 
-    function setAnnouncedUnderlyingConfirmationMinSeconds(uint256 _value)
-        external;
-
     function setMintingPoolHoldingsRequiredBIPS(uint256 _value)
         external;
 

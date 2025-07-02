@@ -215,7 +215,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
-        settings = createTestSettings(contracts, ci, { announcedUnderlyingConfirmationMinSeconds: 10 });
+        settings = createTestSettings(contracts, ci);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
         assetSymbol = ci.symbol;
         return { contracts, diamondCuts, assetManagerInit, wNat, usdc, assetSymbol, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
@@ -663,7 +663,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             collaterals = createTestCollaterals(contracts, ci);
             //Set token validUntil timestamp to some time in the past to make it deprecated
             collaterals[1].validUntil = chain.currentTimestamp()-100;
-            settings = createTestSettings(contracts, ci, { announcedUnderlyingConfirmationMinSeconds: 10 });
+            settings = createTestSettings(contracts, ci);
             //Creating asset manager should revert because we are trying to add a vault collateral that is deprecated
             const res = newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
             await expectRevert.custom(res, "CannotAddDeprecatedToken", []);
@@ -962,11 +962,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert.custom(res19, "CannotBeZero", []);
         });
 
-        it("should validate settings - cannot be zero (announcedUnderlyingConfirmationMinSeconds)", async () => {
+        it("should validate settings - must be zero (__announcedUnderlyingConfirmationMinSeconds)", async () => {
             const newSettings20 = createTestSettings(contracts, testChainInfo.eth)
-            newSettings20.announcedUnderlyingConfirmationMinSeconds = 2 * HOURS;
+            newSettings20.__announcedUnderlyingConfirmationMinSeconds = 1;
             const res20 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings20, collaterals);
-            await expectRevert.custom(res20, "ConfirmationTimeTooBig", []);
+            await expectRevert.custom(res20, "MustBeZero", []);
         });
 
         it("should validate settings - cannot be zero (underlyingSecondsForPayment)", async () => {
@@ -1396,7 +1396,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             collaterals = createTestCollaterals(contracts, ci);
             collaterals[1].token = collaterals[0].token;
             collaterals[1].tokenFtsoSymbol = collaterals[0].tokenFtsoSymbol;
-            settings = createTestSettings(contracts, ci, { announcedUnderlyingConfirmationMinSeconds: 10 });
+            settings = createTestSettings(contracts, ci);
             [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
             const agentVault = await createAvailableAgentNAT(agentOwner1, underlyingAgent1);
             // reserve collateral
@@ -1683,8 +1683,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // withdraw
             const txHash = await wallet.addTransaction(underlyingAgent1, "random_address", 1, underlyingWithdrawalAnnouncement.paymentReference);
             const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, "random_address");
-            // wait until confirmation
-            await time.deterministicIncrease(settings.announcedUnderlyingConfirmationMinSeconds);
             // confirm
             const tx2 = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
             const underlyingWithdrawalConfirmed = findRequiredEvent(tx2, "UnderlyingWithdrawalConfirmed").args;
@@ -1700,7 +1698,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
             const tx1 = await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
             const underlyingWithdrawalAnnouncement = findRequiredEvent(tx1, "UnderlyingWithdrawalAnnounced").args;
-            await time.deterministicIncrease(settings.announcedUnderlyingConfirmationMinSeconds);
             const tx2 = await assetManager.cancelUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
             const underlyingWithdrawalConfirmed = findRequiredEvent(tx2, "UnderlyingWithdrawalCancelled").args;
             assertWeb3Equal(underlyingWithdrawalConfirmed.agentVault, agentVault.address);
@@ -2139,7 +2136,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         it("Should unstick minting, where token direct price pair is true", async () => {
             const ci = testChainInfo.eth;
             collaterals = createTestCollaterals(contracts, ci);
-            settings = createTestSettings(contracts, ci, { announcedUnderlyingConfirmationMinSeconds: 10 });
+            settings = createTestSettings(contracts, ci);
             collaterals[0].directPricePair=true;
             collaterals[1].directPricePair=true;
             [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
@@ -2170,7 +2167,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         it("at least 2 collaterals required when creating asset manager", async () => {
             const ci = testChainInfo.eth;
             collaterals = createTestCollaterals(contracts, ci);
-            settings = createTestSettings(contracts, ci, { announcedUnderlyingConfirmationMinSeconds: 10 });
+            settings = createTestSettings(contracts, ci);
             //First collateral shouldn't be anything else than a Pool collateral
             const collateralsNew: CollateralType[] = collaterals;
             //Make first collateral be VaultCollateral
@@ -2182,7 +2179,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         it("pool collateral should be the first collateral when creating asset manager", async () => {
             const ci = testChainInfo.eth;
             collaterals = createTestCollaterals(contracts, ci);
-            settings = createTestSettings(contracts, ci, { announcedUnderlyingConfirmationMinSeconds: 10 });
+            settings = createTestSettings(contracts, ci);
             //Only one collateral should not be enough to create asset manager
             const collateralsNew: CollateralType[] = [collaterals[0]];
             const res = newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collateralsNew, ci.assetName, ci.assetSymbol);
@@ -2192,7 +2189,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         it("collateral types after first collateral should be VaultCollateral when creating asset manager", async () => {
             const ci = testChainInfo.eth;
             collaterals = createTestCollaterals(contracts, ci);
-            settings = createTestSettings(contracts, ci, { announcedUnderlyingConfirmationMinSeconds: 10 });
+            settings = createTestSettings(contracts, ci);
             //First collateral shouldn't be anything else than a Pool collateral
             const collateralsNew: CollateralType[] = collaterals;
             //Collaterals after the first should all be VaultCollateral
@@ -2332,11 +2329,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should not setAverageBlockTimeMS if not from asset manager controller", async () => {
             const promise = assetManager.setAverageBlockTimeMS(0);
-            await expectRevert.custom(promise, "OnlyAssetManagerController", []);
-        });
-
-        it("should not setAnnouncedUnderlyingConfirmationMinSeconds if not from asset manager controller", async () => {
-            const promise = assetManager.setAnnouncedUnderlyingConfirmationMinSeconds(0);
             await expectRevert.custom(promise, "OnlyAssetManagerController", []);
         });
 
@@ -2698,18 +2690,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert.custom(promise, "TooCloseToPreviousUpdate", []);
             await time.deterministicIncrease(1);
             await assetManager.setAverageBlockTimeMS(toBN(oldValue).subn(2), { from: assetManagerController });
-        });
-
-        it("should not setAnnouncedUnderlyingConfirmationMinSeconds if rate limited", async () => {
-            const oldValue = settings.announcedUnderlyingConfirmationMinSeconds;
-            await assetManager.setAnnouncedUnderlyingConfirmationMinSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
-            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
-            // skip time
-            await time.deterministicIncrease(toBN(minUpdateTime).subn(2));
-            const promise = assetManager.setAnnouncedUnderlyingConfirmationMinSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
-            await expectRevert.custom(promise, "TooCloseToPreviousUpdate", []);
-            await time.deterministicIncrease(1);
-            await assetManager.setAnnouncedUnderlyingConfirmationMinSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
         });
 
         it("should not setMintingPoolHoldingsRequiredBIPS if rate limited", async () => {

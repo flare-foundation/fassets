@@ -11,7 +11,8 @@ import {Globals} from "./Globals.sol";
 
 
 library UnderlyingBalance {
-    using SafeCast for *;
+    using SafeCast for uint256;
+    using SafeCast for int256;
     using SafePct for uint256;
     using Agent for Agent.State;
 

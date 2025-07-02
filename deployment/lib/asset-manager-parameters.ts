@@ -355,15 +355,6 @@ export interface AssetManagerParameters {
     withdrawalWaitMinSeconds: integer;
 
     /**
-     * Minimum time that has to pass between underlying withdrawal announcement and the confirmation.
-     * Any value is ok, but higher values give more security against multiple announcement attack by a miner.
-     * Shouldn't be much bigger than Flare data connector response time, so that payments can be confirmed without
-     * extra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).
-     * @minimum 0
-     */
-    announcedUnderlyingConfirmationMinSeconds: integer;
-
-    /**
      * On some rare occasions (stuck minting, locked fassets after termination), the agent has to unlock
      * collateral. For this, part of collateral corresponding to FTSO asset value is burned and the rest is released.
      * However, we cannot burn typical vault collateral (stablecoins), so the agent must buy them for NAT

@@ -410,13 +410,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert.custom(res_small, "WindowTooSmall", []);
         });
 
-        it("should revert setting announced underlying confirmation delay when setting is more than an hour", async () => {
-            const announcedUnderlyingConfirmationMinSeconds_new = 2 * HOURS;
-            const res_small = assetManagerController.setAnnouncedUnderlyingConfirmationMinSeconds([assetManager.address], announcedUnderlyingConfirmationMinSeconds_new, { from: governance });
-
-            await expectRevert.custom(res_small, "ConfirmationTimeTooBig", []);
-        });
-
         it("should set attestation window", async () => {
             const currentSettings = await assetManager.getSettings();
             const attestationWindowSeconds_new = toBN(currentSettings.attestationWindowSeconds).muln(2);
@@ -443,12 +436,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const averageBlockTimeMS_new = toBN(currentSettings.averageBlockTimeMS).muln(2);
             const res = await assetManagerController.setAverageBlockTimeMS([assetManager.address], averageBlockTimeMS_new, { from: governance });
             await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "averageBlockTimeMS", value: toBN(averageBlockTimeMS_new) });
-        });
-
-        it("should set announced underlying confirmation min seconds", async () => {
-            const announcedUnderlyingConfirmationMinSeconds_new = 100;
-            const res = await assetManagerController.setAnnouncedUnderlyingConfirmationMinSeconds([assetManager.address], announcedUnderlyingConfirmationMinSeconds_new, { from: governance });
-            await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "announcedUnderlyingConfirmationMinSeconds", value: toBN(announcedUnderlyingConfirmationMinSeconds_new) });
         });
 
         it("should revert redemption default factor bips", async () => {
@@ -1436,12 +1423,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const currentSettings = await assetManager.getSettings();
             const averageBlockTimeMS_new = toBN(currentSettings.averageBlockTimeMS).muln(2);
             const res = assetManagerController.setAverageBlockTimeMS([assetManager.address], averageBlockTimeMS_new, { from: accounts[12] });
-            await expectRevert.custom(res, "OnlyGovernance", []);
-        });
-
-        it("random address shouldn't be able to set announced underlying confirmation delay", async () => {
-            const announcedUnderlyingConfirmationMinSeconds_new = 2 * HOURS;
-            const res = assetManagerController.setAnnouncedUnderlyingConfirmationMinSeconds([assetManager.address], announcedUnderlyingConfirmationMinSeconds_new, { from: accounts[12] });
             await expectRevert.custom(res, "OnlyGovernance", []);
         });
 

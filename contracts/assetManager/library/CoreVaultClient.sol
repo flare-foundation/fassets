@@ -11,7 +11,6 @@ import {AgentCollateral} from "./AgentCollateral.sol";
 import {Redemptions} from "./Redemptions.sol";
 import {Agent} from "./data/Agent.sol";
 import {Collateral} from "./data/Collateral.sol";
-import {PaymentConfirmations} from "./data/PaymentConfirmations.sol";
 import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {Redemption} from "./data/Redemption.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
@@ -22,10 +21,8 @@ import {ICoreVaultClient} from "../../userInterfaces/ICoreVaultClient.sol";
 
 library CoreVaultClient {
     using SafePct for uint256;
-    using SafeCast for *;
+    using SafeCast for int256;
     using Agent for Agent.State;
-    using AgentCollateral for Collateral.CombinedData;
-    using PaymentConfirmations for PaymentConfirmations.State;
 
     error CoreVaultNotEnabled();
 

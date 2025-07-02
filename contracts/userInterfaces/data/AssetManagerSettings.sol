@@ -211,7 +211,7 @@ library AssetManagerSettings {
         // Shouldn't be much bigger than Flare data connector response time, so that payments can be confirmed without
         // extra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).
         // rate-limited
-        uint64 announcedUnderlyingConfirmationMinSeconds;
+        uint64 __announcedUnderlyingConfirmationMinSeconds;
 
         // Minimum time from the moment token is deprecated to when it becomes invalid and agents still using
         // it as vault collateral get liquidated.

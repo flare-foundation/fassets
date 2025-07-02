@@ -23,8 +23,6 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
     using SafeCast for uint256;
     using PaymentConfirmations for PaymentConfirmations.State;
 
-    error CancelTooSoon();
-    error ConfirmationTooSoon();
     error WrongAnnouncedPaymentSource();
     error WrongAnnouncedPaymentReference();
     error NoActiveAnnouncement();
@@ -124,9 +122,6 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
         require(isAgent || block.timestamp >
                 agent.underlyingWithdrawalAnnouncedAt + settings.confirmationByOthersAfterSeconds,
                 Agents.OnlyAgentVaultOwner());
-        require(block.timestamp >
-            agent.underlyingWithdrawalAnnouncedAt + settings.announcedUnderlyingConfirmationMinSeconds,
-            ConfirmationTooSoon());
         // make sure withdrawal cannot be challenged as invalid
         state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
         // clear active withdrawal announcement
@@ -158,13 +153,9 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
         external
         onlyAgentVaultOwner(_agentVault)
     {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
         Agent.State storage agent = Agent.get(_agentVault);
         uint64 announcementId = agent.announcedUnderlyingWithdrawalId;
         require(announcementId != 0, NoActiveAnnouncement());
-        require(block.timestamp >
-            agent.underlyingWithdrawalAnnouncedAt + settings.announcedUnderlyingConfirmationMinSeconds,
-            CancelTooSoon());
         // clear active withdrawal announcement
         agent.announcedUnderlyingWithdrawalId = 0;
         // send event
