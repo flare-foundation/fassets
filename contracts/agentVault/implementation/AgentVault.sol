@@ -9,7 +9,6 @@ import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
 import {IIAgentVault} from "../../agentVault/interfaces/IIAgentVault.sol";
 import {IAgentVault} from "../../userInterfaces/IAgentVault.sol";
 import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
-import {IVPToken} from "@flarenetwork/flare-periphery-contracts/flare/IVPToken.sol";
 import {ICollateralPool} from "../../userInterfaces/ICollateralPool.sol";
 
 
@@ -113,22 +112,6 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         require(destroyed || !assetManager.isLockedVaultToken(address(this), _token), OnlyNonCollateralTokens());
         address ownerManagementAddress = assetManager.getAgentVaultOwner(address(this));
         _token.safeTransfer(ownerManagementAddress, _amount);
-    }
-
-    function delegate(IVPToken _token, address _to, uint256 _bips) external override onlyOwner {
-        _token.delegate(_to, _bips);
-    }
-
-    function undelegateAll(IVPToken _token) external override onlyOwner {
-        _token.undelegateAll();
-    }
-
-    function delegateGovernance(IVPToken _token, address _to) external override onlyOwner {
-        _token.governanceVotePower().delegate(_to);
-    }
-
-    function undelegateGovernance(IVPToken _token) external override onlyOwner {
-        _token.governanceVotePower().undelegate();
     }
 
     /**

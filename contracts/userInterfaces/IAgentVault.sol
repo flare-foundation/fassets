@@ -3,7 +3,6 @@ pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IVPToken} from "@flarenetwork/flare-periphery-contracts/flare/IVPToken.sol";
 import {ICollateralPool} from "./ICollateralPool.sol";
 
 
@@ -68,30 +67,6 @@ interface IAgentVault {
      * the agent vault owner, e.g. owner's management or work address.
      */
     function redeemCollateralPoolTokens(uint256 _amount, address payable _recipient) external;
-
-    /**
-     * Delegate WNat vote power for a collateral token held in this vault.
-     * NOTE: only the owner of the agent vault may call this method.
-     */
-    function delegate(IVPToken _token, address _to, uint256 _bips) external;
-
-    /**
-     * Undelegate WNat vote power for a collateral token held in this vault.
-     * NOTE: only the owner of the agent vault may call this method.
-     */
-    function undelegateAll(IVPToken _token) external;
-
-    /**
-     * Delegate governance vote power for possible NAT collateral token held in this vault.
-     * NOTE: only the owner of the agent vault may call this method.
-     */
-    function delegateGovernance(IVPToken _token, address _to) external;
-
-    /**
-     * Undelegate governance vote power for possible NAT collateral token held in this vault.
-     * NOTE: only the owner of the agent vault may call this method.
-     */
-    function undelegateGovernance(IVPToken _token) external;
 
     /**
      * Get the address of the collateral pool contract corresponding to this agent vault
