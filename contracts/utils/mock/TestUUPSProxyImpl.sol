@@ -9,7 +9,9 @@ contract TestUUPSProxyImpl is UUPSUpgradeable {
     string private message;
     bool private initialized;
 
-    function _authorizeUpgrade(address newImplementation) internal override {}
+    function _authorizeUpgrade(address newImplementation) internal override {
+        // allow always
+    }
 
     function initialize(string memory _message) external {
         message = _message;
