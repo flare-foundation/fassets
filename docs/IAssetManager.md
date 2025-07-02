@@ -37,7 +37,7 @@ NOTE: may only be called by the agent vault owner.
 **executeAgentSettingUpdate** - Due to the effect on the pool, all agent settings are timelocked. This method executes a setting change after the timelock expires.
 NOTE: may only be called by the agent vault owner.
 
-**upgradeWNatContract** - When current pool collateral token contract (WNat) is replaced by the method setPoolCollateralType, pools don't switch automatically. Instead, the agent must call this method that swaps old WNat tokens for new ones and sets it for use by the pool.
+**upgradeWNatContract** - When current pool collateral token contract (WNat) is replaced by the method setPoolWNatCollateralType, pools don't switch automatically. Instead, the agent must call this method that swaps old WNat tokens for new ones and sets it for use by the pool.
 NOTE: may only be called by the agent vault owner.
 
 **announceVaultCollateralWithdrawal** - The agent is going to withdraw `_valueNATWei` amount of collateral from the agent vault. This has to be announced and the agent must then wait `withdrawalWaitMinSeconds` time. After that time, the agent can call `withdrawCollateral(_vaultCollateralToken, _valueNATWei)` on the agent vault.

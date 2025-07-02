@@ -127,7 +127,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
     }
 
     /**
-     * Called by AgentVault when there was a deposit.
+     * Called by AgentVault or CollateralPool when there was a deposit.
      * May pull agent out of liquidation.
      * NOTE: may only be called from an agent vault or collateral pool, not from an EOA address.
      */
@@ -174,7 +174,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
     }
 
     /**
-     * When current pool collateral token contract (WNat) is replaced by the method setPoolCollateralType,
+     * When current pool collateral token contract (WNat) is replaced by the method setPoolWNatCollateralType,
      * pools don't switch automatically. Instead, the agent must call this method that swaps old WNat tokens for
      * new ones and sets it for use by the pool.
      * NOTE: may only be called by the agent vault owner.
