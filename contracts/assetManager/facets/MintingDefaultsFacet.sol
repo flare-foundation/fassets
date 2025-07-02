@@ -66,11 +66,12 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         // send event
         uint256 reservedValueUBA = underlyingValueUBA + Minting.calculatePoolFeeUBA(agent, crt);
         emit IAssetManagerEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
-        // share collateral reservation fee between the agent's vault and pool
+        // calculate total fee before deleting collateral reservation
         uint256 totalFee = crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI;
-        Minting.distributeCollateralReservationFee(agent, totalFee);
         // release agent's reserved collateral
-        Minting.releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
+        Minting.releaseCollateralReservation(crt, _crtId); // crt can't be used after this
+        // share collateral reservation fee between the agent's vault and pool
+        Minting.distributeCollateralReservationFee(agent, totalFee);
     }
 
     /**
@@ -105,7 +106,7 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
             && _proof.data.responseBody.lowestQueryWindowBlockTimestamp + settings.attestationWindowSeconds <=
                 _proof.data.responseBody.blockTimestamp,
             CannotUnstickMintingYet());
-        // burn collateral reservation fee (guarded against reentrancy in AssetManager.unstickMinting)
+        // burn collateral reservation fee (guarded against reentrancy)
         Globals.getBurnAddress().transfer(crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI);
         // burn reserved collateral at market price
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(agent.vaultCollateralIndex);
@@ -115,7 +116,7 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         uint256 reservedValueUBA = Conversion.convertAmgToUBA(crt.valueAMG) + Minting.calculatePoolFeeUBA(agent, crt);
         emit IAssetManagerEvents.CollateralReservationDeleted(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
         // release agent's reserved collateral
-        Minting.releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
+        Minting.releaseCollateralReservation(crt, _crtId); // crt can't be used after this
         // If there is some overpaid NAT, send it back.
         Transfers.transferNAT(payable(msg.sender), msg.value - burnedNatWei);
     }

@@ -95,12 +95,13 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         address payable executor = crt.executor;
         uint256 executorFee = crt.executorFeeNatGWei * Conversion.GWEI;
         uint256 claimedExecutorFee = msg.sender == executor ? executorFee : 0;
-        // pay the collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
+        // calculate total fee before deleting collateral reservation
         // add the executor fee if it is not claimed by the executor
-        Minting.distributeCollateralReservationFee(agent,
-            crt.reservationFeeNatWei + executorFee - claimedExecutorFee);
-        // cleanup
-        Minting.releaseCollateralReservation(crt, _crtId);   // crt can't be used after this
+        uint256 totalFee = crt.reservationFeeNatWei + executorFee - claimedExecutorFee;
+        // release agent's reserved collateral
+        Minting.releaseCollateralReservation(crt, _crtId); // crt can't be used after this
+        // share collateral reservation fee between the agent's vault and pool
+        Minting.distributeCollateralReservationFee(agent, totalFee);
         // pay executor in WNat to avoid reentrancy
         Transfers.depositWNat(Globals.getWNat(), executor, claimedExecutorFee);
     }
