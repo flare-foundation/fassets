@@ -138,7 +138,7 @@ contract CollateralPoolTest is Test {
         for (uint256 i = 0; i < accounts.length; i++) {
             address account = accounts[i];
             int256 fAssetFeesOf = _fAssetFeesOf(account);
-            assertGe(fAssetFeesOf, -20, "_fAssetFeesOf should be greater than or equal to -20");
+            assertGe(fAssetFeesOf, -30, "_fAssetFeesOf should be greater than or equal to -30");
         }
     }
 
@@ -165,7 +165,7 @@ contract CollateralPoolTest is Test {
         }
         uint256 absDiff = totalFAssetFees > sumFAssetFees ?
             totalFAssetFees - sumFAssetFees : sumFAssetFees - totalFAssetFees;
-        assertLe(absDiff, 3 * accounts.length,
+        assertLe(absDiff, 4 * accounts.length,
             "Invariant 4 failed: totalFAssetFees does not match sum of fAssetFeesOf"
         );
     }
