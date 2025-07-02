@@ -145,7 +145,6 @@ test-forge:
   - forge install --no-git
   - forge build
   - mkdir -p cache || true
-  - chmod 755 cache
   - mkdir -p cache/invariant/failures
   - find cache -type d -exec chmod 755 {} +
   - find cache -type f -exec chmod 644 {} +
