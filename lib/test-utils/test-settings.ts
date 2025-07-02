@@ -16,7 +16,6 @@ import {
 } from "../../typechain-truffle";
 import { AgentSettings, AssetManagerSettings, CollateralClass, CollateralType } from "../fasset/AssetManagerTypes";
 import { ChainInfo } from "../fasset/ChainInfo";
-import { PaymentReference } from "../fasset/PaymentReference";
 import { AttestationHelper } from "../underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../utils/events/truffle";
 import { BNish, DAYS, HOURS, MINUTES, requireNotNull, toBIPS, toBNExp, WEEKS, ZERO_ADDRESS } from "../utils/helpers";
