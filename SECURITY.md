@@ -3,6 +3,7 @@
 ## Reporting a vulnerability
 
 If you have found a possible vulnerability, please email `security at flare dot network`.
+
 ## Bug bounties
 
 We sincerely appreciate and encourage reports of suspected security vulnerabilities.
