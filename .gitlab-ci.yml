@@ -111,6 +111,14 @@ test-contract-integration:
   - yarn test_integration_hh
 
 
+test-contract-e2e:
+  extends: .test-node-sc-noschedule
+  tags:
+  - flarenetwork-md
+  script:
+  - yarn test_e2e
+
+
 test-linter:
   extends: .test-node-sc-noschedule
   script:

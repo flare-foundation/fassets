@@ -26,11 +26,14 @@ yarn test
 # unit and integration tests in hardhat environmet
 yarn testHH`
 
-# only unit tests in hardhat environment.
+# only unit tests in hardhat environment
 yarn test_unit_hh
 
-# only integration tests in hardhat environment.
+# only integration tests in hardhat environment
 yarn test_integration_hh
+
+# run e2e tests
+yarn test_e2e
 
 # generate coverage report
 yarn test-with-coverage
