@@ -47,6 +47,29 @@ interface ICollateralPool {
         uint256 amountNatWei,
         uint8 rewardType);
 
+    error OnlyAssetManager();
+    error OnlyAgent();
+    error AlreadyInitialized();
+    error OnlyInternalUse();
+    error PoolTokenAlreadySet();
+    error AmountOfNatTooLow();
+    error AmountOfCollateralTooLow();
+    error DepositResultsInZeroTokens();
+    error TokenShareIsZero();
+    error TokenBalanceTooLow();
+    error SentAmountTooLow();
+    error CollateralRatioFallsBelowExitCR();
+    error InvalidRecipientAddress();
+    error RedemptionRequiresClosingTooManyTickets();
+    error FreeFAssetBalanceTooSmall();
+    error WithdrawZeroFAsset();
+    error ZeroFAssetDebtPayment();
+    error PaymentLargerThanFeeDebt();
+    error FAssetAllowanceTooSmall();
+    error TokenSupplyAfterExitTooLow();
+    error CollateralAfterExitTooLow();
+    error CannotDestroyPoolWithIssuedTokens();
+
     /**
      * Enters the collateral pool by depositing NAT.
      * The tokens have a timelock before which exiting or transferring tokens is not possible.

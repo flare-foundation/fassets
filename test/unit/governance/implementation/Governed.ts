@@ -7,10 +7,6 @@ import { GovernanceSettingsMockInstance, GovernedMockInstance } from "../../../.
 const Governed = artifacts.require("GovernedMock");
 const GovernanceSettings = artifacts.require("GovernanceSettingsMock");
 
-const ALREADY_INIT_MSG = "initialised != false";
-const ONLY_GOVERNANCE_MSG = "only governance";
-const GOVERNANCE_ZERO = "_governance zero";
-
 contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, accounts => {
     const initialGovernance = accounts[1];
     const productionGovernance = accounts[2];
@@ -37,7 +33,7 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, accoun
             // Act
             const promise = Governed.new(governanceSettings.address, ZERO_ADDRESS);
             // Assert
-            await expectRevert(promise, GOVERNANCE_ZERO);
+            await expectRevert.custom(promise, "GovernedAddressZero", []);
         });
 
         it("Should only be initializable once", async () => {
@@ -45,7 +41,7 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, accoun
             // Act
             const initPromise = governed.initialize(governanceSettings.address, productionGovernance);
             // Assert
-            await expectRevert(initPromise, ALREADY_INIT_MSG);
+            await expectRevert.custom(initPromise, "GovernedAlreadyInitialized", []);
             // Original governance should still be set
             const currentGovernance = await governed.governance();
             assert.equal(currentGovernance, initialGovernance);
@@ -68,7 +64,7 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, accoun
             // Act
             const promiseTransfer = governed.switchToProductionMode({ from: accounts[3] });
             // Assert
-            await expectRevert(promiseTransfer, ONLY_GOVERNANCE_MSG);
+            await expectRevert.custom(promiseTransfer, "OnlyGovernance", []);
         });
 
         it("Should not switch to production twice", async () => {
@@ -77,11 +73,11 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, accoun
             // Act
             const promiseTransfer1 = governed.switchToProductionMode({ from: initialGovernance });
             // Assert
-            await expectRevert(promiseTransfer1, ONLY_GOVERNANCE_MSG);
+            await expectRevert.custom(promiseTransfer1, "OnlyGovernance", []);
             // Act
             const promiseTransfer2 = governed.switchToProductionMode({ from: productionGovernance });
             // Assert
-            await expectRevert(promiseTransfer2, "already in production mode");
+            await expectRevert.custom(promiseTransfer2, "AlreadyInProductionMode", []);
         });
 
         it("Should have new governance parameters after switching", async () => {

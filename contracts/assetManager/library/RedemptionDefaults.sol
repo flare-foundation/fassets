@@ -19,6 +19,9 @@ library RedemptionDefaults {
     using Agent for Agent.State;
     using AgentCollateral for Collateral.Data;
 
+    error NotEnoughPoolCollateralToCoverFailedVaultPayment();
+    error NotEnoughAgentPoolTokensToCoverFailedVaultPayment();
+
     function executeDefaultOrCancel(
         Agent.State storage _agent,
         Redemption.Request storage _request,
@@ -83,13 +86,13 @@ library RedemptionDefaults {
                 .mulDiv(cd.agentPoolTokens.amgToTokenWeiPrice, Conversion.AMG_TOKEN_WEI_PRICE_SCALE)
                 .mulBips(Globals.getSettings().mintingPoolHoldingsRequiredBIPS);
         require(requiredPoolTokensForRemainder + poolTokenEquiv <= cd.agentPoolTokens.fullCollateral,
-            "not enough agent pool tokens to cover failed vault payment");
+            NotEnoughAgentPoolTokensToCoverFailedVaultPayment());
         // check that pool CR won't be lowered
         uint256 poolWeiEquiv = _paidC1Wei
             .mulDiv(cd.poolCollateral.amgToTokenWeiPrice, cd.agentCollateral.amgToTokenWeiPrice);
         uint256 combinedPaidPoolWei = _paidPoolWei + poolWeiEquiv;
         require(combinedPaidPoolWei <= cd.poolCollateral.maxRedemptionCollateral(_agent, _request.valueAMG),
-            "not enough pool collateral to cover failed vault payment");
+            NotEnoughPoolCollateralToCoverFailedVaultPayment());
         return combinedPaidPoolWei;
     }
 

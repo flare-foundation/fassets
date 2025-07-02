@@ -31,6 +31,11 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
     using Agent for Agent.State;
     using PaymentConfirmations for PaymentConfirmations.State;
 
+    error InvalidReceivingAddressSelected();
+    error SourceNotAgentsUnderlyingAddress();
+    error RedemptionPaymentTooOld();
+    error InvalidRedemptionReference();
+
     /**
      * After paying to the redeemer, the agent must call this method to unlock the collateral
      * and to make sure that the redeemer cannot demand payment in collateral on timeout.
@@ -59,27 +64,27 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
         // But if the agent doesn't respond for long enough,
         // we allow anybody and that user gets rewarded from agent's vault.
         bool isAgent = Agents.isOwner(agent, msg.sender);
-        require(isAgent || _othersCanConfirmPayment(request), "only agent vault owner");
+        require(isAgent || _othersCanConfirmPayment(request), Agents.OnlyAgentVaultOwner());
         // verify transaction
         TransactionAttestation.verifyPayment(_payment);
         // payment reference must match
         require(_payment.data.responseBody.standardPaymentReference ==
                 PaymentReference.redemption(_redemptionRequestId),
-            "invalid redemption reference");
+                InvalidRedemptionReference());
         // we do not allow payments before the underlying block at requests, because the payer should have guessed
         // the payment reference, which is good for nothing except attack attempts
         require(_payment.data.responseBody.blockNumber >= request.firstUnderlyingBlock,
-            "redemption payment too old");
+            RedemptionPaymentTooOld());
         // Agent's underlying address must be the selected source address. On utxo chains other addresses can also
         // be used for payment, but the spentAmount must be for agent's underlying address.
         require(_payment.data.responseBody.sourceAddressHash == agent.underlyingAddressHash,
-            "source not agent's underlying address");
+            SourceNotAgentsUnderlyingAddress());
         // On UTXO chains, malicious submitter could select agent's return address as receiving address index in FDC
         // request, which would wrongly mark payment as FAILED because the receiver is not the redeemer.
         // Following check prevents this for common payments with single receiver while still allowing payments to
         // actually wrong address to be marked as invalid.
         require(_payment.data.responseBody.receivingAddressHash != agent.underlyingAddressHash,
-            "invalid receiving address selected");
+            InvalidReceivingAddressSelected());
         // Valid payments are to correct destination, in time, and must have value at least the request payment value.
         (bool paymentValid, string memory failureReason) = _validatePayment(request, _payment);
         if (paymentValid) {

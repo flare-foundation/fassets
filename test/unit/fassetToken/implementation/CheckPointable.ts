@@ -77,9 +77,9 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
         // Act
         await checkPointable.setCleanupBlockNumber(blk);
         // Assert
-        await expectRevert(checkPointable.setCleanupBlockNumber(blk - 1), "Cleanup block number must never decrease");
+        await expectRevert.custom(checkPointable.setCleanupBlockNumber(blk - 1), "CleanupBlockNumberMustNeverDecrease", []);
         const blk2 = await web3.eth.getBlockNumber();
-        await expectRevert(checkPointable.setCleanupBlockNumber(blk2 + 1), "Cleanup block must be in the past");
+        await expectRevert.custom(checkPointable.setCleanupBlockNumber(blk2 + 1), "CleanupBlockMustBeInThePast", []);
     });
 
     it("Should cleanup history", async () => {
@@ -95,8 +95,8 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
         const blk3 = await web3.eth.getBlockNumber();
         // Assert
         // should fail at blk1
-        await expectRevert(checkPointable.balanceOfAt(accounts[1], blk1),
-            "CheckPointable: reading from cleaned-up block");
+        await expectRevert.custom(checkPointable.balanceOfAt(accounts[1], blk1),
+                "CheckPointableReadingFromCleanedupBlock", []);
         // and work at blk2
         const value = await checkPointable.balanceOfAt(accounts[1], blk2);
         assert.equal(value.toNumber(), 90);

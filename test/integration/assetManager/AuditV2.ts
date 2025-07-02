@@ -63,7 +63,7 @@ contract(`AuditV2.ts; ${getTestFile(__filename)}; FAsset V2 audit tests`, accoun
         await context.priceStore.setCurrentPrice('USDC', 0.5e5, 0);
         await context.priceStore.setCurrentPriceFromTrustedProviders('USDC', 0.5e5, 0);
         // try to withdraw - should fail because CR is too low
-        await expectRevert(agent.withdrawVaultCollateral(withdrawAmount), "withdrawal: CR too low");
+        await expectRevert.custom(agent.withdrawVaultCollateral(withdrawAmount), "WithdrawalCRTooLow", []);
     });
 
     it("should be able to redeem after changing WNat address", async () => {

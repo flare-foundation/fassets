@@ -136,7 +136,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(info.liquidationStartTimestamp, toBN(ccbStartTimestamp).add(ccbTimeSeconds));
             // startLiquidation after 10 seconds should fail
             await time.deterministicIncrease(10);
-            await expectRevert(liquidator.startLiquidation(agent), "liquidation not started");
+            await expectRevert.custom(liquidator.startLiquidation(agent), "LiquidationNotStarted", []);
             // after ccb time we can switch to liquidation (and liquidation event should be sent)
             await time.deterministicIncrease(ccbTimeSeconds);
             const [ccb2, liquidationStartTimestamp] = await liquidator.startLiquidation(agent);
@@ -473,8 +473,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStartTs);
             // liquidation cannot be stopped if agent not safe
-            await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
-            await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
+            await expectRevert.custom(agent.endLiquidation(), "CannotStopLiquidation", []);
+            await expectRevert.custom(liquidator.endLiquidation(agent), "CannotStopLiquidation", []);
             // wait some time to get next premium
             await time.deterministicIncrease(90);
             // liquidate agent (second part)
@@ -647,8 +647,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // liquidation cannot be stopped if agent not safe
-            await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
-            await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
+            await expectRevert.custom(agent.endLiquidation(), "CannotStopLiquidation", []);
+            await expectRevert.custom(liquidator.endLiquidation(agent), "CannotStopLiquidation", []);
             // wait some time to get next premium
             await time.deterministicIncrease(90);
             // liquidate agent (second part)
@@ -1663,8 +1663,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // liquidation cannot be stopped if agent not safe
-            await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
-            await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
+            await expectRevert.custom(agent.endLiquidation(), "CannotStopLiquidation", []);
+            await expectRevert.custom(liquidator.endLiquidation(agent), "CannotStopLiquidation", []);
             // wait some time to get next premium
             await time.deterministicIncrease(90);
             // liquidate agent (second part)
@@ -1775,8 +1775,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // liquidation cannot be stopped if agent not safe
-            await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
-            await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
+            await expectRevert.custom(agent.endLiquidation(), "CannotStopLiquidation", []);
+            await expectRevert.custom(liquidator.endLiquidation(agent), "CannotStopLiquidation", []);
             // wait some time to get next premium
             await time.deterministicIncrease(90);
             // liquidate agent (second part)
@@ -1887,8 +1887,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // liquidation cannot be stopped if agent not safe
-            await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
-            await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
+            await expectRevert.custom(agent.endLiquidation(), "CannotStopLiquidation", []);
+            await expectRevert.custom(liquidator.endLiquidation(agent), "CannotStopLiquidation", []);
             // wait some time to get next premium
             await time.deterministicIncrease(90);
             // liquidate agent (second part)

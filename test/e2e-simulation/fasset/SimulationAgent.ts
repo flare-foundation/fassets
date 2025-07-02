@@ -145,8 +145,8 @@ export class SimulationAgent extends SimulationActor {
         const proof = await this.context.attestationProvider.provePayment(txHash, null, agent.underlyingAddress);
         let res = await this.context.assetManager.selfMint(proof, agent.vaultAddress, lots, { from: this.ownerWorkAddress })
             .catch (e => scope.handleExpectedErrors(e, {
-                continue: ['not enough free collateral', 'self-mint payment too small'],
-                exit: ['self-mint invalid agent status', 'invalid self-mint reference', 'self-mint payment too old', "self-mint not agent's address"],
+                continue: ["NotEnoughFreeCollateral", "SelfMintPaymentTooSmall"],
+                exit: ["SelfMintInvalidAgentStatus", "InvalidSelfMintReference", "SelfMintPaymentTooOld", "SelfMintNotAgentsAddress"],
             }));
         // 'self-mint payment too small' can happen after lot size change
         // 'invalid self-mint reference' can happen if agent is destroyed and re-created
@@ -154,7 +154,7 @@ export class SimulationAgent extends SimulationActor {
         if (res == null) {
             // could not mint because payment too small - just execute self-mint with 0 lots to account for underlying deposit
             res = await this.context.assetManager.selfMint(proof, agent.vaultAddress, 0, { from: this.ownerWorkAddress })
-                .catch(e => scope.exitOnExpectedError(e, ['self-mint invalid agent status', 'invalid self-mint reference', 'self-mint payment too old', "self-mint not agent's address"]));
+                .catch(e => scope.exitOnExpectedError(e, ["SelfMintInvalidAgentStatus", "InvalidSelfMintReference", "SelfMintPaymentTooOld", "SelfMintNotAgentsAddress"]));
         }
         const args = requiredEventArgs(res, 'SelfMint'); // event must happen even for 0 lots
     }
@@ -171,7 +171,7 @@ export class SimulationAgent extends SimulationActor {
         const amountUBA = randomBN(ownersAssets);
         if (this.avoidErrors && amountUBA.isZero()) return;
         await agent.selfClose(amountUBA)
-            .catch(e => scope.exitOnExpectedError(e, ['f-asset balance too low', 'redeem 0 lots']));
+            .catch(e => scope.exitOnExpectedError(e, ["FAssetBalanceTooLow", "RedeemZeroLots"]));
     }
 
     async convertDustToTicket(scope: EventScope): Promise<void> {
@@ -226,7 +226,7 @@ export class SimulationAgent extends SimulationActor {
         if (amount.isZero()) return;
         // announce
         const announcement = await agent.announceUnderlyingWithdrawal()
-            .catch(e => scope.exitOnExpectedError(e, ['announced underlying withdrawal active']));
+            .catch(e => scope.exitOnExpectedError(e, ["AnnouncedUnderlyingWithdrawalActive"]));
         if (coinFlip(0.8)) {
             this.comment(`Underlying withdrawal for ${this.name(agent)}: amount=${formatBN(amount)} free=${formatBN(this.freeUnderlyingBalance(agent))}`)
             this.unaccountedSpentFreeBalance.addTo(agent.vaultAddress, amount);
@@ -287,7 +287,7 @@ export class SimulationAgent extends SimulationActor {
         if (transferLots.eqn(0)) return;
         const transferAmount = transferLots.mul(this.context.lotSize());
         await this.agent.startTransferToCoreVault(transferAmount)
-            .catch(e => scope.exitOnExpectedError(e, ["invalid agent status", "transfer already active", "too little minting left after transfer"]));
+            .catch(e => scope.exitOnExpectedError(e, ["InvalidAgentStatus", "TransferAlreadyActive", "TooLittleMintingLeftAfterTransfer"]));
     }
 
     async returnFromCoreVault(scope: EventScope) {
@@ -295,8 +295,8 @@ export class SimulationAgent extends SimulationActor {
         const lots = randomBN(toBN(info.freeCollateralLots));
         if (lots.eqn(0)) return;
         const request = await this.agent.requestReturnFromCoreVault(lots)
-            .catch(e => scope.exitOnExpectedError(e, ["agent's underlying address not allowed by core vault", "invalid agent status",
-                "return from core vault already requested", "not enough free collateral", "not enough available on core vault"]));
+            .catch(e => scope.exitOnExpectedError(e, ["AgentsUnderlyingAddressNotAllowedByCoreVault", "InvalidAgentStatus",
+                "ReturnFromCoreVaultAlreadyRequested", "NotEnoughFreeCollateral", "NotEnoughAvailableOnCoreVault"]));
         this.comment(`Return from core vault started, paymentReference=${request.paymentReference}.`);
         const paymentEvt = await this.chainEvents.transactionEvent({ reference: request.paymentReference, to: this.agent.underlyingAddress }).wait(scope);
         await this.context.waitForUnderlyingTransactionFinalization(scope, paymentEvt.hash);
@@ -361,7 +361,7 @@ export class SimulationAgent extends SimulationActor {
         }
         // announce destroy
         const destroyAllowedAt = await agent.announceDestroy()
-            .catch(e => scope.exitOnExpectedError(e, [{ error: 'agent still active', when: !waitForRedemptions }]));
+            .catch(e => scope.exitOnExpectedError(e, [{ error: "AgentStillActive", when: !waitForRedemptions }]));
         await this.timeline.flareTimestamp(destroyAllowedAt).wait(scope);
         // wait for all other pool token holders to redeem
         const waitForTokenHolderExit = coinFlip(0.5);
@@ -376,7 +376,7 @@ export class SimulationAgent extends SimulationActor {
         }
         // destroy agent vault
         await agent.destroy()
-            .catch(e => scope.exitOnExpectedError(e, [{ error: 'cannot destroy a pool with issued tokens', when: !waitForTokenHolderExit }]));
+            .catch(e => scope.exitOnExpectedError(e, [{ error: "CannotDestroyPoolWithIssuedTokens", when: !waitForTokenHolderExit }]));
         this.unregisterEvents(agent.vaultAddress);
     }
 

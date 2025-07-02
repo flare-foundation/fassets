@@ -267,7 +267,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // check that calling finishRedemptionWithoutPayment after failed redemption payment will revert
-            await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid request id");
+            await expectRevert.custom(agent.finishRedemptionWithoutPayment(request), "InvalidRequestId", []);
             // test rewarding for redemption payment default
             await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral.sub(res[1].redeemedVaultCollateralWei),
@@ -331,7 +331,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // check that calling finishRedemptionWithoutPayment after failed redemption payment will revert
-            await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid request id");
+            await expectRevert.custom(agent.finishRedemptionWithoutPayment(request), "InvalidRequestId", []);
             // test rewarding for redemption payment default
             await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral.sub(resDefault.redeemedVaultCollateralWei),
@@ -394,7 +394,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // check that calling finishRedemptionWithoutPayment after failed redemption payment will revert
-            await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid request id");
+            await expectRevert.custom(agent.finishRedemptionWithoutPayment(request), "InvalidRequestId", []);
             // test rewarding for redemption payment default
             await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral.sub(res[1].redeemedVaultCollateralWei),
@@ -447,13 +447,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // perform some (failed) payment with correct redemption reference
             const tx1Hash = await agent.wallet.addTransaction(minter.underlyingAddress, request.paymentAddress, 1, request.paymentReference);
             const proof = await context.attestationProvider.provePayment(tx1Hash, minter.underlyingAddress, request.paymentAddress);
-            await expectRevert(context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress }), "source not agent's underlying address");
+            await expectRevert.custom(context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress }), "SourceNotAgentsUnderlyingAddress", []);
             // mine some blocks to create overflow block
             for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // check that calling finishRedemptionWithoutPayment after failed redemption payment will revert
-            await expectRevert(agent.finishRedemptionWithoutPayment(request), "should default first");
+            await expectRevert.custom(agent.finishRedemptionWithoutPayment(request), "ShouldDefaultFirst", []);
             // test rewarding for redemption payment default
             const vaultCollateralToken = agent.vaultCollateralToken();
             const startVaultCollateralBalanceRedeemer = await vaultCollateralToken.balanceOf(redeemer.address);
@@ -520,7 +520,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // check that calling finishRedemptionWithoutPayment after no redemption payment will revert if called too soon
-            await expectRevert(agent.finishRedemptionWithoutPayment(request), "should default first");
+            await expectRevert.custom(agent.finishRedemptionWithoutPayment(request), "ShouldDefaultFirst", []);
             await time.deterministicIncrease(DAYS);
             context.skipToProofUnavailability(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
             // test rewarding for redemption payment default
@@ -548,7 +548,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), redDef.redeemedPoolCollateralWei);
             assertWeb3Equal(startPoolBalanceAgent.sub(endPoolBalanceAgent), redDef.redeemedPoolCollateralWei);
             // finishRedemptionWithoutPayment has effect equal to default - cannot default again
-            await expectRevert(agent.redemptionPaymentDefault(request), "invalid redemption status");
+            await expectRevert.custom(agent.redemptionPaymentDefault(request), "InvalidRedemptionStatus", []);
             // finishRedemptionWithoutPayment again is a no-op
             const redDef2 = await agent.finishRedemptionWithoutPayment(request);
             assert.isUndefined(redDef2);
@@ -614,7 +614,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.feeUBA), mintedUBA: minted.poolFeeUBA, redeemingUBA: 0
             });
             // check that calling finishRedemptionWithoutPayment after confirming redemption payment will revert
-            await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid request id");
+            await expectRevert.custom(agent.finishRedemptionWithoutPayment(request), "InvalidRequestId", []);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(res.redeemedVaultCollateralWei));
         });
@@ -640,7 +640,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const [[request]] = await redeemer.requestRedemption(10);
             context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
             // the default should fail because vault collateral cannot be paid to redeemer and there are not enough agent pool tokens to cover pool payment
-            await expectRevert(redeemer.redemptionPaymentDefault(request), "not enough agent pool tokens to cover failed vault payment");
+            await expectRevert.custom(redeemer.redemptionPaymentDefault(request), "NotEnoughAgentPoolTokensToCoverFailedVaultPayment", []);
             // buy extra pool tokens
             const ac = await agent.getAgentCollateral();
             const poolEquivWei = ac.pool.convertUBAToTokenWei(toBN(request.valueUBA));
@@ -675,7 +675,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 const [[request]] = await redeemer.requestRedemption(lots);
                 context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
                 // the default should fail because vault collateral cannot be paid to redeemer and there are not enough agent pool tokens to cover pool payment
-                await expectRevert(redeemer.redemptionPaymentDefault(request), "not enough agent pool tokens to cover failed vault payment");
+                await expectRevert.custom(redeemer.redemptionPaymentDefault(request), "NotEnoughAgentPoolTokensToCoverFailedVaultPayment", []);
                 // agent pool tokens must cover vault share of payment
                 const ac = await agent.getAgentCollateral();
                 const poolEquivWei = ac.pool.convertUBAToTokenWei(toBN(request.valueUBA));
@@ -692,7 +692,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                     requiredExtraPoolTokens = requiredExtraPoolTokens.add(backedAmountInPoolTokens.mul(mintingPoolHoldingsRequiredBIPS.sub(currentAgentPoolTokenHoldingBIPS)).divn(MAX_BIPS));
                 }
                 await agent.buyCollateralPoolTokens(requiredExtraPoolTokens.sub(toWei(1)));
-                await expectRevert(redeemer.redemptionPaymentDefault(request), "not enough agent pool tokens to cover failed vault payment");
+                await expectRevert.custom(redeemer.redemptionPaymentDefault(request), "NotEnoughAgentPoolTokensToCoverFailedVaultPayment", []);
                 // once enough is added, the payment default should succeed
                 await agent.buyCollateralPoolTokens(toWei(1));
                 const res = await redeemer.redemptionPaymentDefault(request);
@@ -729,8 +729,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             );
             // try to prove with agent's underlying address as receiver
             const proof1 = await context.attestationProvider.provePayment(txHash, agent.underlyingAddress, agent.underlyingAddress);
-            await expectRevert(context.assetManager.confirmRedemptionPayment(proof1, req.requestId, { from: agent.ownerWorkAddress }),
-                "invalid receiving address selected");
+            await expectRevert.custom(context.assetManager.confirmRedemptionPayment(proof1, req.requestId, { from: agent.ownerWorkAddress }),
+                "InvalidReceivingAddressSelected", []);
             // proving with redeemer's address works
             const proof2 = await context.attestationProvider.provePayment(txHash, agent.underlyingAddress, redeemer.underlyingAddress);
             const res = await context.assetManager.confirmRedemptionPayment(proof2, req.requestId, { from: agent.ownerWorkAddress });

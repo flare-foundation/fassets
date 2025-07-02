@@ -13,6 +13,17 @@ library SettingsInitializer {
         AssetManagerSettings.Data settings;
     }
 
+    error CannotBeZero();
+    error MustBeZero();
+    error WindowTooSmall();
+    error ValueTooSmall();
+    error BipsValueTooHigh();
+    error BipsValueTooLow();
+    error MustBeTwoHours();
+    error ConfirmationTimeTooBig();
+    error ZeroAddress();
+    error MintingCapTooSmall();
+
     function validateAndSet(
         AssetManagerSettings.Data memory _settings
     )
@@ -43,55 +54,54 @@ library SettingsInitializer {
     )
         private pure
     {
-        require(_settings.fAsset != address(0), "zero fAsset address");
-        require(_settings.agentVaultFactory != address(0), "zero agentVaultFactory address");
-        require(_settings.collateralPoolFactory != address(0), "zero collateralPoolFactory address");
-        require(_settings.collateralPoolTokenFactory != address(0), "zero collateralPoolTokenFactory address");
-        require(_settings.fdcVerification != address(0), "zero fdcVerification address");
-        require(_settings.priceReader != address(0), "zero priceReader address");
-        require(_settings.agentOwnerRegistry != address(0), "zero agentOwnerRegistry address");
+        require(_settings.fAsset != address(0), ZeroAddress());
+        require(_settings.agentVaultFactory != address(0), ZeroAddress());
+        require(_settings.collateralPoolFactory != address(0), ZeroAddress());
+        require(_settings.collateralPoolTokenFactory != address(0), ZeroAddress());
+        require(_settings.fdcVerification != address(0), ZeroAddress());
+        require(_settings.priceReader != address(0), ZeroAddress());
+        require(_settings.agentOwnerRegistry != address(0), ZeroAddress());
 
-        require(_settings.assetUnitUBA > 0, "cannot be zero");
-        require(_settings.assetMintingGranularityUBA > 0, "cannot be zero");
-        require(_settings.underlyingBlocksForPayment > 0, "cannot be zero");
-        require(_settings.underlyingSecondsForPayment > 0, "cannot be zero");
-        require(_settings.redemptionFeeBIPS > 0, "cannot be zero");
-        require(_settings.collateralReservationFeeBIPS > 0, "cannot be zero");
-        require(_settings.confirmationByOthersRewardUSD5 > 0, "cannot be zero");
-        require(_settings.maxRedeemedTickets > 0, "cannot be zero");
-        require(_settings.ccbTimeSeconds > 0, "cannot be zero");
-        require(_settings.maxTrustedPriceAgeSeconds > 0, "cannot be zero");
-        require(_settings.minUpdateRepeatTimeSeconds > 0, "cannot be zero");
-        require(_settings.withdrawalWaitMinSeconds > 0, "cannot be zero");
-        require(_settings.averageBlockTimeMS > 0, "cannot be zero");
+        require(_settings.assetUnitUBA > 0, CannotBeZero());
+        require(_settings.assetMintingGranularityUBA > 0, CannotBeZero());
+        require(_settings.underlyingBlocksForPayment > 0, CannotBeZero());
+        require(_settings.underlyingSecondsForPayment > 0, CannotBeZero());
+        require(_settings.redemptionFeeBIPS > 0, CannotBeZero());
+        require(_settings.collateralReservationFeeBIPS > 0, CannotBeZero());
+        require(_settings.confirmationByOthersRewardUSD5 > 0, CannotBeZero());
+        require(_settings.maxRedeemedTickets > 0, CannotBeZero());
+        require(_settings.ccbTimeSeconds > 0, CannotBeZero());
+        require(_settings.maxTrustedPriceAgeSeconds > 0, CannotBeZero());
+        require(_settings.minUpdateRepeatTimeSeconds > 0, CannotBeZero());
+        require(_settings.withdrawalWaitMinSeconds > 0, CannotBeZero());
+        require(_settings.averageBlockTimeMS > 0, CannotBeZero());
         SettingsValidators.validateTimeForPayment(_settings.underlyingBlocksForPayment,
             _settings.underlyingSecondsForPayment, _settings.averageBlockTimeMS);
-        require(_settings.lotSizeAMG > 0, "cannot be zero");
+        require(_settings.lotSizeAMG > 0, CannotBeZero());
         require(_settings.mintingCapAMG == 0 || _settings.mintingCapAMG >= _settings.lotSizeAMG,
-            "minting cap too small");
-        require(_settings.collateralReservationFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
-        require(_settings.redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
-        require(_settings.redemptionDefaultFactorVaultCollateralBIPS > SafePct.MAX_BIPS, "bips value too low");
-        require(_settings.attestationWindowSeconds >= 1 days, "window too small");
-        require(_settings.confirmationByOthersAfterSeconds >= 2 hours, "must be at least two hours");
-        require(_settings.announcedUnderlyingConfirmationMinSeconds <= 1 hours, "confirmation time too big");
-        require(_settings.vaultCollateralBuyForFlareFactorBIPS >= SafePct.MAX_BIPS, "value too small");
-        require(_settings.agentTimelockedOperationWindowSeconds >= 1 hours, "value too small");
-        require(_settings.collateralPoolTokenTimelockSeconds >= 1 minutes, "value too small");
-        require(_settings.liquidationStepSeconds > 0, "cannot be zero");
+            MintingCapTooSmall());
+        require(_settings.collateralReservationFeeBIPS <= SafePct.MAX_BIPS, BipsValueTooHigh());
+        require(_settings.redemptionFeeBIPS <= SafePct.MAX_BIPS, BipsValueTooHigh());
+        require(_settings.redemptionDefaultFactorVaultCollateralBIPS > SafePct.MAX_BIPS, BipsValueTooLow());
+        require(_settings.attestationWindowSeconds >= 1 days, WindowTooSmall());
+        require(_settings.confirmationByOthersAfterSeconds >= 2 hours, MustBeTwoHours());
+        require(_settings.announcedUnderlyingConfirmationMinSeconds <= 1 hours, ConfirmationTimeTooBig());
+        require(_settings.vaultCollateralBuyForFlareFactorBIPS >= SafePct.MAX_BIPS, ValueTooSmall());
+        require(_settings.agentTimelockedOperationWindowSeconds >= 1 hours, ValueTooSmall());
+        require(_settings.collateralPoolTokenTimelockSeconds >= 1 minutes, ValueTooSmall());
+        require(_settings.liquidationStepSeconds > 0, CannotBeZero());
         SettingsValidators.validateLiquidationFactors(_settings.liquidationCollateralFactorBIPS,
             _settings.liquidationFactorVaultCollateralBIPS);
-
         // removed settings
-        require(_settings.__whitelist == address(0), "must be zero");
-        require(_settings.__buybackCollateralFactorBIPS == 0, "must be zero");
-        require(_settings.__minUnderlyingBackingBIPS == 0, "must be zero");
-        require(_settings.__redemptionDefaultFactorPoolBIPS == 0, "must be zero");
-        require(_settings.__cancelCollateralReservationAfterSeconds == 0, "must be zero");
-        require(_settings.__rejectOrCancelCollateralReservationReturnFactorBIPS == 0, "must be zero");
-        require(_settings.__rejectRedemptionRequestWindowSeconds == 0, "must be zero");
-        require(_settings.__takeOverRedemptionRequestWindowSeconds == 0, "must be zero");
-        require(_settings.__rejectedRedemptionDefaultFactorVaultCollateralBIPS == 0, "must be zero");
-        require(_settings.__rejectedRedemptionDefaultFactorPoolBIPS == 0, "must be zero");
+        require(_settings.__whitelist == address(0), MustBeZero());
+        require(_settings.__buybackCollateralFactorBIPS == 0, MustBeZero());
+        require(_settings.__minUnderlyingBackingBIPS == 0, MustBeZero());
+        require(_settings.__redemptionDefaultFactorPoolBIPS == 0, MustBeZero());
+        require(_settings.__cancelCollateralReservationAfterSeconds == 0, MustBeZero());
+        require(_settings.__rejectOrCancelCollateralReservationReturnFactorBIPS == 0, MustBeZero());
+        require(_settings.__rejectRedemptionRequestWindowSeconds == 0, MustBeZero());
+        require(_settings.__takeOverRedemptionRequestWindowSeconds == 0, MustBeZero());
+        require(_settings.__rejectedRedemptionDefaultFactorVaultCollateralBIPS == 0, MustBeZero());
+        require(_settings.__rejectedRedemptionDefaultFactorPoolBIPS == 0, MustBeZero());
     }
 }

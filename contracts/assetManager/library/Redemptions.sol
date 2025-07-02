@@ -17,6 +17,8 @@ library Redemptions {
     using Agent for Agent.State;
     using RedemptionQueue for RedemptionQueue.State;
 
+    error InvalidRequestId();
+
     function closeTickets(
         Agent.State storage _agent,
         uint64 _amountAMG,
@@ -160,8 +162,8 @@ library Redemptions {
         returns (Redemption.Request storage _request)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        require(_redemptionRequestId != 0, "invalid request id");
+        require(_redemptionRequestId != 0, InvalidRequestId());
         _request = state.redemptionRequests[_redemptionRequestId];
-        require(_request.status != Redemption.Status.EMPTY, "invalid request id");
+        require(_request.status != Redemption.Status.EMPTY, InvalidRequestId());
     }
 }

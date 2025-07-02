@@ -9,6 +9,8 @@ library MerkleTree {
         uint256 logN;
     }
 
+    error NoLeaves();
+
     /// Calculates the Merkle root given fixed leaves
     /// @param leaves The leaves to calculate the Merkle root for
     /// If negative, no Merkle proof is calculated
@@ -28,7 +30,7 @@ library MerkleTree {
         internal pure
         returns (bytes32 root)
     {
-        require(leaves.length > 0, "Must have at least one leaf");
+        require(leaves.length > 0, NoLeaves());
         if (leaves.length == 1) {
             return leaves[0];
         }

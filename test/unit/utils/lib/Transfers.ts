@@ -24,12 +24,12 @@ contract(`Transfers.sol; ${getTestFile(__filename)};  Transfers unit tests`, acc
     });
 
     it("should fail transferring nat to non-payable contract", async () => {
-        await expectRevert(transfers.transferNAT(mathUtils.address, 1000), "transfer failed");
+        await expectRevert.custom(transfers.transferNAT(mathUtils.address, 1000), "TransferFailed", []);
     });
 
     it("unguarded transfers should fail", async () => {
         const account = web3.eth.accounts.create();
-        await expectRevert(transfers.transferNATNoGuard(account.address, 1000), "ReentrancyGuard: guard required");
+        await expectRevert.custom(transfers.transferNATNoGuard(account.address, 1000), "ReentrancyGuardRequired", []);
     });
 
     it("transfers with 0 value should work (but do nothing)", async () => {

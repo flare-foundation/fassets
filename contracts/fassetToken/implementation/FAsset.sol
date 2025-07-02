@@ -18,6 +18,18 @@ import {IICheckPointable} from "../interfaces/IICheckPointable.sol";
 
 
 contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ERC20Permit {
+    error OnlyAssetManager();
+    error AlreadyInitialized();
+    error AlreadyUpgraded();
+    error OnlyDeployer();
+    error ZeroAssetManager();
+    error CannotReplaceAssetManager();
+    error OnlyCleanupBlockManager();
+    error FAssetTerminated();
+    error FAssetBalanceTooLow();
+    error CannotTransferToSelf();
+    error EmergencyPauseOfTransfersActive();
+
     /**
      * The name of the underlying asset.
      */
@@ -52,7 +64,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     uint16 private _version;
 
     modifier onlyAssetManager() {
-        require(msg.sender == assetManager, "only asset manager");
+        require(msg.sender == assetManager, OnlyAssetManager());
         _;
     }
 
@@ -72,7 +84,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     )
         external
     {
-        require(!_initialized, "already initialized");
+        require(!_initialized, AlreadyInitialized());
         _initialized = true;
         _deployer = msg.sender;
         _name = name_;
@@ -84,7 +96,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     }
 
     function initializeV1r1() public {
-        require(_version == 0, "already upgraded");
+        require(_version == 0, AlreadyUpgraded());
         _version = 1;
         initializeEIP712(_name, "1");
     }
@@ -96,9 +108,9 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     function setAssetManager(address _assetManager)
         external
     {
-        require (msg.sender == _deployer, "only deployer");
-        require(_assetManager != address(0), "zero asset manager");
-        require(assetManager == address(0), "cannot replace asset manager");
+        require (msg.sender == _deployer, OnlyDeployer());
+        require(_assetManager != address(0), ZeroAssetManager());
+        require(assetManager == address(0), CannotReplaceAssetManager());
         assetManager = _assetManager;
     }
 
@@ -154,7 +166,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     function setCleanupBlockNumber(uint256 _blockNumber)
         external override
     {
-        require(msg.sender == cleanupBlockNumberManager, "only cleanup block manager");
+        require(msg.sender == cleanupBlockNumberManager, OnlyCleanupBlockManager());
         _setCleanupBlockNumber(_blockNumber);
     }
 
@@ -192,11 +204,11 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     function _beforeTokenTransfer(address _from, address _to, uint256 _amount)
         internal override
     {
-        require(_from == address(0) || balanceOf(_from) >= _amount, "f-asset balance too low");
-        require(_from != _to, "Cannot transfer to self");
+        require(_from == address(0) || balanceOf(_from) >= _amount, FAssetBalanceTooLow());
+        require(_from != _to, CannotTransferToSelf());
         // mint and redeem are allowed on transfer pause, but not transfer
         require(_from == address(0) || _to == address(0) || !IAssetManager(assetManager).transfersEmergencyPaused(),
-            "emergency pause of transfers active");
+            EmergencyPauseOfTransfersActive());
         // update balance history
         _updateBalanceHistoryAtTransfer(_from, _to, _amount);
     }

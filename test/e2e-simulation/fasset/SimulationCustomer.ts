@@ -79,7 +79,7 @@ export class RedemptionPaymentReceiver extends SimulationActor {
     private async redemptionDefault(scope: EventScope, request: EventArgs<RedemptionRequested>) {
         this.comment(`${this.name}, req=${request.requestId}: starting default, block=${(this.context.chain as MockChain).blockHeight()}`);
         const result = await this.redeemer.redemptionPaymentDefault(request)
-            .catch(e => expectErrors(e, ['invalid request id']))    // can happen if agent confirms failed payment
+            .catch(e => expectErrors(e, ["InvalidRequestId"]))    // can happen if agent confirms failed payment
             .catch(e => scope.exitOnExpectedError(e, []));
         return result;
     }
@@ -124,8 +124,8 @@ export class SimulationCustomer extends SimulationActor implements FAssetSeller 
         if (this.avoidErrors && lots === 0) return;
         const crt = await this.minter.reserveCollateral(agent.agentVault, lots)
             .catch(e => scope.exitOnExpectedError(e, [
-                'cannot mint 0 lots', 'not enough free collateral', 'inappropriate fee amount',
-                'rc: invalid agent status', 'agent not in mint queue', 'invalid agent vault address'    // errors when agent changed status or was destroyed since last check
+                "CannotMintZeroLots", "NotEnoughFreeCollateral", "InappropriateFeeAmount",
+                "InvalidAgentStatus", "AgentNotInMintQueue", "InvalidAgentVaultAddress"    // errors when agent changed status or was destroyed since last check
             ]));
         // pay
         const txHash = await this.minter.performMintingPayment(crt);
@@ -133,7 +133,7 @@ export class SimulationCustomer extends SimulationActor implements FAssetSeller 
         await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
         // execute
         await this.minter.executeMinting(crt, txHash)
-            .catch(e => scope.exitOnExpectedError(e, ['payment failed']));  // 'payment failed' can happen if there are several simultaneous payments and this one makes balance negative
+            .catch(e => scope.exitOnExpectedError(e, ["PaymentFailed"]));  // 'payment failed' can happen if there are several simultaneous payments and this one makes balance negative
         mintedLots += lots;
     }
 
@@ -146,7 +146,7 @@ export class SimulationCustomer extends SimulationActor implements FAssetSeller 
         this.comment(`${this.name} lots ${lots}   total minted ${mintedLots}   holding ${holdingLots}`);
         if (this.avoidErrors && lots === 0) return;
         const [tickets, remaining] = await this.redeemer.requestRedemption(lots)
-            .catch(e => scope.exitOnExpectedError(e, ['f-asset balance too low', 'redeem 0 lots']));
+            .catch(e => scope.exitOnExpectedError(e, ["FAssetBalanceTooLow", "RedeemZeroLots"]));
         mintedLots -= lots - Number(remaining);
         this.comment(`${this.name}: Redeeming ${tickets.length} tickets, remaining ${remaining} lots`);
         // wait for all redemption payments or non-payments
@@ -174,7 +174,7 @@ export class SimulationCustomer extends SimulationActor implements FAssetSeller 
             await this.context.fAsset.transfer(receiverAddress, transferAmount, { from: this.address });
             return transferAmount;
         } catch (e) {
-            if (errorIncluded(e, ['f-asset balance too low'])) return BN_ZERO;
+            if (errorIncluded(e, ["FAssetBalanceTooLow"])) return BN_ZERO;
             throw e;
         }
     }

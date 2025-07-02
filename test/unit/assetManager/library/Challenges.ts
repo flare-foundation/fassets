@@ -183,17 +183,17 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             await time.deterministicIncrease(14 * 86400);
             const res = assetManager.illegalPaymentChallenge(
                 proof, agentVault.address, { from: whitelistedAccount });
-            await expectRevert(res, "verified transaction too old")
+            await expectRevert.custom(res, "VerifiedTransactionTooOld", [])
         });
 
-        it("should not succeed challenging illegal payment - chlg: not agent's address", async () => {
+        it("should not succeed challenging illegal payment - ChallengeNotAgentsAddress", async () => {
             const txHash = await wallet.addTransaction(
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(0));
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
 
             const res = assetManager.illegalPaymentChallenge(
                 proof, agentVault2.address, { from: whitelistedAccount });
-            await expectRevert(res, "chlg: not agent's address")
+            await expectRevert.custom(res, "ChallengeNotAgentsAddress", [])
         });
 
         it("should not succeed challenging illegal payment - matching ongoing announced pmt", async () => {
@@ -203,7 +203,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
 
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
             const res = assetManager.illegalPaymentChallenge(proof, agentVault.address, { from: whitelistedAccount });
-            await expectRevert(res, 'matching ongoing announced pmt');
+            await expectRevert.custom(res, "MatchingAnnouncedPaymentActive", []);
         });
 
     });
@@ -216,7 +216,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
             const promise = assetManager.doublePaymentChallenge(
                 agentTxProof, proof, agentVault.address, { from: whitelistedAccount });
-            await expectRevert(promise, "challenge: not duplicate");
+            await expectRevert.custom(promise, "ChallengeNotDuplicate", []);
         });
 
         it("should revert on wrong agent's address", async() => {
@@ -225,13 +225,13 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent2);
             const promise = assetManager.doublePaymentChallenge(
                 agentTxProof, proof, agentVault.address, { from: whitelistedAccount });
-            await expectRevert(promise, "chlg 2: not agent's address");
+            await expectRevert.custom(promise, "ChallengeNotAgentsAddress", []);
         });
 
         it("should revert on same references", async() => {
             const promise = assetManager.doublePaymentChallenge(
                 agentTxProof, agentTxProof, agentVault.address, { from: whitelistedAccount });
-            await expectRevert(promise, "chlg dbl: same transaction");
+            await expectRevert.custom(promise, "ChallengeSameTransactionRepeated", []);
         });
 
         it("should revert on not agent's address", async() => {
@@ -240,7 +240,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
             const res = assetManager.doublePaymentChallenge(
                 agentTxProof, proof, agentVault2.address, { from: whitelistedAccount });
-            await expectRevert(res, "chlg 1: not agent's address");
+            await expectRevert.custom(res, "ChallengeNotAgentsAddress", []);
         });
 
         it("should successfully challenge double payments", async() => {
@@ -261,7 +261,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             // payment references match
             const prms1 = assetManager.freeBalanceNegativeChallenge(
                 [agentTxProof, agentTxProof], agentVault.address, { from: whitelistedAccount });
-            await expectRevert(prms1, "mult chlg: repeated transaction");
+            await expectRevert.custom(prms1, "ChallengeSameTransactionRepeated", []);
         });
 
         it("should revert if transaction has different sources", async() => {
@@ -271,7 +271,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             // transaction sources are not the same agent
             const prmsW = assetManager.freeBalanceNegativeChallenge(
                 [agentTxProof, proofA2], agentVault.address, { from: whitelistedAccount });
-            await expectRevert(prmsW, "mult chlg: not agent's address");
+            await expectRevert.custom(prmsW, "ChallengeNotAgentsAddress", []);
         });
 
         it("should revert - already confirmed payments should be ignored", async () => {
@@ -287,7 +287,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             const proof2 = await attestationProvider.proveBalanceDecreasingTransaction(tx1Hash, underlyingAgent1);
 
             const res = assetManager.freeBalanceNegativeChallenge([agentTxProof, proof2], agentVault.address, { from: whitelistedAccount });
-            await expectRevert(res, "mult chlg: enough balance");
+            await expectRevert.custom(res, "MultiplePaymentsChallengeEnoughBalance", []);
         });
 
         it("should revert - mult chlg: enough balance", async () => {
@@ -304,7 +304,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             const proof2 = await attestationProvider.proveBalanceDecreasingTransaction(txHash2, underlyingAgent1);
 
             const res = assetManager.freeBalanceNegativeChallenge([agentTxProof, proof2], agentVault.address, { from: whitelistedAccount });
-            await expectRevert(res, "mult chlg: enough balance");
+            await expectRevert.custom(res, "MultiplePaymentsChallengeEnoughBalance", []);
         });
 
         it("should succeed in challenging payments if they make balance negative", async() => {

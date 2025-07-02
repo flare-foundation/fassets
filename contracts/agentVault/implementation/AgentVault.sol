@@ -28,12 +28,12 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     address private ownerAfterDestroy;
 
     modifier onlyOwner {
-        require(isOwner(msg.sender), "only owner");
+        require(isOwner(msg.sender), OnlyOwner());
         _;
     }
 
     modifier onlyAssetManager {
-        require(msg.sender == address(assetManager), "only asset manager");
+        require(msg.sender == address(assetManager), OnlyAssetManager());
         _;
     }
 
@@ -44,7 +44,7 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     }
 
     function initialize(IIAssetManager _assetManager) public {
-        require(!initialized, "already initialized");
+        require(!initialized, AlreadyInitialized());
         initialized = true;
         assetManager = _assetManager;
     }
@@ -110,7 +110,7 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         onlyOwner
         nonReentrant
     {
-        require(destroyed || !assetManager.isLockedVaultToken(address(this), _token), "only non-collateral tokens");
+        require(destroyed || !assetManager.isLockedVaultToken(address(this), _token), OnlyNonCollateralTokens());
         address ownerManagementAddress = assetManager.getAgentVaultOwner(address(this));
         _token.safeTransfer(ownerManagementAddress, _amount);
     }

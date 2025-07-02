@@ -7,7 +7,6 @@ import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { Approximation } from "../../../lib/test-utils/approximation";
 import { impersonateContract, stopImpersonatingContract } from "../../../lib/test-utils/contract-test-helpers";
-import { waitForTimelock } from "../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
@@ -265,12 +264,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const crFee = await minter.getCollateralReservationFee(lots);
             //Try minting more lots than minting cap
             const res = minter.reserveCollateral(agent.vaultAddress, 15);
-            await expectRevert(res, "minting cap exceeded");
+            await expectRevert.custom(res, "MintingCapExceeded", []);
             //Try minting less lots
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             //Try to mint again
             const res2 = minter.reserveCollateral(agent.vaultAddress, 8);
-            await expectRevert(res2, "minting cap exceeded");
+            await expectRevert.custom(res2, "MintingCapExceeded", []);
             const txHash = await minter.performMintingPayment(crt);
             const lotsUBA = context.convertLotsToUBA(lots);
             await agent.checkAgentInfo({
@@ -389,7 +388,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await agent.checkAgentInfo({ actualUnderlyingBalance: underlyingBalance });
             await agent.confirmActiveRedemptionPayment(request, txHash);
             await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: minted1.agentFeeUBA.add(minted2.agentFeeUBA).add(request.feeUBA), redeemingUBA: 0 });
-            await expectRevert(agent.announceVaultCollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
+            await expectRevert.custom(agent.announceVaultCollateralWithdrawal(fullAgentCollateral), "WithdrawalValueTooHigh", []);
         });
 
         it("mint and redeem f-assets (two redemption tickets - different agents)", async () => {
@@ -443,7 +442,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 freeUnderlyingBalanceUBA: minted2.agentFeeUBA.add(request2.feeUBA),
                 mintedUBA: context.convertLotsToUBA(3).add(minted2.poolFeeUBA)
             });
-            await expectRevert(agent2.announceVaultCollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
+            await expectRevert.custom(agent2.announceVaultCollateralWithdrawal(fullAgentCollateral), "WithdrawalValueTooHigh", []);
         });
 
         it("mint and redeem f-assets (many redemption tickets, get RedemptionRequestIncomplete)", async () => {
@@ -590,7 +589,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assert.equal(request1.agentVault, agent.vaultAddress);
             const tx3Hash = await agent.performRedemptionPayment(request1);
             await agent.confirmActiveRedemptionPayment(request1, tx3Hash);
-            await expectRevert(agent.announceVaultCollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
+            await expectRevert.custom(agent.announceVaultCollateralWithdrawal(fullAgentCollateral), "WithdrawalValueTooHigh", []);
             const request2 = redemptionRequests2[0];
             assert.equal(request2.agentVault, agent.vaultAddress);
             const tx4Hash = await agent.performRedemptionPayment(request2);
@@ -774,7 +773,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.assetManager.addAlwaysAllowedMinterForAgent(agent.vaultAddress, allowedMinter.address, { from: agent.ownerWorkAddress });
             assertWeb3DeepEqual(await context.assetManager.alwaysAllowedMintersForAgent(agent.vaultAddress), [allowedMinter.address]);
             // ordinary minters cannot mint
-            await expectRevert(minter.reserveCollateral(agent.vaultAddress, 1), "agent not in mint queue");
+            await expectRevert.custom(minter.reserveCollateral(agent.vaultAddress, 1), "AgentNotInMintQueue", []);
             // allowed minter can mint without paying collateral reservation fee
             const agentInfo = await agent.getAgentInfo();
             const mintingRes = await context.assetManager.reserveCollateral(agent.vaultAddress, 1, agentInfo.feeBIPS, ZERO_ADDRESS, { from: allowedMinter.address });
@@ -783,15 +782,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await allowedMinter.executeMinting(minting, txhash);
             // however, if the agent becomes public, everybody has to pay collateral reservation fee
             await agent.makeAvailable();
-            await expectRevert(context.assetManager.reserveCollateral(agent.vaultAddress, 1, agentInfo.feeBIPS, ZERO_ADDRESS, { from: allowedMinter.address }),
-                "inappropriate fee amount");
+            await expectRevert.custom(context.assetManager.reserveCollateral(agent.vaultAddress, 1, agentInfo.feeBIPS, ZERO_ADDRESS, { from: allowedMinter.address }),
+                "InappropriateFeeAmount", []);
             await agent.exitAvailable();
             // allowed minter can be removed and then it cannot mint on non-pubic agent anymore
             await context.assetManager.removeAlwaysAllowedMinterForAgent(agent.vaultAddress, allowedMinter.address, { from: agent.ownerWorkAddress });
             assertWeb3DeepEqual(await context.assetManager.alwaysAllowedMintersForAgent(agent.vaultAddress), []);
             // now allowedMinter cannot mint
-            await expectRevert(context.assetManager.reserveCollateral(agent.vaultAddress, 1, agentInfo.feeBIPS, ZERO_ADDRESS, { from: allowedMinter.address }),
-                "agent not in mint queue")
+            await expectRevert.custom(context.assetManager.reserveCollateral(agent.vaultAddress, 1, agentInfo.feeBIPS, ZERO_ADDRESS, { from: allowedMinter.address }),
+                "AgentNotInMintQueue", [])
         });
 
         it("non-public agent can add 'always allowed minter' for a proxy contract and people can mint through that", async () => {
@@ -805,7 +804,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // allow a only minting proxy as minter
             await context.assetManager.addAlwaysAllowedMinterForAgent(agent.vaultAddress, mintingProxy.address, { from: agent.ownerWorkAddress });
             // ordinary minters cannot mint
-            await expectRevert(minter.reserveCollateral(agent.vaultAddress, 1), "agent not in mint queue");
+            await expectRevert.custom(minter.reserveCollateral(agent.vaultAddress, 1), "AgentNotInMintQueue", []);
             // but can mint through proxy
             const maxFeeBIPS = await mintingProxy.mintingFeeBIPS();
             const res = await mintingProxy.reserveCollateral(10, maxFeeBIPS, { from: minter.address });
@@ -847,8 +846,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         it("revert when adding and removing allowed minter for agent from wrong address", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const allowedMinter = await Minter.createTest(context, minterAddress2, underlyingMinter2, context.underlyingAmount(10000));
-            await expectRevert(context.assetManager.addAlwaysAllowedMinterForAgent(agent.vaultAddress, allowedMinter.address), "only agent vault owner");
-            await expectRevert(context.assetManager.removeAlwaysAllowedMinterForAgent(agent.vaultAddress, allowedMinter.address), "only agent vault owner");
+            await expectRevert.custom(context.assetManager.addAlwaysAllowedMinterForAgent(agent.vaultAddress, allowedMinter.address), "OnlyAgentVaultOwner", []);
+            await expectRevert.custom(context.assetManager.removeAlwaysAllowedMinterForAgent(agent.vaultAddress, allowedMinter.address), "OnlyAgentVaultOwner", []);
         });
 
         it("obtain collateral reservation and redemption request info", async () => {
@@ -879,7 +878,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const mintTxHash = await minter.performMintingPayment(mintReq);
             const minted = await minter.executeMinting(mintReq, mintTxHash);
             // now the info will fail
-            await expectRevert(context.assetManager.collateralReservationInfo(mintReq.collateralReservationId), "invalid crt id");
+            await expectRevert.custom(context.assetManager.collateralReservationInfo(mintReq.collateralReservationId), "InvalidCrtId", []);
             // redeem
             await minter.transferFAsset(redeemer.address, context.convertLotsToUBA(5));
             const [[redeemReq]] = await redeemer.requestRedemption(5, executorAddress1, toWei("0.02"));
@@ -910,7 +909,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // now pay too late and confirm payment
             await agent.performRedemptions([redeemReq]);
             // now info should fail, because the redemption request has been deleted
-            await expectRevert(context.assetManager.redemptionRequestInfo(redeemReq.requestId), "invalid request id");
+            await expectRevert.custom(context.assetManager.redemptionRequestInfo(redeemReq.requestId), "InvalidRequestId", []);
         });
     });
 });

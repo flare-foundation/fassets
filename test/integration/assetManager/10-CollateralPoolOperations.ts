@@ -7,15 +7,14 @@ import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
-import { impersonateContract, stopImpersonatingContract } from "../../../lib/test-utils/contract-test-helpers";
-import { calcGasCost, calculateReceivedNat } from "../../../lib/test-utils/eth";
+import { calculateReceivedNat } from "../../../lib/test-utils/eth";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { MAX_BIPS, ZERO_ADDRESS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { MAX_BIPS, ZERO_ADDRESS, toBN, toWei } from "../../../lib/utils/helpers";
 
 
 contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral pool operations`, accounts => {
@@ -117,7 +116,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assertWeb3Equal(debtFreeBalanceOf, minterPoolTokens);
         //Minter should not be able to transef pool tokens that are time locked
         const prms1 = agent.collateralPoolToken.transfer(accounts[1], toWei(2e8), { from: minter.address });
-        await expectRevert(prms1, "insufficient non-timelocked balance");
+        await expectRevert.custom(prms1, "InsufficientNonTimelockedBalance", []);
         //After 1 day the minter can exit the pool
         await time.deterministicIncrease(time.duration.days(1));
         // check locked balance
@@ -418,7 +417,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         await context.fAsset.approve(agent.collateralPool.address, toWei(5e12), { from: minter.address });
         await time.deterministicIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for minted token timelock
         const res = agent.collateralPool.selfCloseExit(minterPoolTokens, false, underlyingMinter1, ZERO_ADDRESS, { from: minter.address });
-        await expectRevert(res, "redemption requires closing too many tickets")
+        await expectRevert.custom(res, "RedemptionRequiresClosingTooManyTickets", [])
     });
 
     it("self close exit test payout in vault collateral", async () => {
@@ -592,7 +591,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assertWeb3Equal(userFassetFees, toBN(0));
         // check that executing minting after calling mintingPaymentDefault will revert
         const txHash = await minter.performMintingPayment(crt);
-        await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");
+        await expectRevert.custom(minter.executeMinting(crt, txHash), "InvalidCrtId", []);
         // perform minting and check fees
         await time.deterministicIncrease(time.duration.days(7));
         const lots2 = 3;
@@ -753,7 +752,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         //User7 shouldn't be able to exit when pool CR falls below exit CR
         await agent.setPoolCollateralRatioByChangingAssetPrice(25000);
         const res = agent.collateralPool.exit(await agent.collateralPoolToken.balanceOf(user7), { from: user7 });
-        await expectRevert(res, "collateral ratio falls below exitCR");
+        await expectRevert.custom(res, "CollateralRatioFallsBelowExitCR", []);
         //Minter mints on agent2
         const crt6 = await minter.reserveCollateral(agent2.vaultAddress, 30);
         const txHash6 = await minter.performMintingPayment(crt6);

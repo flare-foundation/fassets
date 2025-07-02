@@ -8,6 +8,11 @@ import {ICollateralPool} from "./ICollateralPool.sol";
 
 
 interface IAgentVault {
+    error OnlyOwner();
+    error OnlyAssetManager();
+    error AlreadyInitialized();
+    error OnlyNonCollateralTokens();
+
     /**
      * Deposit vault collateral.
      * Parameter `_token` is explicit to allow depositing before collateral switch.

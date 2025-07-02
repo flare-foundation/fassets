@@ -14,7 +14,7 @@ contract(`MerkleTree.sol; ${getTestFile(__filename)}`, () => {
     });
 
     it("Should revert if no leaves", async () => {
-        await expectRevert(merkleTreeMock.calculateMerkleRoot([]), "Must have at least one leaf");
+        await expectRevert.custom(merkleTreeMock.calculateMerkleRoot([]), "NoLeaves", []);
     });
 
     it("Generate the same Merkle root", async () => {

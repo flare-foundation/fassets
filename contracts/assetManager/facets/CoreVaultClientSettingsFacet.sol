@@ -18,6 +18,12 @@ import {SafePct} from "../../utils/library/SafePct.sol";
 contract CoreVaultClientSettingsFacet is AssetManagerBase, GovernedProxyImplementation, ICoreVaultClientSettings {
     using SafeCast for uint256;
 
+    error WrongAssetManager();
+    error CannotDisable();
+    error DiamondNotInitialized();
+    error AlreadyInitialized();
+    error BipsValueTooHigh();
+
     // prevent initialization of implementation contract
     constructor() {
         CoreVaultClient.getState().initialized = true;
@@ -35,10 +41,10 @@ contract CoreVaultClientSettingsFacet is AssetManagerBase, GovernedProxyImplemen
     {
         updateInterfacesAtCoreVaultDeploy();
         // init settings
-        require(_redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
-        require(_minimumAmountLeftBIPS <= SafePct.MAX_BIPS, "bips value too high");
+        require(_redemptionFeeBIPS <= SafePct.MAX_BIPS, BipsValueTooHigh());
+        require(_minimumAmountLeftBIPS <= SafePct.MAX_BIPS, BipsValueTooHigh());
         CoreVaultClient.State storage state = CoreVaultClient.getState();
-        require(!state.initialized, "already initialized");
+        require(!state.initialized, AlreadyInitialized());
         state.initialized = true;
         state.coreVaultManager = _coreVaultManager;
         state.nativeAddress = _nativeAddress;
@@ -52,7 +58,7 @@ contract CoreVaultClientSettingsFacet is AssetManagerBase, GovernedProxyImplemen
         public
     {
         LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
-        require(ds.supportedInterfaces[type(IERC165).interfaceId], "diamond not initialized");
+        require(ds.supportedInterfaces[type(IERC165).interfaceId], DiamondNotInitialized());
         // IAssetManager has new methods (at CoreVaultClient deploy on Songbird)
         ds.supportedInterfaces[type(IAssetManager).interfaceId] = true;
         // Core Vault interfaces added
@@ -71,9 +77,9 @@ contract CoreVaultClientSettingsFacet is AssetManagerBase, GovernedProxyImplemen
     {
         // core vault cannot be disabled once it has been enabled (it can be disabled initially
         // in initCoreVaultFacet method, for chains where core vault is not supported)
-        require(_coreVaultManager != address(0), "cannot disable");
+        require(_coreVaultManager != address(0), CannotDisable());
         IICoreVaultManager coreVaultManager = IICoreVaultManager(_coreVaultManager);
-        require(coreVaultManager.assetManager() == address(this), "wrong asset manager");
+        require(coreVaultManager.assetManager() == address(this), WrongAssetManager());
         CoreVaultClient.State storage state = CoreVaultClient.getState();
         state.coreVaultManager = coreVaultManager;
         emit IAssetManagerEvents.ContractChanged("coreVaultManager", _coreVaultManager);
@@ -110,7 +116,7 @@ contract CoreVaultClientSettingsFacet is AssetManagerBase, GovernedProxyImplemen
         external
         onlyImmediateGovernance
     {
-        require(_redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
+        require(_redemptionFeeBIPS <= SafePct.MAX_BIPS, BipsValueTooHigh());
         CoreVaultClient.State storage state = CoreVaultClient.getState();
         state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint16();
         emit IAssetManagerEvents.SettingChanged("coreVaultRedemptionFeeBIPS", _redemptionFeeBIPS);
@@ -122,7 +128,7 @@ contract CoreVaultClientSettingsFacet is AssetManagerBase, GovernedProxyImplemen
         external
         onlyImmediateGovernance
     {
-        require(_minimumAmountLeftBIPS <= SafePct.MAX_BIPS, "bips value too high");
+        require(_minimumAmountLeftBIPS <= SafePct.MAX_BIPS, BipsValueTooHigh());
         CoreVaultClient.State storage state = CoreVaultClient.getState();
         state.minimumAmountLeftBIPS = _minimumAmountLeftBIPS.toUint16();
         emit IAssetManagerEvents.SettingChanged("coreVaultMinimumAmountLeftBIPS", _minimumAmountLeftBIPS);

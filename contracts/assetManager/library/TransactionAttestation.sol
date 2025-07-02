@@ -16,12 +16,22 @@ library TransactionAttestation {
     uint8 internal constant PAYMENT_FAILED = 1;
     uint8 internal constant PAYMENT_BLOCKED = 2;
 
+    error PaymentFailed();
+    error InvalidChain();
+    error LegalPaymentNotProven();
+    error TransactionNotProven();
+    error VerifiedTransactionTooOld();
+    error BlockHeightNotProven();
+    error NonPaymentNotProven();
+    error AddressValidityNotProven();
+
+
     function verifyPaymentSuccess(
         IPayment.Proof calldata _proof
     )
         internal view
     {
-        require(_proof.data.responseBody.status == PAYMENT_SUCCESS, "payment failed");
+        require(_proof.data.responseBody.status == PAYMENT_SUCCESS, PaymentFailed());
         verifyPayment(_proof);
     }
 
@@ -32,10 +42,10 @@ library TransactionAttestation {
     {
         AssetManagerSettings.Data storage _settings = Globals.getSettings();
         IFdcVerification fdcVerification = IFdcVerification(_settings.fdcVerification);
-        require(_proof.data.sourceId == _settings.chainId, "invalid chain");
-        require(fdcVerification.verifyPayment(_proof), "legal payment not proved");
+        require(_proof.data.sourceId == _settings.chainId, InvalidChain());
+        require(fdcVerification.verifyPayment(_proof), LegalPaymentNotProven());
         require(_confirmationCannotBeCleanedUp(_proof.data.responseBody.blockTimestamp),
-            "verified transaction too old");
+            VerifiedTransactionTooOld());
     }
 
     function verifyBalanceDecreasingTransaction(
@@ -45,10 +55,10 @@ library TransactionAttestation {
     {
         AssetManagerSettings.Data storage _settings = Globals.getSettings();
         IFdcVerification fdcVerification = IFdcVerification(_settings.fdcVerification);
-        require(_proof.data.sourceId == _settings.chainId, "invalid chain");
-        require(fdcVerification.verifyBalanceDecreasingTransaction(_proof), "transaction not proved");
+        require(_proof.data.sourceId == _settings.chainId, InvalidChain());
+        require(fdcVerification.verifyBalanceDecreasingTransaction(_proof), TransactionNotProven());
         require(_confirmationCannotBeCleanedUp(_proof.data.responseBody.blockTimestamp),
-            "verified transaction too old");
+            VerifiedTransactionTooOld());
     }
 
     function verifyConfirmedBlockHeightExists(
@@ -58,8 +68,8 @@ library TransactionAttestation {
     {
         AssetManagerSettings.Data storage _settings = Globals.getSettings();
         IFdcVerification fdcVerification = IFdcVerification(_settings.fdcVerification);
-        require(_proof.data.sourceId == _settings.chainId, "invalid chain");
-        require(fdcVerification.verifyConfirmedBlockHeightExists(_proof), "block height not proved");
+        require(_proof.data.sourceId == _settings.chainId, InvalidChain());
+        require(fdcVerification.verifyConfirmedBlockHeightExists(_proof), BlockHeightNotProven());
     }
 
     function verifyReferencedPaymentNonexistence(
@@ -69,8 +79,8 @@ library TransactionAttestation {
     {
         AssetManagerSettings.Data storage _settings = Globals.getSettings();
         IFdcVerification fdcVerification = IFdcVerification(_settings.fdcVerification);
-        require(_proof.data.sourceId == _settings.chainId, "invalid chain");
-        require(fdcVerification.verifyReferencedPaymentNonexistence(_proof), "non-payment not proved");
+        require(_proof.data.sourceId == _settings.chainId, InvalidChain());
+        require(fdcVerification.verifyReferencedPaymentNonexistence(_proof), NonPaymentNotProven());
     }
 
     function verifyAddressValidity(
@@ -80,8 +90,8 @@ library TransactionAttestation {
     {
         AssetManagerSettings.Data storage _settings = Globals.getSettings();
         IFdcVerification fdcVerification = IFdcVerification(_settings.fdcVerification);
-        require(_proof.data.sourceId == _settings.chainId, "invalid chain");
-        require(fdcVerification.verifyAddressValidity(_proof), "address validity not proved");
+        require(_proof.data.sourceId == _settings.chainId, InvalidChain());
+        require(fdcVerification.verifyAddressValidity(_proof), AddressValidityNotProven());
     }
 
     function _confirmationCannotBeCleanedUp(uint256 timestamp) private view returns (bool) {

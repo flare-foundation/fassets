@@ -44,7 +44,7 @@ export class SimulationPoolTokenHolder extends SimulationActor {
             const amount = randomBN(MIN_POOL_ENTER_EXIT, lotSizeWei.muln(3));
             this.comment(`${this.formatAddress(this.address)}: entering pool ${this.formatAddress(this.poolInfo.pool.address)} (${formatBN(amount)})`);
             await this.poolInfo.pool.enter({ from: this.address, value: amount })
-                .catch(e => scope.exitOnExpectedError(e, ['invalid agent vault address']));
+                .catch(e => scope.exitOnExpectedError(e, ["InvalidAgentVaultAddress"]));
         });
     }
 
@@ -59,14 +59,14 @@ export class SimulationPoolTokenHolder extends SimulationActor {
             if (selfCloseFAssetRequired.isZero()) {
                 this.comment(`${this.formatAddress(this.address)}: exiting pool ${this.formatAddress(this.poolInfo.pool.address)} (${amountFmt})`);
                 await this.poolInfo.pool.exit(amount, { from: this.address })
-                    .catch(e => scope.exitOnExpectedError(e, ['collateral ratio falls below exitCR']));
+                    .catch(e => scope.exitOnExpectedError(e, ["CollateralRatioFallsBelowExitCR"]));
             } else {
                 const redeemToCollateral = coinFlip(0.1);   // it will usually redeem to collateral anyway, because amount is typically < 1 lot
                 this.comment(`${this.formatAddress(this.address)}: self-close exiting pool ${this.formatAddress(this.poolInfo.pool.address)} (${amountFmt}), fassets=${formatBN(selfCloseFAssetRequired)}, toCollateral=${redeemToCollateral}`);
                 await this.runner.fAssetMarketplace.buy(scope, this.address, selfCloseFAssetRequired);
                 await this.context.fAsset.approve(this.poolInfo.pool.address, selfCloseFAssetRequired, { from: this.address });
                 const res = await this.poolInfo.pool.selfCloseExit(amount, redeemToCollateral, this.underlyingAddress, ZERO_ADDRESS, { from: this.address })
-                    .catch(e => scope.exitOnExpectedError(e, ['f-asset allowance too small', 'f-asset balance too low', 'amount of sent tokens is too small after agent max redemption correction']));
+                    .catch(e => scope.exitOnExpectedError(e, ["FAssetAllowanceTooSmall", "FAssetBalanceTooLow"]));
                 const redemptionRequest = this.runner.eventDecoder.findEventFrom(res, this.context.assetManager, 'RedemptionRequested');
                 if (redemptionRequest) {
                     const redemptionPaymentReceiver = RedemptionPaymentReceiver.create(this.runner, this.address, this.underlyingAddress);
@@ -78,7 +78,7 @@ export class SimulationPoolTokenHolder extends SimulationActor {
                 this.poolInfo = undefined;
             }
         }).catch(e => {
-            scope.exitOnExpectedError(e, ['invalid agent vault address']);
+            scope.exitOnExpectedError(e, ["InvalidAgentVaultAddress"]);
         });
     }
 }

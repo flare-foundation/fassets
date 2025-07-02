@@ -11,6 +11,9 @@ contract AgentOwnerRegistry is Governed, IERC165, IAgentOwnerRegistry {
 
     event ManagerChanged(address manager);
 
+    error AddressZero();
+    error OnlyGovernanceOrManager();
+
     /**
      * When nonzero, this is the address that can perform whitelisting operations
      * instead of the governance.
@@ -28,7 +31,7 @@ contract AgentOwnerRegistry is Governed, IERC165, IAgentOwnerRegistry {
     mapping(address => string) private agentTouUrl;
 
     modifier onlyGovernanceOrManager {
-        require(msg.sender == manager || msg.sender == governance(), "only governance or manager");
+        require(msg.sender == manager || msg.sender == governance(), OnlyGovernanceOrManager());
         _;
     }
 
@@ -79,10 +82,9 @@ contract AgentOwnerRegistry is Governed, IERC165, IAgentOwnerRegistry {
     function setWorkAddress(address _ownerWorkAddress)
         external
     {
-        require(isWhitelisted(msg.sender),
-            "agent not whitelisted");
+        require(isWhitelisted(msg.sender), AgentNotWhitelisted());
         require(_ownerWorkAddress == address(0) || workToMgmtAddress[_ownerWorkAddress] == address(0),
-            "work address in use");
+               WorkAddressInUse());
         // delete old work to management mapping
         address oldWorkAddress = mgmtToWorkAddress[msg.sender];
         if (oldWorkAddress != address(0)) {
@@ -217,7 +219,7 @@ contract AgentOwnerRegistry is Governed, IERC165, IAgentOwnerRegistry {
     }
 
     function _addAddressToWhitelist(address _address) internal {
-        require(_address != address(0), "address zero");
+        require(_address != address(0), AddressZero());
         if (whitelist[_address]) return;
         whitelist[_address] = true;
         emit Whitelisted(_address);

@@ -13,6 +13,13 @@ contract AssetManagerMock {
     bool private checkForValidAgentVaultAddress = true;
     address private collateralPool;
 
+    // errors from asset manager
+    error InvalidAgentVaultAddress();
+
+    // allow correct decoding of passed errors
+    error PoolTokenAlreadySet();
+    error CannotDestroyPoolWithIssuedTokens();
+
     event AgentRedemptionInCollateral(address _recipient, uint256 _amountUBA);
     event AgentRedemption(address _recipient, string _underlying, uint256 _amountUBA, address payable _executor);
 
@@ -33,8 +40,8 @@ contract AssetManagerMock {
 
     function callFunctionAt(address _contract, bytes memory _payload) external {
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory data) = _contract.call(_payload);
-        require(success, string(data));
+        (bool success, ) = _contract.call(_payload);
+        _passReturnOrRevert(success);
     }
 
     function setCommonOwner(address _owner) external {
@@ -53,7 +60,7 @@ contract AssetManagerMock {
 
     function updateCollateral(address /* _agentVault */, IIFAsset /*_token*/) external {
         commonOwner = commonOwner;  // just to prevent mutability warning
-        require(!checkForValidAgentVaultAddress, "invalid agent vault address");
+        require(!checkForValidAgentVaultAddress, InvalidAgentVaultAddress());
     }
 
     function setCheckForValidAgentVaultAddress(bool _check) external {
@@ -146,5 +153,20 @@ contract AssetManagerMock {
 
     function setMinPoolCollateralRatioBIPS(uint256 _minPoolCollateralRatioBIPS) external {
         minPoolCollateralRatioBIPS = _minPoolCollateralRatioBIPS;
+    }
+
+   function _passReturnOrRevert(bool _success) private pure {
+        // pass exact return or revert data - needs to be done in assembly
+        //solhint-disable-next-line no-inline-assembly
+        assembly {
+            let size := returndatasize()
+            let ptr := mload(0x40)
+            mstore(0x40, add(ptr, size))
+            returndatacopy(ptr, 0, size)
+            if _success {
+                return(ptr, size)
+            }
+            revert(ptr, size)
+        }
     }
 }

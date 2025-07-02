@@ -22,6 +22,15 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
     using SafeCast for uint256;
     using PaymentConfirmations for PaymentConfirmations.State;
 
+    error CancelTooSoon();
+    error ConfirmationTooSoon();
+    error WrongAnnouncedPaymentSource();
+    error WrongAnnouncedPaymentReference();
+    error NoActiveAnnouncement();
+    error AnnouncedUnderlyingWithdrawalActive();
+    error TopupBeforeAgentCreated();
+    error NotATopupPayment();
+    error NotUnderlyingAddress();
 
     /**
      * When the agent tops up his underlying address, it has to be confirmed by calling this method,
@@ -42,11 +51,11 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
         AssetManagerState.State storage state = AssetManagerState.get();
         TransactionAttestation.verifyPaymentSuccess(_payment);
         require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
-            "not underlying address");
+            NotUnderlyingAddress());
         require(_payment.data.responseBody.standardPaymentReference == PaymentReference.topup(_agentVault),
-            "not a topup payment");
+            NotATopupPayment());
         require(_payment.data.responseBody.blockNumber > agent.underlyingBlockAtCreation,
-            "topup before agent created");
+            TopupBeforeAgentCreated());
         state.paymentConfirmations.confirmIncomingPayment(_payment);
         // update state
         uint256 amountUBA = SafeCast.toUint256(_payment.data.responseBody.receivedAmount);
@@ -74,7 +83,7 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
-        require(agent.announcedUnderlyingWithdrawalId == 0, "announced underlying withdrawal active");
+        require(agent.announcedUnderlyingWithdrawalId == 0, AnnouncedUnderlyingWithdrawalActive());
         state.newPaymentAnnouncementId += PaymentReference.randomizedIdSkip();
         uint64 announcementId = state.newPaymentAnnouncementId;
         agent.announcedUnderlyingWithdrawalId = announcementId;
@@ -105,18 +114,18 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
         Agent.State storage agent = Agent.get(_agentVault);
         bool isAgent = Agents.isOwner(agent, msg.sender);
         uint64 announcementId = agent.announcedUnderlyingWithdrawalId;
-        require(announcementId != 0, "no active announcement");
+        require(announcementId != 0, NoActiveAnnouncement());
         bytes32 paymentReference = PaymentReference.announcedWithdrawal(announcementId);
         require(_payment.data.responseBody.standardPaymentReference == paymentReference,
-            "wrong announced pmt reference");
+            WrongAnnouncedPaymentReference());
         require(_payment.data.responseBody.sourceAddressHash == agent.underlyingAddressHash,
-            "wrong announced pmt source");
+            WrongAnnouncedPaymentSource());
         require(isAgent || block.timestamp >
                 agent.underlyingWithdrawalAnnouncedAt + settings.confirmationByOthersAfterSeconds,
-            "only agent vault owner");
+                Agents.OnlyAgentVaultOwner());
         require(block.timestamp >
             agent.underlyingWithdrawalAnnouncedAt + settings.announcedUnderlyingConfirmationMinSeconds,
-            "confirmation too soon");
+            ConfirmationTooSoon());
         // make sure withdrawal cannot be challenged as invalid
         state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
         // clear active withdrawal announcement
@@ -151,10 +160,10 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         Agent.State storage agent = Agent.get(_agentVault);
         uint64 announcementId = agent.announcedUnderlyingWithdrawalId;
-        require(announcementId != 0, "no active announcement");
+        require(announcementId != 0, NoActiveAnnouncement());
         require(block.timestamp >
             agent.underlyingWithdrawalAnnouncedAt + settings.announcedUnderlyingConfirmationMinSeconds,
-            "cancel too soon");
+            CancelTooSoon());
         // clear active withdrawal announcement
         agent.announcedUnderlyingWithdrawalId = 0;
         // send event

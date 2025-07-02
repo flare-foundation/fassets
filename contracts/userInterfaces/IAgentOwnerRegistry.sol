@@ -25,6 +25,9 @@ interface IAgentOwnerRegistry {
         string iconUrl,
         string termsOfUseUrl);
 
+    error AgentNotWhitelisted();
+    error WorkAddressInUse();
+
 
     /**
      * Returns true if the address is whitelisted, false otherwise.

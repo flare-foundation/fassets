@@ -13,6 +13,8 @@ import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol"
 contract EmergencyPauseFacet is AssetManagerBase, IAssetManagerEvents {
     using SafeCast for uint256;
 
+    error PausedByGovernance();
+
     function emergencyPause(bool _byGovernance, uint256 _duration)
         external
         onlyAssetManagerController
@@ -24,7 +26,7 @@ contract EmergencyPauseFacet is AssetManagerBase, IAssetManagerEvents {
             state.emergencyPausedByGovernance = true;
         } else {
             if (pausedAtStart && state.emergencyPausedByGovernance) {
-                revert("paused by governance");
+                revert PausedByGovernance();
             }
             AssetManagerSettings.Data storage settings = Globals.getSettings();
             if (state.emergencyPausedUntil + settings.emergencyPauseDurationResetAfterSeconds <= block.timestamp) {

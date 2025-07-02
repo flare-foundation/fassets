@@ -88,12 +88,12 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
     describe("whitelist functions", () => {
         it('should not add addresses if not governance or manager', async function () {
             const res = agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url");
-            await expectRevert(res, "only governance or manager");
+            await expectRevert.custom(res, "OnlyGovernanceOrManager", []);
         });
 
         it('should not add address 0', async function () {
             const res = agentOwnerRegistry.whitelistAndDescribeAgent(ZERO_ADDRESS, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
-            await expectRevert(res, "address zero");
+            await expectRevert.custom(res, "AddressZero", []);
         });
 
         it('should add addresses to the whitelist', async function () {
@@ -131,7 +131,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
 
         it("should not revoke address from the whitelist if not governance or manager", async () => {
             await agentOwnerRegistry.whitelistAndDescribeAgent(accounts[0], "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
-            await expectRevert(agentOwnerRegistry.revokeAddress(accounts[0], {from: accounts[5]}), "only governance or manager");
+            await expectRevert.custom(agentOwnerRegistry.revokeAddress(accounts[0], {from: accounts[5]}), "OnlyGovernanceOrManager", []);
         });
 
         it('should not revoke addresses from the whitelist twice', async function () {
@@ -154,7 +154,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         it("manager can perform whitelisting operations", async () => {
             const manager = accounts[15];
             // cannot whitelist before being set
-            await expectRevert(agentOwnerRegistry.whitelistAndDescribeAgent(accounts[5], "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: manager }), "only governance or manager");
+            await expectRevert.custom(agentOwnerRegistry.whitelistAndDescribeAgent(accounts[5], "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: manager }), "OnlyGovernanceOrManager", []);
             //
             await waitForTimelock(agentOwnerRegistry.setManager(manager, { from: governance }), agentOwnerRegistry, governance);
             await agentOwnerRegistry.whitelistAndDescribeAgent(accounts[5], "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: manager });
@@ -181,7 +181,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
             assert.isTrue(addressValidityProof.data.responseBody.isValid);
             const res = assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: ownerWorkAddress });
-            await expectRevert(res, "agent not whitelisted");
+            await expectRevert.custom(res, "AgentNotWhitelisted", []);
         });
     });
 
@@ -213,7 +213,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             const ownerWorkAddress = accounts[21];
             const res = agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
-            await expectRevert(res, "agent not whitelisted");
+            await expectRevert.custom(res, "AgentNotWhitelisted", []);
         });
 
         it("should set owner work address after whitelisting", async () => {
@@ -233,7 +233,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
 
             await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner2, "Agent 2", "Agent 2 description", "Agent 2 icon url", "Agent 2 tou url", { from: governance });
             const res = agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner2 });
-            await expectRevert(res, "work address in use");
+            await expectRevert.custom(res, "WorkAddressInUse", []);
         });
 
         it("checking agent vault owner with work address should work", async () => {
@@ -250,7 +250,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             const ownerWorkAddress = accounts[21];
             const res = agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
-            await expectRevert(res, "agent not whitelisted");
+            await expectRevert.custom(res, "AgentNotWhitelisted", []);
         });
 
         it("should set owner work address after whitelisting", async () => {
@@ -270,7 +270,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
 
             await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner2, "Agent 2", "Agent 2 description", "Agent 2 icon url", "Agent 2 tou url", { from: governance });
             const res = agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner2 });
-            await expectRevert(res, "work address in use");
+            await expectRevert.custom(res, "WorkAddressInUse", []);
         });
     });
 
@@ -340,12 +340,12 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const description = "This is first agent";
             const iconUrl = "https://some.address/icon.jpg";
             const touUrl = "https://some.address/tos.html";
-            await expectRevert(agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: accounts[1] }), "only governance or manager");
+            await expectRevert.custom(agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: accounts[1] }), "OnlyGovernanceOrManager", []);
 
-            await expectRevert(agentOwnerRegistry.setAgentName(agentOwner1, name), "only governance or manager");
-            await expectRevert(agentOwnerRegistry.setAgentDescription(agentOwner1, description), "only governance or manager");
-            await expectRevert(agentOwnerRegistry.setAgentIconUrl(agentOwner1, iconUrl), "only governance or manager");
-            await expectRevert(agentOwnerRegistry.setAgentTermsOfUseUrl(agentOwner1, touUrl), "only governance or manager");
+            await expectRevert.custom(agentOwnerRegistry.setAgentName(agentOwner1, name), "OnlyGovernanceOrManager", []);
+            await expectRevert.custom(agentOwnerRegistry.setAgentDescription(agentOwner1, description), "OnlyGovernanceOrManager", []);
+            await expectRevert.custom(agentOwnerRegistry.setAgentIconUrl(agentOwner1, iconUrl), "OnlyGovernanceOrManager", []);
+            await expectRevert.custom(agentOwnerRegistry.setAgentTermsOfUseUrl(agentOwner1, touUrl), "OnlyGovernanceOrManager", []);
         });
 
         it("manager can also set agent data", async () => {
@@ -355,7 +355,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const iconUrl = "https://some.address/icon.jpg";
             const touUrl = "https://some.address/tos.html";
             // cannot whitelist before being set
-            await expectRevert(agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: manager }), "only governance or manager");
+            await expectRevert.custom(agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: manager }), "OnlyGovernanceOrManager", []);
             //
             await waitForTimelock(agentOwnerRegistry.setManager(manager, { from: governance }), agentOwnerRegistry, governance);
             // now it should work

@@ -19,6 +19,14 @@ contract AvailableAgentsFacet is AssetManagerBase {
     using SafeCast for uint256;
     using AgentCollateral for Collateral.CombinedData;
 
+    error ExitTooLate();
+    error ExitTooSoon();
+    error ExitNotAnnounced();
+    error AgentNotAvailable();
+    error NotEnoughFreeCollateral();
+    error AgentAlreadyAvailable();
+    error InvalidAgentStatus();
+
     /**
      * Add the agent to the list of publicly available agents.
      * Other agents can only self-mint.
@@ -33,12 +41,12 @@ contract AvailableAgentsFacet is AssetManagerBase {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
-        require(agent.status == Agent.Status.NORMAL, "invalid agent status");
-        require(agent.availableAgentsPos == 0, "agent already available");
+        require(agent.status == Agent.Status.NORMAL, InvalidAgentStatus());
+        require(agent.availableAgentsPos == 0, AgentAlreadyAvailable());
         // check that there is enough free collateral for at least one lot
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         uint256 freeCollateralLots = collateralData.freeCollateralLots(agent);
-        require(freeCollateralLots >= 1, "not enough free collateral");
+        require(freeCollateralLots >= 1, NotEnoughFreeCollateral());
         // add to queue
         state.availableAgents.push(_agentVault);
         agent.availableAgentsPos = state.availableAgents.length.toUint32();     // index+1 (0=not in list)
@@ -60,7 +68,7 @@ contract AvailableAgentsFacet is AssetManagerBase {
         returns (uint256 _exitAllowedAt)
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        require(agent.availableAgentsPos != 0, "agent not available");
+        require(agent.availableAgentsPos != 0, AgentNotAvailable());
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         _exitAllowedAt = block.timestamp + settings.agentExitAvailableTimelockSeconds;
         agent.exitAvailableAfterTs = _exitAllowedAt.toUint64();
@@ -81,11 +89,11 @@ contract AvailableAgentsFacet is AssetManagerBase {
         AssetManagerState.State storage state = AssetManagerState.get();
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         Agent.State storage agent = Agent.get(_agentVault);
-        require(agent.availableAgentsPos != 0, "agent not available");
-        require(agent.exitAvailableAfterTs != 0, "exit not announced");
-        require(block.timestamp >= agent.exitAvailableAfterTs, "exit too soon");
+        require(agent.availableAgentsPos != 0, AgentNotAvailable());
+        require(agent.exitAvailableAfterTs != 0, ExitNotAnnounced());
+        require(block.timestamp >= agent.exitAvailableAfterTs, ExitTooSoon());
         require(block.timestamp <= agent.exitAvailableAfterTs + settings.agentTimelockedOperationWindowSeconds,
-            "exit too late");
+            ExitTooLate());
         uint256 ind = agent.availableAgentsPos - 1;
         if (ind + 1 < state.availableAgents.length) {
             state.availableAgents[ind] = state.availableAgents[state.availableAgents.length - 1];
