@@ -17,7 +17,7 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20, UUPSUpgradeable {
     using SafeCast for uint256;
 
     error OnlyAssetManager();
-    error InsufficientNontimelockedBalance();
+    error InsufficientNonTimelockedBalance();
     error InsufficientTransferableBalance();
     error AlreadyInitialized();
     error OnlyCollateralPool();
@@ -219,7 +219,7 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20, UUPSUpgradeable {
             // if it is too little - just the non-timelocked balance may be too small and you have to call again
             cleanupExpiredTimelocks(_from, 10);
             uint256 nonTimelocked = nonTimelockedBalanceOf(_from);
-            require(_amount <= nonTimelocked, InsufficientNontimelockedBalance());
+            require(_amount <= nonTimelocked, InsufficientNonTimelockedBalance());
         }
         // if ignoreTimelock, then we are spending from timelocked balance,
         // the reason why it is not updated is because it might not fit in one transaction

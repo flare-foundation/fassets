@@ -25,8 +25,8 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
     error CancelTooSoon();
     error ConfirmationTooSoon();
     error OnlyAgentVaultOwner();
-    error WrongAnnouncedPmtSource();
-    error WrongAnnouncedPmtReference();
+    error WrongAnnouncedPaymentSource();
+    error WrongAnnouncedPaymentReference();
     error NoActiveAnnouncement();
     error AnnouncedUnderlyingWithdrawalActive();
     error TopupBeforeAgentCreated();
@@ -118,9 +118,9 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
         require(announcementId != 0, NoActiveAnnouncement());
         bytes32 paymentReference = PaymentReference.announcedWithdrawal(announcementId);
         require(_payment.data.responseBody.standardPaymentReference == paymentReference,
-            WrongAnnouncedPmtReference());
+            WrongAnnouncedPaymentReference());
         require(_payment.data.responseBody.sourceAddressHash == agent.underlyingAddressHash,
-            WrongAnnouncedPmtSource());
+            WrongAnnouncedPaymentSource());
         require(isAgent || block.timestamp >
                 agent.underlyingWithdrawalAnnouncedAt + settings.confirmationByOthersAfterSeconds,
                 OnlyAgentVaultOwner());

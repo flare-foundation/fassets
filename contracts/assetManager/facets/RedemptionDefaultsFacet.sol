@@ -22,9 +22,9 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
 
     error ShouldDefaultFirst();
     error OnlyRedeemerExecutorOrAgent();
-    error RedemptionNonpaymentProofWindowTooShort();
+    error RedemptionNonPaymentProofWindowTooShort();
     error RedemptionDefaultTooEarly();
-    error RedemptionNonpaymentMismatch();
+    error RedemptionNonPaymentMismatch();
     error InvalidRedemptionStatus();
     error SourceAddressesNotSupported();
 
@@ -58,12 +58,12 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
                 PaymentReference.redemption(_redemptionRequestId) &&
             _proof.data.requestBody.destinationAddressHash == request.redeemerUnderlyingAddressHash &&
             _proof.data.requestBody.amount == request.underlyingValueUBA - request.underlyingFeeUBA,
-            RedemptionNonpaymentMismatch());
+            RedemptionNonPaymentMismatch());
         require(_proof.data.responseBody.firstOverflowBlockNumber > request.lastUnderlyingBlock &&
             _proof.data.responseBody.firstOverflowBlockTimestamp > request.lastUnderlyingTimestamp,
             RedemptionDefaultTooEarly());
         require(_proof.data.requestBody.minimalBlockNumber <= request.firstUnderlyingBlock,
-            RedemptionNonpaymentProofWindowTooShort());
+            RedemptionNonPaymentProofWindowTooShort());
         // We allow only redeemers or agents to trigger redemption default, since they may want
         // to do it at some particular time. (Agent might want to call default to unstick redemption when
         // the redeemer is unresponsive.)

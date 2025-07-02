@@ -6,11 +6,11 @@ import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare
 
 interface IGoverned {
 
-    error GovernedOnlyExecutor();
-    error GovernedOnlyGovernance();
-    error GovernedTimelockInvalidSelector();
-    error GovernedTimelockNotAllowedYet();
-    error GovernedAlreadyInProductionMode();
+    error OnlyExecutor();
+    error OnlyGovernance();
+    error TimelockInvalidSelector();
+    error TimelockNotAllowedYet();
+    error AlreadyInProductionMode();
     error GovernedAlreadyInitialized();
     error GovernedAddressZero();
 

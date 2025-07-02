@@ -31,7 +31,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
     error FeeDecreaseTooBig();
     error LotSizeIncreaseTooBig();
     error LotSizeDecreaseTooBig();
-    error LotSizeBiggerThanMiningCap();
+    error LotSizeBiggerThanMintingCap();
     error BipsValueTooHigh();
     error BipsValueTooLow();
     error MustBeAtLeastTwoHours();
@@ -250,7 +250,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         require(_value <= settings.lotSizeAMG * 10, LotSizeIncreaseTooBig());
         require(_value >= settings.lotSizeAMG / 10, LotSizeDecreaseTooBig());
         require(settings.mintingCapAMG == 0 || settings.mintingCapAMG >= _value,
-            LotSizeBiggerThanMiningCap());
+            LotSizeBiggerThanMintingCap());
         // update
         settings.lotSizeAMG = _value.toUint64();
         emit SettingChanged("lotSizeAMG", _value);

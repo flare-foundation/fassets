@@ -20,9 +20,9 @@ import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettin
 contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
 
     error CannotUnstickMintingYet();
-    error MintingNonpaymentProofWindowTooShort();
+    error MintingNonPaymentProofWindowTooShort();
     error MintingDefaultTooEarly();
-    error MintingNonpaymentMismatch();
+    error MintingNonPaymentMismatch();
     error SourceAddressesNotSupported();
 
     /**
@@ -51,12 +51,12 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         require(_proof.data.requestBody.standardPaymentReference == PaymentReference.minting(_crtId) &&
             _proof.data.requestBody.destinationAddressHash == agent.underlyingAddressHash &&
             _proof.data.requestBody.amount == underlyingValueUBA + crt.underlyingFeeUBA,
-            MintingNonpaymentMismatch());
+            MintingNonPaymentMismatch());
         require(_proof.data.responseBody.firstOverflowBlockNumber > crt.lastUnderlyingBlock &&
             _proof.data.responseBody.firstOverflowBlockTimestamp > crt.lastUnderlyingTimestamp,
             MintingDefaultTooEarly());
         require(_proof.data.requestBody.minimalBlockNumber <= crt.firstUnderlyingBlock,
-            MintingNonpaymentProofWindowTooShort());
+            MintingNonPaymentProofWindowTooShort());
         // send event
         uint256 reservedValueUBA = underlyingValueUBA + Minting.calculatePoolFeeUBA(agent, crt);
         emit IAssetManagerEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, reservedValueUBA);

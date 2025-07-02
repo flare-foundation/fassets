@@ -30,7 +30,7 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
     error InappropriateFeeAmount();
     error AgentsFeeTooHigh();
     error NotEnoughFreeCollateral();
-    error RcInvalidAgentStatus();
+    error InvalidAgentStatus();
     error CannotMintZeroLots();
     error AgentNotInMintQueue();
     error MintingPaused();
@@ -73,7 +73,7 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
         require(agent.availableAgentsPos != 0 || agent.alwaysAllowedMinters.contains(msg.sender),
             AgentNotInMintQueue());
         require(_lots > 0, CannotMintZeroLots());
-        require(agent.status == Agent.Status.NORMAL, RcInvalidAgentStatus());
+        require(agent.status == Agent.Status.NORMAL, InvalidAgentStatus());
         require(collateralData.freeCollateralLots(agent) >= _lots, NotEnoughFreeCollateral());
         require(_maxMintingFeeBIPS >= agent.feeBIPS, AgentsFeeTooHigh());
         uint64 valueAMG = Conversion.convertLotsToAMG(_lots);

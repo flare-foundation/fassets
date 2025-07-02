@@ -12,7 +12,7 @@ pragma solidity ^0.8.27;
 library Reentrancy {
 
     error ReentrancyGuardReentrantCall();
-    error ReentrancyGuardGuardRequired();
+    error ReentrancyGuardRequired();
 
     // Booleans are more expensive than uint256 or any type that takes up a full
     // word because each write operation emits an extra SLOAD to first read the
@@ -72,7 +72,7 @@ library Reentrancy {
      * and to make them fail at test time.
      */
     function requireReentrancyGuard() internal view {
-        require(reentrancyGuardEntered(), ReentrancyGuardGuardRequired());
+        require(reentrancyGuardEntered(), ReentrancyGuardRequired());
     }
 
     function _reentrancyGuardState() private pure returns (ReentrancyGuardState storage _state) {

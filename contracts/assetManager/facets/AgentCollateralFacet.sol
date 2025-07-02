@@ -26,7 +26,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
     using AgentCollateral for Collateral.Data;
     using Agents for Agent.State;
 
-    error WithdrawalInvalidStatus();
+    error WithdrawalInvalidAgentStatus();
     error WithdrawalNotAnnounced();
     error WithdrawalMoreThanAnnounced();
     error WithdrawalNotAllowedYet();
@@ -34,7 +34,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
     error WithdrawalCRTooLow();
     error WithdrawalValueTooHigh();
 
-    error OnlyAgentValutOrPool();
+    error OnlyAgentVaultOrPool();
     error CollateralNotDeprecated();
     error CollateralWithdrawalAnnounced();
     error FAssetNotTerminated();
@@ -104,7 +104,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
         // only agents that are not being liquidated can withdraw
         // however, if the agent is in FULL_LIQUIDATION and totally liquidated,
         // the withdrawals must still be possible, otherwise the collateral gets locked forever
-        require(agent.status == Agent.Status.NORMAL || agent.totalBackedAMG() == 0, WithdrawalInvalidStatus());
+        require(agent.status == Agent.Status.NORMAL || agent.totalBackedAMG() == 0, WithdrawalInvalidAgentStatus());
         require(withdrawal.allowedAt != 0, WithdrawalNotAnnounced());
         require(_amountWei <= withdrawal.amountWei, WithdrawalMoreThanAnnounced());
         require(block.timestamp >= withdrawal.allowedAt, WithdrawalNotAllowedYet());
@@ -137,7 +137,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
     {
         Agent.State storage agent = Agent.get(_agentVault);
         require(msg.sender == _agentVault || msg.sender == address(agent.collateralPool),
-            OnlyAgentValutOrPool());
+            OnlyAgentVaultOrPool());
         // try to pull agent out of liquidation
         if (agent.isCollateralToken(_token)) {
             Liquidation.endLiquidationIfHealthy(agent);
@@ -207,7 +207,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
         // only agents that are not being liquidated can withdraw
         // however, if the agent is in FULL_LIQUIDATION and totally liquidated,
         // the withdrawals must still be possible, otherwise the collateral gets locked forever
-        require(agent.status == Agent.Status.NORMAL || agent.totalBackedAMG() == 0, WithdrawalInvalidStatus());
+        require(agent.status == Agent.Status.NORMAL || agent.totalBackedAMG() == 0, WithdrawalInvalidAgentStatus());
         Agent.WithdrawalAnnouncement storage withdrawal = agent.withdrawalAnnouncement(_kind);
         if (_amountWei > withdrawal.amountWei) {
             AssetManagerSettings.Data storage settings = Globals.getSettings();

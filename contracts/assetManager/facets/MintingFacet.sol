@@ -34,17 +34,17 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
     error CannotMintZeroLots();
     error FreeUnderlyingBalanceToSmall();
     error InvalidMintingReference();
-    error InvalidSelfmintReference();
+    error InvalidSelfMintReference();
     error MintingPaused();
     error MintingPaymentTooOld();
     error MintingPaymentTooSmall();
     error NotEnoughFreeCollateral();
     error NotMintingAgentsAddress();
     error OnlyMinterExecutorOrAgent();
-    error SelfmintInvalidAgentStatus();
-    error SelfmintNotAgentsAddress();
-    error SelfmintPaymentTooOld();
-    error SelfmintPaymentTooSmall();
+    error SelfMintInvalidAgentStatus();
+    error SelfMintNotAgentsAddress();
+    error SelfMintPaymentTooOld();
+    error SelfMintPaymentTooSmall();
 
     enum MintingType { PUBLIC, SELF_MINT, FROM_FREE_UNDERLYING }
 
@@ -131,20 +131,20 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         TransactionAttestation.verifyPaymentSuccess(_payment);
         require(state.mintingPausedAt == 0, MintingPaused());
-        require(agent.status == Agent.Status.NORMAL, SelfmintInvalidAgentStatus());
+        require(agent.status == Agent.Status.NORMAL, SelfMintInvalidAgentStatus());
         require(collateralData.freeCollateralLots(agent) >= _lots, NotEnoughFreeCollateral());
         uint64 valueAMG = Conversion.convertLotsToAMG(_lots);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
         uint256 poolFeeUBA = Minting.calculateCurrentPoolFeeUBA(agent, mintValueUBA);
         Minting.checkMintingCap(valueAMG + Conversion.convertUBAToAmg(poolFeeUBA));
         require(_payment.data.responseBody.standardPaymentReference == PaymentReference.selfMint(_agentVault),
-            InvalidSelfmintReference());
+            InvalidSelfMintReference());
         require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
-            SelfmintNotAgentsAddress());
+            SelfMintNotAgentsAddress());
         require(_payment.data.responseBody.receivedAmount >= SafeCast.toInt256(mintValueUBA + poolFeeUBA),
-            SelfmintPaymentTooSmall());
+            SelfMintPaymentTooSmall());
         require(_payment.data.responseBody.blockNumber >= agent.underlyingBlockAtCreation,
-            SelfmintPaymentTooOld());
+            SelfMintPaymentTooOld());
         state.paymentConfirmations.confirmIncomingPayment(_payment);
         // update underlying block
         UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
@@ -183,7 +183,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         require(state.mintingPausedAt == 0, MintingPaused());
         require(_lots > 0, CannotMintZeroLots());
-        require(agent.status == Agent.Status.NORMAL, SelfmintInvalidAgentStatus());
+        require(agent.status == Agent.Status.NORMAL, SelfMintInvalidAgentStatus());
         require(collateralData.freeCollateralLots(agent) >= _lots, NotEnoughFreeCollateral());
         uint64 valueAMG = Conversion.convertLotsToAMG(_lots);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);

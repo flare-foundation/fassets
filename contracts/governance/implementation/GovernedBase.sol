@@ -58,11 +58,11 @@ abstract contract GovernedBase is IGoverned {
      */
     function executeGovernanceCall(bytes calldata _encodedCall) external override {
         GovernedState storage state = _governedState();
-        require(isExecutor(msg.sender), GovernedOnlyExecutor());
+        require(isExecutor(msg.sender), OnlyExecutor());
         bytes32 encodedCallHash = keccak256(_encodedCall);
         uint256 allowedAfterTimestamp = state.timelockedCalls[encodedCallHash];
-        require(allowedAfterTimestamp != 0, GovernedTimelockInvalidSelector());
-        require(block.timestamp >= allowedAfterTimestamp, GovernedTimelockNotAllowedYet());
+        require(allowedAfterTimestamp != 0, TimelockInvalidSelector());
+        require(block.timestamp >= allowedAfterTimestamp, TimelockNotAllowedYet());
         delete state.timelockedCalls[encodedCallHash];
         state.executing = true;
         //solhint-disable-next-line avoid-low-level-calls
@@ -80,7 +80,7 @@ abstract contract GovernedBase is IGoverned {
     function cancelGovernanceCall(bytes calldata _encodedCall) external override onlyImmediateGovernance {
         GovernedState storage state = _governedState();
         bytes32 encodedCallHash = keccak256(_encodedCall);
-        require(state.timelockedCalls[encodedCallHash] != 0, GovernedTimelockInvalidSelector());
+        require(state.timelockedCalls[encodedCallHash] != 0, TimelockInvalidSelector());
         emit TimelockedGovernanceCallCanceled(encodedCallHash);
         delete state.timelockedCalls[encodedCallHash];
     }
@@ -92,7 +92,7 @@ abstract contract GovernedBase is IGoverned {
      */
     function switchToProductionMode() external onlyImmediateGovernance {
         GovernedState storage state = _governedState();
-        require(!state.productionMode, GovernedAlreadyInProductionMode());
+        require(!state.productionMode, AlreadyInProductionMode());
         state.initialGovernance = address(0);
         state.productionMode = true;
         emit GovernedProductionModeEntered(address(state.governanceSettings));
@@ -175,7 +175,7 @@ abstract contract GovernedBase is IGoverned {
     }
 
     function _checkOnlyGovernance() private view {
-        require(msg.sender == governance(), GovernedOnlyGovernance());
+        require(msg.sender == governance(), OnlyGovernance());
     }
 
     function _governedState() private pure returns (GovernedState storage _state) {
