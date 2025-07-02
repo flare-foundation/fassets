@@ -19,7 +19,7 @@ import {RedemptionRequests} from "../library/RedemptionRequests.sol";
 import {UnderlyingBalance} from "../library/UnderlyingBalance.sol";
 import {Collateral} from "../library/data/Collateral.sol";
 import {PaymentConfirmations} from "../library/data/PaymentConfirmations.sol";
-import {Agents} from "../library/Agents.sol";
+import {AgentBacking} from "../library/AgentBacking.sol";
 import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {TransactionAttestation} from "../library/TransactionAttestation.sol";
 import {UnderlyingBlockUpdater} from "../library/UnderlyingBlockUpdater.sol";
@@ -216,7 +216,7 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
         uint64 receivedAmountAMG = Conversion.convertUBAToAmg(receivedAmountUBA);
         uint64 remintedAMG = SafeMath64.min64(agent.returnFromCoreVaultReservedAMG, receivedAmountAMG);
         // create redemption ticket
-        Agents.createNewMinting(agent, remintedAMG);
+        AgentBacking.createNewMinting(agent, remintedAMG);
         // update underlying amount
         UnderlyingBalance.increaseBalance(agent, receivedAmountUBA);
         // update underlying block

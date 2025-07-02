@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
-import {Agents} from "../library/Agents.sol";
+import {AgentUpdates} from "../library/AgentUpdates.sol";
 import {Agent} from "../library/data/Agent.sol";
 import {Globals} from "../library/Globals.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
@@ -117,19 +117,19 @@ contract AgentSettingsFacet is AssetManagerBase {
         private
     {
         if (_hash == FEE_BIPS) {
-            Agents.setFeeBIPS(_agent, _value);
+            AgentUpdates.setFeeBIPS(_agent, _value);
         } else if (_hash == POOL_FEE_SHARE_BIPS) {
-            Agents.setPoolFeeShareBIPS(_agent, _value);
+            AgentUpdates.setPoolFeeShareBIPS(_agent, _value);
         } else if (_hash == REDEMPTION_POOL_FEE_SHARE_BIPS) {
-            Agents.setRedemptionPoolFeeShareBIPS(_agent, _value);
+            AgentUpdates.setRedemptionPoolFeeShareBIPS(_agent, _value);
         } else if (_hash == MINTING_VAULT_COLLATERAL_RATIO_BIPS) {
-            Agents.setMintingVaultCollateralRatioBIPS(_agent, _value);
+            AgentUpdates.setMintingVaultCollateralRatioBIPS(_agent, _value);
         } else if (_hash == MINTING_POOL_COLLATERAL_RATIO_BIPS) {
-            Agents.setMintingPoolCollateralRatioBIPS(_agent, _value);
+            AgentUpdates.setMintingPoolCollateralRatioBIPS(_agent, _value);
         } else if (_hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS) {
-            Agents.setBuyFAssetByAgentFactorBIPS(_agent, _value);
+            AgentUpdates.setBuyFAssetByAgentFactorBIPS(_agent, _value);
         } else if (_hash == POOL_EXIT_COLLATERAL_RATIO_BIPS) {
-            Agents.setPoolExitCollateralRatioBIPS(_agent, _value);
+            AgentUpdates.setPoolExitCollateralRatioBIPS(_agent, _value);
         } else {
             assert(false);
         }

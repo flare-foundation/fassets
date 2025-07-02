@@ -7,6 +7,8 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
 import {Agents} from "../library/Agents.sol";
+import {AgentBacking} from "../library/AgentBacking.sol";
+import {AgentPayout} from "../library/AgentPayout.sol";
 import {Globals} from "../library/Globals.sol";
 import {RedemptionRequests} from "../library/RedemptionRequests.sol";
 import {Agent} from "../library/data/Agent.sol";
@@ -151,7 +153,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         uint256 priceAmgToWei = Conversion.currentAmgPriceInTokenWei(agent.vaultCollateralIndex);
         uint256 paymentWei = Conversion.convertAmgToTokenWei(closedAMG, priceAmgToWei)
             .mulBips(agent.buyFAssetByAgentFactorBIPS);
-        Agents.payoutFromVault(agent, _receiver, paymentWei);
+        AgentPayout.payoutFromVault(agent, _receiver, paymentWei);
         emit IAssetManagerEvents.RedeemedInCollateral(_agentVault, _receiver, closedUBA, paymentWei);
         // burn the closed assets
         Redemptions.burnFAssets(msg.sender, closedUBA);
@@ -214,7 +216,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
             _proof.data.responseBody.standardAddressHash == request.redeemerUnderlyingAddressHash;
         require(!valid, AddressValid());
         // release agent collateral
-        Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
+        AgentBacking.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
         // burn the executor fee
         Redemptions.burnExecutorFee(request);
         // emit event
@@ -280,8 +282,8 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         if (agent.dustAMG >= settings.lotSizeAMG) {
             uint64 remainingDustAMG = agent.dustAMG % settings.lotSizeAMG;
             uint64 ticketValueAMG = agent.dustAMG - remainingDustAMG;
-            Agents.createRedemptionTicket(agent, ticketValueAMG);
-            Agents.changeDust(agent, remainingDustAMG);
+            AgentBacking.createRedemptionTicket(agent, ticketValueAMG);
+            AgentBacking.changeDust(agent, remainingDustAMG);
         }
     }
 

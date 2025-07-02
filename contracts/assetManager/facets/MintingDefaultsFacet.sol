@@ -3,7 +3,9 @@ pragma solidity ^0.8.27;
 
 import {IReferencedPaymentNonexistence, IConfirmedBlockHeightExists}
     from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {IIAgentVault} from "../../agentVault/interfaces/IIAgentVault.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
 import {Transfers} from "../../utils/library/Transfers.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
@@ -16,14 +18,18 @@ import {CollateralReservation} from "../library/data/CollateralReservation.sol";
 import {PaymentReference} from "../library/data/PaymentReference.sol";
 import {Globals} from "../library/Globals.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {CollateralTypeInt} from "../library/data/CollateralTypeInt.sol";
 
 contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
+    using Agent for Agent.State;
+    using SafePct for uint256;
 
     error CannotUnstickMintingYet();
     error MintingNonPaymentProofWindowTooShort();
     error MintingDefaultTooEarly();
     error MintingNonPaymentMismatch();
     error SourceAddressesNotSupported();
+    error NotEnoughFundsProvided();
 
     /**
      * When the time for minter to pay underlying amount is over (i.e. the last underlying block has passed),
@@ -100,11 +106,11 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
                 _proof.data.responseBody.blockTimestamp,
             CannotUnstickMintingYet());
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.unstickMinting)
-        Agents.burnDirectNAT(crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI);
+        Globals.getBurnAddress().transfer(crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI);
         // burn reserved collateral at market price
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(agent.vaultCollateralIndex);
         uint256 reservedCollateral = Conversion.convertAmgToTokenWei(crt.valueAMG, amgToTokenWeiPrice);
-        uint256 burnedNatWei = Agents.burnVaultCollateral(agent, reservedCollateral);
+        uint256 burnedNatWei = _burnVaultCollateral(agent, reservedCollateral);
         // send event
         uint256 reservedValueUBA = Conversion.convertAmgToUBA(crt.valueAMG) + Minting.calculatePoolFeeUBA(agent, crt);
         emit IAssetManagerEvents.CollateralReservationDeleted(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
@@ -112,5 +118,29 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         Minting.releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
         // If there is some overpaid NAT, send it back.
         Transfers.transferNAT(payable(msg.sender), msg.value - burnedNatWei);
+    }
+
+    // We cannot burn typical vault collateral (stablecoins), so the agent must buy them for NAT
+    // at FTSO price multiplied by vaultCollateralBuyForFlareFactorBIPS and then we burn the NATs.
+    function _burnVaultCollateral(
+        Agent.State storage _agent,
+        uint256 _amountVaultCollateralWei
+    )
+        private
+        returns (uint256 _burnedNatWei)
+    {
+        CollateralTypeInt.Data storage vaultCollateral = Agents.getVaultCollateral(_agent);
+        CollateralTypeInt.Data storage poolCollateral = Agents.getPoolCollateral(_agent);
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
+        // Calculate NAT amount the agent has to pay to receive the "burned" vault collateral tokens.
+        // The price is FTSO price plus configurable premium (vaultCollateralBuyForFlareFactorBIPS).
+        _burnedNatWei = Conversion.convert(_amountVaultCollateralWei, vaultCollateral, poolCollateral)
+            .mulBips(settings.vaultCollateralBuyForFlareFactorBIPS);
+        // Transfer vault collateral to the agent vault owner
+        vault.payout(vaultCollateral.token, Agents.getOwnerPayAddress(_agent), _amountVaultCollateralWei);
+        // Burn the NAT equivalent (must be provided with the call).
+        require(msg.value >= _burnedNatWei, NotEnoughFundsProvided());
+        Globals.getBurnAddress().transfer(_burnedNatWei);
     }
 }

@@ -20,6 +20,8 @@ import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettin
 import {Globals} from "../library/Globals.sol";
 import {TransactionAttestation} from "../library/TransactionAttestation.sol";
 import {Agents} from "../library/Agents.sol";
+import {AgentBacking} from "../library/AgentBacking.sol";
+import {AgentPayout} from "../library/AgentPayout.sol";
 import {Conversion} from "../library/Conversion.sol";
 import {PaymentReference} from "../library/data/PaymentReference.sol";
 import {UnderlyingBlockUpdater} from "../library/UnderlyingBlockUpdater.sol";
@@ -90,7 +92,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
         if (paymentValid) {
             assert(request.status == Redemption.Status.ACTIVE); // checked in _validatePayment
             // release agent collateral
-            Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
+            AgentBacking.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
             // notify
             if (_payment.data.responseBody.status == TransactionAttestation.PAYMENT_SUCCESS) {
                 emit IAssetManagerEvents.RedemptionPerformed(request.agentVault, request.redeemer,
@@ -123,7 +125,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
         state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
-            Agents.payForConfirmationByOthers(agent, msg.sender);
+            AgentPayout.payForConfirmationByOthers(agent, msg.sender);
         }
         // burn executor fee - if confirmed by "other" (also executor), it is already paid from agent's vault
         // guarded against reentrancy in RedemptionConfirmationsFacet
@@ -145,7 +147,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
     {
         uint256 poolFeeUBA = uint256(_request.underlyingFeeUBA).mulBips(_request.poolFeeShareBIPS);
         if (poolFeeUBA > 0) {
-            Agents.createNewMinting(_agent, Conversion.convertUBAToAmg(poolFeeUBA));
+            AgentBacking.createNewMinting(_agent, Conversion.convertUBAToAmg(poolFeeUBA));
             Globals.getFAsset().mint(address(_agent.collateralPool), poolFeeUBA);
             _agent.collateralPool.fAssetFeeDeposited(poolFeeUBA);
             emit IAssetManagerEvents.RedemptionPoolFeeMinted(_agent.vaultAddress(), _redemptionRequestId, poolFeeUBA);

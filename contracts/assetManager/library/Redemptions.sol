@@ -5,7 +5,7 @@ import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {Transfers} from "../../utils/library/Transfers.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {Conversion} from "./Conversion.sol";
-import {Agents} from "./Agents.sol";
+import {AgentBacking} from "./AgentBacking.sol";
 import {Agent} from "../../assetManager/library/data/Agent.sol";
 import {RedemptionQueue} from "./data/RedemptionQueue.sol";
 import {Redemption} from "./data/Redemption.sol";
@@ -53,11 +53,11 @@ library Redemptions {
         }
         if (closeDustAMG > 0) {
             _closedAMG += closeDustAMG;
-            Agents.decreaseDust(_agent, closeDustAMG);
+            AgentBacking.decreaseDust(_agent, closeDustAMG);
         }
         // self-close or liquidation is one step, so we can release minted assets without redeeming step
         if (_immediatelyReleaseMinted) {
-            Agents.releaseMintedAssets(_agent, _closedAMG);
+            AgentBacking.releaseMintedAssets(_agent, _closedAMG);
         }
         // return
         _closedUBA = Conversion.convertAmgToUBA(_closedAMG);
@@ -84,7 +84,7 @@ library Redemptions {
             uint256 remainingUBA = Conversion.convertAmgToUBA(remainingAMGLots);
             emit IAssetManagerEvents.RedemptionTicketUpdated(agent.vaultAddress(), _redemptionTicketId, remainingUBA);
         }
-        Agents.changeDust(agent, remainingAMGDust);
+        AgentBacking.changeDust(agent, remainingAMGDust);
     }
 
     function burnFAssets(
@@ -108,7 +108,7 @@ library Redemptions {
             if (msg.sender == _request.executor) {
                 Transfers.depositWNat(Globals.getWNat(), _request.executor, executorFeeNatWei);
             } else {
-                Agents.burnDirectNAT(executorFeeNatWei);
+                Globals.getBurnAddress().transfer(executorFeeNatWei);
             }
         }
     }
@@ -123,7 +123,7 @@ library Redemptions {
         uint256 executorFeeNatWei = _request.executorFeeNatGWei * Conversion.GWEI;
         if (executorFeeNatWei > 0) {
             _request.executorFeeNatGWei = 0;
-            Agents.burnDirectNAT(executorFeeNatWei);
+            Globals.getBurnAddress().transfer(executorFeeNatWei);
         }
     }
 
@@ -133,8 +133,8 @@ library Redemptions {
     )
         internal
     {
-        Agents.endRedeemingAssets(_agent, _request.valueAMG, _request.poolSelfClose);
-        Agents.createNewMinting(_agent, _request.valueAMG);
+        AgentBacking.endRedeemingAssets(_agent, _request.valueAMG, _request.poolSelfClose);
+        AgentBacking.createNewMinting(_agent, _request.valueAMG);
     }
 
     function deleteRedemptionRequest(uint256 _redemptionRequestId)

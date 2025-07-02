@@ -8,7 +8,8 @@ import {Conversion} from "./Conversion.sol";
 import {AgentCollateral} from "./AgentCollateral.sol";
 import {CoreVaultClient} from "./CoreVaultClient.sol";
 import {Agent} from "./data/Agent.sol";
-import {Agents} from "./Agents.sol";
+import {AgentPayout} from "./AgentPayout.sol";
+import {AgentBacking} from "./AgentBacking.sol";
 import {Collateral} from "./data/Collateral.sol";
 import {Redemption} from "./data/Redemption.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
@@ -34,17 +35,17 @@ library RedemptionDefaults {
         if (!_request.transferToCoreVault) {
             // ordinary redemption default - pay redeemer in one or both collaterals
             (uint256 paidC1Wei, uint256 paidPoolWei) = _collateralAmountForRedemption(_agent, _request);
-            (bool successVault,) = Agents.tryPayoutFromVault(_agent, _request.redeemer, paidC1Wei);
+            (bool successVault,) = AgentPayout.tryPayoutFromVault(_agent, _request.redeemer, paidC1Wei);
             if (!successVault) {
                 // agent vault payment has failed - replace with pool payment (but see method comment for conditions)
                 paidPoolWei = _replaceFailedVaultPaymentWithPool(_agent, _request, paidC1Wei, paidPoolWei);
                 paidC1Wei = 0;
             }
             if (paidPoolWei > 0) {
-                Agents.payoutFromPool(_agent, _request.redeemer, paidPoolWei, paidPoolWei);
+                AgentPayout.payoutFromPool(_agent, _request.redeemer, paidPoolWei, paidPoolWei);
             }
             // release remaining agent collateral
-            Agents.endRedeemingAssets(_agent, _request.valueAMG, _request.poolSelfClose);
+            AgentBacking.endRedeemingAssets(_agent, _request.valueAMG, _request.poolSelfClose);
             // underlying balance is not added to free balance yet, because we don't know if there was a late payment
             // it will be (or was already) updated in call to confirmRedemptionPayment
             emit IAssetManagerEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _redemptionRequestId,

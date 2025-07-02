@@ -17,6 +17,7 @@ import {TransactionAttestation} from "../library/TransactionAttestation.sol";
 import {PaymentConfirmations} from "../library/data/PaymentConfirmations.sol";
 import {Collateral} from "../library/data/Collateral.sol";
 import {Agent} from "../library/data/Agent.sol";
+import {AgentBacking} from "../library/AgentBacking.sol";
 import {CollateralReservation} from "../library/data/CollateralReservation.sol";
 import {Conversion} from "../library/Conversion.sol";
 import {Globals} from "../library/Globals.sol";
@@ -206,7 +207,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         private
     {
         uint64 poolFeeAMG = Conversion.convertUBAToAmg(_poolFeeUBA);
-        Agents.createNewMinting(_agent, _mintValueAMG + poolFeeAMG);
+        AgentBacking.createNewMinting(_agent, _mintValueAMG + poolFeeAMG);
         // update agent balance with deposited amount (received amount is 0 in mintFromFreeUnderlying)
         UnderlyingBalance.increaseBalance(_agent, _receivedAmountUBA);
         // perform minting

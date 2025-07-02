@@ -5,6 +5,7 @@ import {IAddressValidity} from "@flarenetwork/flare-periphery-contracts/flare/IF
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {Agents} from "../library/Agents.sol";
+import {AgentUpdates} from "../library/AgentUpdates.sol";
 import {Globals} from "../library/Globals.sol";
 import {TransactionAttestation} from "../library/TransactionAttestation.sol";
 import {Agent} from "../library/data/Agent.sol";
@@ -29,6 +30,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
     using SafeCast for uint256;
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     using Agents for Agent.State;
+    using AgentUpdates for Agent.State;
 
     uint256 internal constant MIN_SUFFIX_LEN = 2;
     uint256 internal constant MAX_SUFFIX_LEN = 20;

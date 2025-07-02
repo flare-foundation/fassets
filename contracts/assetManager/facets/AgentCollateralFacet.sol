@@ -9,6 +9,7 @@ import {AgentCollateral} from "../library/AgentCollateral.sol";
 import {Globals} from "../library/Globals.sol";
 import {Liquidation} from "../library/Liquidation.sol";
 import {Agents} from "../library/Agents.sol";
+import {AgentUpdates} from "../library/AgentUpdates.sol";
 import {Agent} from "../library/data/Agent.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 import {Collateral} from "../library/data/Collateral.sol";
@@ -25,6 +26,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
     using SafeCast for uint256;
     using AgentCollateral for Collateral.Data;
     using Agents for Agent.State;
+    using AgentUpdates for Agent.State;
 
     error WithdrawalInvalidAgentStatus();
     error WithdrawalNotAnnounced();

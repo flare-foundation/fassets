@@ -6,6 +6,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
 import {Agents} from "../library/Agents.sol";
+import {AgentPayout} from "../library/AgentPayout.sol";
 import {Globals} from "../library/Globals.sol";
 import {TransactionAttestation} from "../library/TransactionAttestation.sol";
 import {UnderlyingBalance} from "../library/UnderlyingBalance.sol";
@@ -134,7 +135,7 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
         UnderlyingBalance.updateBalance(agent, -_payment.data.responseBody.spentAmount);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
-            Agents.payForConfirmationByOthers(agent, msg.sender);
+            AgentPayout.payForConfirmationByOthers(agent, msg.sender);
         }
         // update underlying block
         UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);

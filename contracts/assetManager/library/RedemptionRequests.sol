@@ -10,7 +10,7 @@ import {Conversion} from "./Conversion.sol";
 import {Redemption} from "./data/Redemption.sol";
 import {Agent} from "./data/Agent.sol";
 import {Globals} from "./Globals.sol";
-import {Agents} from "./Agents.sol";
+import {AgentBacking} from "./AgentBacking.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {PaymentReference} from "./data/PaymentReference.sol";
 
@@ -83,7 +83,7 @@ library RedemptionRequests {
         state.redemptionRequests[_requestId] = request;
         // decrease mintedAMG and mark it to redeemingAMG
         // do not add it to freeBalance yet (only after failed redemption payment)
-        Agents.startRedeemingAssets(agent, _data.valueAMG, _poolSelfClose);
+        AgentBacking.startRedeemingAssets(agent, _data.valueAMG, _poolSelfClose);
         // emit event to remind agent to pay
         _emitRedemptionRequestedEvent(request, _requestId, _redeemerUnderlyingAddressString);
     }

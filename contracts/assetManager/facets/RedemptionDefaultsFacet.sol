@@ -11,6 +11,7 @@ import {Redemptions} from "../library/Redemptions.sol";
 import {TransactionAttestation} from "../library/TransactionAttestation.sol";
 import {Agent} from "../library/data/Agent.sol";
 import {Agents} from "../library/Agents.sol";
+import {AgentPayout} from "../library/AgentPayout.sol";
 import {Redemption} from "../library/data/Redemption.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {PaymentReference} from "../library/data/PaymentReference.sol";
@@ -75,7 +76,7 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         RedemptionDefaults.executeDefaultOrCancel(agent, request, _redemptionRequestId);
         // in case of confirmation by other for core vault transfer, pay the reward
         if (!expectedSender) {
-            Agents.payForConfirmationByOthers(agent, msg.sender);
+            AgentPayout.payForConfirmationByOthers(agent, msg.sender);
         }
         // pay the executor if the executor called this
         // guarded against reentrancy in RedemptionDefaultsFacet

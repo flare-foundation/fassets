@@ -55,4 +55,12 @@ library Globals {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         return IAgentOwnerRegistry(settings.agentOwnerRegistry);
     }
+
+    function getBurnAddress()
+        internal view
+        returns (address payable)
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        return settings.burnAddress;
+    }
 }

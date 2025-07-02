@@ -6,7 +6,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
-import {Agents} from "../library/Agents.sol";
+import {AgentPayout} from "../library/AgentPayout.sol";
 import {Conversion} from "../library/Conversion.sol";
 import {Globals} from "../library/Globals.sol";
 import {Liquidation} from "../library/Liquidation.sol";
@@ -94,11 +94,11 @@ contract LiquidationFacet is AssetManagerBase, ReentrancyGuard {
         _liquidatedAmountUBA = Conversion.convertAmgToUBA(liquidatedAmountAMG);
         // pay the liquidator
         if (payoutC1Wei > 0) {
-            _amountPaidVault = Agents.payoutFromVault(agent, msg.sender, payoutC1Wei);
+            _amountPaidVault = AgentPayout.payoutFromVault(agent, msg.sender, payoutC1Wei);
         }
         if (payoutPoolWei > 0) {
             uint256 agentResponsibilityWei = _agentResponsibilityWei(agent, payoutPoolWei);
-            _amountPaidPool = Agents.payoutFromPool(agent, msg.sender, payoutPoolWei, agentResponsibilityWei);
+            _amountPaidPool = AgentPayout.payoutFromPool(agent, msg.sender, payoutPoolWei, agentResponsibilityWei);
         }
         // if the agent was already safe due to price changes, there should be no LiquidationPerformed event
         // we do not revert, because it still marks agent as healthy (so there will still be a LiquidationEnded event)

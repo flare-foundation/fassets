@@ -7,6 +7,7 @@ import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
 import {AgentCollateral} from "../library/AgentCollateral.sol";
 import {Agents} from "../library/Agents.sol";
+import {AgentPayout} from "../library/AgentPayout.sol";
 import {Conversion} from "../library/Conversion.sol";
 import {Globals} from "../library/Globals.sol";
 import {Liquidation} from "../library/Liquidation.sol";
@@ -207,6 +208,6 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
         uint256 rewardAMG = _backingAMGAtChallenge.mulBips(settings.paymentChallengeRewardBIPS);
         uint256 rewardC1Wei = Conversion.convertAmgToTokenWei(rewardAMG, collateralData.amgToTokenWeiPrice)
             + Agents.convertUSD5ToVaultCollateralWei(_agent, settings.paymentChallengeRewardUSD5);
-        Agents.payoutFromVault(_agent, _challenger, rewardC1Wei);
+        AgentPayout.payoutFromVault(_agent, _challenger, rewardC1Wei);
     }
 }

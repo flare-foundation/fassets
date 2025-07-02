@@ -6,7 +6,6 @@ import {IFdcVerification, IPayment, IBalanceDecreasingTransaction, IConfirmedBlo
     from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {Globals} from "./Globals.sol";
-import {PaymentConfirmations} from "./data/PaymentConfirmations.sol";
 
 
 library TransactionAttestation {
