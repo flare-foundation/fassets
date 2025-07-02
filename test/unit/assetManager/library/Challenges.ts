@@ -41,7 +41,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
     const underlyingBurnAddr = "Burn";
     const agentOwner1 = accounts[20];
     const underlyingAgent1 = "Agent1";  // addresses on mock underlying chain can be any string, as long as it is unique
-    const whitelistedAccount = accounts[1];
+    const challengerAddress = accounts[1];
     const underlyingRedeemer = "Redeemer";
     const agentOwner2 = accounts[40];
     const underlyingAgent2 = "Agent2";
@@ -144,7 +144,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(0));
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
             const res = await assetManager.illegalPaymentChallenge(
-                proof, agentVault.address, { from: whitelistedAccount });
+                proof, agentVault.address, { from: challengerAddress });
             expectEvent(res, "IllegalPaymentConfirmed");
         });
 
@@ -153,7 +153,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(1));
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
             const res = await assetManager.illegalPaymentChallenge(
-                proof, agentVault.address, { from: whitelistedAccount });
+                proof, agentVault.address, { from: challengerAddress });
             expectEvent(res, "IllegalPaymentConfirmed");
         });
 
@@ -162,7 +162,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.announcedWithdrawal(1));
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
             const res = await assetManager.illegalPaymentChallenge(
-                proof, agentVault.address, { from: whitelistedAccount });
+                proof, agentVault.address, { from: challengerAddress });
             expectEvent(res, "IllegalPaymentConfirmed");
         });
 
@@ -171,19 +171,19 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.announcedWithdrawal(0));
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
             const res = await assetManager.illegalPaymentChallenge(
-                proof, agentVault.address, { from: whitelistedAccount });
+                proof, agentVault.address, { from: challengerAddress });
             expectEvent(res, "IllegalPaymentConfirmed");
         });
 
-        it("should not succeed challenging illegal payment - verified transaction too old", async() => {
+        it("should succeed challenging illegal payment even after a year", async() => {
             const txHash = await wallet.addTransaction(
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(0));
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
 
-            await time.deterministicIncrease(14 * 86400);
-            const res = assetManager.illegalPaymentChallenge(
-                proof, agentVault.address, { from: whitelistedAccount });
-            await expectRevert.custom(res, "VerifiedTransactionTooOld", [])
+            await time.deterministicIncrease(365 * 86400);
+            const res = await assetManager.illegalPaymentChallenge(
+                proof, agentVault.address, { from: challengerAddress });
+            expectEvent(res, "IllegalPaymentConfirmed");
         });
 
         it("should not succeed challenging illegal payment - ChallengeNotAgentsAddress", async () => {
@@ -192,7 +192,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
 
             const res = assetManager.illegalPaymentChallenge(
-                proof, agentVault2.address, { from: whitelistedAccount });
+                proof, agentVault2.address, { from: challengerAddress });
             await expectRevert.custom(res, "ChallengeNotAgentsAddress", [])
         });
 
@@ -202,7 +202,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             const txHash = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer, 1, req.paymentReference);
 
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
-            const res = assetManager.illegalPaymentChallenge(proof, agentVault.address, { from: whitelistedAccount });
+            const res = assetManager.illegalPaymentChallenge(proof, agentVault.address, { from: challengerAddress });
             await expectRevert.custom(res, "MatchingAnnouncedPaymentActive", []);
         });
 
@@ -215,7 +215,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(2));
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
             const promise = assetManager.doublePaymentChallenge(
-                agentTxProof, proof, agentVault.address, { from: whitelistedAccount });
+                agentTxProof, proof, agentVault.address, { from: challengerAddress });
             await expectRevert.custom(promise, "ChallengeNotDuplicate", []);
         });
 
@@ -224,13 +224,13 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
                 underlyingAgent2, underlyingRedeemer, 1, PaymentReference.redemption(2));
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent2);
             const promise = assetManager.doublePaymentChallenge(
-                agentTxProof, proof, agentVault.address, { from: whitelistedAccount });
+                agentTxProof, proof, agentVault.address, { from: challengerAddress });
             await expectRevert.custom(promise, "ChallengeNotAgentsAddress", []);
         });
 
         it("should revert on same references", async() => {
             const promise = assetManager.doublePaymentChallenge(
-                agentTxProof, agentTxProof, agentVault.address, { from: whitelistedAccount });
+                agentTxProof, agentTxProof, agentVault.address, { from: challengerAddress });
             await expectRevert.custom(promise, "ChallengeSameTransactionRepeated", []);
         });
 
@@ -239,7 +239,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(1));
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
             const res = assetManager.doublePaymentChallenge(
-                agentTxProof, proof, agentVault2.address, { from: whitelistedAccount });
+                agentTxProof, proof, agentVault2.address, { from: challengerAddress });
             await expectRevert.custom(res, "ChallengeNotAgentsAddress", []);
         });
 
@@ -248,7 +248,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(1));
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
             const res = await assetManager.doublePaymentChallenge(
-                agentTxProof, proof, agentVault.address, { from: whitelistedAccount });
+                agentTxProof, proof, agentVault.address, { from: challengerAddress });
             expectEvent(res, 'DuplicatePaymentConfirmed', {
                 agentVault: agentVault.address, transactionHash1: agentTxHash, transactionHash2: txHash
             });
@@ -260,7 +260,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
         it("should revert repeated transaction", async() => {
             // payment references match
             const prms1 = assetManager.freeBalanceNegativeChallenge(
-                [agentTxProof, agentTxProof], agentVault.address, { from: whitelistedAccount });
+                [agentTxProof, agentTxProof], agentVault.address, { from: challengerAddress });
             await expectRevert.custom(prms1, "ChallengeSameTransactionRepeated", []);
         });
 
@@ -270,7 +270,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             const proofA2 = await attestationProvider.proveBalanceDecreasingTransaction(txHashA2, underlyingAgent2);
             // transaction sources are not the same agent
             const prmsW = assetManager.freeBalanceNegativeChallenge(
-                [agentTxProof, proofA2], agentVault.address, { from: whitelistedAccount });
+                [agentTxProof, proofA2], agentVault.address, { from: challengerAddress });
             await expectRevert.custom(prmsW, "ChallengeNotAgentsAddress", []);
         });
 
@@ -286,7 +286,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
 
             const proof2 = await attestationProvider.proveBalanceDecreasingTransaction(tx1Hash, underlyingAgent1);
 
-            const res = assetManager.freeBalanceNegativeChallenge([agentTxProof, proof2], agentVault.address, { from: whitelistedAccount });
+            const res = assetManager.freeBalanceNegativeChallenge([agentTxProof, proof2], agentVault.address, { from: challengerAddress });
             await expectRevert.custom(res, "MultiplePaymentsChallengeEnoughBalance", []);
         });
 
@@ -303,7 +303,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             const txHash2 = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer, 1, PaymentReference.announcedWithdrawal(2));
             const proof2 = await attestationProvider.proveBalanceDecreasingTransaction(txHash2, underlyingAgent1);
 
-            const res = assetManager.freeBalanceNegativeChallenge([agentTxProof, proof2], agentVault.address, { from: whitelistedAccount });
+            const res = assetManager.freeBalanceNegativeChallenge([agentTxProof, proof2], agentVault.address, { from: challengerAddress });
             await expectRevert.custom(res, "MultiplePaymentsChallengeEnoughBalance", []);
         });
 
@@ -320,7 +320,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             const proof2 = await attestationProvider.proveBalanceDecreasingTransaction(txHash2, underlyingAgent1);
             // successful challenge
             const res1 = await assetManager.freeBalanceNegativeChallenge(
-                [agentTxProof, proof2], agentVault.address, { from: whitelistedAccount });
+                [agentTxProof, proof2], agentVault.address, { from: challengerAddress });
             expectEvent(res1, 'UnderlyingBalanceTooLow', {agentVault: agentVault.address});
        });
     });

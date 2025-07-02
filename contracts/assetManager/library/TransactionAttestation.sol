@@ -20,7 +20,6 @@ library TransactionAttestation {
     error InvalidChain();
     error LegalPaymentNotProven();
     error TransactionNotProven();
-    error VerifiedTransactionTooOld();
     error BlockHeightNotProven();
     error NonPaymentNotProven();
     error AddressValidityNotProven();
@@ -44,8 +43,6 @@ library TransactionAttestation {
         IFdcVerification fdcVerification = IFdcVerification(_settings.fdcVerification);
         require(_proof.data.sourceId == _settings.chainId, InvalidChain());
         require(fdcVerification.verifyPayment(_proof), LegalPaymentNotProven());
-        require(_confirmationCannotBeCleanedUp(_proof.data.responseBody.blockTimestamp),
-            VerifiedTransactionTooOld());
     }
 
     function verifyBalanceDecreasingTransaction(
@@ -57,8 +54,6 @@ library TransactionAttestation {
         IFdcVerification fdcVerification = IFdcVerification(_settings.fdcVerification);
         require(_proof.data.sourceId == _settings.chainId, InvalidChain());
         require(fdcVerification.verifyBalanceDecreasingTransaction(_proof), TransactionNotProven());
-        require(_confirmationCannotBeCleanedUp(_proof.data.responseBody.blockTimestamp),
-            VerifiedTransactionTooOld());
     }
 
     function verifyConfirmedBlockHeightExists(
@@ -92,9 +87,5 @@ library TransactionAttestation {
         IFdcVerification fdcVerification = IFdcVerification(_settings.fdcVerification);
         require(_proof.data.sourceId == _settings.chainId, InvalidChain());
         require(fdcVerification.verifyAddressValidity(_proof), AddressValidityNotProven());
-    }
-
-    function _confirmationCannotBeCleanedUp(uint256 timestamp) private view returns (bool) {
-        return timestamp >= block.timestamp - PaymentConfirmations.VERIFICATION_CLEANUP_DAYS * 1 days;
     }
 }
