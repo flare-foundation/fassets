@@ -122,7 +122,6 @@ contract CoreVaultManagerTest is Test {
     }
 
     function invariant_fundsAccounting() public {
-        vm.skip(true);
         uint256 totalRequests = coreVaultManager.totalRequestAmountWithFee();
         uint128 available = coreVaultManager.availableFunds();
         uint128 escrowed = coreVaultManager.escrowedFunds();
