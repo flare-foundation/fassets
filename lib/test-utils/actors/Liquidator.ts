@@ -1,12 +1,10 @@
 import { LiquidationEnded, LiquidationStarted } from "../../../typechain-truffle/IIAssetManager";
 import { EventArgs } from "../../utils/events/common";
-import { optionalEventArgs, filterEvents, findEvent, requiredEventArgs } from "../../utils/events/truffle";
+import { filterEvents, findEvent, optionalEventArgs, requiredEventArgs } from "../../utils/events/truffle";
 import { BN_ZERO, BNish, toBN } from "../../utils/helpers";
 import { expectEvent } from "../test-helpers";
 import { Agent } from "./Agent";
 import { AssetContext, AssetContextClient } from "./AssetContext";
-
-const AgentVault = artifacts.require('AgentVault');
 
 export class Liquidator extends AssetContextClient {
     static deepCopyWithObjectCreate = true;

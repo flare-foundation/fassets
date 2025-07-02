@@ -3,6 +3,7 @@ import { lotSize } from "../../../../lib/fasset/Conversions";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { precomputeContractAddress } from "../../../../lib/test-utils/contract-test-helpers";
+import { calcGasCost } from "../../../../lib/test-utils/eth";
 import { AgentCollateral } from "../../../../lib/test-utils/fasset/AgentCollateral";
 import { AssetManagerInitSettings, newAssetManager } from "../../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/MockChain";
@@ -204,7 +205,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: executorAddress1 });
         const executorBalanceEnd = toBN(await web3.eth.getBalance(executorAddress1));
         const executorWNatBalanceEnd = await wNat.balanceOf(executorAddress1);
-        const gasFee = toBN(res.receipt.gasUsed).mul(toBN(res.receipt.effectiveGasPrice));
+        const gasFee = calcGasCost(res);
         assertWeb3Equal(executorBalanceStart.sub(executorBalanceEnd), gasFee);
         assertWeb3Equal(executorWNatBalanceEnd.sub(executorWNatBalanceStart), toWei(0.1));
         // assert
@@ -350,6 +351,23 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         expectEvent(res2, "MintingExecuted");
         expectEvent.notEmitted(res2, "RedemptionTicketCreated");
         expectEvent(res2, "RedemptionTicketUpdated", { ticketValueUBA: ticketValue1.add(ticketValue2) });
+    });
+
+    it("should update underlying block with minting proof", async () => {
+        // init
+        const poolFeeShareBIPS = toBIPS(0.4);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { poolFeeShareBIPS });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        // act
+        const crt = await reserveCollateral(agentVault.address, 1);
+        const txHash = await performMintingPayment(crt);
+        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
+        const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
+        // assert
+        const { 0: underlyingBlock, 1: underlyingTime, 2: updateTime } = await assetManager.currentUnderlyingBlock();
+        assertWeb3Equal(underlyingBlock, toBN(proof.data.responseBody.blockNumber).addn(1));
+        assert.isTrue(underlyingTime.gt(toBN(proof.data.responseBody.blockTimestamp)));
+        assertWeb3Equal(updateTime, await time.latest());
     });
 
     it("should self-mint", async () => {
@@ -507,6 +525,27 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         // assert
         await expectRevert(promise, "not enough free collateral");
     });
+
+    it("should update underlying block with self mint proof", async () => {
+        // init
+        const feeBIPS = toBIPS("10%");
+        const poolFeeShareBIPS = toBIPS(0.4);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        // act
+        const lots = 2;
+        const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots);
+        const poolFee = paymentAmount.mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
+        const txHash = await performSelfMintingPayment(agentVault.address, paymentAmount.add(poolFee));
+        const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
+        const res = await assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
+        // assert
+        const { 0: underlyingBlock, 1: underlyingTime, 2: updateTime } = await assetManager.currentUnderlyingBlock();
+        assertWeb3Equal(underlyingBlock, toBN(proof.data.responseBody.blockNumber).addn(1));
+        assert.isTrue(underlyingTime.gt(toBN(proof.data.responseBody.blockTimestamp)));
+        assertWeb3Equal(updateTime, await time.latest());
+    });
+
 
     it("check agent's minting capacity", async () => {
         // init

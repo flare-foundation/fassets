@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import {IICleanable} from "@flarenetwork/flare-periphery-contracts/flare/token/interface/IICleanable.sol";
+import {IICleanable} from "@flarenetwork/flare-periphery-contracts/flare/token/interfaces/IICleanable.sol";
 import {IFAsset} from "../../userInterfaces/IFAsset.sol";
 import {IICheckPointable} from "./IICheckPointable.sol";
 
@@ -18,12 +18,6 @@ interface IIFAsset is IFAsset, IICheckPointable, IICleanable {
      * Only the assetManager corresponding to this fAsset may call `burn()`.
      */
     function burn(address _owner, uint256 _amount) external;
-
-    /**
-     * Stops all transfers by setting `terminated` flag to true.
-     * Only the assetManager corresponding to this fAsset may call `terminate()`.
-     */
-    function terminate() external;
 
     /**
      * Set the contract that is allowed to set cleanupBlockNumber.

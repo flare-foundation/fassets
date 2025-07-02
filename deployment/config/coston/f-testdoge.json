@@ -9,7 +9,6 @@
     "fAssetSymbol": "FTestDOGE",
     "poolTokenSuffix": "TDOGE",
     "assetMintingDecimals": 8,
-    "userWhitelist": null,
     "poolCollateral": {
         "token": "WNat",
         "decimals": 18,
@@ -83,7 +82,6 @@
     "maxTrustedPriceAgeSeconds": 600,
     "withdrawalWaitMinSeconds": 60,
     "announcedUnderlyingConfirmationMinSeconds": 250,
-    "buybackCollateralFactorBIPS": 10030,
     "vaultCollateralBuyForFlareFactorBIPS": 10000,
     "minUpdateRepeatTimeSeconds": 60,
     "tokenInvalidationTimeMinSeconds": 86400,

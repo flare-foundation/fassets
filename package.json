@@ -34,6 +34,7 @@
     "compile": "yarn hardhat compile && yarn typechain-truffle-v5",
     "c": "yarn compile && yarn lint",
     "lint": "yarn solhint \"contracts/**/*.sol\"",
+    "solhint-watch": "node scripts/solhint-watch.js",
     "typechain-truffle-v5": "yarn typechain --target=truffle-v5 --out-dir typechain-truffle \"artifacts/!(build-info)/**/+([a-zA-Z0-9_]).json\"",
     "size": "yarn run hardhat size-contracts",
     "flatten": "yarn hardhat flatten",
@@ -82,7 +83,7 @@
     "gas": "cat .gas-report.txt"
   },
   "dependencies": {
-    "@flarenetwork/flare-periphery-contracts": "0.1.25",
+    "@flarenetwork/flare-periphery-contracts": "0.1.28",
     "@openzeppelin/contracts": "4.9.2"
   },
   "devDependencies": {
@@ -108,7 +109,7 @@
     "hardhat-contract-sizer": "2.10.0",
     "hardhat-gas-reporter": "1.0.9",
     "intercept-stdout": "0.1.2",
-    "solhint": "5.1.0",
+    "solhint": "5.2.0",
     "solidity-coverage": "0.8.16",
     "ts-node": "10.9.2",
     "typechain": "7.0.1",

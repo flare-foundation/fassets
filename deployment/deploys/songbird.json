@@ -55,11 +55,6 @@
     "address": "0xa7f5d3C81f55f2b072FB62a0D4A03317BFd1a3c0"
   },
   {
-    "name": "UserWhitelist",
-    "contractName": "Whitelist.sol",
-    "address": "0xd5d90c61cF30B86b1c4507515e91470334d77Ad6"
-  },
-  {
     "name": "AgentVaultProxyImplementation",
     "contractName": "AgentVault.sol",
     "address": "0x5E3b6e722282E017f11ac2aB8022455A7167559B"

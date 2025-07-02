@@ -101,7 +101,7 @@ export class SparseMatrix {
     }
 
     row(from: string): SparseArray {
-        return new SparseArray(this.rows.get(from) ?? new Map());
+        return new SparseArray(this.rowMap(from));
     }
 
     allCols() {
@@ -117,7 +117,7 @@ export class SparseMatrix {
     }
 
     col(to: string): SparseArray {
-        return new SparseArray(this.cols.get(to) ?? new Map());
+        return new SparseArray(this.colMap(to));
     }
 
     clear() {

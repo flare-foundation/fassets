@@ -26,7 +26,6 @@ contract LiquidationFacet is AssetManagerBase, ReentrancyGuard {
 
     /**
      * Checks that the agent's collateral is too low and if true, starts agent's liquidation.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _agentVault agent vault address
      * @return _liquidationStatus 0=no liquidation, 1=CCB, 2=liquidation
      * @return _liquidationStartAt if the status is LIQUIDATION, the timestamp when liquidation started;
@@ -36,7 +35,6 @@ contract LiquidationFacet is AssetManagerBase, ReentrancyGuard {
         address _agentVault
     )
         external
-        onlyWhitelistedSender
         notEmergencyPaused
         nonReentrant
         returns (uint8 _liquidationStatus, uint256 _liquidationStartAt)
@@ -63,7 +61,6 @@ contract LiquidationFacet is AssetManagerBase, ReentrancyGuard {
      * (premium depends on the liquidation state).
      * If the agent isn't in liquidation yet, but satisfies conditions,
      * automatically puts the agent in liquidation status.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _agentVault agent vault address
      * @param _amountUBA the amount of f-assets to liquidate
      * @return _liquidatedAmountUBA liquidated amount of f-asset
@@ -75,7 +72,6 @@ contract LiquidationFacet is AssetManagerBase, ReentrancyGuard {
         uint256 _amountUBA
     )
         external
-        onlyWhitelistedSender
         notEmergencyPaused
         nonReentrant
         returns (uint256 _liquidatedAmountUBA, uint256 _amountPaidVault, uint256 _amountPaidPool)

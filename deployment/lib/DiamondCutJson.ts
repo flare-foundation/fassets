@@ -7,7 +7,7 @@ export interface DiamondCutJsonFacet {
 export interface DiamondCutJsonInit {
     contract: string;
     method: string;
-    args?: any[];
+    args?: unknown[];
 }
 
 export interface DiamondCutJson {

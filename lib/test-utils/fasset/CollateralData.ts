@@ -1,4 +1,4 @@
-import { AssetManagerSettings, CollateralType, CollateralClass } from "../../fasset/AssetManagerTypes";
+import { AssetManagerSettings, CollateralType, CollateralClass, collateralClass } from "../../fasset/AssetManagerTypes";
 import { amgToTokenWeiPrice } from "../../fasset/Conversions";
 import { AMGPrice, AMGPriceConverter, CollateralPrice } from "../../state/CollateralPrice";
 import { TokenPrice, TokenPriceReader, tokenBalance } from "../../state/TokenPrice";
@@ -21,9 +21,9 @@ export class CollateralData extends AMGPriceConverter {
 
     kind() {
         if (this.collateral != null) {
-            if (Number(this.collateral.collateralClass) === CollateralClass.VAULT) {
+            if (collateralClass(this.collateral.collateralClass) === CollateralClass.VAULT) {
                 return CollateralKind.VAULT;
-            } else if (Number(this.collateral.collateralClass) === CollateralClass.POOL) {
+            } else if (collateralClass(this.collateral.collateralClass) === CollateralClass.POOL) {
                 return CollateralKind.POOL;
             }
             throw new Error("Invalid collateral kind");

@@ -1,4 +1,3 @@
-import { time } from "./test-helpers";
 import {
     AddressUpdaterMockInstance,
     AgentOwnerRegistryInstance,
@@ -12,7 +11,6 @@ import {
     IFdcVerificationInstance,
     IIAssetManagerInstance,
     IPriceReaderInstance,
-    IWhitelistInstance,
     RelayMockInstance,
     WNatMockInstance
 } from "../../typechain-truffle";
@@ -21,13 +19,14 @@ import { ChainInfo } from "../fasset/ChainInfo";
 import { PaymentReference } from "../fasset/PaymentReference";
 import { AttestationHelper } from "../underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../utils/events/truffle";
-import { BNish, DAYS, HOURS, MAX_BIPS, MINUTES, requireNotNull, toBIPS, toBNExp, WEEKS, ZERO_ADDRESS } from "../utils/helpers";
+import { BNish, DAYS, HOURS, MINUTES, requireNotNull, toBIPS, toBNExp, WEEKS, ZERO_ADDRESS } from "../utils/helpers";
 import { web3DeepNormalize } from "../utils/web3normalize";
 import { CoreVaultManagerSettings } from "./actors/MockCoreVaultBot";
 import { testChainInfo, TestChainInfo } from "./actors/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";
 import { AssetManagerInitSettings, waitForTimelock } from "./fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "./fasset/MockChain";
+import { time } from "./test-helpers";
 
 const AgentVault = artifacts.require("AgentVault");
 const WNat = artifacts.require("WNatMock");
@@ -57,7 +56,6 @@ export interface TestSettingsCommonContracts {
     fdcHub: FdcHubMockInstance;
     fdcVerification: IFdcVerificationInstance;
     priceReader: IPriceReaderInstance,
-    whitelist?: IWhitelistInstance;
     agentOwnerRegistry: AgentOwnerRegistryInstance;
     wNat: WNatMockInstance,
     stablecoins: Record<string, ERC20MockInstance>,
@@ -85,7 +83,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         collateralPoolTokenFactory: contracts.collateralPoolTokenFactory.address,
         fdcVerification: contracts.fdcVerification.address,
         priceReader: contracts.priceReader.address,
-        whitelist: contracts.whitelist?.address ?? ZERO_ADDRESS,
+        __whitelist: ZERO_ADDRESS,
         agentOwnerRegistry: contracts.agentOwnerRegistry?.address ?? ZERO_ADDRESS,
         burnAddress: ZERO_ADDRESS,
         chainId: ci.chainId,
@@ -115,7 +113,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         minUpdateRepeatTimeSeconds: 1 * DAYS,
         attestationWindowSeconds: 1 * DAYS,
         averageBlockTimeMS: Math.round(ci.blockTime * 1000),
-        buybackCollateralFactorBIPS: toBIPS(1.1),               // 1.1
+        __buybackCollateralFactorBIPS: 0,
         announcedUnderlyingConfirmationMinSeconds: 0,           // should be higher in production (~ Flare data connector response time, in tests sc response time is 0)
         agentFeeChangeTimelockSeconds: 6 * HOURS,
         agentMintingCRChangeTimelockSeconds: 1 * HOURS,
@@ -258,9 +256,8 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     // create collateral pool token factory
     const collateralPoolTokenImplementation = await CollateralPoolToken.new(ZERO_ADDRESS, "", "");
     const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new(collateralPoolTokenImplementation.address);
-    // create allow-all agent whitelist
-    const agentOwnerRegistry = await AgentOwnerRegistry.new(governanceSettings.address, governance, true);
-    await agentOwnerRegistry.setAllowAll(true, { from: governance });
+    // create agent owner registry
+    const agentOwnerRegistry = await AgentOwnerRegistry.new(governanceSettings.address, governance);
     //
     return {
         governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, collateralPoolTokenFactory, relay, fdcHub, fdcVerification,
@@ -298,6 +295,8 @@ export interface CreateTestAgentDeps {
 }
 
 export async function createTestAgent(deps: CreateTestAgentDeps, owner: string, underlyingAddress: string, vaultCollateralTokenAddress: string, options?: Partial<AgentSettings>) {
+    // whitelist agent management address if not already whitelisted
+    await whitelistAgentOwner(deps.settings.agentOwnerRegistry, owner);
     if (deps.settings.requireEOAAddressProof) {
         if (!deps.chain || !deps.wallet) throw new Error("Missing chain data for EOA proof");
         // mint some funds on underlying address (just enough to make EOA proof)
@@ -351,4 +350,13 @@ export async function createMockFtsoV2PriceStore(governanceSettingsAddress: stri
     }
     //
     return priceStore;
+}
+
+export async function whitelistAgentOwner(agentOwnerRegistryAddress: string, owner: string) {
+    const agentOwnerRegistry = await AgentOwnerRegistry.at(agentOwnerRegistryAddress);
+    if (!(await agentOwnerRegistry.isWhitelisted(owner))) {
+        const governance = await agentOwnerRegistry.governance();
+        const res = await agentOwnerRegistry.whitelistAndDescribeAgent(owner, "", "", "", "", { from: governance });
+        findRequiredEvent(res, 'Whitelisted');
+    }
 }

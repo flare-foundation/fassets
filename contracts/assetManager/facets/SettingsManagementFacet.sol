@@ -53,18 +53,6 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         }
     }
 
-    function setWhitelist(address _value)
-        external
-        onlyAssetManagerController
-        rateLimited
-    {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        // validate
-        // update
-        settings.whitelist = _value;
-        emit ContractChanged("whitelist", _value);
-    }
-
     function setAgentOwnerRegistry(address _value)
         external
         onlyAssetManagerController
@@ -488,7 +476,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
-        require(_value <= settings.agentExitAvailableTimelockSeconds * 4 + 1 weeks);
+        require(_value <= settings.agentExitAvailableTimelockSeconds * 4 + 1 weeks, "increase too big");
         // update
         settings.agentExitAvailableTimelockSeconds = _value.toUint64();
         emit SettingChanged("agentExitAvailableTimelockSeconds", _value);
@@ -501,7 +489,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
-        require(_value <= settings.agentFeeChangeTimelockSeconds * 4 + 1 days);
+        require(_value <= settings.agentFeeChangeTimelockSeconds * 4 + 1 days, "increase too big");
         // update
         settings.agentFeeChangeTimelockSeconds = _value.toUint64();
         emit SettingChanged("agentFeeChangeTimelockSeconds", _value);
@@ -514,7 +502,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
-        require(_value <= settings.agentMintingCRChangeTimelockSeconds * 4 + 1 days);
+        require(_value <= settings.agentMintingCRChangeTimelockSeconds * 4 + 1 days, "increase too big");
         // update
         settings.agentMintingCRChangeTimelockSeconds = _value.toUint64();
         emit SettingChanged("agentMintingCRChangeTimelockSeconds", _value);
@@ -527,7 +515,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
-        require(_value <= settings.poolExitCRChangeTimelockSeconds * 4 + 1 days);
+        require(_value <= settings.poolExitCRChangeTimelockSeconds * 4 + 1 days, "increase too big");
         // update
         settings.poolExitCRChangeTimelockSeconds = _value.toUint64();
         emit SettingChanged("poolExitCRChangeTimelockSeconds", _value);

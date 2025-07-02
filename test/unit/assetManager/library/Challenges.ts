@@ -1,3 +1,4 @@
+import { BalanceDecreasingTransaction } from "@flarenetwork/state-connector-protocol";
 import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
@@ -34,7 +35,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
     let agentVault2: AgentVaultInstance;
 
     let agentTxHash: string;
-    let agentTxProof: any;
+    let agentTxProof: BalanceDecreasingTransaction.Proof;
 
     // addresses
     const underlyingBurnAddr = "Burn";

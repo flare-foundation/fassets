@@ -110,13 +110,13 @@ export class TrackedState {
         // track setting changes
         this.assetManagerEvent('SettingChanged').subscribe(args => {
             if (!(args.name in this.settings)) assert.fail(`Invalid setting change ${args.name}`);
-            this.logger?.log(`SETTING CHANGED ${args.name} FROM ${(this.settings as any)[args.name]} TO ${args.value}`);
-            (this.settings as any)[args.name] = web3Normalize(args.value);
+            this.logger?.log(`SETTING CHANGED ${args.name} FROM ${(this.settings as Record<string, unknown>)[args.name]} TO ${args.value}`);
+            (this.settings as Record<string, unknown>)[args.name] = web3Normalize(args.value);
         });
         this.assetManagerEvent('SettingArrayChanged').subscribe(args => {
             if (!(args.name in this.settings)) assert.fail(`Invalid setting array change ${args.name}`);
-            this.logger?.log(`SETTING ARRAY CHANGED ${args.name} FROM ${stringifyJson((this.settings as any)[args.name])} TO ${stringifyJson(args.value)}`);
-            (this.settings as any)[args.name] = web3DeepNormalize(args.value);
+            this.logger?.log(`SETTING ARRAY CHANGED ${args.name} FROM ${stringifyJson((this.settings as Record<string, unknown>)[args.name])} TO ${stringifyJson(args.value)}`);
+            (this.settings as Record<string, unknown>)[args.name] = web3DeepNormalize(args.value);
         });
         // track collateral token changes
         this.assetManagerEvent('CollateralTypeAdded').subscribe(args => {

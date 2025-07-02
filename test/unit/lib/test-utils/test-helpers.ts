@@ -102,6 +102,13 @@ contract(`test-helpers.ts; ${getTestFile(__filename)}; Test library helpers unit
                 expectRevert.custom(errorMock.emitErrorWithArgs(123, "amount too low"), "ErrorWithArgs", [125, "amount too low"]),
                 "Wrong kind of exception received");
         });
+
+        it("should not match by type with with string error messages, but should match plain string", async () => {
+            await expectRevert(errorMock.emitErrorWithString(), "string type error");
+            await expectRevert(
+                expectRevert.custom(errorMock.emitErrorWithString(), "Error", ["string type error"]),
+                "Wrong kind of exception received");
+        });
     })
 
     describe("testing expectEvent", () => {
@@ -122,6 +129,7 @@ contract(`test-helpers.ts; ${getTestFile(__filename)}; Test library helpers unit
 
         it("should fail if event arg not found", async () => {
             const response = await token.deposit({ from: accounts[1], value: toBN(100) });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
             assert.throws(() => expectEvent(response, "Transfer", { amount: "50" } as any), /Event argument 'amount' not found/);
         });
 
@@ -162,6 +170,7 @@ contract(`test-helpers.ts; ${getTestFile(__filename)}; Test library helpers unit
         it("should fail if event arg not found", async () => {
             const response = await token.deposit({ from: accounts[1], value: toBN(100) });
             await expectRevert(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
                 expectEvent.inTransaction(response.tx, token, "Transfer", { amount: "50" } as any),
                 `Event argument 'amount' not found`);
         });

@@ -94,11 +94,11 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
         {
             diamond: assetManager.address,
             facets: [
-                { contract: "CoreVaultFacet", exposedInterfaces: ["ICoreVault"] },
-                { contract: "CoreVaultSettingsFacet", exposedInterfaces: ["ICoreVaultSettings"] }
+                { contract: "CoreVaultClientFacet", exposedInterfaces: ["ICoreVaultClient"] },
+                { contract: "CoreVaultClientSettingsFacet", exposedInterfaces: ["ICoreVaultClientSettings"] }
             ],
             init: {
-                contract: "CoreVaultSettingsFacet",
+                contract: "CoreVaultClientSettingsFacet",
                 method: "initCoreVaultFacet",
                 args: [ZERO_ADDRESS, parameters.coreVaultNativeAddress,
                     parameters.coreVaultTransferTimeExtensionSeconds, parameters.coreVaultRedemptionFeeBIPS,
@@ -221,7 +221,7 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         collateralPoolTokenFactory: contracts.getAddress(parameters.collateralPoolTokenFactory ?? 'CollateralPoolTokenFactory'),
         fdcVerification: contracts.getAddress(parameters.fdcVerification ?? 'FdcVerification'),
         priceReader: contracts.getAddress(parameters.priceReader ?? 'PriceReader'),
-        whitelist: parameters.userWhitelist ? contracts.getAddress(parameters.userWhitelist) : ZERO_ADDRESS,
+        __whitelist: ZERO_ADDRESS,
         agentOwnerRegistry: contracts.getAddress(parameters.agentOwnerRegistry ?? 'AgentOwnerRegistry'),
         burnAddress: parameters.burnAddress,
         chainId: encodeAttestationName(parameters.chainName),
@@ -255,7 +255,7 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         maxTrustedPriceAgeSeconds: parameters.maxTrustedPriceAgeSeconds,
         withdrawalWaitMinSeconds: parameters.withdrawalWaitMinSeconds,
         announcedUnderlyingConfirmationMinSeconds: parameters.announcedUnderlyingConfirmationMinSeconds,
-        buybackCollateralFactorBIPS: parameters.buybackCollateralFactorBIPS,
+        __buybackCollateralFactorBIPS: 0,
         vaultCollateralBuyForFlareFactorBIPS: parameters.vaultCollateralBuyForFlareFactorBIPS,
         minUpdateRepeatTimeSeconds: parameters.minUpdateRepeatTimeSeconds,
         tokenInvalidationTimeMinSeconds: parameters.tokenInvalidationTimeMinSeconds,

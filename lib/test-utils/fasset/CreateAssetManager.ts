@@ -1,4 +1,4 @@
-import { AssetManagerInitInstance, FAssetInstance, GovernanceSettingsMockInstance, IDiamondLoupeInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
+import { AssetManagerInitInstance, FAssetInstance, GovernanceSettingsMockInstance, IDiamondLoupeInstance, IGovernedInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
 import { GovernanceCallTimelocked } from "../../../typechain-truffle/AssetManagerController";
 import { AssetManagerSettings, CollateralType } from "../../fasset/AssetManagerTypes";
 import { DiamondCut, FacetCutAction } from "../../utils/diamond";
@@ -69,8 +69,8 @@ export async function newAssetManager(
     // extra facets
     await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("RedemptionTimeExtensionFacet"), ["IRedemptionTimeExtension"],
         (c) => c.initRedemptionTimeExtensionFacet(assetManagerSettings.redemptionPaymentExtensionSeconds));
-    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("CoreVaultFacet"), ["ICoreVault"]);
-    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("CoreVaultSettingsFacet"), ["ICoreVaultSettings"],
+    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("CoreVaultClientFacet"), ["ICoreVaultClient"]);
+    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("CoreVaultClientSettingsFacet"), ["ICoreVaultClientSettings"],
         (c) => c.initCoreVaultFacet(ZERO_ADDRESS, assetManagerSettings.coreVaultNativeAddress,
             assetManagerSettings.coreVaultTransferTimeExtensionSeconds, assetManagerSettings.coreVaultRedemptionFeeBIPS,
             assetManagerSettings.coreVaultMinimumAmountLeftBIPS, assetManagerSettings.coreVaultMinimumRedeemLots));
@@ -98,7 +98,8 @@ export async function newAssetManagerDiamond(diamondCuts: DiamondCut[], assetMan
     return await IIAssetManager.at(assetManagerDiamond.address);
 }
 
-async function deployAndInitFacet<T extends Truffle.ContractInstance>(governanceAddress: string, assetManager: IIAssetManagerInstance, facetContract: Truffle.Contract<T>, interfaces: string[], init?: (c: T) => Promise<any>) {
+async function deployAndInitFacet<T extends Truffle.ContractInstance>(governanceAddress: string, assetManager: IIAssetManagerInstance, facetContract: Truffle.Contract<T>, interfaces: string[], init?: (c: T) => Promise<unknown>) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
     const interfaceAbis: AbiItem[] = interfaces.flatMap(it => contractMetadata(artifacts.require(it as any)).abi);
     const interfaceSelectors = getInterfaceSelectorMap(interfaceAbis);
     const facetCut = await deployFacet(facetContract, interfaceSelectors);
@@ -112,13 +113,15 @@ async function deployAndInitFacet<T extends Truffle.ContractInstance>(governance
 }
 
 // simulate waiting for governance timelock
-export async function waitForTimelock<C extends Truffle.ContractInstance>(response: Truffle.TransactionResponse<any> | Promise<Truffle.TransactionResponse<any>>, contract: C, executorAddress: string) {
+export async function waitForTimelock<R extends Truffle.AnyEvent>(response: Truffle.TransactionResponse<R> | Promise<Truffle.TransactionResponse<R>>, contract: Truffle.ContractInstance, executorAddress: string) {
     const res = await response as Truffle.TransactionResponse<GovernanceCallTimelocked>;
     const timelockEvent = findEvent(res, 'GovernanceCallTimelocked');
     if (timelockEvent) {
         const timelock = timelockEvent.args;
         await time.increaseTo(Number(timelock.allowedAfterTimestamp) + 1);
-        return await (contract as any).executeGovernanceCall(timelock.encodedCall, { from: executorAddress });
+        return await (contract as IGovernedInstance).executeGovernanceCall(timelock.encodedCall, { from: executorAddress }) as Truffle.TransactionResponse<R>;
+    } else {
+        return response;
     }
 }
 
@@ -137,6 +140,7 @@ export async function deployAssetManagerFacets(): Promise<[DiamondCut[], AssetMa
         await deployFacet('AvailableAgentsFacet', interfaceSelectors),
         await deployFacet('CollateralReservationsFacet', interfaceSelectors),
         await deployFacet('MintingFacet', interfaceSelectors),
+        await deployFacet('MintingDefaultsFacet', interfaceSelectors),
         await deployFacet('RedemptionRequestsFacet', interfaceSelectors),
         await deployFacet('RedemptionConfirmationsFacet', interfaceSelectors),
         await deployFacet('RedemptionDefaultsFacet', interfaceSelectors),
@@ -183,8 +187,9 @@ function getInterfaceSelectorMap(abiItems: AbiItem[]) {
     return new Map(interfaceSelectorPairs);
 }
 
-export async function deployFacet(facet: string | Truffle.Contract<any>, filterSelectors: IMembership<string>, excludeSelectors: IMembership<string> = new Set()): Promise<DiamondCut> {
-    const contract = typeof facet === "string" ? artifacts.require(facet as any) as Truffle.Contract<any> : facet;
+export async function deployFacet(facet: string | Truffle.Contract<unknown>, filterSelectors: IMembership<string>, excludeSelectors: IMembership<string> = new Set()): Promise<DiamondCut> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+    const contract = typeof facet === "string" ? artifacts.require(facet as any) as Truffle.Contract<unknown> : facet;
     const instance = await contract.new() as Truffle.ContractInstance;
     const instanceSelectors = instance.abi.map(it => web3.eth.abi.encodeFunctionSignature(it));
     const exposedSelectors = instanceSelectors.filter(sel => filterSelectors.has(sel) && !excludeSelectors.has(sel));

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import hre from "hardhat";
 import { runAsyncMain } from "../../lib/deploy-utils";
 import { FAssetContractStore } from "../../lib/contracts";

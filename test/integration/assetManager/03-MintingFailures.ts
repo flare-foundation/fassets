@@ -63,7 +63,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const crFee = await minter.getCollateralReservationFee(lots);
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             // mine some blocks to create overflow block
-            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
+            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment + 10; i++) {
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // test rewarding for mint default
@@ -138,7 +138,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const crFee = await minter.getCollateralReservationFee(lots);
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             // mine some blocks to create overflow block
-            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
+            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment + 10; i++) {
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // check that calling unstickMinting after no payment will revert if called too soon
@@ -192,7 +192,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // perform some payment with correct minting reference and wrong amount
             await minter.performPayment(crt.paymentAddress, 100, crt.paymentReference);
             // mine some blocks to create overflow block
-            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
+            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment + 10; i++) {
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // check that calling unstickMinting after failed minting payment will revert if called too soon
@@ -240,7 +240,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const txHash = await minter.performMintingPayment(crt);
             await context.attestationProvider.provePayment(txHash, minter.underlyingAddress, crt.paymentAddress);
             // mine some blocks to create overflow block
-            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
+            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment + 10; i++) {
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // check that calling unstickMinting after unconfirmed payment will revert if called too soon

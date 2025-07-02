@@ -4,7 +4,7 @@ pragma solidity >=0.7.6 <0.9;
 /**
  * Core vault settings
  */
-interface ICoreVaultSettings {
+interface ICoreVaultClientSettings {
     function setCoreVaultManager(address _coreVaultManager)
         external;
 

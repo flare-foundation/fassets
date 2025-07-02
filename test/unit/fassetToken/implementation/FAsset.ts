@@ -61,20 +61,6 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, accounts 
             await expectRevert(promise, "cannot replace asset manager")
         });
 
-        it('should only be terminated by asset manager', async function () {
-            await fAsset.setAssetManager(assetManager, { from: governance });
-            const promise = fAsset.terminate({ from: governance });
-            await expectRevert(promise, "only asset manager");
-            assert.isFalse(await fAsset.terminated());
-            await fAsset.terminate({ from: assetManager });
-            assert.isTrue(await fAsset.terminated());
-            const terminatedAt = await fAsset.terminatedAt();
-            await time.deterministicIncrease(100);
-            await fAsset.terminate({ from: assetManager });
-            const terminatedAt2 = await fAsset.terminatedAt();
-            assertWeb3Equal(terminatedAt, terminatedAt2);
-        });
-
         it('should mint FAsset', async function () {
             await fAsset.setAssetManager(assetManager, { from: governance });
             const amount = 100;
@@ -123,15 +109,6 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, accounts 
             await fAsset.mint(accounts[1], mint_amount,{ from: assetManager });
             const res = fAsset.burn(accounts[1], burn_amount,{ from: assetManager } );
             await expectRevert(res, "f-asset balance too low");
-        });
-
-        it('should not be able to transfer if terminated', async function () {
-            await fAsset.setAssetManager(assetManager, { from: governance });
-            const mint_amount = 100;
-            await fAsset.mint(accounts[1], mint_amount,{ from: assetManager });
-            await fAsset.terminate({ from: assetManager });
-            const res = fAsset.transfer(accounts[2], 50, { from: accounts[1]});
-            await expectRevert(res, "f-asset terminated");
         });
     });
 
@@ -415,7 +392,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, accounts 
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
             const IERC20 = artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20" as "IERC20");
             const IERC20Metadata = artifacts.require("@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol:IERC20Metadata" as "IERC20Metadata");
-            const IICleanable = artifacts.require("@flarenetwork/flare-periphery-contracts/flare/token/interface/IICleanable.sol:IICleanable" as "IICleanable");
+            const IICleanable = artifacts.require("@flarenetwork/flare-periphery-contracts/flare/token/interfaces/IICleanable.sol:IICleanable" as "IICleanable");
             const IICheckPointable = artifacts.require("IICheckPointable");
             const IFasset = artifacts.require("IFAsset");
             const IIFasset = artifacts.require("IIFAsset");

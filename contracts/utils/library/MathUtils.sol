@@ -33,7 +33,7 @@ library MathUtils {
     }
 
     /**
-     * Returns `_a <= _b`; works correctly when `_b` is any signed value.
+     * Returns `_a <= _b`; works correctly when `_a` is any signed value.
      */
     function mixedLTE(int256 _a, uint256 _b) internal pure returns (bool) {
         return _a <= 0 || uint256(_a) <= _b;

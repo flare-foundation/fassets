@@ -23,7 +23,7 @@ export async function buildPermitData(contract: IERC5267Instance, permit: Permit
         primaryType: 'Permit' as const,
         types: { EIP712Domain: domainType(domain), Permit: PermitFields },
         domain,
-        message: permit as any,
+        message: permit as object as Record<string, unknown>,
     };
 }
 

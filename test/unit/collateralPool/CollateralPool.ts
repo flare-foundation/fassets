@@ -1,23 +1,19 @@
 import BN from "bn.js";
-import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
+import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
 import { impersonateContract, transferWithSuicide } from "../../../lib/test-utils/contract-test-helpers";
 import { calcGasCost, calculateReceivedNat } from "../../../lib/test-utils/eth";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestContracts } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
-import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { MAX_BIPS, ZERO_ADDRESS, erc165InterfaceId, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
-
+import { MAX_BIPS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import {
     AgentVaultMockInstance,
     AssetManagerMockInstance,
     CollateralPoolInstance, CollateralPoolTokenInstance,
     DistributionToDelegatorsMockInstance,
     ERC20MockInstance,
-    FAssetInstance,
-    IERC165Contract
+    FAssetInstance
 } from "../../../typechain-truffle";
-import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
 
 function assertEqualBN(a: BN, b: BN, message?: string) {
     assert.equal(a.toString(), b.toString(), message);
@@ -92,7 +88,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         );
         collateralPoolToken = await CollateralPoolToken.new(collateralPool.address, "FAsset Collateral Pool Token BTC-AG1", "FCPT-BTC-AG1");
         // set pool token
-        const payload = collateralPool.contract.methods.setPoolToken(collateralPoolToken.address).encodeABI();
+        const payload = abiEncodeCall(collateralPool, (p) => p.setPoolToken(collateralPoolToken.address));
         await assetManager.callFunctionAt(collateralPool.address, payload);
         // synch collateral pool constants
         MIN_NAT_TO_ENTER = await collateralPool.MIN_NAT_TO_ENTER();
@@ -116,7 +112,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
     async function givePoolFAssetFees(amount: BN) {
         await fAsset.mint(collateralPool.address, amount, { from: assetManager.address });
-        const payload = collateralPool.contract.methods.fAssetFeeDeposited(amount).encodeABI();
+        const payload = abiEncodeCall(collateralPool, (p) => p.fAssetFeeDeposited(amount));
         await assetManager.callFunctionAt(collateralPool.address, payload);
     }
 
@@ -222,14 +218,14 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
 
         it("should fail at resetting pool token", async () => {
-            const payload = collateralPool.contract.methods.setPoolToken(collateralPoolToken.address).encodeABI();
+            const payload = abiEncodeCall(collateralPool, (p) => p.setPoolToken(collateralPoolToken.address));
             const prms = assetManager.callFunctionAt(collateralPool.address, payload);
             await expectRevert(prms, "pool token already set");
         });
 
         it("should correctly set exit collateral ratio", async () => {
             const setTo = BN_ONE;
-            const payload = collateralPool.contract.methods.setExitCollateralRatioBIPS(setTo).encodeABI();
+            const payload = abiEncodeCall(collateralPool, (p) => p.setExitCollateralRatioBIPS(setTo));
             await assetManager.callFunctionAt(collateralPool.address, payload);
             const newExitCollateralCR = await collateralPool.exitCollateralRatioBIPS();
             assertEqualBN(newExitCollateralCR, setTo);
@@ -240,7 +236,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await collateralPool.enter({ value: ETH(100) });
             // upgrade the wnat contract
             const newWNat: ERC20MockInstance = await ERC20Mock.new("new wnat", "WNat");
-            const payload = collateralPool.contract.methods.upgradeWNatContract(newWNat.address).encodeABI();
+            const payload = abiEncodeCall(collateralPool, (p) => p.upgradeWNatContract(newWNat.address));
             await assetManager.callFunctionAt(collateralPool.address, payload);
             // check that wnat contract was updated
             const wnatFromCollateralPool = await collateralPool.wNat();
@@ -253,7 +249,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
 
         it("should upgrade wnat contract with old wnat contract", async () => {
-            const payload = collateralPool.contract.methods.upgradeWNatContract(wNat.address).encodeABI();
+            const payload = abiEncodeCall(collateralPool, (p) => p.upgradeWNatContract(wNat.address));
             await assetManager.callFunctionAt(collateralPool.address, payload);
             const newWNat = await collateralPool.wNat();
             expect(newWNat).to.equal(wNat.address);
@@ -479,10 +475,10 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 // set timelock to 1 hour
                 await assetManager.setTimelockDuration(time.duration.hours(1));
                 // agent enters the pool
-                const payload1 = collateralPool.contract.methods.enter().encodeABI();
+                const payload1 = abiEncodeCall(collateralPool, (p) => p.enter());
                 await agentVault.callFunctionAt(collateralPool.address, payload1, ETH(100), { value: ETH(100) });
                 // agent is forced to payout by the asset manager
-                const payload2 = collateralPool.contract.methods.payout(accounts[1], ETH(80), ETH(40)).encodeABI();
+                const payload2 = abiEncodeCall(collateralPool, (p) => p.payout(accounts[1], ETH(80), ETH(40)));
                 const resp = await assetManager.callFunctionAt(collateralPool.address, payload2);
                 await expectEvent.inTransaction(resp.tx, collateralPool, "CPPaidOut", {
                     recipient: accounts[1], paidNatWei: ETH(80), burnedTokensWei: ETH(40)
@@ -539,7 +535,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         it("should enter tokenless and f-assetless pool holding some collateral", async () => {
             // artificially make pool have no tokens but have collateral (this might not be possible with non-mocked asset manager)
             await agentVault.enterPool(collateralPool.address, { value: ETH(10) });
-            const assetManagerPayout = collateralPool.contract.methods.payout(accounts[0], 0, ETH(10)).encodeABI();
+            const assetManagerPayout = abiEncodeCall(collateralPool, (p) => p.payout(accounts[0], 0, ETH(10)));
             await assetManager.callFunctionAt(collateralPool.address, assetManagerPayout);
             assertEqualBN(await collateralPoolToken.totalSupply(), BN_ZERO);
             assertEqualBN(await wNat.balanceOf(collateralPool.address), ETH(10));
@@ -1138,7 +1134,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         it.skip("coinspect - can steal all auto-claimed rewards upon destruction", async () => {
             const contract = await MockContract.new();
             // @ts-expect-error (collateral pool does not have auto claiming anymore)
-            await collateralPool.setAutoClaiming(contract.address, [accounts[2]], { from: agent });
+            await collateralPool.setAutoClaiming(contract.address, [accounts[2]], { from: agent });     // eslint-disable-line @typescript-eslint/no-unsafe-call
             let totalCollateral = await collateralPool.totalCollateral();
             let poolwNatBalance = await wNat.balanceOf(collateralPool.address);
             console.log("\n === Initial Pool State ===");
@@ -1154,7 +1150,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             let balanceOfAgent = await wNat.balanceOf(agent);
             console.log("\n === Before Pool Destruction ===");
             console.log(`Agent wNAT balance: ${balanceOfAgent}`);
-            const payload = collateralPool.contract.methods.destroy(agent).encodeABI();
+            const payload = abiEncodeCall(collateralPool, (p) => p.destroy(agent));
             await assetManager.callFunctionAt(collateralPool.address, payload);
             balanceOfAgent = await wNat.balanceOf(agent);
             console.log("\n === After Pool Destruction ===");
@@ -1172,7 +1168,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         it("should fail destroying a pool with issued tokens", async () => {
             await collateralPool.enter({ value: ETH(1) });
-            const payload = collateralPool.contract.methods.destroy(agent).encodeABI();
+            const payload = abiEncodeCall(collateralPool, (p) => p.destroy(agent));
             const prms = assetManager.callFunctionAt(collateralPool.address, payload);
             await expectRevert(prms, "cannot destroy a pool with issued tokens");
         });
@@ -1183,14 +1179,14 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await mockAirdrop.givenAnyReturnUint(ETH(1));
             await collateralPool.claimAirdropDistribution(mockAirdrop.address, 1, { from: agent });
             // destroy
-            const payload = collateralPool.contract.methods.destroy(agent).encodeABI();
+            const payload = abiEncodeCall(collateralPool, (p) => p.destroy(agent));
             const prms = assetManager.callFunctionAt(collateralPool.address, payload);
             await expectRevert(prms, "cannot destroy a pool holding collateral");
         });
 
         it.skip("should fail at destroying a pool holding f-assets", async () => {
             await givePoolFAssetFees(ETH(1));
-            const payload = collateralPool.contract.methods.destroy(agent).encodeABI();
+            const payload = abiEncodeCall(collateralPool, (p) => p.destroy(agent));
             const prms = assetManager.callFunctionAt(collateralPool.address, payload);
             await expectRevert(prms, "cannot destroy a pool holding f-assets");
         });
@@ -1200,7 +1196,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await wNat.mintAmount(collateralPool.address, ETH(1));
             await fAsset.mint(collateralPool.address, ETH(2), { from: assetManager.address });
             // destroy through asset manager
-            const payload = collateralPool.contract.methods.destroy(agent).encodeABI();
+            const payload = abiEncodeCall(collateralPool, (p) => p.destroy(agent));
             await assetManager.callFunctionAt(collateralPool.address, payload);
             // check that funds were transacted correctly
             assertEqualBN(await wNat.balanceOf(collateralPool.address), BN_ZERO);
@@ -1214,7 +1210,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await transferWithSuicide(ETH(3), accounts[0], collateralPool.address);
             // destroy through asset manager
             const wNatBefore = await wNat.balanceOf(agent);
-            const payload = collateralPool.contract.methods.destroy(agent).encodeABI();
+            const payload = abiEncodeCall(collateralPool, (p) => p.destroy(agent));
             await assetManager.callFunctionAt(collateralPool.address, payload);
             const wNatAfter = await wNat.balanceOf(agent);
             // check that funds were transacted correctly
@@ -1227,7 +1223,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await agentVault.enterPool(collateralPool.address, { value: ETH(100) });
             const agentVaultTokensBeforePayout = await collateralPoolToken.balanceOf(agentVault.address);
             // force payout from asset manager
-            const collateralPayoutPayload = collateralPool.contract.methods.payout(accounts[0], ETH(1), ETH(1)).encodeABI();
+            const collateralPayoutPayload = abiEncodeCall(collateralPool, (p) => p.payout(accounts[0], ETH(1), ETH(1)));
             await assetManager.callFunctionAt(collateralPool.address, collateralPayoutPayload);
             // check that account0 has received specified wNat
             const natOfAccount0 = await wNat.balanceOf(accounts[0]);
@@ -1316,7 +1312,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
     describe("ERC-165 interface identification for Collateral Pool", () => {
         it("should properly respond to supportsInterface", async () => {
-            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
             const ICollateralPool = artifacts.require("ICollateralPool");
             const IICollateralPool = artifacts.require("IICollateralPool");
             const iERC165 = await IERC165.at(agentVault.address);

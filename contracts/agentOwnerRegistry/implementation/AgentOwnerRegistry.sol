@@ -2,11 +2,23 @@
 pragma solidity ^0.8.27;
 
 import {IAgentOwnerRegistry} from "../../userInterfaces/IAgentOwnerRegistry.sol";
-import {Whitelist} from "./Whitelist.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {Governed} from "../../governance/implementation/Governed.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 
 
-contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {
+contract AgentOwnerRegistry is Governed, IERC165, IAgentOwnerRegistry {
+
+    event ManagerChanged(address manager);
+
+    /**
+     * When nonzero, this is the address that can perform whitelisting operations
+     * instead of the governance.
+     */
+    address public manager;
+
+    mapping(address => bool) private whitelist;
+
     mapping(address => address) private workToMgmtAddress;
     mapping(address => address) private mgmtToWorkAddress;
 
@@ -15,9 +27,23 @@ contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {
     mapping(address => string) private agentIconUrl;
     mapping(address => string) private agentTouUrl;
 
-    constructor(IGovernanceSettings _governanceSettings, address _initialGovernance, bool _supportRevoke)
-        Whitelist(_governanceSettings, _initialGovernance, _supportRevoke)
-    {
+    modifier onlyGovernanceOrManager {
+        require(msg.sender == manager || msg.sender == governance(), "only governance or manager");
+        _;
+    }
+
+    constructor(IGovernanceSettings _governanceSettings, address _initialGovernance)
+        Governed(_governanceSettings, _initialGovernance)
+    { // solhint-disable-line no-empty-blocks
+    }
+
+    function revokeAddress(address _address) external onlyGovernanceOrManager {
+        _removeAddressFromWhitelist(_address);
+    }
+
+    function setManager(address _manager) external onlyGovernance {
+        manager = _manager;
+        emit ManagerChanged(_manager);
     }
 
     /**
@@ -186,6 +212,23 @@ contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {
         return workToMgmtAddress[_workAddress];
     }
 
+    function isWhitelisted(address _address) public view override returns (bool) {
+        return whitelist[_address];
+    }
+
+    function _addAddressToWhitelist(address _address) internal {
+        require(_address != address(0), "address zero");
+        if (whitelist[_address]) return;
+        whitelist[_address] = true;
+        emit Whitelisted(_address);
+    }
+
+    function _removeAddressFromWhitelist(address _address) internal {
+        if (!whitelist[_address]) return;
+        delete whitelist[_address];
+        emit WhitelistingRevoked(_address);
+    }
+
     function _setAgentData(
         address _managementAddress,
         string memory _name,
@@ -215,7 +258,7 @@ contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {
         public pure override
         returns (bool)
     {
-        return Whitelist.supportsInterface(_interfaceId)
+        return _interfaceId == type(IERC165).interfaceId
             || _interfaceId == type(IAgentOwnerRegistry).interfaceId;
     }
 }

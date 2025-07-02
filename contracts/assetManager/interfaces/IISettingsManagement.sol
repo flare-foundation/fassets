@@ -9,9 +9,6 @@ interface IISettingsManagement {
     function updateSystemContracts(address _controller, IWNat _wNat)
         external;
 
-    function setWhitelist(address _value)
-        external;
-
     function setAgentOwnerRegistry(address _value)
         external;
 

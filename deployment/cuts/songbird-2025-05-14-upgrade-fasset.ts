@@ -14,10 +14,11 @@ runDeployScript(async ({ hre, artifacts, contracts, deployer }) => {
 
     const fAssetImpl = await FAsset.at(newFAssetImplAddress); // only used for abi
 
-    const abi = assetManagerController.contract.methods.upgradeFAssetImplementation(
-        assetManagerAddresses,
-        newFAssetImplAddress,
-        abiEncodeCall(fAssetImpl, (fasset) => fasset.initializeV1r1())).encodeABI();
+    const abi = abiEncodeCall(assetManagerController,
+        (amc) => amc.upgradeFAssetImplementation(
+            assetManagerAddresses,
+            newFAssetImplAddress,
+            abiEncodeCall(fAssetImpl, (fasset) => fasset.initializeV1r1())));
     console.log(JSON.stringify([assetManagerAddresses,
         newFAssetImplAddress,
         abiEncodeCall(fAssetImpl, (fasset) => fasset.initializeV1r1())], null, 4))

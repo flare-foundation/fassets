@@ -1368,6 +1368,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         const tx = await coreVaultManager.triggerInstructions({
           from: accounts[1],
         });
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         console.log("triggering 50 payment + 50 escrow instructions - gas used: ", tx.receipt.gasUsed);
 
         const currentTimestamp = await time.latest();
@@ -2063,7 +2064,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
           "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165"
         );
         const IIAddressUpdatable = artifacts.require(
-          "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdatable.sol:IIAddressUpdatable" as "IIAddressUpdatable"
+          "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interfaces/IIAddressUpdatable.sol:IIAddressUpdatable" as "IIAddressUpdatable"
         );
         const IICoreVaultManager = artifacts.require("IICoreVaultManager");
         const ICoreVaultManager = artifacts.require("ICoreVaultManager");

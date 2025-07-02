@@ -5,7 +5,6 @@ import {Agents} from "../library/Agents.sol";
 import {Globals} from "../library/Globals.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
-import {IWhitelist} from "../../userInterfaces/IWhitelist.sol";
 
 
 abstract contract AssetManagerBase {
@@ -16,11 +15,6 @@ abstract contract AssetManagerBase {
 
     modifier onlyAttached {
         _checkOnlyAttached();
-        _;
-    }
-
-    modifier onlyWhitelistedSender {
-        _checkOnlyWhitelistedSender();
         _;
     }
 
@@ -41,13 +35,6 @@ abstract contract AssetManagerBase {
 
     function _checkOnlyAttached() private view {
         require(AssetManagerState.get().attached, "not attached");
-    }
-
-    function _checkOnlyWhitelistedSender() private view {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        if (settings.whitelist != address(0)) {
-            require(IWhitelist(settings.whitelist).isWhitelisted(msg.sender), "not whitelisted");
-        }
     }
 
     function _checkEmergencyPauseNotActive() private view {

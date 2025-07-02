@@ -1,5 +1,7 @@
 import fs from "fs";
-import { BN_ZERO } from "../../../lib/utils/helpers";
+import { BN_ZERO, BNish } from "../../../lib/utils/helpers";
+
+export type AnyCellType = BN | string | number | null;
 
 export class BalanceTrackingRow {
     constructor(data: Partial<BalanceTrackingRow>) {
@@ -8,7 +10,7 @@ export class BalanceTrackingRow {
 
     block: number | null = null;
     operation: string = "?";
-    requestId: any = null;
+    requestId: BNish | null = null;
     underlyingDeposit: BN = BN_ZERO;
     underlyingWithdraw: BN = BN_ZERO;
     mintAmount: BN = BN_ZERO;
@@ -54,11 +56,11 @@ export class BalanceTrackingList {
         return new BalanceTrackingSummary({ actualUnderlying, accountedUnderlying, requiredUnderlying, freeUnderlying });
     }
 
-    formatCell(x: any) {
+    formatCell(x: AnyCellType) {
         return String(x ?? '');
     }
 
-    writeLine(fd: number, line: any[]) {
+    writeLine(fd: number, line: AnyCellType[]) {
         const str = line.map(x => this.formatCell(x)).join(';') + '\r\n';
         fs.writeSync(fd, str, null, 'utf-8');
     }
@@ -70,6 +72,7 @@ export class BalanceTrackingList {
             'Actual underlying', 'Accounted underlying', 'Required underlying', 'Free underlying']);
         for (const row of this.list) {
             summary = this.updateSummary(summary, row);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             this.writeLine(fd, Object.values(row).concat(Object.values(summary)));
         }
         this.writeLine(fd, []);

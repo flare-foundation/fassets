@@ -62,7 +62,6 @@ library SettingsInitializer {
         require(_settings.ccbTimeSeconds > 0, "cannot be zero");
         require(_settings.maxTrustedPriceAgeSeconds > 0, "cannot be zero");
         require(_settings.minUpdateRepeatTimeSeconds > 0, "cannot be zero");
-        require(_settings.buybackCollateralFactorBIPS > 0, "cannot be zero");
         require(_settings.withdrawalWaitMinSeconds > 0, "cannot be zero");
         require(_settings.averageBlockTimeMS > 0, "cannot be zero");
         SettingsValidators.validateTimeForPayment(_settings.underlyingBlocksForPayment,
@@ -82,6 +81,10 @@ library SettingsInitializer {
         require(_settings.liquidationStepSeconds > 0, "cannot be zero");
         SettingsValidators.validateLiquidationFactors(_settings.liquidationCollateralFactorBIPS,
             _settings.liquidationFactorVaultCollateralBIPS);
+
+        // removed settings
+        require(_settings.__whitelist == address(0), "must be zero");
+        require(_settings.__buybackCollateralFactorBIPS == 0, "must be zero");
         require(_settings.__minUnderlyingBackingBIPS == 0, "must be zero");
         require(_settings.__redemptionDefaultFactorPoolBIPS == 0, "must be zero");
         require(_settings.__cancelCollateralReservationAfterSeconds == 0, "must be zero");

@@ -188,7 +188,7 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
             : block.hash;
         // delete old indexes
         delete this.blockIndex[hash];
-        for (const [i, tx] of block.transactions.entries()) {
+        for (const tx of block.transactions) {
             delete this.transactionIndex[tx.hash];
         }
         // add changed
@@ -225,7 +225,7 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
             }
             const negative = Object.entries(changedBalances).filter(([address, value]) => value.isNeg());
             if (negative.length > 0) {
-                for (const [address, value] of negative) {
+                for (const [address, _] of negative) {
                     this.logger?.log(`!!! Mock chain: transaction ${transaction.hash} makes balance of ${address} negative`);
                 }
                 transaction.status = TX_FAILED;

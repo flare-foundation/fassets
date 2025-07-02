@@ -12,7 +12,7 @@ import {IFdcVerification, IPayment} from "@flarenetwork/flare-periphery-contract
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 import {GovernedBase} from "../../governance/implementation/GovernedBase.sol";
 import {IIAddressUpdatable}
-    from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdatable.sol";
+    from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interfaces/IIAddressUpdatable.sol";
 
 // TODO:(matej) this is needed for inherited docs and needs to be looked into
 // maybe we should inherit from IICoreVaultManager instead

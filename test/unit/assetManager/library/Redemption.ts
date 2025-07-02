@@ -2,6 +2,7 @@ import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManag
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { TestChainInfo, testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { impersonateContract, stopImpersonatingContract } from "../../../../lib/test-utils/contract-test-helpers";
+import { calcGasCost } from "../../../../lib/test-utils/eth";
 import { AssetManagerInitSettings, newAssetManager } from "../../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
@@ -198,6 +199,25 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
         const res = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
         expectEvent(res, 'RedemptionPerformed');
+    });
+
+    it("should update underlying block with redemption proof", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
+        const request = await mintAndRedeemFromAgent(agentVault, collateralPool.address, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
+        //perform redemption payment
+        const paymentAmt = request.valueUBA.sub(request.feeUBA);
+        const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
+        const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
+        const res = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
+        expectEvent(res, 'RedemptionPerformed');
+        // assert
+        const { 0: underlyingBlock, 1: underlyingTime, 2: updateTime } = await assetManager.currentUnderlyingBlock();
+        assertWeb3Equal(underlyingBlock, toBN(proofR.data.responseBody.blockNumber).addn(1));
+        assert.isTrue(underlyingTime.gt(toBN(proofR.data.responseBody.blockTimestamp)));
+        assertWeb3Equal(updateTime, await time.latest());
     });
 
     it("should confirm redemption payment from agent in collateral", async () => {
@@ -418,7 +438,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const res = await assetManager.redemptionPaymentDefault(proof, request.requestId, { from: executorAddress1 });
         const executorBalanceEnd = toBN(await web3.eth.getBalance(executorAddress1));
         const executorWNatBalanceEnd = await wNat.balanceOf(executorAddress1);
-        const gasFee = toBN(res.receipt.gasUsed).mul(toBN(res.receipt.effectiveGasPrice));
+        const gasFee = calcGasCost(res);
         expectEvent(res, 'RedemptionDefault');
         assertWeb3Equal(executorBalanceStart.sub(executorBalanceEnd), gasFee);
         assertWeb3Equal(executorWNatBalanceEnd.sub(executorWNatBalanceStart), executorFee);
@@ -620,6 +640,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await fAsset.transfer(redeemerAddress1, minted.mintedAmountUBA, { from: minterAddress1 });
         // redemption request
         const resR = await assetManager.redeem(lots, underlyingRedeemer1, executorAddress1, { from: redeemerAddress1, value: executorFee });
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         console.log(resR.receipt.gasUsed);
     });
 

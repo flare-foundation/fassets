@@ -6,7 +6,7 @@ import { AssetManagerInitSettings, newAssetManager } from "../../../../lib/test-
 import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { ether, expectEvent, expectRevert, time } from "../../../../lib/test-utils/test-helpers";
-import { TestSettingsContracts, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings } from "../../../../lib/test-utils/test-settings";
+import { TestSettingsContracts, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings, whitelistAgentOwner } from "../../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
@@ -83,6 +83,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
         // assert
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
+        // whitelist agent management address
+        await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
         await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
     });
 
@@ -93,6 +95,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, null);
         // assert
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
+        // whitelist agent management address
+        await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
         await expectRevert(assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 }), "invalid address ownership proof");
     });
 
@@ -105,6 +109,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         chain.mine(3);  // skip some blocks
         const proofBlock = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
         await assetManager.updateCurrentBlock(proofBlock);
+        // whitelist agent management address
+        await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
         await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
         // assert
         const { 0: currentBlock } = await assetManager.currentUnderlyingBlock();
@@ -129,6 +135,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         // act
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
+        // whitelist agent management address
+        await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
         await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
         const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
         assert.isTrue(addressValidityProof.data.responseBody.isValid);
@@ -149,6 +157,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
     it("should create agent from owner's work address", async () => {
         // init
         chain.mint(underlyingAgent1, toBNExp(100, 18));
+        // whitelist agent management address
+        await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
         const ownerWorkAddress = accounts[21];
         await contracts.agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
         // act
@@ -179,6 +189,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         assert.isFalse(addressValidityProof.data.responseBody.isValid);
         assert.isFalse(addressValidityProof.data.responseBody.isValid);
         const agentSettings = createTestAgentSettings(usdc.address);
+        // whitelist agent management address
+        await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
         await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
             "address invalid");
     });
@@ -194,6 +206,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
         assert.isTrue(addressValidityProof.data.responseBody.isValid);
         const agentSettings = createTestAgentSettings(usdc.address);
+        // whitelist agent management address
+        await whitelistAgentOwner(settings.agentOwnerRegistry, accounts[0]);
         await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings)),
             "address already claimed");
     });
@@ -266,6 +280,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
         assert.isTrue(addressValidityProof.data.responseBody.isValid);
         const agentSettings = createTestAgentSettings(usdc.address);
+        // whitelist agent management address
+        await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
         await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
             "EOA proof required");
     });
@@ -279,6 +295,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         // assert
         const addressValidityProof = await attestationProvider.proveAddressValidity("INVALID_ADDRESS");
         const agentSettings = createTestAgentSettings(usdc.address);
+        // whitelist agent management address
+        await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
         await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
             "address invalid");
     });
@@ -317,6 +335,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         // assert
         const addressValidityProof: AddressValidity.Proof = createAddressValidityProof();
         const agentSettings = createTestAgentSettings(usdc.address);
+        // whitelist agent management address
+        await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
         await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
             "address validity not proved");
     });
@@ -332,6 +352,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         // should not work with wrong attestation type
         addressValidityProof.data.attestationType = Payment.TYPE;
         await forceProveResponse("AddressValidity", addressValidityProof.data);
+        // whitelist agent management address
+        await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
         await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
             "address validity not proved");
         // should work with correct attestation type

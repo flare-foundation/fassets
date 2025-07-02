@@ -9,8 +9,8 @@ import { TestSettingsContracts, createTestAgent, createTestCollaterals, createTe
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
-import { erc165InterfaceId, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
-import { AgentVaultInstance, AssetManagerMockInstance, CollateralPoolInstance, CollateralPoolTokenInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, IIAssetManagerControllerInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../typechain-truffle";
+import { abiEncodeCall, erc165InterfaceId, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { AgentVaultInstance, AssetManagerMockInstance, CollateralPoolInstance, CollateralPoolTokenInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../typechain-truffle";
 
 const AgentVault = artifacts.require("AgentVault");
 const MockContract = artifacts.require('MockContract');
@@ -118,13 +118,13 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
             // create pool
             const pool = await CollateralPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000);
             const token = await CollateralPoolToken.new(pool.address, "FAsset Collateral Pool Token ETH-AG1", "FCPT-ETH-AG1");
-            await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.setPoolToken(token.address).encodeABI());
+            await assetManagerMock.callFunctionAt(pool.address, abiEncodeCall(pool, (p) => p.setPoolToken(token.address)));
             await assetManagerMock.setCollateralPool(pool.address);
             // deposit nat
             await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
             // mint fAssets to the pool
             await fAsset.mint(pool.address, toWei(10), { from: assetManagerMock.address });
-            await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.fAssetFeeDeposited(toWei(1000)).encodeABI());
+            await assetManagerMock.callFunctionAt(pool.address, abiEncodeCall(pool, (p) => p.fAssetFeeDeposited(toWei(1000))));
             // withdraw pool fees
             await agentVault.withdrawPoolFees(toWei(10), owner, { from: owner });
             const ownerFassets = await fAsset.balanceOf(owner);
@@ -233,7 +233,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
     it("should delegate", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         await agentVault.delegate(wNat.address, accounts[2], 50, { from: owner });
-        const { _delegateAddresses } = await wNat.delegatesOf(agentVault.address) as any;
+        const { 0: _delegateAddresses } = await wNat.delegatesOf(agentVault.address);
         assertWeb3Equal(_delegateAddresses[0], accounts[2]);
     });
 
@@ -241,12 +241,12 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
         const agentVault = await AgentVault.new(assetManagerMock.address);
         await agentVault.delegate(wNat.address, accounts[2], 50, { from: owner });
         await agentVault.delegate(wNat.address, accounts[3], 10, { from: owner });
-        const resDelegate = await wNat.delegatesOf(agentVault.address) as any;
-        assertWeb3Equal(resDelegate._delegateAddresses.length, 2);
+        const { 0: delegateAddresses } = await wNat.delegatesOf(agentVault.address);
+        assertWeb3Equal(delegateAddresses.length, 2);
 
         await agentVault.undelegateAll(wNat.address, { from: owner });
-        const resUndelegate = await wNat.delegatesOf(agentVault.address) as any;
-        assertWeb3Equal(resUndelegate._delegateAddresses.length, 0);
+        const { 0: undelegateAddresses } = await wNat.delegatesOf(agentVault.address);
+        assertWeb3Equal(undelegateAddresses.length, 0);
     });
 
     it("cannot undelegate if not owner", async () => {
@@ -270,7 +270,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
             type: "function", name: "delegate",
             inputs: [{ name: "_to", type: "address" }]
         } as AbiItem,
-            [accounts[2]] as any[]);
+            [accounts[2]]);
         const invocationCount = await governanceVP.invocationCountForCalldata.call(delegate);
         assert.equal(invocationCount.toNumber(), 1);
     });
@@ -290,7 +290,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
             type: "function", name: "undelegate",
             inputs: []
         } as AbiItem,
-            [] as any[]);
+            []);
         const invocationCount = await governanceVP.invocationCountForCalldata.call(undelegate);
         assert.equal(invocationCount.toNumber(), 1);
     });
@@ -357,14 +357,13 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
         const erc20 = await ERC20Mock.new("XTOK", "XToken");
         const agentVault = await AgentVault.new(assetManagerMock.address);
         await erc20.mintAmount(agentVault.address, 100);
-        await assetManagerMock.callFunctionAt(agentVault.address, agentVault.contract.methods.payout(
-            erc20.address, owner, 100).encodeABI(), { from: owner });
+        await assetManagerMock.callFunctionAt(agentVault.address, abiEncodeCall(agentVault, (av) => av.payout(erc20.address, owner, 100)), { from: owner });
         assertWeb3Equal(await erc20.balanceOf(owner), toBN(100));
     });
 
     describe("ERC-165 interface identification for Agent Vault", () => {
         it("should properly respond to supportsInterface", async () => {
-            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
             const IAgentVault = artifacts.require("IAgentVault");
             const IIAgentVault = artifacts.require("IIAgentVault");
             const agentVault = await createAgentVault(owner, underlyingAgent1);
@@ -407,13 +406,13 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
             // create pool
             const pool = await CollateralPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000);
             const token = await CollateralPoolToken.new(pool.address, "FAsset Collateral Pool Token ETH-AG2", "FCPT-ETH-AG2");
-            await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.setPoolToken(token.address).encodeABI());
+            await assetManagerMock.callFunctionAt(pool.address, abiEncodeCall(pool, (p) => p.setPoolToken(token.address)));
             await assetManagerMock.setCollateralPool(pool.address);
             // deposit nat
             await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
             // mint fAssets to the pool
             await fAsset.mint(pool.address, toWei(10), { from: assetManagerMock.address });
-            await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.fAssetFeeDeposited(toWei(1000)).encodeABI());
+            await assetManagerMock.callFunctionAt(pool.address, abiEncodeCall(pool, (p) => p.fAssetFeeDeposited(toWei(1000))));
             // withdraw pool fees
             const res = agentVault.withdrawPoolFees(toWei(10), owner, { from: accounts[14] });
             await expectRevert(res, "only owner");

@@ -6,7 +6,7 @@ import BN from "bn.js";
  * Web3/truffle sometimes returns numbers as BN and sometimes as strings and accepts strings, BN and numbers.
  * This function converts all number formats to string for simpler comparison.
  */
-export function web3Normalize(x: any) {
+export function web3Normalize(x: unknown) {
     if (x == null)
         return null; // undefined also converted to null
     switch (typeof x) {
@@ -33,9 +33,9 @@ export function web3Normalize(x: any) {
  * This function converts all number formats to string for simpler comparison.
  * Also converts all struct and array members recursively.
  */
-export function web3DeepNormalize<T = any>(value: T): T {
-    function normalizeArray(arr: any[]) {
-        const result: any[] = [];
+export function web3DeepNormalize<T>(value: T): T {
+    function normalizeArray<E>(arr: E[]): E[] {
+        const result: E[] = [];
         visited.add(arr);
         for (const v of arr) {
             result.push(normalizeImpl(v));
@@ -43,37 +43,37 @@ export function web3DeepNormalize<T = any>(value: T): T {
         visited.delete(arr);
         return result;
     }
-    function normalizeObject(obj: any[]) {
+    function normalizeObject<E extends object>(obj: E): E {
         if (obj.constructor !== Object) {
             throw new Error(`Unsupported object type ${obj.constructor.name}`);
         }
-        const result: any = {};
+        const result: Record<string, unknown> = {};
         visited.add(obj);
         for (const [k, v] of Object.entries(obj)) {
             result[k] = normalizeImpl(v);
         }
         visited.delete(obj);
-        return result;
+        return result as E;
     }
-    function normalizeImpl(obj: any): any {
+    function normalizeImpl<E>(obj: E): E {
         if (obj == null) {
-            return null; // undefined also converted to null
+            return null as E; // undefined also converted to null
         } else if (visited.has(obj)) {
             throw new Error("Circular structure");
         } else if (typeof obj === "object") {
             if (BN.isBN(obj)) {
-                return obj.toString(10);
+                return obj.toString(10) as E;
             // } else if (BigNumber.isBigNumber(obj)) {
             //     return obj.toString();
             } else if (Array.isArray(obj)) {
-                return normalizeArray(obj);
+                return normalizeArray(obj) as E;
             } else {
                 return normalizeObject(obj);
             }
         } else {
-            return web3Normalize(obj); // normalize as primitive
+            return web3Normalize(obj) as E; // normalize as primitive
         }
     }
-    const visited = new Set<any>();
+    const visited = new Set<unknown>();
     return normalizeImpl(value);
 }

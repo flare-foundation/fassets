@@ -46,8 +46,8 @@ library Agent {
         // management and work addresses.
         address ownerManagementAddress;
 
-        // Current address for underlying agent's collateral.
-        // Agent can change this address anytime and it affects future mintings.
+        // Current underlying address for this agent vault.
+        // The address is immutable.
         string underlyingAddressString;
 
         // `underlyingAddressString` is only used for sending the minter a correct payment address;

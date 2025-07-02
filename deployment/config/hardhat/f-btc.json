@@ -9,7 +9,6 @@
     "fAssetSymbol": "FBTC",
     "poolTokenSuffix": "BTC",
     "assetMintingDecimals": 8,
-    "userWhitelist": null,
     "poolCollateral": {
         "token": "WNat",
         "decimals": 18,
@@ -73,7 +72,6 @@
     "maxTrustedPriceAgeSeconds": 600,
     "withdrawalWaitMinSeconds": 60,
     "announcedUnderlyingConfirmationMinSeconds": 250,
-    "buybackCollateralFactorBIPS": 10500,
     "vaultCollateralBuyForFlareFactorBIPS": 10500,
     "minUpdateRepeatTimeSeconds": 86400,
     "tokenInvalidationTimeMinSeconds": 86400,

@@ -194,9 +194,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
-            await context.createWhitelists();
-            await context.whitelist?.addAddressesToWhitelist([minter.address, redeemer.address], { from: governance });
-            await context.agentOwnerRegistry?.addAddressToWhitelist(agentOwner1, { from: governance });
+            await context.createAgentOwnerRegistry();
+            await context.agentOwnerRegistry?.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
             // make agent available
             const fullAgentCollateral = toWei(3e8);
             await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
@@ -241,15 +240,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const tx1Hash = await agent.performRedemptionPayment(request);
             await agent.confirmActiveRedemptionPayment(request, tx1Hash);
             await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: agentFeeShare.add(request.feeUBA), redeemingUBA: 0 });
-            //Minter gets delisted from whitelist
-            const res = await context.whitelist?.revokeAddress(minter.address, { from: governance });
-            //Wait for timelock
-            if (res !== undefined && context.whitelist !== undefined) {
-                await waitForTimelock(res, context.whitelist, governance);
-            }
-            //Minter tries to mint again by reserving collateral
-            const tx = minter.reserveCollateral(agent.vaultAddress, lots);
-            await expectRevert(tx, "not whitelisted");
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);
         });

@@ -5,15 +5,14 @@ import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, w
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
-import { TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings } from "../../../lib/test-utils/test-settings";
+import { TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings, whitelistAgentOwner } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../../../lib/utils/events/truffle";
 import { ZERO_ADDRESS, erc165InterfaceId, toBNExp } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
-import { AgentOwnerRegistryInstance, AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance, WNatMockInstance, WhitelistInstance } from "../../../typechain-truffle";
+import { AgentOwnerRegistryInstance, AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../typechain-truffle";
 
-const Whitelist = artifacts.require('Whitelist');
 const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
 const AgentVault = artifacts.require('AgentVault');
 
@@ -32,7 +31,6 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
     let wallet: MockChainWallet;
     let flareDataConnectorClient: MockFlareDataConnectorClient;
     let attestationProvider: AttestationHelper;
-    let whitelist: WhitelistInstance;
     let agentOwnerRegistry: AgentOwnerRegistryInstance;
 
     const underlyingBurnAddr = "Burn";
@@ -41,6 +39,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
     const underlyingAgent1 = "Agent1";
 
     async function createAgentVaultWithEOA(owner: string, underlyingAddress: string): Promise<AgentVaultInstance> {
+        await whitelistAgentOwner(agentOwnerRegistry.address, owner);
         chain.mint(underlyingAddress, toBNExp(100, 18));
         const txHash = await wallet.addTransaction(underlyingAddress, underlyingBurnAddr, 1, PaymentReference.addressOwnership(owner));
         const proof = await attestationProvider.provePayment(txHash, underlyingAddress, underlyingBurnAddr);
@@ -64,9 +63,6 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         wallet = new MockChainWallet(chain);
         flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
-        // create whitelist
-        whitelist = await Whitelist.new(contracts.governanceSettings.address, governance, false);
-        await whitelist.switchToProductionMode({ from: governance });
         // create asset manager controller
         assetManagerController = await newAssetManagerController(contracts.governanceSettings.address, governance, contracts.addressUpdater.address);
         await assetManagerController.switchToProductionMode({ from: governance });
@@ -76,24 +72,104 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals,
             ci.assetName, ci.assetSymbol, { governanceSettings: contracts.governanceSettings, updateExecutor });
 
-        agentOwnerRegistry = await AgentOwnerRegistry.new(contracts.governanceSettings.address, governance, true);
+        agentOwnerRegistry = await AgentOwnerRegistry.new(contracts.governanceSettings.address, governance);
         await agentOwnerRegistry.switchToProductionMode({ from: governance });
 
         const res = await assetManagerController.setAgentOwnerRegistry([assetManager.address], agentOwnerRegistry.address, { from: governance });
         await waitForTimelock(res, assetManagerController, updateExecutor);
-        return { contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry };
+        return { contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry };
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry } =
+        ({ contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry } =
             await loadFixtureCopyVars(initialize));
     });
 
     describe("whitelist functions", () => {
+        it('should not add addresses if not governance or manager', async function () {
+            const res = agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url");
+            await expectRevert(res, "only governance or manager");
+        });
+
+        it('should not add address 0', async function () {
+            const res = agentOwnerRegistry.whitelistAndDescribeAgent(ZERO_ADDRESS, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
+            await expectRevert(res, "address zero");
+        });
+
+        it('should add addresses to the whitelist', async function () {
+            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(accounts[0], "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
+            expectEvent(res, "Whitelisted");
+            const res1 = await agentOwnerRegistry.whitelistAndDescribeAgent(accounts[1], "Agent 2", "Agent 2 description", "Agent 2 icon url", "Agent 2 tou url", { from: governance });
+            expectEvent(res1, "Whitelisted");
+            const isWhitelisted0 = await agentOwnerRegistry.isWhitelisted(accounts[0]);
+            const isWhitelisted1 = await agentOwnerRegistry.isWhitelisted(accounts[1]);
+
+            assert.equal(isWhitelisted0, true);
+            assert.equal(isWhitelisted1, true);
+        });
+
+        it('should not add addresses to the whitelist twice', async function () {
+            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(accounts[0], "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
+            expectEvent(res, "Whitelisted");
+            const res2 = await agentOwnerRegistry.whitelistAndDescribeAgent(accounts[0], "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
+            expectEvent.notEmitted(res2, "Whitelisted");
+        });
+
+        it('should revoke addresses from the whitelist', async function () {
+            const res_1 = await agentOwnerRegistry.whitelistAndDescribeAgent(accounts[0], "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
+            const res_2 = await agentOwnerRegistry.whitelistAndDescribeAgent(accounts[1], "Agent 2", "Agent 2 description", "Agent 2 icon url", "Agent 2 tou url", { from: governance });
+            const isWhitelisted0 = await agentOwnerRegistry.isWhitelisted(accounts[0]);
+            const isWhitelisted1 = await agentOwnerRegistry.isWhitelisted(accounts[1]);
+
+            assert.equal(isWhitelisted0, true);
+            assert.equal(isWhitelisted1, true);
+
+            await agentOwnerRegistry.revokeAddress(accounts[0], { from: governance });
+            const isWhitelisted = await agentOwnerRegistry.isWhitelisted(accounts[0]);
+            assert.equal(isWhitelisted, false);
+        });
+
+        it("should not revoke address from the whitelist if not governance or manager", async () => {
+            await agentOwnerRegistry.whitelistAndDescribeAgent(accounts[0], "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
+            await expectRevert(agentOwnerRegistry.revokeAddress(accounts[0], {from: accounts[5]}), "only governance or manager");
+        });
+
+        it('should not revoke addresses from the whitelist twice', async function () {
+            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(accounts[0], "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
+            expectEvent(res, "Whitelisted");
+            const res2w = await agentOwnerRegistry.revokeAddress(accounts[0], { from: governance });
+            expectEvent(res2w, "WhitelistingRevoked");
+            const res3w = await agentOwnerRegistry.revokeAddress(accounts[0], { from: governance });
+            expectEvent.notEmitted(res3w, "WhitelistingRevoked");
+            const res4w = await agentOwnerRegistry.revokeAddress(accounts[5], { from: governance });
+            expectEvent.notEmitted(res4w, "WhitelistingRevoked");
+        });
+
+        it("governance can assign manager", async () => {
+            const manager = accounts[15];
+            const res = await waitForTimelock(agentOwnerRegistry.setManager(manager, { from: governance }), agentOwnerRegistry, governance);
+            expectEvent(res, "ManagerChanged", { manager });
+        });
+
+        it("manager can perform whitelisting operations", async () => {
+            const manager = accounts[15];
+            // cannot whitelist before being set
+            await expectRevert(agentOwnerRegistry.whitelistAndDescribeAgent(accounts[5], "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: manager }), "only governance or manager");
+            //
+            await waitForTimelock(agentOwnerRegistry.setManager(manager, { from: governance }), agentOwnerRegistry, governance);
+            await agentOwnerRegistry.whitelistAndDescribeAgent(accounts[5], "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: manager });
+            assert.isTrue(await agentOwnerRegistry.isWhitelisted(accounts[5]));
+            // revoke
+            await agentOwnerRegistry.revokeAddress(accounts[5], { from: manager });
+            assert.isFalse(await agentOwnerRegistry.isWhitelisted(accounts[5]));
+        });
+    });
+
+    describe("agent registry functions", () => {
         it("should not create agent from work address after revoking management address", async () => {
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             const ownerWorkAddress = accounts[21];
-            await agentOwnerRegistry.addAddressesToWhitelist([agentOwner1], {from: governance});
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
             await agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
             const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
             const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
@@ -101,7 +177,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const agentSettings = createTestAgentSettings(usdc.address);
 
             //Revoke address and wait for timelock
-            const rev = await agentOwnerRegistry.revokeAddress(agentOwner1, {from: governance});
+            const rev = await agentOwnerRegistry.revokeAddress(agentOwner1, { from: governance });
             await waitForTimelock(rev, agentOwnerRegistry, governance);
 
             //Try to create agent
@@ -118,13 +194,11 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const res = assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
             await expectRevert(res, "agent not whitelisted");
         });
-
-
     });
 
     describe("setting work address", () => {
         it("should set owner work address", async () => {
-            await agentOwnerRegistry.addAddressToWhitelist(agentOwner1, { from: governance });
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
             // create agent
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             // set owner work address
@@ -156,7 +230,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         it("should set owner work address after whitelisting", async () => {
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             const ownerWorkAddress = accounts[21];
-            await agentOwnerRegistry.addAddressesToWhitelist([agentOwner1], { from: governance });
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
             await agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
             const res = await agentOwnerRegistry.isWhitelisted(agentOwner1);
             assert.equal(res, true);
@@ -165,16 +239,16 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         it("should not allow setting work address if work address is set on another agent owner", async () => {
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             const ownerWorkAddress = accounts[21];
-            await agentOwnerRegistry.addAddressesToWhitelist([agentOwner1], { from: governance });
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
             await agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
 
-            await agentOwnerRegistry.addAddressesToWhitelist([agentOwner2], { from: governance });
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner2, "Agent 2", "Agent 2 description", "Agent 2 icon url", "Agent 2 tou url", { from: governance });
             const res = agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner2 });
             await expectRevert(res, "work address in use");
         });
 
         it("checking agent vault owner with work address should work", async () => {
-            await agentOwnerRegistry.addAddressToWhitelist(agentOwner1, { from: governance });
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
             // create agent
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             const workAddress = "0xe34BDff68a5b89216D7f6021c1AB25c012142425";
@@ -193,7 +267,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         it("should set owner work address after whitelisting", async () => {
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             const ownerWorkAddress = accounts[21];
-            await agentOwnerRegistry.addAddressesToWhitelist([agentOwner1], { from: governance });
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
             await agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
             const res = await agentOwnerRegistry.isWhitelisted(agentOwner1);
             assert.equal(res, true);
@@ -202,10 +276,10 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         it("should not allow setting work address if work address is set on another agent owner", async () => {
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             const ownerWorkAddress = accounts[21];
-            await agentOwnerRegistry.addAddressesToWhitelist([agentOwner1], { from: governance });
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
             await agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
 
-            await agentOwnerRegistry.addAddressesToWhitelist([agentOwner2], { from: governance });
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner2, "Agent 2", "Agent 2 description", "Agent 2 icon url", "Agent 2 tou url", { from: governance });
             const res = agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner2 });
             await expectRevert(res, "work address in use");
         });
@@ -232,7 +306,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const description = "This is first agent";
             const iconUrl = "https://some.address/icon.jpg";
             const touUrl = "https://some.address/tos.html";
-            await agentOwnerRegistry.addAddressToWhitelist(agentOwner1, { from: governance });
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
             const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: governance });
             expectEvent.notEmitted(res, "Whitelisted");
             expectEvent(res, "AgentDataChanged", { managementAddress: agentOwner1, name, description, iconUrl, termsOfUseUrl: touUrl });
@@ -301,17 +375,14 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         });
     });
 
-    describe("ERC-165 interface identification for Agent Vault", () => {
+    describe("ERC-165 interface identification for Agent Owner Registry", () => {
         it("should properly respond to supportsInterface", async () => {
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as 'IERC165');
-            const IWhitelist = artifacts.require("IWhitelist");
             const IAgentOwnerRegistry = artifacts.require("IAgentOwnerRegistry");
             const iERC165 = await IERC165.at(agentOwnerRegistry.address);
-            const iWhitelist = await IWhitelist.at(agentOwnerRegistry.address);
             const iAgentOwnerRegistry = await IAgentOwnerRegistry.at(agentOwnerRegistry.address);
             assert.isTrue(await agentOwnerRegistry.supportsInterface(erc165InterfaceId(iERC165.abi)));
-            assert.isTrue(await agentOwnerRegistry.supportsInterface(erc165InterfaceId(iWhitelist.abi)));
-            assert.isTrue(await agentOwnerRegistry.supportsInterface(erc165InterfaceId(iAgentOwnerRegistry.abi, [iWhitelist.abi])));
+            assert.isTrue(await agentOwnerRegistry.supportsInterface(erc165InterfaceId(iAgentOwnerRegistry.abi)));
             assert.isFalse(await agentOwnerRegistry.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });

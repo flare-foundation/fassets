@@ -10,7 +10,7 @@ import path from "path";
 import 'solidity-coverage';
 import { FAssetContractStore } from "./deployment/lib/contracts";
 import { deployAssetManager, deployAssetManagerController, deployCoreVaultManager, redeployFacet, switchAllToProductionMode } from "./deployment/lib/deploy-asset-manager";
-import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory, deployUserWhitelist } from "./deployment/lib/deploy-asset-manager-dependencies";
+import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory } from "./deployment/lib/deploy-asset-manager-dependencies";
 import { deployCuts } from "./deployment/lib/deploy-cuts";
 import { deployPriceReaderV2, verifyFtsoV2PriceStore } from "./deployment/lib/deploy-ftsov2-price-store";
 import { networkConfigName } from "./deployment/lib/deploy-utils";
@@ -40,7 +40,7 @@ task("deploy-price-reader-v2", "Deploy price reader v2.")
 
 task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
     .addVariadicPositionalParam("contractNames", `Contract names to deploy`, [])
-    .addFlag("all", "Deploy all dependencies (AgentOwnerRegistry, UserWhitelist, AgentVaultFactory, CollateralPoolFactory, CollateralPoolTokenFactory)")
+    .addFlag("all", "Deploy all dependencies (AgentOwnerRegistry, AgentVaultFactory, CollateralPoolFactory, CollateralPoolTokenFactory)")
     .setAction(async ({ contractNames, all }: {contractNames: string[], all: boolean }, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
@@ -48,10 +48,6 @@ task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Op
         if (all || contractNames.includes('AgentOwnerRegistry')) {
             const address = await deployAgentOwnerRegistry(hre, contracts);
             console.log(`AgentOwnerRegistry deployed at ${address}`);
-        }
-        if (all || contractNames.includes('UserWhitelist')) {
-            const address = await deployUserWhitelist(hre, contracts);
-            console.log(`UserWhitelist deployed at ${address}`);
         }
         if (all || contractNames.includes('AgentVaultFactory')) {
             const address = await deployAgentVaultFactory(hre, contracts);

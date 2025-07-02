@@ -254,12 +254,6 @@
     "mustSwitchToProduction": true
   },
   {
-    "name": "UserWhitelist",
-    "contractName": "Whitelist.sol",
-    "address": "0x009049fd8d9921e0De5a8a562bC2f880419B397d",
-    "mustSwitchToProduction": true
-  },
-  {
     "name": "AgentVaultProxyImplementation",
     "contractName": "AgentVault.sol",
     "address": "0xB018aab64B945BeF700d93C95aFD84c217d0DeCE"

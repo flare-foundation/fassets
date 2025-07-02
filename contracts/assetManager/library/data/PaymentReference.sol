@@ -7,6 +7,7 @@ library PaymentReference {
     uint256 private constant TYPE_MASK = ((1 << 64) - 1) << TYPE_SHIFT;
     uint256 private constant LOW_BITS_MASK = (1 << TYPE_SHIFT) - 1;
     uint256 private constant ID_RANDOMIZATION = 1000;
+    uint256 private constant MAX_ID = (1 << 64) - 1;
 
     // common prefix 0x464250526641 = hex('FBPRfA' - Flare Bridge Payment Reference / fAsset)
 
@@ -21,24 +22,29 @@ library PaymentReference {
 
     // create various payment references
 
-    function minting(uint64 _id) internal pure returns (bytes32) {
-        return bytes32(uint256(_id) | MINTING);
+    function minting(uint256 _id) internal pure returns (bytes32) {
+        assert(_id <= MAX_ID);
+        return bytes32(_id | MINTING);
     }
 
-    function redemption(uint64 _id) internal pure returns (bytes32) {
-        return bytes32(uint256(_id) | REDEMPTION);
+    function redemption(uint256 _id) internal pure returns (bytes32) {
+        assert(_id <= MAX_ID);
+        return bytes32(_id | REDEMPTION);
     }
 
-    function announcedWithdrawal(uint64 _id) internal pure returns (bytes32) {
-        return bytes32(uint256(_id) | ANNOUNCED_WITHDRAWAL);
+    function announcedWithdrawal(uint256 _id) internal pure returns (bytes32) {
+        assert(_id <= MAX_ID);
+        return bytes32(_id | ANNOUNCED_WITHDRAWAL);
     }
 
-    function returnFromCoreVault(uint64 _id) internal pure returns (bytes32) {
-        return bytes32(uint256(_id) | RETURN_FROM_CORE_VAULT);
+    function returnFromCoreVault(uint256 _id) internal pure returns (bytes32) {
+        assert(_id <= MAX_ID);
+        return bytes32(_id | RETURN_FROM_CORE_VAULT);
     }
 
-    function redemptionFromCoreVault(uint64 _id) internal pure returns (bytes32) {
-        return bytes32(uint256(_id) | REDEMPTION_FROM_CORE_VAULT);
+    function redemptionFromCoreVault(uint256 _id) internal pure returns (bytes32) {
+        assert(_id <= MAX_ID);
+        return bytes32(_id | REDEMPTION_FROM_CORE_VAULT);
     }
 
     function topup(address _agentVault) internal pure returns (bytes32) {

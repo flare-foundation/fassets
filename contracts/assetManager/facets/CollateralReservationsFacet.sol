@@ -1,15 +1,31 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {IReferencedPaymentNonexistence, IConfirmedBlockHeightExists}
-    from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
-import {CollateralReservations} from "../library/CollateralReservations.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
+import {Transfers} from "../../utils/library/Transfers.sol";
+import {AssetManagerState} from "../library/data/AssetManagerState.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {Conversion} from "../library/Conversion.sol";
+import {Agents} from "../library/Agents.sol";
+import {Minting} from "../library/Minting.sol";
+import {AgentCollateral} from "../library/AgentCollateral.sol";
+import {Collateral} from "../library/data/Collateral.sol";
+import {Agent} from "../library/data/Agent.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {CollateralReservation} from "../library/data/CollateralReservation.sol";
+import {PaymentReference} from "../library/data/PaymentReference.sol";
+import {Globals} from "../library/Globals.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 
 contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
+    using SafePct for uint256;
     using SafeCast for uint256;
+    using AgentCollateral for Collateral.CombinedData;
+    using Agent for Agent.State;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     /**
      * Before paying underlying assets for minting, minter has to reserve collateral and
@@ -20,7 +36,6 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
      * Then the minter has to pay `value + fee` on the underlying chain.
      * If the minter pays the underlying amount, minter obtains f-assets.
      * The collateral reservation fee is split between the agent and the collateral pool.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * NOTE: the owner of the agent vault must be in the AgentOwnerRegistry.
      * @param _agentVault agent vault address
      * @param _lots the number of lots for which to reserve collateral
@@ -38,13 +53,58 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
     )
         external payable
         onlyAttached
-        onlyWhitelistedSender
         notEmergencyPaused
         nonReentrant
         returns (uint256 _collateralReservationId)
     {
-        return CollateralReservations.reserveCollateral(msg.sender, _agentVault,
-            _lots.toUint64(), _maxMintingFeeBIPS.toUint64(), _executor);
+        Agent.State storage agent = Agent.get(_agentVault);
+        Agents.requireWhitelistedAgentVaultOwner(agent);
+        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
+        AssetManagerState.State storage state = AssetManagerState.get();
+        require(state.mintingPausedAt == 0, "minting paused");
+        require(agent.availableAgentsPos != 0 || agent.alwaysAllowedMinters.contains(msg.sender),
+            "agent not in mint queue");
+        require(_lots > 0, "cannot mint 0 lots");
+        require(agent.status == Agent.Status.NORMAL, "rc: invalid agent status");
+        require(collateralData.freeCollateralLots(agent) >= _lots, "not enough free collateral");
+        require(_maxMintingFeeBIPS >= agent.feeBIPS, "agent's fee too high");
+        uint64 valueAMG = Conversion.convertLotsToAMG(_lots);
+        _reserveCollateral(agent, valueAMG + _currentPoolFeeAMG(agent, valueAMG));
+        // - only charge reservation fee for public minting, not for alwaysAllowedMinters on non-public agent
+        // - poolCollateral is WNat, so we can use its price for calculation of CR fee
+        uint256 reservationFee = agent.availableAgentsPos != 0
+            ? _reservationFee(collateralData.poolCollateral.amgToTokenWeiPrice, valueAMG)
+            : 0;
+        require(msg.value >= reservationFee, "inappropriate fee amount");
+        // create new crt id - pre-increment, so that id can never be 0
+        state.newCrtId += PaymentReference.randomizedIdSkip();
+        uint256 crtId = state.newCrtId;
+        // create in-memory cr and then put it to storage to not go out-of-stack
+        CollateralReservation.Data memory cr;
+        cr.valueAMG = valueAMG;
+        cr.underlyingFeeUBA = Conversion.convertAmgToUBA(valueAMG).mulBips(agent.feeBIPS).toUint128();
+        cr.reservationFeeNatWei = reservationFee.toUint128();
+        // 1 is added for backward compatibility where 0 means "value not stored" - it is subtracted when used
+        cr.poolFeeShareBIPS = agent.poolFeeShareBIPS + 1;
+        cr.agentVault = _agentVault;
+        cr.minter = msg.sender;
+        if (_executor != address(0)) {
+            cr.executor = _executor;
+            cr.executorFeeNatGWei = ((msg.value - reservationFee) / Conversion.GWEI).toUint64();
+        }
+        (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock();
+        cr.firstUnderlyingBlock = state.currentUnderlyingBlock;
+        cr.lastUnderlyingBlock = lastUnderlyingBlock;
+        cr.lastUnderlyingTimestamp = lastUnderlyingTimestamp;
+        // store cr
+        state.crts[crtId] = cr;
+        // emit event
+        _emitCollateralReservationEvent(agent, cr, crtId);
+        // if executor is not set, we return the change to the minter
+        if (cr.executor == address(0) && msg.value > reservationFee) {
+            Transfers.transferNAT(payable(cr.minter), msg.value - reservationFee); // cr.minter = msg.sender
+        }
+        return crtId;
     }
 
     /**
@@ -62,48 +122,80 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
         external view
         returns (uint256 _reservationFeeNATWei)
     {
-        return CollateralReservations.calculateReservationFee(_lots.toUint64());
+        AssetManagerState.State storage state = AssetManagerState.get();
+        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(state.poolCollateralIndex);
+        return _reservationFee(amgToTokenWeiPrice, Conversion.convertLotsToAMG(_lots));
     }
 
-    /**
-     * When the time for minter to pay underlying amount is over (i.e. the last underlying block has passed),
-     * the agent can declare payment default. Then the agent collects collateral reservation fee
-     * (it goes directly to the vault), and the reserved collateral is unlocked.
-     * NOTE: The attestation request must be done with `checkSourceAddresses=false`.
-     * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
-     * @param _proof proof that the minter didn't pay with correct payment reference on the underlying chain
-     * @param _collateralReservationId id of a collateral reservation created by the minter
-     */
-    function mintingPaymentDefault(
-        IReferencedPaymentNonexistence.Proof calldata _proof,
-        uint256 _collateralReservationId
+    function _reserveCollateral(
+        Agent.State storage _agent,
+        uint64 _reservationAMG
     )
-        external
-        nonReentrant
+        private
     {
-        CollateralReservations.mintingPaymentDefault(_proof, _collateralReservationId.toUint64());
+        AssetManagerState.State storage state = AssetManagerState.get();
+        Minting.checkMintingCap(_reservationAMG);
+        _agent.reservedAMG += _reservationAMG;
+        state.totalReservedCollateralAMG += _reservationAMG;
     }
 
-    /**
-     * If collateral reservation request exists for more than 24 hours, payment or non-payment proof are no longer
-     * available. In this case agent can call this method, which burns reserved collateral at market price
-     * and releases the remaining collateral (CRF is also burned).
-     * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
-     * NOTE: the agent (management address) receives the vault collateral (if not NAT) and NAT is burned instead.
-     *      Therefore this method is `payable` and the caller must provide enough NAT to cover the received vault
-     *      collateral amount multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
-     *      If vault collateral is NAT, it is simply burned and msg.value must be zero.
-     * @param _proof proof that the attestation query window can not not contain
-     *      the payment/non-payment proof anymore
-     * @param _collateralReservationId collateral reservation id
-     */
-    function unstickMinting(
-        IConfirmedBlockHeightExists.Proof calldata _proof,
-        uint256 _collateralReservationId
+    function _emitCollateralReservationEvent(
+        Agent.State storage _agent,
+        CollateralReservation.Data memory _cr,
+        uint256 _crtId
     )
-        external payable
-        nonReentrant
+        private
     {
-        CollateralReservations.unstickMinting(_proof, _collateralReservationId.toUint64());
+        emit IAssetManagerEvents.CollateralReserved(
+            _agent.vaultAddress(),
+            _cr.minter,
+            _crtId,
+            Conversion.convertAmgToUBA(_cr.valueAMG),
+            _cr.underlyingFeeUBA,
+            _cr.firstUnderlyingBlock,
+            _cr.lastUnderlyingBlock,
+            _cr.lastUnderlyingTimestamp,
+            _agent.underlyingAddressString,
+            PaymentReference.minting(_crtId),
+            _cr.executor,
+            _cr.executorFeeNatGWei * Conversion.GWEI);
+    }
+
+    function _currentPoolFeeAMG(
+        Agent.State storage _agent,
+        uint64 _valueAMG
+    )
+        private view
+        returns (uint64)
+    {
+        uint256 underlyingValueUBA = Conversion.convertAmgToUBA(_valueAMG);
+        uint256 poolFeeUBA = Minting.calculateCurrentPoolFeeUBA(_agent, underlyingValueUBA);
+        return Conversion.convertUBAToAmg(poolFeeUBA);
+    }
+
+    function _lastPaymentBlock()
+        private view
+        returns (uint64 _lastUnderlyingBlock, uint64 _lastUnderlyingTimestamp)
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        // timeshift amortizes for the time that passed from the last underlying block update
+        uint64 timeshift = block.timestamp.toUint64() - state.currentUnderlyingBlockUpdatedAt;
+        uint64 blockshift = (uint256(timeshift) * 1000 / settings.averageBlockTimeMS).toUint64();
+        _lastUnderlyingBlock =
+            state.currentUnderlyingBlock + blockshift + settings.underlyingBlocksForPayment;
+        _lastUnderlyingTimestamp =
+            state.currentUnderlyingBlockTimestamp + timeshift + settings.underlyingSecondsForPayment;
+    }
+
+    function _reservationFee(
+        uint256 amgToTokenWeiPrice,
+        uint64 _valueAMG
+    )
+        private view
+        returns (uint256)
+    {
+        uint256 valueNATWei = Conversion.convertAmgToTokenWei(_valueAMG, amgToTokenWeiPrice);
+        return valueNATWei.mulBips(Globals.getSettings().collateralReservationFeeBIPS);
     }
 }

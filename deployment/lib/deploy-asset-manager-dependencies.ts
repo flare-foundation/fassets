@@ -3,22 +3,6 @@ import { FAssetContractStore } from "./contracts";
 import { loadDeployAccounts, waitFinalize, ZERO_ADDRESS } from "./deploy-utils";
 
 
-export async function deployUserWhitelist(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
-    console.log(`Deploying UserWhitelist`);
-
-    const artifacts = hre.artifacts as Truffle.Artifacts;
-
-    const Whitelist = artifacts.require("Whitelist");
-
-    const { deployer } = loadDeployAccounts(hre);
-
-    const whitelist = await waitFinalize(hre, deployer, () => Whitelist.new(contracts.GovernanceSettings.address, deployer, false, { from: deployer }));
-
-    contracts.add(`UserWhitelist`, "Whitelist.sol", whitelist.address, { mustSwitchToProduction: true });
-
-    return whitelist.address;
-}
-
 export async function deployAgentOwnerRegistry(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     console.log(`Deploying AgentOwnerRegistry`);
 
@@ -28,7 +12,7 @@ export async function deployAgentOwnerRegistry(hre: HardhatRuntimeEnvironment, c
 
     const { deployer } = loadDeployAccounts(hre);
 
-    const whitelist = await waitFinalize(hre, deployer, () => AgentOwnerRegistry.new(contracts.GovernanceSettings.address, deployer, true, { from: deployer }));
+    const whitelist = await waitFinalize(hre, deployer, () => AgentOwnerRegistry.new(contracts.GovernanceSettings.address, deployer, { from: deployer }));
 
     contracts.add("AgentOwnerRegistry", "AgentOwnerRegistry.sol", whitelist.address, { mustSwitchToProduction: true });
 

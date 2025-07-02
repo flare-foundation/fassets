@@ -1202,7 +1202,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // agent confirms its redemption payment
         const proof = await context.attestationProvider.provePayment(txHash, agent.underlyingAddress, agentOtherAddress);
         await context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agentOwner1 });
-        assert(Number((await agent.getAgentInfo()).status) == 0);
+        assert(Number((await agent.getAgentInfo()).status) === 0);
         // when allowed, the challenger cann the payment
         await time.deterministicIncrease(context.settings.confirmationByOthersAfterSeconds);
         await expectRevert(context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: challenger.address }), 'invalid request id');

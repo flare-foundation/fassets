@@ -63,9 +63,12 @@ export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contra
     }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function resultToTuple(value: any): any {
     if (typeof value === "object") {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         if (web3.utils.isBN(value)) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
             return value.ltn(1e9) ? Number(value) : String(value);
         }
         if (Array.isArray(value)) {
@@ -74,6 +77,7 @@ function resultToTuple(value: any): any {
         // convert object with numeric props to array
         const tuple = [];
         for (let i = 0; i in value; i++) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             tuple.push(resultToTuple(value[i]));
         }
         return tuple;
@@ -126,6 +130,7 @@ async function createInitCall(hre: HardhatRuntimeEnvironment, contracts: Contrac
     const address = await deployFacet(hre, init.contract, contracts, deployer);
     const instance = await contract.at(address);
     const args = init.args ?? [];
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const encodedCall = await instance.contract.methods[init.method](...args).encodeABI() as string;
     return [address, encodedCall] as const;
 }

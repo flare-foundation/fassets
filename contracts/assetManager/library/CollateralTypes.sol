@@ -1,18 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
-import {Globals} from "./Globals.sol";
-import {SettingsUpdater} from "./SettingsUpdater.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
 import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
-
 
 
 library CollateralTypes {
@@ -42,48 +37,6 @@ library CollateralTypes {
     {
         require(_data.collateralClass == CollateralType.Class.VAULT, "not a vault collateral");
         _add(_data);
-    }
-
-    function setCollateralRatios(
-        CollateralType.Class _collateralClass,
-        IERC20 _token,
-        uint256 _minCollateralRatioBIPS,
-        uint256 _ccbMinCollateralRatioBIPS,
-        uint256 _safetyMinCollateralRatioBIPS
-    )
-        internal
-    {
-        // use separate rate limit for each collateral type
-        bytes32 actionKey = keccak256(abi.encode(msg.sig, _collateralClass, _token));
-        SettingsUpdater.checkEnoughTimeSinceLastUpdate(actionKey);
-        bool ratiosValid =
-            SafePct.MAX_BIPS < _ccbMinCollateralRatioBIPS &&
-            _ccbMinCollateralRatioBIPS <= _minCollateralRatioBIPS &&
-            _minCollateralRatioBIPS <= _safetyMinCollateralRatioBIPS;
-        require(ratiosValid, "invalid collateral ratios");
-        // update
-        CollateralTypeInt.Data storage token = CollateralTypes.get(_collateralClass, _token);
-        token.minCollateralRatioBIPS = _minCollateralRatioBIPS.toUint32();
-        token.ccbMinCollateralRatioBIPS = _ccbMinCollateralRatioBIPS.toUint32();
-        token.safetyMinCollateralRatioBIPS = _safetyMinCollateralRatioBIPS.toUint32();
-        emit IAssetManagerEvents.CollateralRatiosChanged(uint8(_collateralClass), address(_token),
-            _minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS);
-    }
-
-    function deprecate(
-        CollateralType.Class _collateralClass,
-        IERC20 _token,
-        uint256 _invalidationTimeSec
-    )
-        internal
-    {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        CollateralTypeInt.Data storage token = CollateralTypes.get(_collateralClass, _token);
-        require(isValid(token), "token not valid");
-        require(_invalidationTimeSec >= settings.tokenInvalidationTimeMinSeconds, "deprecation time to short");
-        uint256 validUntil = block.timestamp + _invalidationTimeSec;
-        token.validUntil = validUntil.toUint64();
-        emit IAssetManagerEvents.CollateralTypeDeprecated(uint8(_collateralClass), address(_token), validUntil);
     }
 
     function setPoolWNatCollateralType(

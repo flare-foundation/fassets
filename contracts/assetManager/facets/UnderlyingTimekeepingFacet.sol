@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import {IConfirmedBlockHeightExists} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
-import {StateUpdater} from "../library/StateUpdater.sol";
+import {UnderlyingBlockUpdater} from "../library/UnderlyingBlockUpdater.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 
 
@@ -22,7 +22,7 @@ contract UnderlyingTimekeepingFacet is AssetManagerBase {
     )
         external
     {
-        StateUpdater.updateCurrentBlock(_proof);
+        UnderlyingBlockUpdater.updateCurrentBlock(_proof);
     }
 
     /**

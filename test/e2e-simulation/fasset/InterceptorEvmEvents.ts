@@ -1,13 +1,13 @@
 import { ContractWithEventsBase, EventArgsForName, EventNamesFor } from "../../../lib/utils/events/truffle";
 import { EvmEvent } from "../../../lib/utils/events/common";
-import { multimapAdd, multimapDelete } from "../../../lib/utils/helpers";
+import { AnyFunction, multimapAdd, multimapDelete } from "../../../lib/utils/helpers";
 import { ClearableSubscription, EventEmitter, EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { TransactionInterceptor } from "./TransactionInterceptor";
 import { EvmEventArgsForName, IEvmEvents } from "../../../lib/utils/events/IEvmEvents";
 
 interface FilteredHandler {
     filter: Record<string, unknown> | undefined;
-    handler: (eventArgs: any) => void;
+    handler: AnyFunction<void>;
 }
 
 export class InterceptorEvmEvents implements IEvmEvents {
@@ -34,7 +34,7 @@ export class InterceptorEvmEvents implements IEvmEvents {
         }
     }
 
-    private filterMatches(filter: Record<string, unknown>, args: any) {
+    private filterMatches(filter: Record<string, unknown>, args: Record<string, unknown>) {
         return Object.entries(filter).every(([key, value]) => String(value) === String(args[key]));
     }
 

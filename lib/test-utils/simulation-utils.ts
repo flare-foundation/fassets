@@ -98,7 +98,7 @@ export function randomChoice<T>(choices: readonly T[], avoid?: T): T {
 export function weightedRandomChoice<T>(choices: readonly (readonly [T, number])[]): T {
     if (choices.length === 0) throw new Error("Random choice from empty array.")
     let total = 0;
-    for (const [choice, weight] of choices) total += weight;
+    for (const [_choice, weight] of choices) total += weight;
     const rnd = Math.random() * total;
     let cumulative = 0;
     for (const [choice, weight] of choices) {
@@ -108,7 +108,7 @@ export function weightedRandomChoice<T>(choices: readonly (readonly [T, number])
     return choices[choices.length - 1][0]; // shouldn't arrive here, but just in case...
 }
 
-export function randomShuffle(array: any[]) {
+export function randomShuffle<T>(array: T[]) {
     const length = array.length;
     for (let i = 0; i < length - 1; i++) {
         const j = randomInt(i, length);
@@ -179,7 +179,7 @@ export function elapsedTime(startRealTime: number) {
 
 // truffle makes results of functions returning struct as an array with extra string keys
 // this method converts it to JS dict
-export function truffleResultAsDict(result: any): any {
+export function truffleResultAsDict(result: unknown): unknown {
     if (!Array.isArray(result)) {
         return result;  // not an array
     }
@@ -188,13 +188,16 @@ export function truffleResultAsDict(result: any): any {
     if (stringKeys.length === 0) {  // result is really an array
         return result.map(v => truffleResultAsDict(v));
     } else { // result is bot array and dict as
-        const res: any = {};
-        for (const key of stringKeys) res[key] = truffleResultAsDict((result as any)[key]);
+        const res: Record<string, unknown> = {};
+        for (const key of stringKeys) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+            res[key] = truffleResultAsDict((result as any)[key]);
+        }
         return res;
     }
 }
 
-export function truffleResultAsJson(result: any, indent?: string | number): any {
+export function truffleResultAsJson(result: unknown, indent?: string | number): string {
     return stringifyJson(truffleResultAsDict(result));
 }
 
@@ -230,7 +233,7 @@ const envConverters = {
     'string[]': (s: string) => s.split(','),
     'boolean[]': (s: string) => s.split(',').map(p => envConverters['boolean'](p)),
     'range': (s: string) => parseRange(s),
-    'json': (s: string) => JSON.parse(s),
+    'json': (s: string) => JSON.parse(s) as unknown,
 } as const;
 type EnvConverterType = keyof (typeof envConverters);
 type EnvConverterResult<T extends EnvConverterType> = ReturnType<typeof envConverters[T]>;

@@ -5,7 +5,7 @@ import { AssetManagerInitSettings, newAssetManager } from "../../../../lib/test-
 import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectRevert, time } from "../../../../lib/test-utils/test-helpers";
-import { createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings, TestSettingsContracts } from "../../../../lib/test-utils/test-settings";
+import { createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings, TestSettingsContracts, whitelistAgentOwner } from "../../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { SourceId } from "../../../../lib/underlying-chain/SourceId";
@@ -174,6 +174,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
     });
 
     it("should not verify address validity - invalid chain", async () => {
+        await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
         const chainId: SourceId = SourceId.DOGE;
         flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, chainId);

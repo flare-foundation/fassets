@@ -17,8 +17,8 @@ import {CollateralReservationInfo} from "./data/CollateralReservationInfo.sol";
 import {IAssetManagerEvents} from "./IAssetManagerEvents.sol";
 import {IAgentPing} from "./IAgentPing.sol";
 import {IRedemptionTimeExtension} from "./IRedemptionTimeExtension.sol";
-import {ICoreVault} from "./ICoreVault.sol";
-import {ICoreVaultSettings} from "./ICoreVaultSettings.sol";
+import {ICoreVaultClient} from "./ICoreVaultClient.sol";
+import {ICoreVaultClientSettings} from "./ICoreVaultClientSettings.sol";
 import {IAgentAlwaysAllowedMinters} from "./IAgentAlwaysAllowedMinters.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -32,8 +32,8 @@ interface IAssetManager is
     IAssetManagerEvents,
     IAgentPing,
     IRedemptionTimeExtension,
-    ICoreVault,
-    ICoreVaultSettings,
+    ICoreVaultClient,
+    ICoreVaultClientSettings,
     IAgentAlwaysAllowedMinters
 {
     ////////////////////////////////////////////////////////////////////////////////////
@@ -146,19 +146,6 @@ interface IAssetManager is
      * Paused asset manager can be later unpaused.
      */
     function mintingPaused()
-        external view
-        returns (bool);
-
-    /**
-     * True if the asset manager is terminated.
-     * In terminated state almost all operations (minting, redeeming, liquidation) are disabled and f-assets are
-     * not transferable any more. The only operation still permitted is for agents to release the locked collateral
-     * by calling `buybackAgentCollateral`.
-     * An asset manager can be terminated after being paused for at least a month
-     * (to redeem as many f-assets as possible).
-     * The terminated asset manager can not be revived anymore.
-     */
-    function terminated()
         external view
         returns (bool);
 
@@ -428,24 +415,6 @@ interface IAssetManager is
     ) external;
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Terminated asset manager support
-
-    /**
-     * When f-asset is terminated, an agent can burn the market price of backed f-assets with his collateral,
-     * to release the remaining collateral (and, formally, underlying assets).
-     * This method ONLY works when f-asset is terminated, which will only be done when the asset manager
-     * is already paused at least for a month and most f-assets are already burned and the only ones
-     * remaining are unrecoverable.
-     * NOTE: may only be called by the agent vault owner.
-     * NOTE: the agent (management address) receives the vault collateral and NAT is burned instead. Therefore
-     *      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral
-     *      amount multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
-     */
-    function buybackAgentCollateral(
-        address _agentVault
-    ) external payable;
-
-    ////////////////////////////////////////////////////////////////////////////////////
     // Agent information
 
     /**
@@ -609,7 +578,6 @@ interface IAssetManager is
      * Then the minter has to pay `value + fee` on the underlying chain.
      * If the minter pays the underlying amount, minter obtains f-assets.
      * The collateral reservation fee is split between the agent and the collateral pool.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * NOTE: the owner of the agent vault must be in the AgentOwnerRegistry.
      * @param _agentVault agent vault address
      * @param _lots the number of lots for which to reserve collateral
@@ -739,7 +707,6 @@ interface IAssetManager is
      * of remaining lots.
      * Agent receives redemption request id and instructions for underlying payment in
      * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _lots number of lots to redeem
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
@@ -902,7 +869,6 @@ interface IAssetManager is
 
     /**
      * Checks that the agent's collateral is too low and if true, starts the agent's liquidation.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * NOTE: always succeeds and returns the new liquidation status.
      * @param _agentVault agent vault address
      * @return _liquidationStatus 0=no liquidation, 1=CCB, 2=liquidation
@@ -920,7 +886,6 @@ interface IAssetManager is
      * (premium depends on the liquidation state).
      * If the agent isn't in liquidation yet, but satisfies conditions,
      * automatically puts the agent in liquidation status.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _agentVault agent vault address
      * @param _amountUBA the amount of f-assets to liquidate
      * @return _liquidatedAmountUBA liquidated amount of f-asset
@@ -954,7 +919,6 @@ interface IAssetManager is
      * no valid payment reference exists (valid payment references are from redemption and
      * underlying withdrawal announcement calls).
      * On success, immediately triggers full agent liquidation and rewards the caller.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _payment proof of a transaction from the agent's underlying address
      * @param _agentVault agent vault address
      */
@@ -967,7 +931,6 @@ interface IAssetManager is
      * Called with proofs of two payments made from the agent's underlying address
      * with the same payment reference (each payment reference is valid for only one payment).
      * On success, immediately triggers full agent liquidation and rewards the caller.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _payment1 proof of first payment from the agent's underlying address
      * @param _payment2 proof of second payment from the agent's underlying address
      * @param _agentVault agent vault address
@@ -983,7 +946,6 @@ interface IAssetManager is
      * underlying free balance negative (i.e. the underlying address balance is less than
      * the total amount of backed f-assets).
      * On success, immediately triggers full agent liquidation and rewards the caller.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _payments proofs of several distinct payments from the agent's underlying address
      * @param _agentVault agent vault address
      */

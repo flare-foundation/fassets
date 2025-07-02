@@ -8,7 +8,7 @@ import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../../lib/test-utils/fasset/MockChain";
 import { expectRevert, time } from "../../../lib/test-utils/test-helpers";
-import { createTestAgentSettings } from "../../../lib/test-utils/test-settings";
+import { createTestAgentSettings, whitelistAgentOwner } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { EventArgs } from "../../../lib/utils/events/common";
@@ -130,6 +130,8 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, accounts => {
         // mint some underlying funds for the owner
         const amount = context.underlyingAmount(10000);
         context.chain.mint(underlyingOwner1, context.chain.requiredFee.muln(2).add(amount));
+        // whitelist agent management address
+        await whitelistAgentOwner(context.agentOwnerRegistry.address, agentOwner1);
         // deposit to underlying address
         const guessBlock = Number(await time.latestBlock()) + 20;
         const guessId = guessBlock % 1000 + 1;

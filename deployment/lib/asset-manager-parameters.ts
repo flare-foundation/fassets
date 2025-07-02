@@ -135,15 +135,6 @@ export interface AssetManagerParameters {
      */
     agentOwnerRegistry?: string;
 
-    /**
-     * If non-null, the whitelist contains a list of accounts that can call public methods
-     * (minting, redeeming, challenging, etc.)
-     * If null, there will be no user whitelisting.
-     * Can be a contract address (0x...) or a name in contracts.json.
-     * @pattern ^\w+$
-     */
-    userWhitelist: string | null;
-
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////
     // F-asset (chain) specific parameters
 
@@ -377,13 +368,6 @@ export interface AssetManagerParameters {
      * @minimum 0
      */
     announcedUnderlyingConfirmationMinSeconds: integer;
-
-    /**
-     * Ratio at which the agents can buy back their collateral when f-asset is terminated.
-     * Typically a bit more than 1 to incentivize agents to buy f-assets and self-close instead.
-     * @minimum 0
-     */
-    buybackCollateralFactorBIPS: integer;
 
     /**
      * On some rare occasions (stuck minting, locked fassets after termination), the agent has to unlock

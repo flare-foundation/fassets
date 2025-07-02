@@ -5,14 +5,14 @@ import { AssetManagerEvents } from "../../fasset/IAssetContext";
 import { PaymentReference } from "../../fasset/PaymentReference";
 import { IBlockChainWallet } from "../../underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../utils/events/common";
-import { checkEventNotEmited, optionalEventArgs, filterEvents, requiredEventArgs } from "../../utils/events/truffle";
+import { checkEventNotEmited, filterEvents, findRequiredEvent, optionalEventArgs, requiredEventArgs } from "../../utils/events/truffle";
 import { BN_ZERO, BNish, MAX_BIPS, randomAddress, requireNotNull, toBIPS, toBN, toBNExp, toWei } from "../../utils/helpers";
 import { web3DeepNormalize } from "../../utils/web3normalize";
 import { Approximation, assertApproximateMatch } from "../approximation";
 import { AgentCollateral } from "../fasset/AgentCollateral";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../fasset/MockChain";
 import { time } from "../test-helpers";
-import { createTestAgentSettings } from "../test-settings";
+import { createTestAgentSettings, whitelistAgentOwner } from "../test-settings";
 import { assertWeb3Equal } from "../web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
@@ -88,6 +88,9 @@ export class Agent extends AssetContextClient {
     }
 
     static async create(ctx: AssetContext, ownerAddress: string, underlyingAddress: string, wallet: IBlockChainWallet, settings: AgentSettings) {
+        const ownerManagementAddress = Agent.getManagementAddress(ownerAddress);
+        // whitelist agent management address if not already whitelisted
+        await whitelistAgentOwner(ctx.agentOwnerRegistry.address, ownerManagementAddress);
         // create and prove transaction from underlyingAddress if EOA required
         if (ctx.chainInfo.requireEOAProof) {
             const txHash = await wallet.addTransaction(underlyingAddress, underlyingAddress, 1, PaymentReference.addressOwnership(ownerAddress));
@@ -110,7 +113,6 @@ export class Agent extends AssetContextClient {
         // get pool token
         const collateralPoolToken = await CollateralPoolToken.at(args.creationData.collateralPoolToken);
         // create object
-        const ownerManagementAddress = Agent.getManagementAddress(ownerAddress);
         return new Agent(ctx, ownerManagementAddress, agentVault, collateralPool, collateralPoolToken, wallet, settings,
             addressValidityProof.data.responseBody.standardAddress);
     }
@@ -245,19 +247,6 @@ export class Agent extends AssetContextClient {
         if (expectedCollateral != null) {
             assertWeb3Equal(ownerVaultCollateralBalanceAfterWithdraw.sub(ownerVaultCollateralBalance), expectedCollateral);
         }
-    }
-
-    async exitAndDestroyWithTerminatedFAsset(collateral: BNish) {
-        await this.exitAvailable();
-        // note that here we can't redeem anything from the pool as f-asset is terminated
-        // TODO: we should still be able to withdraw pool collateral (and leave pool fees behind)
-        const destroyAllowedAt = await this.announceDestroy();
-        await time.increaseTo(destroyAllowedAt);
-        const vaultCollateralToken = this.vaultCollateralToken();
-        const ownerVaultCollateralBalance = await vaultCollateralToken.balanceOf(this.ownerWorkAddress);
-        await this.destroy();
-        const ownerVaultCollateralBalanceAfterDestroy = await vaultCollateralToken.balanceOf(this.ownerWorkAddress);
-        assertWeb3Equal(ownerVaultCollateralBalanceAfterDestroy.sub(ownerVaultCollateralBalance), collateral);
     }
 
     async announceVaultCollateralWithdrawal(amountWei: BNish) {
@@ -588,21 +577,6 @@ export class Agent extends AssetContextClient {
         assert.equal(requiredEventArgs(res, 'LiquidationEnded').agentVault, this.vaultAddress);
     }
 
-    async getBuybackAgentCollateralValue() {
-        const agentInfo = await this.getAgentInfo();
-        const totalUBA = toBN(agentInfo.mintedUBA).add(toBN(agentInfo.reservedUBA));
-        const totalUBAWithBuybackPremium = totalUBA.mul(toBN(this.context.settings.buybackCollateralFactorBIPS)).divn(MAX_BIPS);
-        const priceVaultCollateral = await this.context.getCollateralPrice(this.vaultCollateral());
-        const natBurned = await this.vaultCollateralToNatBurnedInUBA(totalUBAWithBuybackPremium);
-        const buybackCollateral = priceVaultCollateral.convertUBAToTokenWei(totalUBAWithBuybackPremium);
-        return [buybackCollateral, totalUBA, natBurned];
-    }
-
-    async buybackAgentCollateral() {
-        const [, , buybackCost] = await this.getBuybackAgentCollateralValue()
-        await this.assetManager.buybackAgentCollateral(this.agentVault.address, { from: this.ownerWorkAddress, value: buybackCost });
-    }
-
     lastAgentInfoCheck: CheckAgentInfo = CHECK_DEFAULTS;
 
     async checkAgentInfo(check: CheckAgentInfo, previousCheck: "inherit" | "reset" = "inherit") {
@@ -624,7 +598,7 @@ export class Agent extends AssetContextClient {
             check = { ...this.lastAgentInfoCheck, ...check };
         }
         for (const key of Object.keys(check) as Array<keyof CheckAgentInfo>) {
-            let value: any;
+            let value: BN | string | boolean;
             if (key === 'actualUnderlyingBalance') {
                 value = await this.chain.getBalance(this.underlyingAddress);
             } else {
@@ -632,6 +606,7 @@ export class Agent extends AssetContextClient {
             }
             const expected = check[key];
             if (expected instanceof Approximation) {
+                assert(typeof value !== "boolean");
                 expected.assertMatches(value, `Agent info mismatch at '${key}'`);
             } else {
                 assertWeb3Equal(value, expected, `Agent info mismatch at '${key}'`);

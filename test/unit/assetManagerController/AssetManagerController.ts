@@ -10,11 +10,10 @@ import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-s
 import { assertWeb3Equal, web3ResultStruct } from "../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, randomAddress, toBIPS, toBN, toStringExp } from "../../../lib/utils/helpers";
-import { AddressUpdatableInstance, ERC20MockInstance, FAssetInstance, GovernanceSettingsMockInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance, TestUUPSProxyImplInstance, WNatMockInstance, WhitelistInstance } from "../../../typechain-truffle";
+import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, randomAddress, toBN, toStringExp } from "../../../lib/utils/helpers";
+import { AddressUpdatableInstance, ERC20MockInstance, FAssetInstance, GovernanceSettingsMockInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance, TestUUPSProxyImplInstance, WNatMockInstance } from "../../../typechain-truffle";
 
 const AddressUpdater = artifacts.require('AddressUpdaterMock');
-const Whitelist = artifacts.require('Whitelist');
 const AddressUpdatableMock = artifacts.require('AddressUpdatableMock');
 
 contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager controller basic tests`, accounts => {
@@ -32,7 +31,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
     let wallet: MockChainWallet;
     let flareDataConnectorClient: MockFlareDataConnectorClient;
     let attestationProvider: AttestationHelper;
-    let whitelist: WhitelistInstance;
     let addressUpdatableMock : AddressUpdatableInstance;
     let governanceSettings: GovernanceSettingsMockInstance;
 
@@ -49,9 +47,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         wallet = new MockChainWallet(chain);
         flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
-        // create whitelist
-        whitelist = await Whitelist.new(contracts.governanceSettings.address, governance, false);
-        await whitelist.switchToProductionMode({ from: governance });
         // create asset manager controller
         assetManagerController = await newAssetManagerController(contracts.governanceSettings.address, governance, contracts.addressUpdater.address);
         await assetManagerController.switchToProductionMode({ from: governance });
@@ -60,11 +55,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol, { governanceSettings, updateExecutor });
         addressUpdatableMock = await AddressUpdatableMock.new(contracts.addressUpdater.address);
-        return { contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, addressUpdatableMock };
+        return { contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, assetManagerController, collaterals, settings, assetManager, fAsset, addressUpdatableMock };
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, addressUpdatableMock } =
+        ({ contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, assetManagerController, collaterals, settings, assetManager, fAsset, addressUpdatableMock } =
             await loadFixtureCopyVars(initialize));
     });
 
@@ -140,33 +135,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await waitForTimelock(assetManagerController.removeAssetManager(assetManager2.address, { from: governance }), assetManagerController, updateExecutor);
             const managers_remove2 = await assetManagerController.getAssetManagers();
             assert.equal(managers_current.length, managers_remove2.length);
-        });
-
-        it("should revert setting whitelist without governance", async () => {
-            const res = assetManagerController.setWhitelist([assetManager.address], randomAddress());
-            await expectRevert(res, "only governance")
-        });
-
-        it("should set whitelist address", async () => {
-            const encodedCall: string = assetManagerController.contract.methods.setWhitelist([assetManager.address], whitelist.address).encodeABI();
-            const res = await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
-            const allowedAfterTimestamp = (await time.latest()).addn(60);
-            expectEvent(res, "GovernanceCallTimelocked", { encodedCallHash: web3.utils.keccak256(encodedCall), allowedAfterTimestamp, encodedCall });
-        });
-
-        it("should execute set whitelist", async () => {
-            const res = await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
-            await waitForTimelock(res, assetManagerController, updateExecutor);
-            // assert
-            const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            assertWeb3Equal(newSettings.whitelist, whitelist.address);
-        });
-
-        it("should not execute set whitelist", async () => {
-            const res1 = await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
-            const timelock = requiredEventArgs(res1, 'GovernanceCallTimelocked');
-            const res = assetManagerController.executeGovernanceCall(timelock.encodedCall, { from: updateExecutor });
-            await expectRevert(res, "timelock: not allowed yet");
         });
 
         it("should revert setting lot size when increase or decrease is too big", async () => {
@@ -826,11 +794,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectEvent.inTransaction(timelock_info.tx, assetManager, "SettingChanged", { name: "vaultCollateralBuyForFlareFactorBIPS", value: toBN(vaultCollateralBuyForFlareFactorBIPS_new) });
         });
 
-        it("should revert setting agent exit available timelock seconds when value is too big", async () => {
+        it("should revert setting agent exit available timelock seconds when increase is too big", async () => {
             const currentSettings = await assetManager.getSettings();
             const agentExitAvailableTimelockSeconds_tooBig = toBN(currentSettings.agentExitAvailableTimelockSeconds).muln(5).addn(WEEKS);
             const res = assetManagerController.setAgentExitAvailableTimelockSeconds([assetManager.address], agentExitAvailableTimelockSeconds_tooBig, { from: governance });
-            await expectRevert.unspecified(res);
+            await expectRevert(res, "increase too big");
         });
 
         it("should set agent exit available timelock seconds", async () => {
@@ -839,11 +807,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "agentExitAvailableTimelockSeconds", value: toBN(agentExitAvailableTimelockSeconds_new) });
         });
 
-        it("should revert setting agent fee change timelock seconds when value is too big", async () => {
+        it("should revert setting agent fee change timelock seconds when increase is too big", async () => {
             const currentSettings = await assetManager.getSettings();
             const agentFeeChangeTimelockSeconds_tooBig = toBN(currentSettings.agentFeeChangeTimelockSeconds).muln(5).addn(WEEKS);
             const res = assetManagerController.setAgentFeeChangeTimelockSeconds([assetManager.address], agentFeeChangeTimelockSeconds_tooBig, { from: governance });
-            await expectRevert.unspecified(res);
+            await expectRevert(res, "increase too big");
         });
 
         it("should set agent exit available timelock seconds", async () => {
@@ -852,11 +820,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "agentFeeChangeTimelockSeconds", value: toBN(agentFeeChangeTimelockSeconds_new) });
         });
 
-        it("should revert setting agent minting CR change timelock seconds when value is too big", async () => {
+        it("should revert setting agent minting CR change timelock seconds when increase is too big", async () => {
             const currentSettings = await assetManager.getSettings();
             const agentMintingCRChangeTimelockSeconds_tooBig = toBN(currentSettings.agentMintingCRChangeTimelockSeconds).muln(5).addn(WEEKS);
             const res = assetManagerController.setAgentMintingCRChangeTimelockSeconds([assetManager.address], agentMintingCRChangeTimelockSeconds_tooBig, { from: governance });
-            await expectRevert.unspecified(res);
+            await expectRevert(res, "increase too big");
         });
 
         it("should set agent minting CR change timelock seconds", async () => {
@@ -865,11 +833,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "agentMintingCRChangeTimelockSeconds", value: toBN(agentMintingCRChangeTimelockSeconds_new) });
         });
 
-        it("should revert setting pool exit CR timelock seconds when value is too big", async () => {
+        it("should revert setting pool exit CR timelock seconds when increase is too big", async () => {
             const currentSettings = await assetManager.getSettings();
             const poolExitCRChangeTimelockSeconds_tooBig = toBN(currentSettings.poolExitCRChangeTimelockSeconds).muln(5).addn(WEEKS);
             const res = assetManagerController.setPoolExitCRChangeTimelockSeconds([assetManager.address], poolExitCRChangeTimelockSeconds_tooBig, { from: governance });
-            await expectRevert.unspecified(res);
+            await expectRevert(res, "increase too big");
         });
 
         it("should set pool exit CR timelock seconds", async () => {
@@ -1343,32 +1311,14 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
     });
 
-    describe("pause, unpause and terminate", () => {
-        it("should pause and terminate only after 30 days", async () => {
-            const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
+    describe("pause and unpause", () => {
+        it("should pause", async () => {
             assert.isFalse(await assetManager.mintingPaused());
             await assetManagerController.pauseMinting([assetManager.address], { from: governance });
             assert.isTrue(await assetManager.mintingPaused());
-            await time.deterministicIncrease(MINIMUM_PAUSE_BEFORE_STOP / 2);
-            await assetManagerController.pauseMinting([assetManager.address], { from: governance });
-            assert.isTrue(await assetManager.mintingPaused());
-            await expectRevert(assetManagerController.terminate([assetManager.address], { from: governance }), "asset manager not paused enough");
-            await time.deterministicIncrease(MINIMUM_PAUSE_BEFORE_STOP / 2);
-            assert.isFalse(await fAsset.terminated());
-            assert.isFalse(await assetManager.terminated());
-            await assetManagerController.terminate([assetManager.address], { from: governance })
-            assert.isTrue(await fAsset.terminated());
-            assert.isTrue(await assetManager.terminated());
-            await expectRevert(assetManagerController.unpauseMinting([assetManager.address], { from: governance }), "f-asset terminated");
         });
 
-        it("controler shouldn't be able to terminate asset manager that he is not managing", async () => {
-            const [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, "Ether", "ETH", { governanceSettings, updateExecutor });
-            //Shouldn't be able to terminate unmanaged asset manager
-            await expectRevert(assetManagerController.terminate([assetManager2.address], { from: governance }), "Asset manager not managed");
-        });
-
-        it("should unpause if not yet terminated", async () => {
+        it("should unpause", async () => {
             await assetManagerController.pauseMinting([assetManager.address], { from: governance });
             assert.isTrue(await assetManager.mintingPaused());
             await assetManagerController.unpauseMinting([assetManager.address], { from: governance });
@@ -1388,39 +1338,12 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(promise, "only governance");
             assert.isTrue(await assetManager.mintingPaused());
         });
-
-        it("should not terminate if not called from governance", async () => {
-            const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
-            assert.isFalse(await assetManager.mintingPaused());
-            await assetManagerController.pauseMinting([assetManager.address], { from: governance });
-            assert.isTrue(await assetManager.mintingPaused());
-            await time.deterministicIncrease(MINIMUM_PAUSE_BEFORE_STOP);
-            const promise = assetManagerController.terminate([assetManager.address], { from: accounts[0] })
-            await expectRevert(promise, "only governance");
-            assert.isFalse(await fAsset.terminated());
-        });
-
-        it("should not upgrade terminated FAsset", async () => {
-            // terminate
-            const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
-            await assetManagerController.pauseMinting([assetManager.address], { from: governance });
-            assert.isTrue(await assetManager.mintingPaused());
-            await time.deterministicIncrease(MINIMUM_PAUSE_BEFORE_STOP);
-            assert.isFalse(await fAsset.terminated());
-            await assetManagerController.terminate([assetManager.address], { from: governance })
-            assert.isTrue(await fAsset.terminated());
-            // should not upgrade
-            const FAsset = artifacts.require('FAsset');
-            const impl = await FAsset.new();
-            const res = await assetManagerController.upgradeFAssetImplementation([assetManager.address], impl.address, "0x", { from: governance });
-            await expectRevert(waitForTimelock(res, assetManagerController, updateExecutor), "f-asset terminated");
-        });
     });
 
     describe("ERC-165 interface identification", () => {
         it("should properly respond to supportsInterface", async () => {
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
-            const IIAddressUpdatable = artifacts.require('@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interface/IIAddressUpdatable.sol:IIAddressUpdatable' as "IIAddressUpdatable");
+            const IIAddressUpdatable = artifacts.require('@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interfaces/IIAddressUpdatable.sol:IIAddressUpdatable' as "IIAddressUpdatable");
             const IAddressUpdatable = artifacts.require('IAddressUpdatable');
             const IGoverned = artifacts.require('IGoverned');
             const IUUPSUpgradeable = artifacts.require('IUUPSUpgradeable');

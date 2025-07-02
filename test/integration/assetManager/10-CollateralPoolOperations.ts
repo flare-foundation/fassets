@@ -8,7 +8,7 @@ import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
 import { impersonateContract, stopImpersonatingContract } from "../../../lib/test-utils/contract-test-helpers";
-import { calculateReceivedNat } from "../../../lib/test-utils/eth";
+import { calcGasCost, calculateReceivedNat } from "../../../lib/test-utils/eth";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
@@ -463,42 +463,6 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         expectEvent(response, "CPSelfCloseExited");
     });
 
-    it("can withdraw collateral when FAsset is terminated", async () => {
-        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
-        // make agent available
-        const fullAgentVaultCollateral = toWei(1e7);
-        const fullAgentPoolCollateral = toWei(1e7);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentVaultCollateral, fullAgentPoolCollateral);
-        // minter mints
-        const lots = 300;
-        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
-        const txHash1 = await minter.performMintingPayment(crt);
-        const minted = await minter.executeMinting(crt, txHash1);
-        // minter enters the pool
-        const minterPoolDeposit1 = toWei(10000);
-        await agent.collateralPool.enter({ from: minter.address, value: minterPoolDeposit1 });
-        // terminate fasset
-        await impersonateContract(context.assetManager.address, toBN(512526332000000000), accounts[0]);
-        await context.fAsset.terminate({ from: context.assetManager.address });
-        await stopImpersonatingContract(context.assetManager.address);
-        //
-        const tokenBalance = await agent.collateralPoolToken.balanceOf(minter.address);
-        // self close exit will fail transferring fassets
-        await context.fAsset.approve(agent.collateralPool.address, toBNExp(1, 30), { from: minter.address });
-        await expectRevert(agent.collateralPool.selfCloseExit(tokenBalance, true, underlyingMinter1, ZERO_ADDRESS, { from: minter.address }), "f-asset terminated");
-        // ordinary exit will work
-        const natBalanceBefore = toBN(await web3.eth.getBalance(minter.address));
-        const resp = await agent.collateralPool.exit(tokenBalance, { from: minter.address }); // exit type doesn't matter now
-        const paidGas = toBN(resp.receipt.gasUsed).mul(toBN(resp.receipt.effectiveGasPrice));
-        const tokenBalanceAfter = await agent.collateralPoolToken.balanceOf(minter.address);
-        assertWeb3Equal(tokenBalanceAfter, 0);
-        const natBalanceAfter = toBN(await web3.eth.getBalance(minter.address));
-        assertApproximatelyEqual(natBalanceAfter.sub(natBalanceBefore).add(paidGas), minterPoolDeposit1, 'absolute', 10);
-        // cannot exit again
-        await expectRevert(agent.collateralPool.exit(tokenBalance, { from: minter.address }), "token balance too low");
-    });
-
     it("should check if agent doesn't pay underlying - the redeemer must only get vault collateral (special case for pool redemptions)", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
@@ -553,15 +517,15 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         // delegate
         await agent.collateralPool.delegate(accounts[2], 6_000, { from: agentOwner1 });
         await agent.collateralPool.delegate(accounts[3], 4_000, { from: agentOwner1 });
-        const delegations1 = await context.wNat.delegatesOf(agent.collateralPool.address) as any;
-        assertWeb3Equal(delegations1._delegateAddresses[0], accounts[2]);
-        assertWeb3Equal(delegations1._bips[0], 6000);
+        const { 0: delegateAddresses1, 1: bips1 } = await context.wNat.delegatesOf(agent.collateralPool.address);
+        assertWeb3Equal(delegateAddresses1[0], accounts[2]);
+        assertWeb3Equal(bips1[0], 6000);
         const votePower1 = await context.wNat.votePowerOf(accounts[2]);
         assertWeb3Equal(votePower1, fullAgentVaultCollateral.muln(6_000).divn(10_000));
         // undelegate
         await agent.collateralPool.undelegateAll({ from: agentOwner1 });
-        const delegations2 = await context.wNat.delegatesOf(agent.collateralPool.address) as any;
-        assert.equal(delegations2._delegateAddresses.length, 0);
+        const { 0: delegateAddresses2, 1: bips2 } = await context.wNat.delegatesOf(agent.collateralPool.address);
+        assert.equal(delegateAddresses2.length, 0);
         const votePower4 = await context.wNat.votePowerOf(accounts[2]);
         assertWeb3Equal(votePower4, 0);
         const votePower5 = await context.wNat.votePowerOf(accounts[3]);
