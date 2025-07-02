@@ -77,9 +77,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // challenge agent for illegal payment
             const startBalance = await context.usdc.balanceOf(challenger.address);
             const liquidationStarted = await challenger.illegalPaymentChallenge(agent, tx1Hash);
-            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: already liquidating");
-            await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "chlg dbl: already liquidating");
-            await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "mult chlg: already liquidating");
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "ChallengeAlreadyLiquidating", []);
+            await expectRevert.custom(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "ChallengeAlreadyLiquidating", []);
+            await expectRevert.custom(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "ChallengeAlreadyLiquidating", []);
             const endBalance = await context.usdc.balanceOf(challenger.address);
             // test rewarding
             const reward = await challenger.getChallengerReward(minted.mintedAmountUBA, agent);
@@ -91,8 +91,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
             // check that agent cannot withdraw or even announce withdrawal when being fully liquidated
-            await expectRevert(agent.announceVaultCollateralWithdrawal(fullAgentCollateral), "withdrawal ann: invalid status");
-            await expectRevert(agent.withdrawVaultCollateral(fullAgentCollateral), "withdrawal: invalid status");
+            await expectRevert.custom(agent.announceVaultCollateralWithdrawal(fullAgentCollateral), "WithdrawalInvalidAgentStatus", []);
+            await expectRevert.custom(agent.withdrawVaultCollateral(fullAgentCollateral), "WithdrawalInvalidAgentStatus", []);
             // full liquidation status should show in available agent info
             const { 0: availableAgentInfos } = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
             assert.equal(Number(availableAgentInfos[0].status), AgentStatus.FULL_LIQUIDATION);
@@ -120,14 +120,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const tx2Hash = await agent.performPayment(underlyingRedeemer1, 100, PaymentReference.redemption(5));
             const tx3Hash = await agent.performPayment(underlyingRedeemer1, 100, PaymentReference.redemption(6));
             // check that we cannot use the same transaction multiple times or transactions with different payment references
-            await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "chlg dbl: same transaction");
-            await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx3Hash), "challenge: not duplicate");
+            await expectRevert.custom(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "ChallengeSameTransactionRepeated", []);
+            await expectRevert.custom(challenger.doublePaymentChallenge(agent, tx1Hash, tx3Hash), "ChallengeNotDuplicate", []);
             // challenge agent for double payment
             const startBalance = await context.usdc.balanceOf(challenger.address);
             const liquidationStarted = await challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash);
-            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: already liquidating");
-            await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash), "chlg dbl: already liquidating");
-            await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "mult chlg: already liquidating");
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "ChallengeAlreadyLiquidating", []);
+            await expectRevert.custom(challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash), "ChallengeAlreadyLiquidating", []);
+            await expectRevert.custom(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "ChallengeAlreadyLiquidating", []);
             const endBalance = await context.usdc.balanceOf(challenger.address);
             // test rewarding
             const reward = await challenger.getChallengerReward(minted.mintedAmountUBA, agent);
@@ -159,16 +159,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const [[rrq]] = await redeemer.requestRedemption(1);
             const tx1Hash = await agent.performPayment(underlyingRedeemer1, context.convertLotsToUBA(3), rrq.paymentReference);
             // check that we cannot use other challenge types
-            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
-            await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash, tx1Hash]), "mult chlg: repeated transaction");
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "MatchingRedemptionActive", []);
+            await expectRevert.custom(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash, tx1Hash]), "ChallengeSameTransactionRepeated", []);
             // challenge agent for negative underlying balance
             const startBalance = await context.usdc.balanceOf(challenger.address);
             const liquidationStarted = await challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]);
             const endBalance = await context.usdc.balanceOf(challenger.address);
             // challenge cannot be repeated
-            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: already liquidating");
-            await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "chlg dbl: already liquidating");
-            await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "mult chlg: already liquidating");
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "ChallengeAlreadyLiquidating", []);
+            await expectRevert.custom(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "ChallengeAlreadyLiquidating", []);
+            await expectRevert.custom(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "ChallengeAlreadyLiquidating", []);
             // test rewarding
             const reward = await challenger.getChallengerReward(minted.mintedAmountUBA, agent);
             assertWeb3Equal(endBalance.sub(startBalance), reward);
@@ -208,15 +208,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // agent's underlying balance stays the same
             assertApproximatelyEqual(await context.chain.getBalance(agent.underlyingAddress), mintDepositedAmount, "absolute", 10);
             // check that we cannot challenge
-            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
-            await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "chlg dbl: same transaction");
-            await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "mult chlg: enough balance");
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "MatchingRedemptionActive", []);
+            await expectRevert.custom(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "ChallengeSameTransactionRepeated", []);
+            await expectRevert.custom(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "MultiplePaymentsChallengeEnoughBalance", []);
             // confirming failed transaction
             await agent.confirmFailedRedemptionPayment(rrq, tx1Hash);
             // still can't challenge afterwards
-            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
-            await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "chlg dbl: same transaction");
-            await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "mult chlg: enough balance");
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "ChallengeTransactionAlreadyConfirmed", []);
+            await expectRevert.custom(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "ChallengeSameTransactionRepeated", []);
+            await expectRevert.custom(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "MultiplePaymentsChallengeEnoughBalance", []);
         });
 
         it("agent cannot be challenged after expiring payment, even if paid", async () => {
@@ -257,7 +257,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assert.isDefined(redDef);
             assertWeb3Equal(redDef.requestId, request.requestId);
             // try to challenge
-            await expectRevert(challenger.illegalPaymentChallenge(agent, txhash), "matching redemption active");
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, txhash), "MatchingRedemptionActive", []);
             // check agent status
             await agent.checkAgentInfo({ status: AgentStatus.NORMAL, redeemingUBA: 0 }, "reset");
         });
@@ -296,7 +296,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const paymentAmount = request.valueUBA.sub(request.feeUBA);
             const txhash = await agent.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
             // try to challenge
-            await expectRevert(challenger.illegalPaymentChallenge(agent, txhash), "matching redemption active");
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, txhash), "MatchingRedemptionActive", []);
             // check agent status
             await agent.checkAgentInfo({ status: AgentStatus.NORMAL, redeemingUBA: request.valueUBA }, "reset");
         });
@@ -343,10 +343,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             }
             // check that all payments are legal
             for (const txHash of txHashes) {
-                await expectRevert(challenger.illegalPaymentChallenge(agent, txHash), "matching redemption active");
+                await expectRevert.custom(challenger.illegalPaymentChallenge(agent, txHash), "MatchingRedemptionActive", []);
             }
             // check that N-1 payments doesn't make free underlying balance negative
-            await expectRevert(challenger.freeBalanceNegativeChallenge(agent, txHashes.slice(0, N - 1)), "mult chlg: enough balance");
+            await expectRevert.custom(challenger.freeBalanceNegativeChallenge(agent, txHashes.slice(0, N - 1)), "MultiplePaymentsChallengeEnoughBalance", []);
             // check that N payments do make the transaction negative
             const liquidationStarted = await challenger.freeBalanceNegativeChallenge(agent, txHashes);
             // check that full liquidation started
@@ -408,8 +408,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assert.isUndefined(liquidationStarted1);
             assert.isUndefined(liquidationCancelled1);
             // full liquidation cannot be stopped
-            await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
-            await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
+            await expectRevert.custom(agent.endLiquidation(), "CannotStopLiquidation", []);
+            await expectRevert.custom(liquidator.endLiquidation(agent), "CannotStopLiquidation", []);
             // test rewarding
             const collateralRatioBIPS1VaultCollateral = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward), mintedAmount);
             const liquidationFactorBIPS1VaultCollateral = await liquidator.getLiquidationFactorBIPSVaultCollateral(collateralRatioBIPS1VaultCollateral, liquidationStarted.timestamp, liquidationTimestamp1);
@@ -440,8 +440,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assert.isUndefined(liquidationStarted2);
             assert.isUndefined(liquidationCancelled2);
             // full liquidation cannot be stopped
-            await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
-            await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
+            await expectRevert.custom(agent.endLiquidation(), "CannotStopLiquidation", []);
+            await expectRevert.custom(liquidator.endLiquidation(agent), "CannotStopLiquidation", []);
             // test rewarding
             const collateralRatioBIPS2VaultCollateral = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1VaultCollateral), mintedAmount.sub(liquidateUBA));
             const liquidationFactorBIPS2VaultCollateral = await liquidator.getLiquidationFactorBIPSVaultCollateral(collateralRatioBIPS2VaultCollateral, liquidationStarted.timestamp, liquidationTimestamp2);
@@ -472,8 +472,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assert.isUndefined(liquidationStarted3);
             assert.isUndefined(liquidationCancelled3);
             // full liquidation cannot be stopped
-            await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
-            await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
+            await expectRevert.custom(agent.endLiquidation(), "CannotStopLiquidation", []);
+            await expectRevert.custom(liquidator.endLiquidation(agent), "CannotStopLiquidation", []);
             // test rewarding
             const collateralRatioBIPS3VaultCollateral = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1VaultCollateral).sub(liquidationReward2VaultCollateral), mintedAmount.sub(liquidateUBA.muln(2)));
             const liquidationFactorBIPS3VaultCollateral = await liquidator.getLiquidationFactorBIPSVaultCollateral(collateralRatioBIPS3VaultCollateral, liquidationStarted.timestamp, liquidationTimestamp3);
@@ -504,8 +504,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assert(liquidationReward1Pool.lt(liquidationReward2Pool));
             assert(liquidationReward2Pool.lt(liquidationReward3Pool));
             // full liquidation cannot be stopped
-            await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
-            await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
+            await expectRevert.custom(agent.endLiquidation(), "CannotStopLiquidation", []);
+            await expectRevert.custom(liquidator.endLiquidation(agent), "CannotStopLiquidation", []);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1VaultCollateral).sub(liquidationReward2VaultCollateral).sub(liquidationReward3VaultCollateral));
         });

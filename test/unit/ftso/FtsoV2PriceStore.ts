@@ -52,25 +52,25 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
     describe("method tests", () => {
 
         it("should revert if deploying contract with invalid start time", async () => {
-            await expectRevert(FtsoV2PriceStore.new(
+            await expectRevert.custom(FtsoV2PriceStore.new(
                 contracts.governanceSettings.address,
                 governance,
                 contracts.addressUpdater.address,
                 startTs + 10,
                 votingEpochDurationSeconds,
                 ftsoScalingProtocolId
-            ), "invalid start time");
+            ), "InvalidStartTime", []);
         });
 
         it("should revert if deploying contract with too short voting epoch duration", async () => {
-            await expectRevert(FtsoV2PriceStore.new(
+            await expectRevert.custom(FtsoV2PriceStore.new(
                 contracts.governanceSettings.address,
                 governance,
                 contracts.addressUpdater.address,
                 startTs,
                 1,
                 ftsoScalingProtocolId
-            ), "voting epoch duration too short");
+            ), "VotingEpochDurationTooShort", []);
         });
 
         //// publishing prices
@@ -79,39 +79,39 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             const feedIds = ["0x01464c522f55534400000000000000000000000000", "0x01555344432f555344000000000000000000000000"];
             await priceStore.updateSettings(["0x01464c522f55534400000000000000000000000000"], ["FLR"], [6], 50, { from: governance });
 
-            await expectRevert(publishPrices(), "wrong number of proofs");
+            await expectRevert.custom(publishPrices(), "WrongNumberOfProofs", []);
         });
 
         it("should revert if (newer) prices already published", async () => {
             await publishPrices(true, 2, 2);
 
             // publish prices for voting round 1
-            await expectRevert(publishPrices(false, 1), "(newer) prices already published");
+            await expectRevert.custom(publishPrices(false, 1), "PricesAlreadyPublished", []);
         });
 
         it("should revert if submission window for trusted providers not yet closed", async () => {
-            await expectRevert(publishPrices(false, 1), "submission window not closed yet");
+            await expectRevert.custom(publishPrices(false, 1), "SubmissionWindowNotClosed", []);
         });
 
         it("should revert if voting round id mismatch", async () => {
-            await expectRevert(publishPrices(true, 1, 2), "voting round id mismatch");
+            await expectRevert.custom(publishPrices(true, 1, 2), "VotingRoundIdMismatch", []);
         });
 
         it("should revert if feed id mismatch", async () => {
-            await expectRevert(publishPrices(true, 1, 1, feedIds[0], feedIds[0]), "feed id mismatch");
+            await expectRevert.custom(publishPrices(true, 1, 1, feedIds[0], feedIds[0]), "FeedIdMismatch", []);
         });
 
         it("should revert if value is negative", async () => {
-            await expectRevert(publishPrices(true, 1, 1, feedIds[0], feedIds[1], -1), "value must be non-negative");
+            await expectRevert.custom(publishPrices(true, 1, 1, feedIds[0], feedIds[1], -1), "ValueMustBeNonNegative", []);
         });
 
         it("should revert if Merkle proof is invalid", async () => {
-            await expectRevert(publishPrices(true, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, true), "merkle proof invalid");
+            await expectRevert.custom(publishPrices(true, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, true), "MerkleProofInvalid", []);
         });
 
         //// submitting trusted prices
         it("should revert if submitter is not trusted provider", async () => {
-            await expectRevert(priceStore.submitTrustedPrices(1, []), "only trusted provider");
+            await expectRevert.custom(priceStore.submitTrustedPrices(1, []), "OnlyTrustedProvider", []);
         });
 
         it("should revert if all prices are not provided", async () => {
@@ -120,7 +120,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
                 feeds0.push({ id: feedIds[i], value: 123458, decimals: feedDecimals[i] });
             }
             const tx1 = priceStore.submitTrustedPrices(1, feeds0, { from: trustedProviders[0] });
-            await expectRevert(tx1, "all prices must be provided");
+            await expectRevert.custom(tx1, "AllPricesMustBeProvided", []);
         });
 
         it("should revert if submission windows is closed", async () => {
@@ -130,7 +130,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
                 feeds0.push({ id: feedIds[i], value: 123458, decimals: feedDecimals[i] });
             }
             const tx1 = priceStore.submitTrustedPrices(1, feeds0, { from: trustedProviders[0] });
-            await expectRevert(tx1, "submission window closed");
+            await expectRevert.custom(tx1, "SubmissionWindowClosed", []);
         });
 
         it("should revert if voting round id mismatch", async () => {
@@ -140,7 +140,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
                 feeds0.push({ id: feedIds[i], value: 123458, decimals: feedDecimals[i] });
             }
             const tx1 = priceStore.submitTrustedPrices(0, feeds0, { from: trustedProviders[0] });
-            await expectRevert(tx1, "voting round id mismatch");
+            await expectRevert.custom(tx1, "VotingRoundIdMismatch", []);
         });
 
         it("should revert if trying to submit twice", async () => {
@@ -153,7 +153,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
             // try to submit again
             const tx1 = priceStore.submitTrustedPrices(1, feeds0, { from: trustedProviders[0] });
-            await expectRevert(tx1, "already submitted");
+            await expectRevert.custom(tx1, "AlreadySubmitted", []);
         });
 
         it("should revert if feed id mismatch", async () => {
@@ -163,7 +163,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
                 feeds0.push({ id: feedIds[i], value: 123458, decimals: feedDecimals[i] });
             }
             const tx1 = priceStore.submitTrustedPrices(1, feeds0, { from: trustedProviders[0] });
-            await expectRevert(tx1, "feed id mismatch");
+            await expectRevert.custom(tx1, "FeedIdMismatch", []);
         });
 
         it("should revert if decimals mismatch", async () => {
@@ -173,7 +173,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
                 feeds0.push({ id: feedIds[i], value: 123458, decimals: feedDecimals[i] + 1 });
             }
             const tx1 = priceStore.submitTrustedPrices(1, feeds0, { from: trustedProviders[0] });
-            await expectRevert(tx1, "decimals mismatch");
+            await expectRevert.custom(tx1, "DecimalsMismatch", []);
         });
 
         it("should calculate median price from 4 trusted prices", async () => {
@@ -211,7 +211,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         });
 
         it("should revert if getting price from trusted providers with quality for unsupported symbol", async () => {
-            await expectRevert(priceStore.getPriceFromTrustedProvidersWithQuality(ZERO_BYTES_20), "symbol not supported");
+            await expectRevert.custom(priceStore.getPriceFromTrustedProvidersWithQuality(ZERO_BYTES_20), "SymbolNotSupported", []);
         });
 
         it("should calculate median price from 1 trusted price", async () => {
@@ -332,15 +332,15 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
         //// update settings
         it("should revert if not governance", async () => {
-            await expectRevert(priceStore.updateSettings([], [], [], 50), "only governance");
+            await expectRevert.custom(priceStore.updateSettings([], [], [], 50), "OnlyGovernance", []);
         });
 
         it("should revert if lengths mismatch", async () => {
-            await expectRevert(priceStore.updateSettings([], [], [6], 50, { from: governance }), "length mismatch");
+            await expectRevert.custom(priceStore.updateSettings([], [], [6], 50, { from: governance }), "LengthMismatch", []);
         });
 
         it("should revert if max spread too big", async () => {
-            await expectRevert(priceStore.updateSettings([], [], [], 10001, { from: governance }), "max spread too big");
+            await expectRevert.custom(priceStore.updateSettings([], [], [], 10001, { from: governance }), "MaxSpreadTooBig", []);
         });
 
         it("should delete trusted price for a symbol if changing decimals", async () => {
@@ -426,15 +426,15 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
         //// set trusted providers
         it ("should revert if not governance", async () => {
-            await expectRevert(priceStore.setTrustedProviders([], 1), "only governance");
+            await expectRevert.custom(priceStore.setTrustedProviders([], 1), "OnlyGovernance", []);
         });
 
         it("should revert if threshold is too high", async () => {
-            await expectRevert(priceStore.setTrustedProviders(trustedProviders, 4, { from: governance }), "threshold too high");
+            await expectRevert.custom(priceStore.setTrustedProviders(trustedProviders, 4, { from: governance }), "ThresholdTooHigh", []);
         });
 
         it("should revert if too many trusted providers", async () => {
-            await expectRevert(priceStore.setTrustedProviders(accounts, 2, { from: governance }), "too many trusted providers");
+            await expectRevert.custom(priceStore.setTrustedProviders(accounts, 2, { from: governance }), "TooManyTrustedProviders", []);
         });
 
         it("should change trusted providers", async () => {
@@ -452,7 +452,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             await time.increaseTo(startTs + 3 * votingEpochDurationSeconds);
 
             // trusted provider 0 should not be able to submit prices
-            await expectRevert(priceStore.submitTrustedPrices(2, feeds0, { from: trustedProviders[0] }), "only trusted provider");
+            await expectRevert.custom(priceStore.submitTrustedPrices(2, feeds0, { from: trustedProviders[0] }), "OnlyTrustedProvider", []);
 
             // new trusted provider can submit prices
             await priceStore.submitTrustedPrices(2, feeds0, { from: accounts[123] });
@@ -469,7 +469,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         });
 
         it("should revert if symbol is not supported", async () => {
-            await expectRevert(priceStore.getPrice("USDT"), "symbol not supported");
+            await expectRevert.custom(priceStore.getPrice("USDT"), "SymbolNotSupported", []);
         });
 
         it("should get price if decimals are negative", async () => {
@@ -512,7 +512,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         });
 
         it("should revert if symbol is not supported", async () => {
-            await expectRevert(priceStore.getPriceFromTrustedProviders("USDT"), "symbol not supported");
+            await expectRevert.custom(priceStore.getPriceFromTrustedProviders("USDT"), "SymbolNotSupported", []);
         });
 
         it("should get trusted price if decimals are negative", async () => {

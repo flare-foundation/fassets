@@ -193,9 +193,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
 
         // perform redemption, the receiveUnderlyingAddress param set to agent.underlyingAddress
-        await expectRevert(context.assetManager.redeem(lots, agent.underlyingAddress, "0x0000000000000000000000000000000000000000",
+        await expectRevert.custom(context.assetManager.redeem(lots, agent.underlyingAddress, "0x0000000000000000000000000000000000000000",
             { from: redeemer.address, value: undefined }),
-            "cannot redeem to agent's address");
+            "CannotRedeemToAgentsAddress", []);
     });
 
     it.skip("40499: force agent liquidation by reentering `liquidate` from `executeMinting`", async () => {
@@ -345,8 +345,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         console.log(">> before prove on non-existence is available");
         // agent invokes `rejectInvalidRedemption` on his own DEFAULTED redemption since it has not been deleted to reduce backing redeeming amount
         const proof = await context.attestationProvider.proveAddressValidity(request.paymentAddress);
-        await expectRevert(context.assetManager.rejectInvalidRedemption(proof, request.requestId, { from: agentOwner1 }),
-            "invalid redemption status");
+        await expectRevert.custom(context.assetManager.rejectInvalidRedemption(proof, request.requestId, { from: agentOwner1 }),
+            "InvalidRedemptionStatus", []);
 
         agentInfo = await agent.getAgentInfo();
         console.log("AgentInfo after agent rejecting their own redemption");
@@ -540,8 +540,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
         console.log(">> Confirm redemption payment");
         // this was successfull before fix
-        await expectRevert(context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress }),
-            "source not agent's underlying address");
+        await expectRevert.custom(context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress }),
+            "SourceNotAgentsUnderlyingAddress", []);
 
         const underlyingBalanceAfter = (await agent.getAgentInfo()).underlyingBalanceUBA;
         console.log(">> underlyingBalance before: ", underlyingBalanceBefore);
@@ -594,7 +594,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // Agent directly transfers wNat to collateral pool (large portion)
         await context.wNat.deposit({ value: fullPoolCollateral.sub(toBNExp(1, 18)), from: agentOwner1 });
         await context.wNat.transfer(agent.collateralPool.address, fullPoolCollateral.sub(toBNExp(1, 18)), { from: agentOwner1 });
-        await expectRevert(agent.makeAvailable(), "not enough free collateral");
+        await expectRevert.custom(agent.makeAvailable(), "NotEnoughFreeCollateral", []);
     });
 
     it("43711: solved vault CR too low but cannot liquidate - untracked pool collateral doesn't count for minting", async () => {
@@ -613,7 +613,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         await context.updateUnderlyingBlock();
         // Perform some minting on phantom collateral (not tracked by totalCollteral)
         const lots = 6;
-        await expectRevert(minter.reserveCollateral(agent.vaultAddress, lots), "not enough free collateral");
+        await expectRevert.custom(minter.reserveCollateral(agent.vaultAddress, lots), "NotEnoughFreeCollateral", []);
     });
 
     it.skip("43753: agent can set very high buyFAssetByAgentFactorBIPS - original", async () => {
@@ -655,7 +655,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // agent buys 5 lots
         await minter.transferFAsset(agent.ownerWorkAddress, context.convertLotsToUBA(5));
         // agent changes buyFAssetByAgentFactorBIPS and poolExitCollateralRatioBIPS (to be able to do selfCloseExit)
-        await expectRevert(agent.changeSettings({ buyFAssetByAgentFactorBIPS: toBIPS(1.01) }), "value too high");
+        await expectRevert.custom(agent.changeSettings({ buyFAssetByAgentFactorBIPS: toBIPS(1.01) }), "ValueTooHigh", []);
     });
 
     it("43877: mint from free underlying of 0 lots fill redemption queue", async () => {
@@ -666,7 +666,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         await agent.depositCollateralLotsAndMakeAvailable(100);
         await agent2.depositCollateralLotsAndMakeAvailable(100);
         // mint 0 lots is now forbidden in mintFromFreeUnderlying (it is still allowed in selfMint, but it doesn't create tickets there)
-        await expectRevert(agent.mintFromFreeUnderlying(0), "cannot mint 0 lots");
+        await expectRevert.custom(agent.mintFromFreeUnderlying(0), "CannotMintZeroLots", []);
         // // fill with empty tickets
         // for (let i = 0; i < 30; i++) {
         //     await agent.mintFromFreeUnderlying(0);
@@ -817,7 +817,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             "0x0000000000000000000000000000000000000000000000000000000000000000");
         // The proof is generated, and indication that FDC doesn't find matching transaction despite the fact that there is one
         // Malicious agent cannot invoke `mintingPaymentDefault` anymore
-        await expectRevert(context.assetManager.mintingPaymentDefault(proof, crt.collateralReservationId, { from: agent.ownerWorkAddress }), "source addresses not supported");
+        await expectRevert.custom(context.assetManager.mintingPaymentDefault(proof, crt.collateralReservationId, { from: agent.ownerWorkAddress }), "SourceAddressesNotSupported", []);
     });
 
     it("45893: agent steals collateral pool NAT with malicious distribution to delegators / reward manager", async () => {

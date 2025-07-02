@@ -66,21 +66,21 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             const agentInfo = await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA) });
             // should not withdraw all but only free collateral
-            await expectRevert(agent.announceVaultCollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
+            await expectRevert.custom(agent.announceVaultCollateralWithdrawal(fullAgentCollateral), "WithdrawalValueTooHigh", []);
             const minVaultCollateralRatio = agentInfo.mintingVaultCollateralRatioBIPS; // > agent.vaultCollateral().minCollateralRatioBIPS
             const vaultCollateralPrice = await context.getCollateralPrice(agent.vaultCollateral());
             const lockedCollateral = vaultCollateralPrice.convertUBAToTokenWei(agentInfo.mintedUBA).mul(toBN(minVaultCollateralRatio)).divn(MAX_BIPS);
             const withdrawalAmount = fullAgentCollateral.sub(lockedCollateral);
             await agent.announceVaultCollateralWithdrawal(withdrawalAmount);
             await agent.checkAgentInfo({ reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: withdrawalAmount });
-            await expectRevert(agent.withdrawVaultCollateral(withdrawalAmount), "withdrawal: not allowed yet");
+            await expectRevert.custom(agent.withdrawVaultCollateral(withdrawalAmount), "WithdrawalNotAllowedYet", []);
             await time.deterministicIncrease(context.settings.withdrawalWaitMinSeconds);
             const startVaultCollateralBalance = toBN(await agent.vaultCollateralToken().balanceOf(agent.ownerWorkAddress));
             await agent.withdrawVaultCollateral(withdrawalAmount);
             await agent.checkAgentInfo({ totalVaultCollateralWei: lockedCollateral, announcedVaultCollateralWithdrawalWei: 0 });
             const endVaultCollateralBalance = toBN(await agent.vaultCollateralToken().balanceOf(agent.ownerWorkAddress));
             assertWeb3Equal(endVaultCollateralBalance.sub(startVaultCollateralBalance), withdrawalAmount);
-            await expectRevert(agent.announceVaultCollateralWithdrawal(1), "withdrawal: value too high");
+            await expectRevert.custom(agent.announceVaultCollateralWithdrawal(1), "WithdrawalValueTooHigh", []);
         });
 
         it("changing collaterals", async () => {
@@ -105,7 +105,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await time.deterministicIncrease(context.settings.tokenInvalidationTimeMinSeconds);
             //Owner can't switch collateral if there is not enough collateral of the new token
             const res = context.assetManager.switchVaultCollateral(agent.agentVault.address, context.usdt.address, { from: agent.ownerWorkAddress });
-            await expectRevert(res, "not enough collateral");
+            await expectRevert.custom(res, "NotEnoughCollateral", []);
             // Agent deposits new collateral
             await context.usdt.mintAmount(agent.ownerWorkAddress, fullAgentCollateral);
             await context.usdt.approve(agent.agentVault.address, fullAgentCollateral, { from: agent.ownerWorkAddress });
@@ -144,7 +144,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await agent.confirmTopupPayment(txHash);
             await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: amount });
             // check that confirming the same topup payment reverts
-            await expectRevert(agent.confirmTopupPayment(txHash), "payment already confirmed");
+            await expectRevert.custom(agent.confirmTopupPayment(txHash), "PaymentAlreadyConfirmed", []);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);
         });
@@ -227,8 +227,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await agent.checkAgentInfo({ announcedUnderlyingWithdrawalId: underlyingWithdrawal.announcementId });
             assert.isAbove(Number(underlyingWithdrawal.announcementId), 0);
             // others cannot confirm underlying withdrawal immediatelly or challenge it as illegal payment
-            await expectRevert(challenger.confirmUnderlyingWithdrawal(underlyingWithdrawal, tx1Hash, agent), "only agent vault owner");
-            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching ongoing announced pmt");
+            await expectRevert.custom(challenger.confirmUnderlyingWithdrawal(underlyingWithdrawal, tx1Hash, agent), "OnlyAgentVaultOwner", []);
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "MatchingAnnouncedPaymentActive", []);
             // others can confirm underlying withdrawal after some time
             await time.deterministicIncrease(context.settings.confirmationByOthersAfterSeconds);
             const startVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
@@ -236,7 +236,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const challengerVaultCollateralReward = await agent.usd5ToVaultCollateralWei(toBN(context.settings.confirmationByOthersRewardUSD5));
             assert.approximately(Number(challengerVaultCollateralReward) / 1e18, 100, 10);
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(challengerVaultCollateralReward), freeUnderlyingBalanceUBA: 0, announcedUnderlyingWithdrawalId: 0 });
-            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "ChallengeTransactionAlreadyConfirmed", []);
             assertWeb3Equal(res.spentUBA, amount);
             const endVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
             // test rewarding
@@ -269,8 +269,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assert.isTrue(await context.assetManager.mintingPaused());
             // existing minting can be executed, new minting is not possible
             const minted2 = await agent.executeMinting(crt2, tx2Hash, minter2);
-            await expectRevert(minter1.reserveCollateral(agent.vaultAddress, lots1), "minting paused");
-            await expectRevert(agent.selfMint(context.convertLotsToUBA(lots1), lots1), "minting paused");
+            await expectRevert.custom(minter1.reserveCollateral(agent.vaultAddress, lots1), "MintingPaused", []);
+            await expectRevert.custom(agent.selfMint(context.convertLotsToUBA(lots1), lots1), "MintingPaused", []);
             // agent and redeemer "buys" f-assets
             await context.fAsset.transfer(agent.ownerWorkAddress, minted1.mintedAmountUBA, { from: minter1.address });
             await context.fAsset.transfer(redeemer.address, minted2.mintedAmountUBA, { from: minter2.address });
@@ -353,7 +353,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await agent.setVaultCollateralRatioByChangingAssetPrice(1000000);
             //Agent shouldn't be able to withdraw if it would make CR too low
             const res = agent.withdrawVaultCollateral(withdrawalAmount);
-            await expectRevert(res, "CR too low");
+            await expectRevert.custom(res, "WithdrawalCRTooLow", []);
         });
     });
 });

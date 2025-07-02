@@ -111,7 +111,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         // act
         const promise = assetManager.liquidate(agentVault.address, 500);
         // assert
-        await expectRevert(promise, "not in liquidation");
+        await expectRevert.custom(promise, "NotInLiquidation", []);
     });
 
     it("should not start full liquidation if agent is in status DESTROYING", async () => {
@@ -180,7 +180,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         await assetManager.liquidate(agentVault.address, minted.mintedAmountUBA.divn(2), { from: liquidatorAddress1 });
         await contracts.priceStore.setCurrentPrice(assetName, toBNExp(3.521, 5), 0);
 
-        await expectRevert(assetManager.startLiquidation(agentVault.address), "liquidation not started");
+        await expectRevert.custom(assetManager.startLiquidation(agentVault.address), "LiquidationNotStarted", []);
         const info2 = await assetManager.getAgentInfo(agentVault.address);
         await assetManager.endLiquidation(agentVault.address);
         const info3 = await assetManager.getAgentInfo(agentVault.address);
@@ -198,7 +198,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
         await mint(agentVault, underlyingMinter1, minterAddress1);
         //Starting liquidation now should revert, because it can't change status
-        await expectRevert(assetManager.startLiquidation(agentVault.address), "liquidation not started");
+        await expectRevert.custom(assetManager.startLiquidation(agentVault.address), "LiquidationNotStarted", []);
         const info = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info.status, 0);
         const assetName = await fAsset.symbol();
@@ -329,7 +329,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         await contracts.priceStore.setCurrentPrice(assetName, toBNExp(8, 8), 0);
         await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(3, 8), 0);
 
-        await expectRevert(assetManager.startLiquidation(agentVault.address), "liquidation not started");
+        await expectRevert.custom(assetManager.startLiquidation(agentVault.address), "LiquidationNotStarted", []);
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         // liquidator "buys" f-assets
         assertWeb3Equal(info1.status, AgentStatus.NORMAL);

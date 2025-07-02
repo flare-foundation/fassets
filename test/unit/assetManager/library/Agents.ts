@@ -97,7 +97,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
         // whitelist agent management address
         await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
-        await expectRevert(assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 }), "invalid address ownership proof");
+        await expectRevert.custom(assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 }), "InvalidAddressOwnershipProof", []);
     });
 
     it("should prove EOA address without changing current block number", async () => {
@@ -126,7 +126,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
         // assert
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
-        await expectRevert(assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 }), "address already claimed");
+        await expectRevert.custom(assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 }), "AddressAlreadyClaimed", []);
     });
 
     it("should create agent", async () => {
@@ -191,8 +191,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const agentSettings = createTestAgentSettings(usdc.address);
         // whitelist agent management address
         await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
-        await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
-            "address invalid");
+        await expectRevert.custom(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
+            "AddressInvalid", []);
     });
 
     it("should not create agent - address already claimed (with EOA proof)", async () => {
@@ -208,8 +208,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const agentSettings = createTestAgentSettings(usdc.address);
         // whitelist agent management address
         await whitelistAgentOwner(settings.agentOwnerRegistry, accounts[0]);
-        await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings)),
-            "address already claimed");
+        await expectRevert.custom(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings)),
+            "AddressAlreadyClaimed", []);
     });
 
     it("should not create agent - address already claimed (no EOA proof)", async () => {
@@ -217,8 +217,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         // act
         await createAgent(agentOwner1, underlyingAgent1);
         // assert
-        await expectRevert(createAgent(accounts[1], underlyingAgent1),
-            "address already claimed");
+        await expectRevert.custom(createAgent(accounts[1], underlyingAgent1),
+            "AddressAlreadyClaimed", []);
     });
 
     it("should not create agent - underlying address used twice", async () => {
@@ -226,8 +226,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         // act
         await createAgent(agentOwner1, underlyingAgent1);
         // assert
-        await expectRevert(createAgent(agentOwner1, underlyingAgent1),
-            "address already claimed");
+        await expectRevert.custom(createAgent(agentOwner1, underlyingAgent1),
+            "AddressAlreadyClaimed", []);
     });
 
     it("should create expected pool token name and symbol", async () => {
@@ -241,33 +241,33 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         assert.equal(await poolToken.symbol(), "FCPT-BTC-AGX");
     });
 
-    it("should not create agent if pool token is not unique or invalid", async () => {
+    it.only("should not create agent if pool token is not unique or invalid", async () => {
         // init
         const agent = await createAgent(agentOwner1, underlyingAgent1, { poolTokenSuffix: "AG-X-5" });
         // act
         // assert
-        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_1", { poolTokenSuffix: "AG-X-5" }),
-            "suffix already reserved");
-        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_2", { poolTokenSuffix: "" }),
-            "suffix too short");
-        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_2", { poolTokenSuffix: "AGX12345678901234567890" }),
-            "suffix too long");
-        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_3", { poolTokenSuffix: "A B" }),
-            "invalid character in suffix");
-        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_5", { poolTokenSuffix: "ABČ" }),
-            "invalid character in suffix");
-        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_6", { poolTokenSuffix: "ABc" }),
-            "invalid character in suffix");
-        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_7", { poolTokenSuffix: "A+B" }),
-            "invalid character in suffix");
-        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_7a", { poolTokenSuffix: "A=B" }),
-            "invalid character in suffix");
-        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_7b", { poolTokenSuffix: "A_B" }),
-            "invalid character in suffix");
-        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_8", { poolTokenSuffix: "-AB" }),
-            "invalid character in suffix");
-        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_9", { poolTokenSuffix: "AB-" }),
-            "invalid character in suffix");
+        await expectRevert.custom(createAgent(agentOwner1, underlyingAgent1 + "_1", { poolTokenSuffix: "AG-X-5" }),
+            "SuffixReserved", []);
+        await expectRevert.custom(createAgent(agentOwner1, underlyingAgent1 + "_2", { poolTokenSuffix: "" }),
+            "SuffixInvalidFormat", []);
+        await expectRevert.custom(createAgent(agentOwner1, underlyingAgent1 + "_2", { poolTokenSuffix: "AGX12345678901234567890" }),
+            "SuffixInvalidFormat", []);
+        await expectRevert.custom(createAgent(agentOwner1, underlyingAgent1 + "_3", { poolTokenSuffix: "A B" }),
+            "SuffixInvalidFormat", []);
+        await expectRevert.custom(createAgent(agentOwner1, underlyingAgent1 + "_5", { poolTokenSuffix: "ABČ" }),
+            "SuffixInvalidFormat", []);
+        await expectRevert.custom(createAgent(agentOwner1, underlyingAgent1 + "_6", { poolTokenSuffix: "ABc" }),
+            "SuffixInvalidFormat", []);
+        await expectRevert.custom(createAgent(agentOwner1, underlyingAgent1 + "_7", { poolTokenSuffix: "A+B" }),
+            "SuffixInvalidFormat", []);
+        await expectRevert.custom(createAgent(agentOwner1, underlyingAgent1 + "_7a", { poolTokenSuffix: "A=B" }),
+            "SuffixInvalidFormat", []);
+        await expectRevert.custom(createAgent(agentOwner1, underlyingAgent1 + "_7b", { poolTokenSuffix: "A_B" }),
+            "SuffixInvalidFormat", []);
+        await expectRevert.custom(createAgent(agentOwner1, underlyingAgent1 + "_8", { poolTokenSuffix: "-AB" }),
+            "SuffixInvalidFormat", []);
+        await expectRevert.custom(createAgent(agentOwner1, underlyingAgent1 + "_9", { poolTokenSuffix: "AB-" }),
+            "SuffixInvalidFormat", []);
     });
 
     it("should require EOA check to create agent", async () => {
@@ -297,8 +297,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const agentSettings = createTestAgentSettings(usdc.address);
         // whitelist agent management address
         await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
-        await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
-            "address invalid");
+        await expectRevert.custom(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
+            "AddressInvalid", []);
     });
 
     function createAddressValidityProof(): AddressValidity.Proof {
@@ -337,8 +337,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const agentSettings = createTestAgentSettings(usdc.address);
         // whitelist agent management address
         await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
-        await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
-            "address validity not proved");
+        await expectRevert.custom(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
+            "AddressValidityNotProven", []);
     });
 
     it("should require verified proof - wrong attestation type", async () => {
@@ -354,8 +354,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         await forceProveResponse("AddressValidity", addressValidityProof.data);
         // whitelist agent management address
         await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
-        await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
-            "address validity not proved");
+        await expectRevert.custom(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
+            "AddressValidityNotProven", []);
         // should work with correct attestation type
         addressValidityProof.data.attestationType = AddressValidity.TYPE;
         await forceProveResponse("AddressValidity", addressValidityProof.data);
@@ -367,8 +367,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
-        await expectRevert(assetManager.makeAgentAvailable(agentVault.address),
-            "only agent vault owner");
+        await expectRevert.custom(assetManager.makeAgentAvailable(agentVault.address),
+            "OnlyAgentVaultOwner", []);
     });
 
     it("cannot add agent to available list if agent's status is not 'NORMAL'", async () => {
@@ -379,8 +379,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
         // act
         // assert
-        await expectRevert(assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 }),
-            "invalid agent status");
+        await expectRevert.custom(assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 }),
+            "InvalidAgentStatus", []);
     });
 
     it("cannot add agent to available list twice", async () => {
@@ -392,8 +392,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         await assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 });
         // act
         // assert
-        await expectRevert(assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 }),
-            "agent already available");
+        await expectRevert.custom(assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 }),
+            "AgentAlreadyAvailable", []);
     });
 
     it("cannot add agent to available list if not enough free collateral", async () => {
@@ -401,8 +401,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
-        await expectRevert(assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 }),
-            "not enough free collateral");
+        await expectRevert.custom(assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 }),
+            "NotEnoughFreeCollateral", []);
     });
 
     it("cannot exit if not active", async () => {
@@ -412,8 +412,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         await depositCollateral(agentOwner1, agentVault, amount);
         // act
         // assert
-        await expectRevert(assetManager.exitAvailableAgentList(agentVault.address, { from: agentOwner1 }),
-            "agent not available");
+        await expectRevert.custom(assetManager.exitAvailableAgentList(agentVault.address, { from: agentOwner1 }),
+            "AgentNotAvailable", []);
     });
 
     it("only owner can exit agent", async () => {
@@ -421,8 +421,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
-        await expectRevert(assetManager.exitAvailableAgentList(agentVault.address),
-            "only agent vault owner");
+        await expectRevert.custom(assetManager.exitAvailableAgentList(agentVault.address),
+            "OnlyAgentVaultOwner", []);
     });
 
     it("only owner can announce destroy agent", async () => {
@@ -430,8 +430,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
-        await expectRevert(assetManager.announceDestroyAgent(agentVault.address),
-            "only agent vault owner");
+        await expectRevert.custom(assetManager.announceDestroyAgent(agentVault.address),
+            "OnlyAgentVaultOwner", []);
     });
 
     it("cannot announce destroy agent if still active", async () => {
@@ -443,8 +443,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         await assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 });
         // act
         // assert
-        await expectRevert(assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 }),
-            "agent still available");
+        await expectRevert.custom(assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 }),
+            "AgentStillAvailable", []);
     });
 
     it("only owner can destroy agent", async () => {
@@ -452,8 +452,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
-        await expectRevert(assetManager.destroyAgent(agentVault.address, agentOwner1),
-            "only agent vault owner");
+        await expectRevert.custom(assetManager.destroyAgent(agentVault.address, agentOwner1),
+            "OnlyAgentVaultOwner", []);
     });
 
     it("cannot destroy agent without announcement", async () => {
@@ -461,8 +461,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
-        await expectRevert(assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 }),
-            "destroy not announced");
+        await expectRevert.custom(assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 }),
+            "DestroyNotAnnounced", []);
     });
 
     it("cannot destroy agent too soon", async () => {
@@ -474,7 +474,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
         await time.deterministicIncrease(150);
         // assert
-        await expectRevert(assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 }), "destroy: not allowed yet");
+        await expectRevert.custom(assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 }), "DestroyNotAllowedYet", []);
     });
 
     it("should destroy agent after announced withdrawal time passes", async () => {
@@ -508,8 +508,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
-        await expectRevert(assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100),
-            "only agent vault owner");
+        await expectRevert.custom(assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100),
+            "OnlyAgentVaultOwner", []);
     });
 
     it("should announce collateral withdrawal", async () => {
@@ -581,8 +581,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         // assert
         assertWeb3Equal(withdrawn1, 45);
         assertWeb3Equal(withdrawn2, 100);
-        await expectRevert(agentVault.withdrawCollateral(usdc.address, 2, agentOwner1, { from: agentOwner1 }),
-            "withdrawal: more than announced");
+        await expectRevert.custom(agentVault.withdrawCollateral(usdc.address, 2, agentOwner1, { from: agentOwner1 }),
+            "WithdrawalMoreThanAnnounced", []);
     });
 
     it("only owner can withdraw collateral", async () => {
@@ -592,8 +592,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         await depositCollateral(agentOwner1, agentVault, amount);
         // act
         // assert
-        await expectRevert(agentVault.withdrawCollateral(usdc.address, 100, accounts[2]),
-            "only owner");
+        await expectRevert.custom(agentVault.withdrawCollateral(usdc.address, 100, accounts[2]),
+            "OnlyOwner", []);
     });
 
     it("should not withdraw collateral if not accounced", async () => {
@@ -603,8 +603,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         await depositCollateral(agentOwner1, agentVault, amount);
         // act
         // assert
-        await expectRevert(agentVault.withdrawCollateral(usdc.address, 100, agentOwner1, { from: agentOwner1 }),
-            "withdrawal: not announced");
+        await expectRevert.custom(agentVault.withdrawCollateral(usdc.address, 100, agentOwner1, { from: agentOwner1 }),
+            "WithdrawalNotAnnounced", []);
     });
 
     it("should not withdraw collateral before announced withdrawal time passes", async () => {
@@ -616,8 +616,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         // act
         await time.deterministicIncrease(150);
         // assert
-        await expectRevert(agentVault.withdrawCollateral(usdc.address, 100, agentOwner1, { from: agentOwner1 }),
-            "withdrawal: not allowed yet");
+        await expectRevert.custom(agentVault.withdrawCollateral(usdc.address, 100, agentOwner1, { from: agentOwner1 }),
+            "WithdrawalNotAllowedYet", []);
     });
 
     it("should not withdraw collateral after too much time passes", async () => {
@@ -629,8 +629,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         // act
         await time.deterministicIncrease(toBN(settings.withdrawalWaitMinSeconds).add(toBN(settings.agentTimelockedOperationWindowSeconds)).addn(100));
         // assert
-        await expectRevert(agentVault.withdrawCollateral(usdc.address, 100, agentOwner1, { from: agentOwner1 }),
-            "withdrawal: too late");
+        await expectRevert.custom(agentVault.withdrawCollateral(usdc.address, 100, agentOwner1, { from: agentOwner1 }),
+            "WithdrawalTooLate", []);
     });
 
     it("should not withdraw more collateral than announced", async () => {
@@ -642,8 +642,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         // act
         await time.deterministicIncrease(300);
         // assert
-        await expectRevert(agentVault.withdrawCollateral(usdc.address, 101, agentOwner1, { from: agentOwner1 }),
-            "withdrawal: more than announced");
+        await expectRevert.custom(agentVault.withdrawCollateral(usdc.address, 101, agentOwner1, { from: agentOwner1 }),
+            "WithdrawalMoreThanAnnounced", []);
     });
 
     it("should change agent's min collateral ratio", async () => {
@@ -663,10 +663,10 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         // act
         const collateralRatioBIPS = 23000;
         // assert
-        await expectRevert(assetManager.announceAgentSettingUpdate(agentVault.address, 'mintingVaultCollateralRatioBIPS', collateralRatioBIPS),
-            "only agent vault owner");
-        await expectRevert(assetManager.executeAgentSettingUpdate(agentVault.address, 'mintingVaultCollateralRatioBIPS'),
-            "only agent vault owner");
+        await expectRevert.custom(assetManager.announceAgentSettingUpdate(agentVault.address, 'mintingVaultCollateralRatioBIPS', collateralRatioBIPS),
+            "OnlyAgentVaultOwner", []);
+        await expectRevert.custom(assetManager.executeAgentSettingUpdate(agentVault.address, 'mintingVaultCollateralRatioBIPS'),
+            "OnlyAgentVaultOwner", []);
     });
 
     it("should not set too low agent's min collateral ratio", async () => {
@@ -675,8 +675,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         // act
         const collateralRatioBIPS = 1_4000 - 1;
         // assert
-        await expectRevert(changeAgentSetting(agentOwner1, agentVault, 'mintingVaultCollateralRatioBIPS', collateralRatioBIPS),
-            "collateral ratio too small");
+        await expectRevert.custom(changeAgentSetting(agentOwner1, agentVault, 'mintingVaultCollateralRatioBIPS', collateralRatioBIPS),
+            "CollateralRatioTooSmall", []);
         const info = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info.mintingVaultCollateralRatioBIPS, 1_6000);
     });
@@ -697,7 +697,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         expectEvent(ping, "AgentPing", { sender: accounts[18], agentVault: agentVault.address, query: "1" });
         // assert
         // only owner can respond
-        await expectRevert(assetManager.agentPingResponse(agentVault.address, 1, "some data", { from: accounts[0] }), "only agent vault owner");
+        await expectRevert.custom(assetManager.agentPingResponse(agentVault.address, 1, "some data", { from: accounts[0] }), "OnlyAgentVaultOwner", []);
         // response must emit event with owner's address
         const response = await assetManager.agentPingResponse(agentVault.address, 1, "some data", { from: agentOwner1 });
         expectEvent(response, "AgentPingResponse", { agentVault: agentVault.address, owner: agentOwner1, query: "1", response: "some data" });
@@ -715,13 +715,13 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
     //     const agentXRPAddressIncorrect = "rfsK8pNsNeGA8nYWM3PzoRxMRHeAyEtNjž";
     //     //Create agent, underlying address too short
     //     let res = createAgent(agentOwner1, agentXRPAddressTooShort);
-    //     await expectRevert(res, "invalid underlying address");
+    //     await expectRevert.custom(res, "invalid underlying address");
     //     //Create agent, underlying address too short
     //     res = createAgent(agentOwner1, agentXRPAddressTooLong);
-    //     await expectRevert(res, "invalid underlying address");
+    //     await expectRevert.custom(res, "invalid underlying address");
     //     //Create agent, underlying address too short
     //     res = createAgent(agentOwner1, agentXRPAddressIncorrect);
-    //     await expectRevert(res, "invalid underlying address");
+    //     await expectRevert.custom(res, "invalid underlying address");
     //     //Create agent
     //     await createAgent(agentOwner1, agentXRPAddressCorrect);
     // });

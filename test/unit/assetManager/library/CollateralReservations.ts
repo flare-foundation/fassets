@@ -178,7 +178,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         const crFee = await assetManager.collateralReservationFee(lots);
         const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
         // assert
-        await expectRevert(promise, "agent not in mint queue");
+        await expectRevert.custom(promise, "AgentNotInMintQueue", []);
     });
 
     it("should not reserve collateral if trying to mint 0 lots", async () => {
@@ -190,7 +190,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         const crFee = await assetManager.collateralReservationFee(lots);
         const promise = assetManager.reserveCollateral(agentVault.address, 0, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
         // assert
-        await expectRevert(promise, "cannot mint 0 lots");
+        await expectRevert.custom(promise, "CannotMintZeroLots", []);
     });
 
     it("should not reserve collateral if agent's status is not 'NORMAL'", async () => {
@@ -206,7 +206,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         const crFee = await assetManager.collateralReservationFee(lots);
         const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
         // assert
-        await expectRevert(promise, "rc: invalid agent status");
+        await expectRevert.custom(promise, "InvalidAgentStatus", []);
     });
 
     it("should not reserve collateral if not enough free collateral", async () => {
@@ -219,7 +219,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         const crFee = await assetManager.collateralReservationFee(lots);
         const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
         // assert
-        await expectRevert(promise, "not enough free collateral");
+        await expectRevert.custom(promise, "NotEnoughFreeCollateral", []);
     });
 
     it("should reserve collateral when agent has minimum required amount of all types of collateral", async () => {
@@ -270,7 +270,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         const crFee = await assetManager.collateralReservationFee(lots);
         const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
         // assert
-        await expectRevert(promise, "not enough free collateral");
+        await expectRevert.custom(promise, "NotEnoughFreeCollateral", []);
     });
 
     it("should not reserve collateral if not enough free vault collateral", async () => {
@@ -295,7 +295,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         const crFee = await assetManager.collateralReservationFee(lots);
         const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
         // assert
-        await expectRevert(promise, "not enough free collateral");
+        await expectRevert.custom(promise, "NotEnoughFreeCollateral", []);
     });
 
     it("should not reserve collateral if not enough free pool collateral", async () => {
@@ -320,7 +320,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         const crFee = await assetManager.collateralReservationFee(lots);
         const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
         // assert
-        await expectRevert(promise, "not enough free collateral");
+        await expectRevert.custom(promise, "NotEnoughFreeCollateral", []);
     });
 
     it("should not reserve collateral if agent's fee is too high", async () => {
@@ -333,7 +333,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         const crFee = await assetManager.collateralReservationFee(lots);
         const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS - 1, noExecutorAddress, { from: minterAddress1, value: crFee });
         // assert
-        await expectRevert(promise, "agent's fee too high");
+        await expectRevert.custom(promise, "AgentsFeeTooHigh", []);
     });
 
     it("should not reserve collateral if inappropriate fee amount is sent", async () => {
@@ -346,7 +346,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         const crFee = await assetManager.collateralReservationFee(lots);
         // assert
         const promise1 = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee.subn(1) });
-        await expectRevert(promise1, "inappropriate fee amount");
+        await expectRevert.custom(promise1, "InappropriateFeeAmount", []);
     });
 
     it("should not default minting if minting non-payment mismatch", async () => {
@@ -364,19 +364,19 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
             underlyingMinter1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA),
             crt.firstUnderlyingBlock.toNumber(), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
         const promiseAddress = assetManager.mintingPaymentDefault(proofAddress, crt.collateralReservationId, { from: agentOwner1 });
-        await expectRevert(promiseAddress, "minting non-payment mismatch");
+        await expectRevert.custom(promiseAddress, "MintingNonPaymentMismatch", []);
         // wrong reference
         const proofReference = await attestationProvider.proveReferencedPaymentNonexistence(
             underlyingAgent1, PaymentReference.minting(crt.collateralReservationId.addn(1)), crt.valueUBA.add(crt.feeUBA),
             crt.firstUnderlyingBlock.toNumber(), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
         const promiseReference = assetManager.mintingPaymentDefault(proofReference, crt.collateralReservationId, { from: agentOwner1 });
-        await expectRevert(promiseReference, "minting non-payment mismatch");
+        await expectRevert.custom(promiseReference, "MintingNonPaymentMismatch", []);
         // wrong amount
         const proofAmount = await attestationProvider.proveReferencedPaymentNonexistence(
             underlyingAgent1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA).addn(1),
             crt.firstUnderlyingBlock.toNumber(), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
         const promiseAmount = assetManager.mintingPaymentDefault(proofAmount, crt.collateralReservationId, { from: agentOwner1 });
-        await expectRevert(promiseAmount, "minting non-payment mismatch");
+        await expectRevert.custom(promiseAmount, "MintingNonPaymentMismatch", []);
     });
 
     it("should not default minting if called too early", async () => {
@@ -395,7 +395,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
             crt.firstUnderlyingBlock.toNumber(), crt.lastUnderlyingBlock.toNumber() - 1, crt.lastUnderlyingTimestamp.toNumber() - chainInfo.blockTime * 2);
         const promiseOverflow = assetManager.mintingPaymentDefault(proofOverflow, crt.collateralReservationId, { from: agentOwner1 });
         // assert
-        await expectRevert(promiseOverflow, "minting default too early");
+        await expectRevert.custom(promiseOverflow, "MintingDefaultTooEarly", []);
     });
 
     it("should not default minting if invalid check or source addresses root", async () => {
@@ -413,7 +413,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
             underlyingAgent1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA),
             crt.firstUnderlyingBlock.toNumber(), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber(), web3.utils.soliditySha3("non-zero-root")!);
         const promiseAddress = assetManager.mintingPaymentDefault(proofAddress, crt.collateralReservationId, { from: agentOwner1 });
-        await expectRevert(promiseAddress, "source addresses not supported");
+        await expectRevert.custom(promiseAddress, "SourceAddressesNotSupported", []);
     });
 
     it("should revert default minting if invalid check (even if zero root)", async () => {
@@ -431,7 +431,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
             underlyingAgent1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA),
             crt.firstUnderlyingBlock.toNumber(), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber(), ZERO_BYTES32);
         const promiseAddress = assetManager.mintingPaymentDefault(proofAddress, crt.collateralReservationId, { from: agentOwner1 });
-        await expectRevert(promiseAddress, "source addresses not supported");
+        await expectRevert.custom(promiseAddress, "SourceAddressesNotSupported", []);
     });
 
     it("should not default minting if minting non-payment proof window too short", async () => {
@@ -450,7 +450,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
             crt.firstUnderlyingBlock.toNumber() + 1, crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
         const promiseOverflow = assetManager.mintingPaymentDefault(proofOverflow, crt.collateralReservationId, { from: agentOwner1 });
         // assert
-        await expectRevert(promiseOverflow, "minting non-payment proof window too short");
+        await expectRevert.custom(promiseOverflow, "MintingNonPaymentProofWindowTooShort", []);
     });
 
 });

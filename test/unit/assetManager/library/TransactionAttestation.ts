@@ -90,7 +90,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingAgent1, 1, PaymentReference.addressOwnership(agentOwner1), { maxFee: 100 });
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingAgent1);
         proof.data.responseBody.blockNumber = toBN(proof.data.responseBody.blockNumber).addn(1).toString();
-        await expectRevert(assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 }), "legal payment not proved")
+        await expectRevert.custom(assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 }), "LegalPaymentNotProven", [])
     });
 
     it("should not verify payment - invalid chain", async () => {
@@ -100,7 +100,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         chain.mint(underlyingAgent1, 10001);
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingAgent1, 1, PaymentReference.addressOwnership(agentOwner1), { maxFee: 100 });
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingAgent1);
-        await expectRevert(assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 }), "invalid chain")
+        await expectRevert.custom(assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 }), "InvalidChain", [])
     });
 
     it("should not execute minting payment default - non-payment not proved", async () => {
@@ -115,7 +115,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
             crt.firstUnderlyingBlock.toNumber(), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
         proof.data.lowestUsedTimestamp = toBN(proof.data.lowestUsedTimestamp).addn(1).toString();
         const res = assetManager.mintingPaymentDefault(proof, crt.collateralReservationId, { from: agentOwner1 });
-        await expectRevert(res, 'non-payment not proved');
+        await expectRevert.custom(res, 'NonPaymentNotProven', []);
     });
 
     it("should not execute minting payment default - invalid chain", async () => {
@@ -132,7 +132,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(crt.paymentAddress, crt.paymentReference, crt.valueUBA.sub(crt.feeUBA),
             crt.firstUnderlyingBlock.toNumber(), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
         const res = assetManager.mintingPaymentDefault(proof, crt.collateralReservationId, { from: agentOwner1 });
-        await expectRevert(res, 'invalid chain');
+        await expectRevert.custom(res, "InvalidChain", []);
     });
 
     it("should not succeed challenging illegal payment - transaction not proved", async() => {
@@ -141,7 +141,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
         proof.data.responseBody.spentAmount = toBN(proof.data.responseBody.spentAmount).addn(1).toString();
         const res = assetManager.illegalPaymentChallenge(proof, agentVault.address);
-        await expectRevert(res, 'transaction not proved');
+        await expectRevert.custom(res, "TransactionNotProven", []);
     });
 
     it("should not succeed challenging illegal payment - invalid chain", async () => {
@@ -152,7 +152,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, chainId);
         const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
         const res = assetManager.illegalPaymentChallenge(proof, agentVault.address);
-        await expectRevert(res, 'invalid chain');
+        await expectRevert.custom(res, "InvalidChain", []);
     });
 
     it("should not update current block - block height not proved", async() => {
@@ -160,7 +160,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
         proof.data.requestBody.blockNumber = toBN(proof.data.requestBody.blockNumber).addn(1).toString();
         const res = assetManager.updateCurrentBlock(proof);
-        await expectRevert(res, "block height not proved")
+        await expectRevert.custom(res, "BlockHeightNotProven", [])
     });
 
     it("should not update current block - invalid chain", async () => {
@@ -170,7 +170,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, chainId);
         const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
         const res = assetManager.updateCurrentBlock(proof);
-        await expectRevert(res, "invalid chain")
+        await expectRevert.custom(res, "InvalidChain", [])
     });
 
     it("should not verify address validity - invalid chain", async () => {
@@ -181,6 +181,6 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         const proof = await attestationProvider.proveAddressValidity("MY_ADDRESS");
         const promise = assetManager.createAgentVault(
             web3DeepNormalize(proof), web3DeepNormalize(createTestAgentSettings(usdc.address)), { from: agentOwner1 });
-        await expectRevert(promise, "invalid chain")
+        await expectRevert.custom(promise, "InvalidChain", [])
     });
 });

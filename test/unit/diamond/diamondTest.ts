@@ -308,7 +308,7 @@ contract('DiamondTest', function (accounts) {
                 functionSelectors: []
             }],
             ZERO_ADDRESS, '0x', { gas: 800000 });
-        await expectRevert(res, "NoSelectorsProvidedForFacetForCut");
+        await expectRevert.custom(res, "NoSelectorsProvidedForFacetForCut", [ZERO_ADDRESS]);
     });
 
     it('should revert if functions are to be added to address zero', async () => {
@@ -321,7 +321,7 @@ contract('DiamondTest', function (accounts) {
                 functionSelectors: selectors.selectors
             }],
             ZERO_ADDRESS, '0x', { gas: 800000 });
-        await expectRevert(res, "CannotAddSelectorsToZeroAddress");
+        await expectRevert.custom(res, "CannotAddSelectorsToZeroAddress");
     });
 
     it('should revert if functions that already exist are added to diamond', async () => {
@@ -334,7 +334,7 @@ contract('DiamondTest', function (accounts) {
                 functionSelectors: selectors.selectors
             }],
             ZERO_ADDRESS, '0x', { gas: 800000 });
-        await expectRevert(result, "CannotAddFunctionToDiamondThatAlreadyExists");
+        await expectRevert.custom(result, "CannotAddFunctionToDiamondThatAlreadyExists");
     });
 
     it('should revert if facet address is zero', async () => {
@@ -347,7 +347,7 @@ contract('DiamondTest', function (accounts) {
                 functionSelectors: selectors.selectors
             }],
             ZERO_ADDRESS, '0x', { gas: 800000 });
-        await expectRevert(result, "CannotReplaceFunctionsFromFacetWithZeroAddress");
+        await expectRevert.custom(result, "CannotReplaceFunctionsFromFacetWithZeroAddress");
     });
 
     it('should revert if facet function is to be replaced with the same function from the same facet', async () => {
@@ -360,7 +360,7 @@ contract('DiamondTest', function (accounts) {
                 functionSelectors: selectors.selectors
             }],
             ZERO_ADDRESS, '0x', { gas: 800000 });
-        await expectRevert(result, "CannotReplaceFunctionWithTheSameFunctionFromTheSameFacet");
+        await expectRevert.custom(result, "CannotReplaceFunctionWithTheSameFunctionFromTheSameFacet");
     });
 
     it('should revert if function to be replaced does not exist', async () => {
@@ -374,7 +374,7 @@ contract('DiamondTest', function (accounts) {
                 functionSelectors: ['0x28f3b533']
             }],
             ZERO_ADDRESS, '0x', { gas: 800000 });
-        await expectRevert(result, "CannotReplaceFunctionThatDoesNotExists");
+        await expectRevert.custom(result, "CannotReplaceFunctionThatDoesNotExists", ['0x28f3b533']);
     });
 
     it('should revert if facet address is not zero when removing functions', async () => {
@@ -388,7 +388,7 @@ contract('DiamondTest', function (accounts) {
                 functionSelectors: selectors.selectors
             }],
             ZERO_ADDRESS, '0x', { gas: 800000 });
-        await expectRevert(result, "RemoveFacetAddressMustBeZeroAddress");
+        await expectRevert.custom(result, "RemoveFacetAddressMustBeZeroAddress", [test1FacetCode.address]);
     });
 
     it('should revert if function to be removed does not exist', async () => {
@@ -399,10 +399,10 @@ contract('DiamondTest', function (accounts) {
             [{
                 facetAddress: ZERO_ADDRESS,
                 action: FacetCutAction.Remove,
-                functionSelectors: [selectors.selectors[0],'0x28f3e533']
+                functionSelectors: [selectors.selectors[0], '0x28f3e533']
             }],
             ZERO_ADDRESS, '0x', { gas: 800000 });
-        await expectRevert(result, "CannotRemoveFunctionThatDoesNotExist");
+        await expectRevert.custom(result, "CannotRemoveFunctionThatDoesNotExist", ['0x28f3e533']);
     });
 
     it('should revert if address to have functions replaced has no code', async () => {
@@ -414,7 +414,7 @@ contract('DiamondTest', function (accounts) {
                 functionSelectors: ['0x28f3b533']
             }],
             ZERO_ADDRESS, '0x', { gas: 800000 });
-        await expectRevert(result, "NoBytecodeAtAddress");
+        await expectRevert.custom(result, "NoBytecodeAtAddress");
     });
 
     it('should revert if diamond cut initialization fails', async () => {
@@ -429,7 +429,7 @@ contract('DiamondTest', function (accounts) {
                 functionSelectors: selectors.selectors
             }],
             testFacetAddress, ZERO_ADDRESS, { gas: 800000 });
-        await expectRevert(result, "InitializationFunctionReverted");
+        await expectRevert.custom(result, "InitializationFunctionReverted");
     });
 
     it('should revert if functions to be removed are immutable (defined directly in the diamond)', async () => {
@@ -452,7 +452,7 @@ contract('DiamondTest', function (accounts) {
                 functionSelectors: selectors.selectors
             }],
             ZERO_ADDRESS, '0x', { gas: 800000 });
-        await expectRevert(result, "CannotRemoveImmutableFunction");
+        await expectRevert.custom(result, "CannotRemoveImmutableFunction");
     });
 
     it('should revert if functions to be replaced are immutable (defined directly in the diamond)', async () => {
@@ -475,7 +475,7 @@ contract('DiamondTest', function (accounts) {
                 functionSelectors: selectors.selectors
             }],
             ZERO_ADDRESS, '0x', { gas: 800000 });
-        await expectRevert(result, "CannotReplaceImmutableFunction");
+        await expectRevert.custom(result, "CannotReplaceImmutableFunction");
     });
 
 });

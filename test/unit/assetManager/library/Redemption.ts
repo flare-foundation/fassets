@@ -257,7 +257,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
         const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
         const resRe = assetManager.confirmRedemptionPayment(proofR, request.requestId);
-        await expectRevert(resRe, "only agent vault owner");
+        await expectRevert.custom(resRe, "OnlyAgentVaultOwner", []);
     });
 
     it("should not confirm redemption payment - invalid redemption reference", async () => {
@@ -271,7 +271,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
         const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
         const resRe = assetManager.confirmRedemptionPayment(proofR, request2.requestId, { from: agentOwner1 });
-        await expectRevert(resRe, "invalid redemption reference");
+        await expectRevert.custom(resRe, "InvalidRedemptionReference", []);
     });
 
     it("should not confirm redemption payment - payment too old", async () => {
@@ -290,7 +290,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         });
         const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
         const resRe = assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
-        await expectRevert(resRe, "redemption payment too old");
+        await expectRevert.custom(resRe, "RedemptionPaymentTooOld", []);
     });
 
     it("should fail redemption payment - already defaulted (should not happen in practice)", async () => {
@@ -325,8 +325,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const longAddress = "abcdefghijklmnopqrstuvwxyz012345abcdefghijklmnopqrstuvwxyz012345abcdefghijklmnopqrstuvwxyz012345abcdefghijklmnopqrstuvwxyz012345";
-        await expectRevert(mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, longAddress, redeemerAddress1, true),
-            "underlying address too long");
+        await expectRevert.custom(mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, longAddress, redeemerAddress1, true),
+            "UnderlyingAddressTooLong", []);
     });
 
     it("should not redeem - address too long", async () => {
@@ -339,7 +339,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
         const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
         const resRe = assetManager.confirmRedemptionPayment(proofR, 0, { from: agentOwner1 });
-        await expectRevert(resRe, "invalid request id");
+        await expectRevert.custom(resRe, "InvalidRequestId", []);
     });
 
     it("should not self close - self close of 0", async () => {
@@ -355,7 +355,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
 
         const res = assetManager.selfClose(agentVault.address, 0, { from: agentOwner1 });
-        await expectRevert(res, "self close of 0");
+        await expectRevert.custom(res, "SelfCloseOfZero", []);
     });
 
     it("should self close", async () => {
@@ -471,7 +471,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
             request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: minterAddress1 });
-        await expectRevert(res, 'only redeemer, executor or agent');
+        await expectRevert.custom(res, 'OnlyRedeemerExecutorOrAgent', []);
     });
 
     it("should not execute redemption payment default - redemption non-payment mismatch", async () => {
@@ -486,7 +486,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA,
             request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
-        await expectRevert(res, 'redemption non-payment mismatch');
+        await expectRevert.custom(res, 'RedemptionNonPaymentMismatch', []);
     });
 
     it("should not execute redemption payment default - invalid redemption status", async () => {
@@ -502,7 +502,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
             request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         await assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
         const resReAg = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
-        await expectRevert(resReAg, "invalid redemption status");
+        await expectRevert.custom(resReAg, "InvalidRedemptionStatus", []);
     });
 
     it("should not execute redemption payment default - redemption non-payment proof window too short", async () => {
@@ -525,7 +525,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
             request.firstUnderlyingBlock.toNumber() + 1, request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
-        await expectRevert(res, 'redemption non-payment proof window too short');
+        await expectRevert.custom(res, 'RedemptionNonPaymentProofWindowTooShort', []);
     });
 
     it("should not execute redemption payment default - redemption default too early", async () => {
@@ -540,7 +540,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
             request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber() - 1, request.lastUnderlyingTimestamp.toNumber() - chainInfo.blockTime);
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: agentOwner1 });
-        await expectRevert(res, 'redemption default too early');
+        await expectRevert.custom(res, 'RedemptionDefaultTooEarly', []);
     });
 
     it("should self-mint - multiple tickets", async () => {
@@ -596,7 +596,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
             request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         proof.data.responseBody.firstOverflowBlockNumber = toBN(proof.data.responseBody.firstOverflowBlockNumber).addn(1).toString();
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: agentOwner1 });
-        await expectRevert(res, 'non-payment not proved');
+        await expectRevert.custom(res, 'NonPaymentNotProven', []);
     });
 
     it("max redeem tickets gas check", async () => {
@@ -667,12 +667,12 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
         //Only collateral pool can redeem from agent
         const rs = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, ZERO_ADDRESS, { from: accounts[15] });
-        await expectRevert(rs, "only collateral pool");
+        await expectRevert.custom(rs, "OnlyCollateralPool", []);
         //Redeeming from agent and agent in collateral with amount 0 should not work
         const resR = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, ZERO_ADDRESS, { from: collateralPool.address });
-        await expectRevert(resR, "redemption of 0");
+        await expectRevert.custom(resR, "RedemptionOfZero", []);
         const resRC = assetManager.redeemFromAgentInCollateral(agentVault.address, redeemerAddress1, 0, { from: collateralPool.address });
-        await expectRevert(resRC, "redemption of 0");
+        await expectRevert.custom(resRC, "RedemptionOfZero", []);
         await stopImpersonatingContract(collateralPool.address);
     });
 
@@ -755,7 +755,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const proof = await attestationProvider.proveAddressValidity(request.paymentAddress);
         assert.isTrue(proof.data.responseBody.isValid);
         const promise = assetManager.rejectInvalidRedemption(proof, request.requestId, { from: agentOwner1 });
-        await expectRevert(promise, "address valid");
+        await expectRevert.custom(promise, "AddressValid", []);
         const agentInfo3 = await assetManager.getAgentInfo(agentVault.address);
         assert.equal(Number(agentInfo3.freeCollateralLots), Number(agentInfo1.freeCollateralLots) - 2);
     });
@@ -766,8 +766,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, "MY_INVALID_ADDRESS", redeemerAddress1, true);
         const proof = await attestationProvider.proveAddressValidity(request.paymentAddress);
         assert.isFalse(proof.data.responseBody.isValid);
-        await expectRevert(assetManager.rejectInvalidRedemption(proof, request.requestId, { from: accounts[0] }),
-            "only agent vault owner");
+        await expectRevert.custom(assetManager.rejectInvalidRedemption(proof, request.requestId, { from: accounts[0] }),
+            "OnlyAgentVaultOwner", []);
     });
 
     it("mint and redeem with address validation - wrong challenged address", async () => {
@@ -776,8 +776,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, "AGENT_ADDRESS", redeemerAddress1, true);
         const proof = await attestationProvider.proveAddressValidity("SOME_INVALID_ADDRESS");
         assert.isFalse(proof.data.responseBody.isValid);
-        await expectRevert(assetManager.rejectInvalidRedemption(proof, request.requestId, { from: agentOwner1 }),
-            "wrong address");
+        await expectRevert.custom(assetManager.rejectInvalidRedemption(proof, request.requestId, { from: agentOwner1 }),
+            "WrongAddress", []);
     });
 
     it("should revert rejected redemption payment default - source addresses not supported", async () => {
@@ -791,7 +791,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
             request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber(), web3.utils.soliditySha3Raw(underlyingMinter1));
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
-        await expectRevert(res, "source addresses not supported");
+        await expectRevert.custom(res, "SourceAddressesNotSupported", []);
     });
 
     it("should not redeem from agent if emergency paused", async () => {
@@ -800,7 +800,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
         await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
         const rs = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, ZERO_ADDRESS, { from: collateralPool.address });
-        await expectRevert(rs, "emergency pause active");
+        await expectRevert.custom(rs, "EmergencyPauseActive", []);
     });
 
     it("should not redeem from agent in collateral if emergency paused", async () => {
@@ -809,6 +809,6 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
         await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
         const rs = assetManager.redeemFromAgentInCollateral(agentVault.address, redeemerAddress1, 0, { from: collateralPool.address });
-        await expectRevert(rs, "emergency pause active");
+        await expectRevert.custom(rs, "EmergencyPauseActive", []);
     });
 });

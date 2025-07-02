@@ -28,7 +28,7 @@ export class LiquidationTrigger extends ActorBase {
         this.runner.startThread(async (scope) => {
             for (const agent of this.state.agents.values()) {
                 await this.checkAgentForLiquidation(agent)
-                    .catch(e => expectErrors(e, ["cannot stop liquidation"]));
+                    .catch(e => expectErrors(e, ["CannotStopLiquidation"]));
             }
         });
     }
@@ -38,7 +38,7 @@ export class LiquidationTrigger extends ActorBase {
         if (!agent) return;
         this.runner.startThread(async (scope) => {
             await this.checkAgentForLiquidation(agent)
-                .catch(e => scope.exitOnExpectedError(e, ["cannot stop liquidation"]));
+                .catch(e => scope.exitOnExpectedError(e, ["CannotStopLiquidation"]));
         })
     }
 

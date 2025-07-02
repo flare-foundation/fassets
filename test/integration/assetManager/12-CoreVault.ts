@@ -116,8 +116,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         assertWeb3Equal(await mockChain.getBalance(agent.underlyingAddress), minted.agentFeeUBA);
         assertWeb3Equal(await mockChain.getBalance(coreVaultUnderlyingAddress), toBN(minted.mintedAmountUBA).add(minted.poolFeeUBA));
         // normal redemption requests are now impossible
-        await expectRevert(context.assetManager.redeem(10, redeemer.underlyingAddress, ZERO_ADDRESS, { from: redeemer.address }),
-            "redeem 0 lots");
+        await expectRevert.custom(context.assetManager.redeem(10, redeemer.underlyingAddress, ZERO_ADDRESS, { from: redeemer.address }),
+            "RedeemZeroLots", []);
     });
 
     it("should transfer partial backing to core vault", async () => {
@@ -137,8 +137,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         assertWeb3Equal(rdreqs[0].valueUBA, transferAmount);
         assertWeb3Equal(rdreqs[0].feeUBA, 0);
         // however, cannot transfer 0
-        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, 0, { from: agent.ownerWorkAddress }),
-            "zero transfer not allowed");
+        await expectRevert.custom(context.assetManager.transferToCoreVault(agent.vaultAddress, 0, { from: agent.ownerWorkAddress }),
+            "ZeroTransferNotAllowed", []);
         // perform transfer of underlying
         await agent.performRedemptions(rdreqs);
         // agent now has approx half backing left
@@ -174,7 +174,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // agent requests transfer for half backing to core vault
         const transferAmount = context.lotSize().muln(10);
         const res = context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
-        await expectRevert(res, "invalid agent status");
+        await expectRevert.custom(res, "InvalidAgentStatus", []);
     });
 
     it("should not transfer to core vault if not enough underlying", async () => {
@@ -196,7 +196,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // agent requests transfer for all backing to core vault
         const transferAmount = context.lotSize().muln(10);
         const res = context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
-        await expectRevert(res, "not enough underlying");
+        await expectRevert.custom(res, "NotEnoughUnderlying", []);
     });
 
     it("should not transfer to core vault if transfer is already active", async () => {
@@ -212,7 +212,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
         // try to transfer again
         const res = context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
-        await expectRevert(res, "transfer already active");
+        await expectRevert.custom(res, "TransferAlreadyActive", []);
     });
 
     it("should not transfer to core vault if too little minting left", async () => {
@@ -227,7 +227,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // agent requests transfer for half backing to core vault
         const transferAmount = context.lotSize().muln(4);
         const res = context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
-        await expectRevert(res, "too little minting left after transfer");
+        await expectRevert.custom(res, "TooLittleMintingLeftAfterTransfer", []);
     });
 
     it("should default transfer to core vault - by agent", async () => {
@@ -304,7 +304,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // skip until the payment time passes
         context.skipToExpiration(rdreqs[0].lastUnderlyingBlock, rdreqs[0].lastUnderlyingTimestamp);
         // others cannot default immediately when payment time ends
-        await expectRevert(agent.transferToCoreVaultDefault(rdreqs[0], challengerAddress1), "only redeemer, executor or agent");
+        await expectRevert.custom(agent.transferToCoreVaultDefault(rdreqs[0], challengerAddress1), "OnlyRedeemerExecutorOrAgent", []);
         // after confirmation by others time, the default will succeed and the challenger will get some reward
         await time.deterministicIncrease(context.settings.confirmationByOthersAfterSeconds);
         const challengerBalanceBefore = await context.usdc.balanceOf(challengerAddress1);
@@ -373,16 +373,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const info = await agent.getAgentInfo();
         const mintedAmount = toBN(info.mintedUBA);
         // trying to transfer everything will fail
-        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, mintedAmount, { from: agent.ownerWorkAddress }),
-            "too little minting left after transfer");
+        await expectRevert.custom(context.assetManager.transferToCoreVault(agent.vaultAddress, mintedAmount, { from: agent.ownerWorkAddress }),
+            "TooLittleMintingLeftAfterTransfer", []);
         // check the maximum transfer amount, should be somewhere between 50% and 80%
         const { 0: maxTransferAmount, 1: minLeftAmount } = await context.assetManager.maximumTransferToCoreVault(agent.vaultAddress);
         assert.isTrue(maxTransferAmount.gte(mintedAmount.muln(50).divn(100)));
         assert.isTrue(maxTransferAmount.lte(mintedAmount.muln(80).divn(100)));
         assertWeb3Equal(minLeftAmount, mintedAmount.sub(maxTransferAmount));
         // trying to transfer above max transfer amount will fail
-        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, maxTransferAmount.addn(1), { from: agent.ownerWorkAddress }),
-            "too little minting left after transfer");
+        await expectRevert.custom(context.assetManager.transferToCoreVault(agent.vaultAddress, maxTransferAmount.addn(1), { from: agent.ownerWorkAddress }),
+            "TooLittleMintingLeftAfterTransfer", []);
         // the agent can transfer up to maxTransferAmount
         const transferAmount = maxTransferAmount;
         const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
@@ -489,7 +489,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
     it("should not cancel return from core vault if not requested", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const res = context.assetManager.cancelReturnFromCoreVault(agent.vaultAddress, { from: agent.ownerWorkAddress });
-        await expectRevert(res, "no active return request");
+        await expectRevert.custom(res, "NoActiveReturnRequest", []);
     });
 
     it("test checks in requesting return from core vault", async () => {
@@ -508,14 +508,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const transferAmount = context.lotSize().muln(10);
         await agent.transferToCoreVault(transferAmount);
         // target underlying address must be allowed
-        await expectRevert(context.assetManager.requestReturnFromCoreVault(agent.vaultAddress, 10, { from: agent.ownerWorkAddress }),
-            "agent's underlying address not allowed by core vault");
+        await expectRevert.custom(context.assetManager.requestReturnFromCoreVault(agent.vaultAddress, 10, { from: agent.ownerWorkAddress }),
+            "AgentsUnderlyingAddressNotAllowedByCoreVault", []);
         // must request more than 0 lots
-        await expectRevert(context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 0, { from: agent2.ownerWorkAddress }),
-            "cannot return 0 lots");
+        await expectRevert.custom(context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 0, { from: agent2.ownerWorkAddress }),
+            "CannotReturnZeroLots", []);
         // requested redeem amount cannot be more than total available amount on core vault
-        await expectRevert(context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 20, { from: agent2.ownerWorkAddress }),
-            "not enough available on core vault");
+        await expectRevert.custom(context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 20, { from: agent2.ownerWorkAddress }),
+            "NotEnoughAvailableOnCoreVault", []);
     });
 
     it("should not request return from core vault if return already requested", async () => {
@@ -537,7 +537,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         await context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 5, { from: agent2.ownerWorkAddress });
         // second agent tries to request return again
         const res = context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 5, { from: agent2.ownerWorkAddress });
-        await expectRevert(res, "return from core vault already requested");
+        await expectRevert.custom(res, "ReturnFromCoreVaultAlreadyRequested", []);
     });
 
     it("should not request return from core vault if agent in status is not normal", async () => {
@@ -567,7 +567,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
         // second agent requests return from CV
         const res = context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 5, { from: agent2.ownerWorkAddress });
-        await expectRevert(res, "invalid agent status");
+        await expectRevert.custom(res, "InvalidAgentStatus", []);
     });
 
     it("should not request return from core vault if not enough free collateral", async () => {
@@ -588,7 +588,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
         // second agent requests return from CV
         const res = context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 10, { from: agent2.ownerWorkAddress });
-        await expectRevert(res, "not enough free collateral");
+        await expectRevert.custom(res, "NotEnoughFreeCollateral", []);
     });
 
     async function makeAndConfirmReturnPayment(agent: Agent, from: string, to: string, amount: BNish, paymentReference: string) {
@@ -623,17 +623,17 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const paymentReqs = filterEvents(trigRes, "PaymentInstructions");
         const req = requireNotNull(paymentReqs[0]);
         // agent must have active return request
-        await expectRevert(makeAndConfirmReturnPayment(agent, req.args.account, agent.underlyingAddress, req.args.amount, req.args.paymentReference),
-            "no active return request");
+        await expectRevert.custom(makeAndConfirmReturnPayment(agent, req.args.account, agent.underlyingAddress, req.args.amount, req.args.paymentReference),
+            "NoActiveReturnRequest", []);
         // source address must be coreVaultUnderlyingAddress
-        await expectRevert(makeAndConfirmReturnPayment(agent2, minter.underlyingAddress, req.args.destination, req.args.amount, req.args.paymentReference),
-            "payment not from core vault");
+        await expectRevert.custom(makeAndConfirmReturnPayment(agent2, minter.underlyingAddress, req.args.destination, req.args.amount, req.args.paymentReference),
+            "PaymentNotFromCoreVault", []);
         // destination address must be agent's
-        await expectRevert(makeAndConfirmReturnPayment(agent2, req.args.account, underlyingRedeemer1, req.args.amount, req.args.paymentReference),
-            "payment not to agent's address");
+        await expectRevert.custom(makeAndConfirmReturnPayment(agent2, req.args.account, underlyingRedeemer1, req.args.amount, req.args.paymentReference),
+            "PaymentNotToAgentsAddress", []);
         // payment reference must match active payment
-        await expectRevert(makeAndConfirmReturnPayment(agent2, req.args.account, req.args.destination, req.args.amount, PaymentReference.returnFromCoreVault(1e6)),
-            "invalid payment reference");
+        await expectRevert.custom(makeAndConfirmReturnPayment(agent2, req.args.account, req.args.destination, req.args.amount, PaymentReference.returnFromCoreVault(1e6)),
+            "InvalidPaymentReference", []);
     });
 
     async function testRedeemFromCV(redeemer: Redeemer, lots: number) {
@@ -705,17 +705,17 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const transferAmount = context.lotSize().muln(10);
         await agent.transferToCoreVault(transferAmount);
         // target underlying address must be allowed
-        await expectRevert(context.assetManager.redeemFromCoreVault(10, minter.underlyingAddress, { from: minter.address }),
-            "underlying address not allowed by core vault");
+        await expectRevert.custom(context.assetManager.redeemFromCoreVault(10, minter.underlyingAddress, { from: minter.address }),
+            "UnderlyingAddressNotAllowedByCoreVault", []);
         // requesting address must have enough fassets
-        await expectRevert(context.assetManager.redeemFromCoreVault(10, redeemer.underlyingAddress, { from: accounts[0] }),
-            "f-asset balance too low");
+        await expectRevert.custom(context.assetManager.redeemFromCoreVault(10, redeemer.underlyingAddress, { from: accounts[0] }),
+            "FAssetBalanceTooLow", []);
         // requested redeem amount must be larger than `minimumRedeemLots` of lots
-        await expectRevert(context.assetManager.redeemFromCoreVault(5, redeemer.underlyingAddress, { from: redeemer.address }),
-            "requested amount too small");
+        await expectRevert.custom(context.assetManager.redeemFromCoreVault(5, redeemer.underlyingAddress, { from: redeemer.address }),
+            "RequestedAmountTooSmall", []);
         // requested redeem amount cannot be more than total available amount on core vault
-        await expectRevert(context.assetManager.redeemFromCoreVault(11, redeemer.underlyingAddress, { from: redeemer.address }),
-            "not enough available on core vault");
+        await expectRevert.custom(context.assetManager.redeemFromCoreVault(11, redeemer.underlyingAddress, { from: redeemer.address }),
+            "NotEnoughAvailableOnCoreVault", []);
     });
 
     it("modify core vault settings", async () => {
@@ -747,25 +747,25 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
     });
 
     it("revert if modifying core vault settings with invalid values", async () => {
-        await expectRevert(context.assetManager.setCoreVaultManager(ZERO_ADDRESS, { from: context.governance }), "cannot disable");
-        await expectRevert(context.assetManager.setCoreVaultRedemptionFeeBIPS(MAX_BIPS + 1, { from: context.governance }), "bips value too high");
-        await expectRevert(context.assetManager.setCoreVaultMinimumAmountLeftBIPS(MAX_BIPS + 1, { from: context.governance }), "bips value too high");
+        await expectRevert.custom(context.assetManager.setCoreVaultManager(ZERO_ADDRESS, { from: context.governance }), "CannotDisable", []);
+        await expectRevert.custom(context.assetManager.setCoreVaultRedemptionFeeBIPS(MAX_BIPS + 1, { from: context.governance }), "BipsValueTooHigh", []);
+        await expectRevert.custom(context.assetManager.setCoreVaultMinimumAmountLeftBIPS(MAX_BIPS + 1, { from: context.governance }), "BipsValueTooHigh", []);
     });
 
     it("revert if assigning core vault manager belonging to wrong asset manager", async () => {
         const [am2,] = await newAssetManager(context.governance, context.assetManagerController,
             context.chainInfo.name, context.chainInfo.symbol, context.chainInfo.decimals, context.initSettings, context.collaterals, context.chainInfo.assetName, context.chainInfo.assetSymbol,
             { governanceSettings: commonContext.governanceSettings.address });
-        await expectRevert(am2.setCoreVaultManager(context.coreVaultManager!.address, { from: context.governance }), "wrong asset manager");
+        await expectRevert.custom(am2.setCoreVaultManager(context.coreVaultManager!.address, { from: context.governance }), "WrongAssetManager", []);
     });
 
     it("core vault setting modification requires governance call", async () => {
-        await expectRevert(context.assetManager.setCoreVaultManager(accounts[31]), "only governance");
-        await expectRevert(context.assetManager.setCoreVaultNativeAddress(accounts[32]), "only governance");
-        await expectRevert(context.assetManager.setCoreVaultTransferTimeExtensionSeconds(1800), "only governance");
-        await expectRevert(context.assetManager.setCoreVaultRedemptionFeeBIPS(211), "only governance");
-        await expectRevert(context.assetManager.setCoreVaultMinimumAmountLeftBIPS(1000), "only governance");
-        await expectRevert(context.assetManager.setCoreVaultMinimumRedeemLots(3), "only governance");
+        await expectRevert.custom(context.assetManager.setCoreVaultManager(accounts[31]), "OnlyGovernance", []);
+        await expectRevert.custom(context.assetManager.setCoreVaultNativeAddress(accounts[32]), "OnlyGovernance", []);
+        await expectRevert.custom(context.assetManager.setCoreVaultTransferTimeExtensionSeconds(1800), "OnlyGovernance", []);
+        await expectRevert.custom(context.assetManager.setCoreVaultRedemptionFeeBIPS(211), "OnlyGovernance", []);
+        await expectRevert.custom(context.assetManager.setCoreVaultMinimumAmountLeftBIPS(1000), "OnlyGovernance", []);
+        await expectRevert.custom(context.assetManager.setCoreVaultMinimumRedeemLots(3), "OnlyGovernance", []);
     });
 
     it("core vault address setting is timelocked, the others aren't", async () => {
@@ -809,33 +809,33 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
 
         // transfer to core vault
-        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, context.lotSize().muln(10), { from: agent.ownerWorkAddress }), "core vault not enabled");
+        await expectRevert.custom(context.assetManager.transferToCoreVault(agent.vaultAddress, context.lotSize().muln(10), { from: agent.ownerWorkAddress }), "CoreVaultNotEnabled", []);
         // request return from core vault
-        await expectRevert(context.assetManager.requestReturnFromCoreVault(agent.vaultAddress, 10, { from: agent.ownerWorkAddress }), "core vault not enabled");
+        await expectRevert.custom(context.assetManager.requestReturnFromCoreVault(agent.vaultAddress, 10, { from: agent.ownerWorkAddress }), "CoreVaultNotEnabled", []);
         // cancel return from core vault
-        await expectRevert(context.assetManager.cancelReturnFromCoreVault(agent.vaultAddress, { from: agent.ownerWorkAddress }), "core vault not enabled");
+        await expectRevert.custom(context.assetManager.cancelReturnFromCoreVault(agent.vaultAddress, { from: agent.ownerWorkAddress }), "CoreVaultNotEnabled", []);
         // confirm return from core vault
         const wallet = new MockChainWallet(mockChain);
         const rtx = await wallet.addTransaction(agent.underlyingAddress, coreVaultUnderlyingAddress, 10, null);
         const proof = await context.attestationProvider.provePayment(rtx, agent.underlyingAddress, coreVaultUnderlyingAddress);
-        await expectRevert(context.assetManager.confirmReturnFromCoreVault(proof, agent.vaultAddress, { from: agent.ownerWorkAddress }), "core vault not enabled");
+        await expectRevert.custom(context.assetManager.confirmReturnFromCoreVault(proof, agent.vaultAddress, { from: agent.ownerWorkAddress }), "CoreVaultNotEnabled", []);
         // redeem return from core vault
-        await expectRevert(context.assetManager.redeemFromCoreVault(10, agent.underlyingAddress, { from: agent.ownerWorkAddress }), "core vault not enabled");
+        await expectRevert.custom(context.assetManager.redeemFromCoreVault(10, agent.underlyingAddress, { from: agent.ownerWorkAddress }), "CoreVaultNotEnabled", []);
     });
 
     it("revert if not called from agent vault owner address", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         // transfer to core vault
-        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, context.lotSize().muln(10)), "only agent vault owner");
+        await expectRevert.custom(context.assetManager.transferToCoreVault(agent.vaultAddress, context.lotSize().muln(10)), "OnlyAgentVaultOwner", []);
         // request return from core vault
-        await expectRevert(context.assetManager.requestReturnFromCoreVault(agent.vaultAddress, 10), "only agent vault owner");
+        await expectRevert.custom(context.assetManager.requestReturnFromCoreVault(agent.vaultAddress, 10), "OnlyAgentVaultOwner", []);
         // cancel return from core vault
-        await expectRevert(context.assetManager.cancelReturnFromCoreVault(agent.vaultAddress), "only agent vault owner");
+        await expectRevert.custom(context.assetManager.cancelReturnFromCoreVault(agent.vaultAddress), "OnlyAgentVaultOwner", []);
         // confirm return from core vault
         const wallet = new MockChainWallet(mockChain);
         const rtx = await wallet.addTransaction(agent.underlyingAddress, coreVaultUnderlyingAddress, 10, null);
         const proof = await context.attestationProvider.provePayment(rtx, agent.underlyingAddress, coreVaultUnderlyingAddress);
-        await expectRevert(context.assetManager.confirmReturnFromCoreVault(proof, agent.vaultAddress), "only agent vault owner");
+        await expectRevert.custom(context.assetManager.confirmReturnFromCoreVault(proof, agent.vaultAddress), "OnlyAgentVaultOwner", []);
     })
 
     async function timestampAfterDaysAt(days: number, daytime: number) {
@@ -1158,7 +1158,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const txHash = await agent.performTopupPayment(toBN(100));
         await agent.confirmTopupPayment(txHash);
 
-        await expectRevert(context.assetManager.transferToCoreVault(agent.vaultAddress, 10, { from: agent.ownerWorkAddress }), "nothing minted");
+        await expectRevert.custom(context.assetManager.transferToCoreVault(agent.vaultAddress, 10, { from: agent.ownerWorkAddress }), "NothingMinted", []);
         // const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, 10, { from: agent.ownerWorkAddress });
         // const logs = filterEvents(res, "RedemptionRequested");
     });
@@ -1186,8 +1186,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const [request] = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
         // agent makes an illegal payment using the transfer to core vault reference
         const txHash = await agent.performPayment(agentOtherAddress, toBN(request.valueUBA), request.paymentReference);
-        await expectRevert(challenger.illegalPaymentChallenge(agent, txHash), 'matching redemption active')
-        await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [txHash]), 'mult chlg: enough balance')
+        await expectRevert.custom(challenger.illegalPaymentChallenge(agent, txHash), "MatchingRedemptionActive", [])
+        await expectRevert.custom(challenger.freeBalanceNegativeChallenge(agent, [txHash]), "MultiplePaymentsChallengeEnoughBalance", [])
         // agent's other address gets some yield
         mockChain.mint(agentOtherAddress, toBN(request.valueUBA));
         // skip until the payment time passes
@@ -1205,7 +1205,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         assert(Number((await agent.getAgentInfo()).status) === 0);
         // when allowed, the challenger cann the payment
         await time.deterministicIncrease(context.settings.confirmationByOthersAfterSeconds);
-        await expectRevert(context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: challenger.address }), 'invalid request id');
-        await expectRevert(challenger.illegalPaymentChallenge(agent, txHash), 'chlg: transaction confirmed')
+        await expectRevert.custom(context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: challenger.address }), "InvalidRequestId", []);
+        await expectRevert.custom(challenger.illegalPaymentChallenge(agent, txHash), "ChallengeTransactionAlreadyConfirmed", [])
     });
 });

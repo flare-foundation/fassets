@@ -642,7 +642,7 @@ export class SimulationAgentState extends TrackedAgentState {
         // get actual agent state
         // this.parent.logger?.log(`STARTING DIFFERENCE CHECK FOR ${agentName} - GET INFO`);
         const agentInfo = await this.parent.context.assetManager.getAgentInfo(this.address)
-            .catch(e => expectErrors(e, ['invalid agent vault address']));
+            .catch(e => expectErrors(e, ["InvalidAgentVaultAddress"]));
         if (!agentInfo) {
             checker.logger.log(`    ${agentName}: agent already destroyed.`);
             return;

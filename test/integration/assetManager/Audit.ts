@@ -84,8 +84,8 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, accounts => {
         const tx1Hash = await agent.performRedemptionPayment(request);
         const fakeTxHash = await performFakeRedemptionPayment(agent, request);
         // others cannot confirm redemption payment immediately or challenge it as illegal payment
-        await expectRevert(challenger.confirmActiveRedemptionPayment(request, tx1Hash, agent), "only agent vault owner");
-        await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
+        await expectRevert.custom(challenger.confirmActiveRedemptionPayment(request, tx1Hash, agent), "OnlyAgentVaultOwner", []);
+        await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "MatchingRedemptionActive", []);
         await challenger.illegalPaymentChallenge(agent, fakeTxHash);
     });
 
@@ -118,8 +118,8 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, accounts => {
         const tx1Hash = await agent.performRedemptionPayment(request);
         const fakeTxHash = await performFakeRedemptionPaymentID(agent, request);
         // others cannot confirm redemption payment immediately or challenge it as illegal payment
-        await expectRevert(challenger.confirmActiveRedemptionPayment(request, tx1Hash, agent), "only agent vault owner");
-        await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
+        await expectRevert.custom(challenger.confirmActiveRedemptionPayment(request, tx1Hash, agent), "OnlyAgentVaultOwner", []);
+        await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "MatchingRedemptionActive", []);
         await challenger.illegalPaymentChallenge(agent, fakeTxHash);
     });
 
@@ -162,8 +162,8 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, accounts => {
         const crt = await minter.reserveCollateral(agent.agentVault.address, 1);
         // mint
         const proof = await context.attestationProvider.provePayment(depositHash, underlyingOwner1, crt.paymentAddress);
-        await expectRevert(context.assetManager.executeMinting(proof, crt.collateralReservationId, { from: agentOwner1 }),
-            "minting payment too old");
+        await expectRevert.custom(context.assetManager.executeMinting(proof, crt.collateralReservationId, { from: agentOwner1 }),
+            "MintingPaymentTooOld", []);
     });
 
     async function performFakeRedemptionPayment(agent: Agent, request: EventArgs<RedemptionRequested>, options?: MockTransactionOptionsWithFee) {

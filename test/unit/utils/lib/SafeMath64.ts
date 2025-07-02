@@ -16,14 +16,14 @@ contract(`SafeMath64.sol; ${getTestFile(__filename)};  SafeMath64 unit tests`, a
 
     it("should revert if negative number ot overflow", async () => {
         const resN = safeMath64.toUint64(-1);
-        await expectRevert(resN, "SafeMath64: negative value");
+        await expectRevert.custom(resN, "NegativeValue", []);
         const resO = safeMath64.toUint64(MAX_UINT64);
-        await expectRevert(resO, "SafeMath64: conversion overflow");
+        await expectRevert.custom(resO, "ConversionOverflow", []);
     });
 
     it("should revert if overflow", async () => {
         const res = safeMath64.toInt64(MAX_INT64);
-        await expectRevert(res, "SafeMath64: conversion overflow");
+        await expectRevert.custom(res, "ConversionOverflow", []);
     });
 
     it("should successfully return", async () => {

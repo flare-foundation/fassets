@@ -166,7 +166,9 @@ export namespace expectRevert {
     export function custom(promise: Promise<unknown>, name: string, args?: unknown[]) {
         if (args) {
             // match byu name and args
-            const argStrings = args.map(x => typeof x === 'string' ? JSON.stringify(x) : String(x));
+            const argStrings = args.map(x => {
+                return typeof x === 'string' || Array.isArray(x) ? JSON.stringify(x) : String(x);
+            });
             const errorString = `${name}(${argStrings.join(", ")})`;
             return expectRevert(promise, `reverted with custom error '${errorString}'`);
         } else {
