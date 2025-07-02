@@ -10,7 +10,7 @@ This repository is a implementation of the system: solidity contracts for *Flare
 
 ## Overview
 
-The FAsset contracts are used to mint assets on top of Flare. The system is designed to handle chains which don’t have smart contract capabilities, although it can also work for smart contract chains. Initially, FAsset system will support XRP native asset on XRPL. At a later date BTC, DOGE, add tokens from other blockchains will be added.
+The FAsset contracts are used to mint assets on top of Flare. The system is designed to handle chains which don’t have smart contract capabilities. Initially, FAsset system will support XRP native asset on XRPL. At a later date BTC, DOGE, add tokens from other blockchains will be added.
 
 The minted FAssets are secured by collateral, which is in the form of ERC20 tokens on Flare/Songbird chain and native tokens (FLR/SGB). The collateral is locked in contracts that guarantee that minted tokens can always be redeemed for underlying assets or compensated by collateral. Underlying assets can also be transferred to Core Vault, a vault on the underlying network. When the underlying is on the Core Vault, the agent doesn’t need to back it with collateral so they can mint again or decide to withdraw this collateral.
 
