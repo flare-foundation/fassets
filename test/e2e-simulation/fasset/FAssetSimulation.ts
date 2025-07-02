@@ -399,7 +399,7 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
         const newLotSizeAMG = mulDecimal(lotSizeAMG, factor);
         interceptor.comment(`Changing lot size by factor ${factor}, old=${formatBN(lotSizeAMG)}, new=${formatBN(newLotSizeAMG)}`);
         await context.setLotSizeAmg(newLotSizeAMG)
-            .catch(e => expectErrors(e, ['too close to previous update']));
+            .catch(e => expectErrors(e, ["TooCloseToPreviousUpdate"]));
     }
 
     const allFtsoSymbols = ["NAT", "USDC", "USDT", ...Object.values(testChainInfo).map(ci => ci.symbol)];

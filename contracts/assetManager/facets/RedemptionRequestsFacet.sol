@@ -28,6 +28,13 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     using Agent for Agent.State;
     using RedemptionQueue for RedemptionQueue.State;
 
+    error SelfCloseOfZero();
+    error AddressValid();
+    error WrongAddress();
+    error InvalidRedemptionStatus();
+    error RedemptionOfZero();
+    error RedeemZeroLots();
+
     /**
      * Redeem (up to) `_lots` lots of f-assets. The corresponding amount of the f-assets belonging
      * to the redeemer will be burned and the redeemer will get paid by the agent in underlying currency
@@ -65,7 +72,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         for (uint256 i = 0; i < maxRedeemedTickets && redeemedLots < _lots; i++) {
             // redemption queue empty?
             if (AssetManagerState.get().redemptionQueue.firstTicketId == 0) {
-                require(redeemedLots != 0, "redeem 0 lots");
+                require(redeemedLots != 0, RedeemZeroLots());
                 break;
             }
             // each loop, firstTicketId will change since we delete the first ticket
@@ -106,7 +113,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireCollateralPool(agent);
-        require(_amountUBA != 0, "redemption of 0");
+        require(_amountUBA != 0, RedemptionOfZero());
         // close redemption tickets
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
         (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, false, false);
@@ -136,7 +143,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireCollateralPool(agent);
-        require(_amountUBA != 0, "redemption of 0");
+        require(_amountUBA != 0, RedemptionOfZero());
         // close redemption tickets
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
         (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true, false);
@@ -194,18 +201,18 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         assert(!request.transferToCoreVault);   // we have a problem if core vault has invalid address
         Agent.State storage agent = Agent.get(request.agentVault);
         // check status
-        require(request.status == Redemption.Status.ACTIVE, "invalid redemption status");
+        require(request.status == Redemption.Status.ACTIVE, InvalidRedemptionStatus());
         // only owner can call
         Agents.requireAgentVaultOwner(agent);
         // check proof
         TransactionAttestation.verifyAddressValidity(_proof);
         // the actual redeemer's address must be validated
         bytes32 addressHash = keccak256(bytes(_proof.data.requestBody.addressStr));
-        require(addressHash == request.redeemerUnderlyingAddressHash, "wrong address");
+        require(addressHash == request.redeemerUnderlyingAddressHash, WrongAddress());
         // and the address must be invalid or not normalized
         bool valid = _proof.data.responseBody.isValid &&
             _proof.data.responseBody.standardAddressHash == request.redeemerUnderlyingAddressHash;
-        require(!valid, "address valid");
+        require(!valid, AddressValid());
         // release agent collateral
         Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
         // burn the executor fee
@@ -239,7 +246,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         returns (uint256 _closedAmountUBA)
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        require(_amountUBA != 0, "self close of 0");
+        require(_amountUBA != 0, SelfCloseOfZero());
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
         (, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true, false);
         // burn the self-closed assets

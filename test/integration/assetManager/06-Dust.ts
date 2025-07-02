@@ -76,7 +76,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(selfClosedUBA1, selfCloseAmountUBA);
             assert.equal(dustChangesUBA1.length, 1);
             assertWeb3Equal(dustChangesUBA1[0], minted.poolFeeUBA.add(dustAmountUBA)); // then fail and add dust produced by self-close
-            await expectRevert(agent.destroy(), "destroy not announced");
+            await expectRevert.custom(agent.destroy(), "DestroyNotAnnounced", []);
             const [dustChangesUBA2, selfClosedUBA2] = await agent.selfClose(dustAmountUBA);
             const info2 = await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(selfCloseAmountUBA).add(dustAmountUBA), mintedUBA: minted.poolFeeUBA });
             assertWeb3Equal(info2.dustUBA, minted.poolFeeUBA);
@@ -170,7 +170,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA.sub(selfCloseAmountUBA), { from: minter.address });
             // perform redemption - no tickets
-            await expectRevert(redeemer.requestRedemption(3), "redeem 0 lots");
+            await expectRevert.custom(redeemer.requestRedemption(3), "RedeemZeroLots", []);
             const info2 = await agent.checkAgentInfo({ mintedUBA: redeemerDustAmountUBA.add(minted.poolFeeUBA) });
             assertWeb3Equal(info2.dustUBA, redeemerDustAmountUBA.add(minted.poolFeeUBA));
             // convert dust to redemption tickets

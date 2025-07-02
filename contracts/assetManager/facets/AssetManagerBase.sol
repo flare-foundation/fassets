@@ -8,6 +8,11 @@ import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettin
 
 
 abstract contract AssetManagerBase {
+    error OnlyAssetManagerController();
+    error NotAttached();
+    error NotWhitelisted();
+    error EmergencyPauseActive();
+
     modifier onlyAssetManagerController {
         _checkOnlyAssetManagerController();
         _;
@@ -30,15 +35,15 @@ abstract contract AssetManagerBase {
 
     function _checkOnlyAssetManagerController() private view {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        require(msg.sender == settings.assetManagerController, "only asset manager controller");
+        require(msg.sender == settings.assetManagerController, OnlyAssetManagerController());
     }
 
     function _checkOnlyAttached() private view {
-        require(AssetManagerState.get().attached, "not attached");
+        require(AssetManagerState.get().attached, NotAttached());
     }
 
     function _checkEmergencyPauseNotActive() private view {
         AssetManagerState.State storage state = AssetManagerState.get();
-        require(state.emergencyPausedUntil <= block.timestamp, "emergency pause active");
+        require(state.emergencyPausedUntil <= block.timestamp, EmergencyPauseActive());
     }
 }

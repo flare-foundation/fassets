@@ -6,6 +6,8 @@ import {IPayment, IBalanceDecreasingTransaction}
 
 
 library PaymentConfirmations {
+    error PaymentAlreadyConfirmed();
+
     struct State {
         // a store of payment hashes to prevent payment being used / challenged twice
         // structure: map of hash to the next hash in that day
@@ -79,7 +81,7 @@ library PaymentConfirmations {
     )
         private
     {
-        require(_state.verifiedPayments[_txKey] == 0, "payment already confirmed");
+        require(_state.verifiedPayments[_txKey] == 0, PaymentAlreadyConfirmed());
         // add to cleanup list
         uint256 day = block.timestamp / DAY;
         bytes32 first = _state.verifiedPaymentsForDay[day];

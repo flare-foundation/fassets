@@ -15,12 +15,14 @@ pragma solidity ^0.8.27;
 library SafePct {
     uint256 internal constant MAX_BIPS = 10_000;
 
+    error DivisionByZero();
+
     /**
      * Calculates `floor(x * y / z)`, reverting on overflow, but only if the result overflows.
      * Requirement: intermediate operations must revert on overflow.
      */
     function mulDiv(uint256 x, uint256 y, uint256 z) internal pure returns (uint256) {
-        require(z > 0, "Division by zero");
+        require(z > 0, DivisionByZero());
 
         if (x == 0) return 0;
         unchecked {

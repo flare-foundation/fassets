@@ -4,7 +4,6 @@ pragma solidity ^0.8.27;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {IIAgentVault} from "../../agentVault/interfaces/IIAgentVault.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {Collateral} from "./data/Collateral.sol";
@@ -29,6 +28,18 @@ library Agents {
     using Agent for Agent.State;
     using RedemptionQueue for RedemptionQueue.State;
 
+    error CollateralRatioTooSmall();
+    error FeeTooHigh();
+    error ValueTooHigh();
+    error ValueTooLow();
+    error NotEnoughFundsProvided();
+    error CollateralDeprecated();
+    error NotEnoughCollateral();
+    error AgentNotWhitelisted();
+    error OnlyAgentVaultOwner();
+    error OnlyCollateralPool();
+    error IncreaseTooBig();
+
     function setMintingVaultCollateralRatioBIPS(
         Agent.State storage _agent,
         uint256 _mintingVaultCollateralRatioBIPS
@@ -37,7 +48,7 @@ library Agents {
     {
         CollateralTypeInt.Data storage collateral = getVaultCollateral(_agent);
         require(_mintingVaultCollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
-            "collateral ratio too small");
+            CollateralRatioTooSmall());
         _agent.mintingVaultCollateralRatioBIPS = _mintingVaultCollateralRatioBIPS.toUint32();
     }
 
@@ -49,7 +60,7 @@ library Agents {
     {
         CollateralTypeInt.Data storage collateral = getPoolCollateral(_agent);
         require(_mintingPoolCollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
-            "collateral ratio too small");
+            CollateralRatioTooSmall());
         _agent.mintingPoolCollateralRatioBIPS = _mintingPoolCollateralRatioBIPS.toUint32();
     }
 
@@ -59,7 +70,7 @@ library Agents {
     )
         internal
     {
-        require(_feeBIPS <= SafePct.MAX_BIPS, "fee too high");
+        require(_feeBIPS <= SafePct.MAX_BIPS, FeeTooHigh());
         _agent.feeBIPS = _feeBIPS.toUint16();
     }
 
@@ -69,7 +80,7 @@ library Agents {
     )
         internal
     {
-        require(_poolFeeShareBIPS <= SafePct.MAX_BIPS, "value too high");
+        require(_poolFeeShareBIPS <= SafePct.MAX_BIPS, ValueTooHigh());
         _agent.poolFeeShareBIPS = _poolFeeShareBIPS.toUint16();
     }
 
@@ -79,7 +90,7 @@ library Agents {
     )
         internal
     {
-        require(_redemptionPoolFeeShareBIPS <= SafePct.MAX_BIPS, "value too high");
+        require(_redemptionPoolFeeShareBIPS <= SafePct.MAX_BIPS, ValueTooHigh());
         _agent.redemptionPoolFeeShareBIPS = _redemptionPoolFeeShareBIPS.toUint16();
     }
 
@@ -91,10 +102,10 @@ library Agents {
     {
         // This factor's function is to compensate agent in case of price fluctuations, so allowing it
         // above 100% doesn't make sense - it is only good for exploits.
-        require(_buyFAssetByAgentFactorBIPS <= SafePct.MAX_BIPS, "value too high");
+        require(_buyFAssetByAgentFactorBIPS <= SafePct.MAX_BIPS, ValueTooHigh());
         // We also don't want to allow it to be too low as this allows agents to underpay
         // the exiting collateral providers.
-        require(_buyFAssetByAgentFactorBIPS >= 9000, "value too low");
+        require(_buyFAssetByAgentFactorBIPS >= 9000, ValueTooLow());
         _agent.buyFAssetByAgentFactorBIPS = _buyFAssetByAgentFactorBIPS.toUint16();
     }
 
@@ -106,13 +117,13 @@ library Agents {
     {
         CollateralTypeInt.Data storage collateral = getPoolCollateral(_agent);
         uint256 minCR = collateral.minCollateralRatioBIPS;
-        require(_poolExitCollateralRatioBIPS >= minCR, "value too low");
+        require(_poolExitCollateralRatioBIPS >= minCR, ValueTooLow());
         uint256 currentExitCR = _agent.collateralPool.exitCollateralRatioBIPS();
         // if minCollateralRatioBIPS is increased too quickly, it may be impossible for pool exit CR
         // to be increased fast enough, so it can always be changed up to 1.2 * minCR
         require(_poolExitCollateralRatioBIPS <= currentExitCR * 3 / 2 ||
                 _poolExitCollateralRatioBIPS <= minCR * 12 / 10,
-            "increase too big");
+                IncreaseTooBig());
         _agent.collateralPool.setExitCollateralRatioBIPS(_poolExitCollateralRatioBIPS);
     }
 
@@ -122,7 +133,7 @@ library Agents {
     )
         internal
     {
-        _agent.mintedAMG = SafeMath64.sub64(_agent.mintedAMG, _valueAMG, "not enough minted");
+        _agent.mintedAMG = _agent.mintedAMG - _valueAMG;
     }
 
     function startRedeemingAssets(
@@ -146,9 +157,9 @@ library Agents {
     )
         internal
     {
-        _agent.redeemingAMG = SafeMath64.sub64(_agent.redeemingAMG, _valueAMG, "not enough redeeming");
+        _agent.redeemingAMG = _agent.redeemingAMG - _valueAMG;
         if (!_poolSelfCloseRedemption) {
-            _agent.poolRedeemingAMG = SafeMath64.sub64(_agent.poolRedeemingAMG, _valueAMG, "not enough redeeming");
+            _agent.poolRedeemingAMG = _agent.poolRedeemingAMG - _valueAMG;
         }
     }
 
@@ -216,7 +227,7 @@ library Agents {
     )
         internal
     {
-        uint64 newDustAMG = SafeMath64.sub64(_agent.dustAMG, _dustDecreaseAMG, "not enough dust");
+        uint64 newDustAMG = _agent.dustAMG - _dustDecreaseAMG;
         changeDust(_agent, newDustAMG);
     }
 
@@ -302,7 +313,7 @@ library Agents {
         // Transfer vault collateral to the agent vault owner
         vault.payout(vaultCollateral.token, getOwnerPayAddress(_agent), _amountVaultCollateralWei);
         // Burn the NAT equivalent (must be provided with the call).
-        require(msg.value >= _burnedNatWei, "not enough funds provided");
+        require(msg.value >= _burnedNatWei, NotEnoughFundsProvided());
         burnDirectNAT(_burnedNatWei);
     }
 
@@ -326,13 +337,13 @@ library Agents {
         CollateralTypeInt.Data storage collateral = state.collateralTokens[tokenIndex];
         assert(collateral.collateralClass == CollateralType.Class.VAULT);
         // agent should never switch to a deprecated or already invalid collateral
-        require(collateral.validUntil == 0, "collateral deprecated");
+        require(collateral.validUntil == 0, CollateralDeprecated());
         // set the new index
         _agent.vaultCollateralIndex = tokenIndex.toUint16();
         // check there is enough collateral for current mintings
         Collateral.Data memory switchCollateralData = AgentCollateral.agentVaultCollateralData(_agent);
         uint256 crBIPS = AgentCollateral.collateralRatioBIPS(switchCollateralData, _agent);
-        require(crBIPS >= collateral.minCollateralRatioBIPS, "not enough collateral");
+        require(crBIPS >= collateral.minCollateralRatioBIPS, NotEnoughCollateral());
     }
 
     function isOwner(
@@ -366,7 +377,7 @@ library Agents {
         internal view
     {
         require(Globals.getAgentOwnerRegistry().isWhitelisted(_ownerManagementAddress),
-            "agent not whitelisted");
+            AgentNotWhitelisted());
     }
 
     function requireWhitelistedAgentVaultOwner(
@@ -382,7 +393,7 @@ library Agents {
     )
         internal view
     {
-        require(isOwner(Agent.get(_agentVault), msg.sender), "only agent vault owner");
+        require(isOwner(Agent.get(_agentVault), msg.sender), OnlyAgentVaultOwner());
     }
 
     function requireAgentVaultOwner(
@@ -390,7 +401,7 @@ library Agents {
     )
         internal view
     {
-        require(isOwner(_agent, msg.sender), "only agent vault owner");
+        require(isOwner(_agent, msg.sender), OnlyAgentVaultOwner());
     }
 
     function requireCollateralPool(
@@ -398,7 +409,7 @@ library Agents {
     )
         internal view
     {
-        require(msg.sender == address(_agent.collateralPool), "only collateral pool");
+        require(msg.sender == address(_agent.collateralPool), OnlyCollateralPool());
     }
 
     function isCollateralToken(

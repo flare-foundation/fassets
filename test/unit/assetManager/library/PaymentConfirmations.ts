@@ -74,7 +74,7 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
         chain.skipTime(15 * DAYS);
         const proof2 = await agentTopup(agentVault);
         // it should revert confirming twice
-        await expectRevert(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "payment already confirmed");
-        await expectRevert(assetManager.confirmTopupPayment(proof2, agentVault.address, { from: agentOwner1 }), "payment already confirmed");
+        await expectRevert.custom(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "PaymentAlreadyConfirmed", []);
+        await expectRevert.custom(assetManager.confirmTopupPayment(proof2, agentVault.address, { from: agentOwner1 }), "PaymentAlreadyConfirmed", []);
     });
 });

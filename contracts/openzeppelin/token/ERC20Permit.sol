@@ -25,6 +25,9 @@ import {EIP712} from "../utils/EIP712.sol";
 abstract contract ERC20Permit is IERC20Permit, EIP712 {
     using Counters for Counters.Counter;
 
+    error ERC20PermitExpiredDeadline();
+    error ERC20PermitInvalidSignature();
+
     struct ERC20PermitState {
         mapping(address => Counters.Counter) nonces;
     }
@@ -47,7 +50,7 @@ abstract contract ERC20Permit is IERC20Permit, EIP712 {
         bytes32 r,
         bytes32 s
     ) public virtual override {
-        require(block.timestamp <= deadline, "ERC20Permit: expired deadline");
+        require(block.timestamp <= deadline, ERC20PermitExpiredDeadline());
 
         bytes32 structHash =
             keccak256(abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline));
@@ -55,7 +58,7 @@ abstract contract ERC20Permit is IERC20Permit, EIP712 {
         bytes32 hash = _hashTypedDataV4(structHash);
 
         address signer = ECDSA.recover(hash, v, r, s);
-        require(signer == owner, "ERC20Permit: invalid signature");
+        require(signer == owner, ERC20PermitInvalidSignature());
 
         _approve(owner, spender, value);
     }

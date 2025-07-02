@@ -86,8 +86,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond te
             const timelocked = requiredEventArgs(res, "GovernanceCallTimelocked");
             // assert
             await time.deterministicIncrease(300);
-            await expectRevert(assetManager.executeGovernanceCall(timelocked.encodedCall, { from: executor }),
-                "timelock: not allowed yet");
+            await expectRevert.custom(assetManager.executeGovernanceCall(timelocked.encodedCall, { from: executor }),
+                "TimelockNotAllowedYet", []);
             await time.deterministicIncrease(3600);
             await assetManager.executeGovernanceCall(timelocked.encodedCall, { from: executor });
         });
@@ -111,8 +111,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond te
             const timelocked = requiredEventArgs(res, "GovernanceCallTimelocked");
             // assert
             await time.deterministicIncrease(30);
-            await expectRevert(assetManager2.executeGovernanceCall(timelocked.encodedCall, { from: executor }),
-                "timelock: not allowed yet");
+            await expectRevert.custom(assetManager2.executeGovernanceCall(timelocked.encodedCall, { from: executor }),
+                "TimelockNotAllowedYet", []);
             await time.deterministicIncrease(60);
             await assetManager2.executeGovernanceCall(timelocked.encodedCall, { from: executor });
         });

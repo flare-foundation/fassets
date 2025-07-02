@@ -12,6 +12,8 @@ import {Agent} from "./data/Agent.sol";
 library RedemptionQueueInfo {
     using SafeCast for uint256;
 
+    error InvalidTicketId();
+
     function redemptionQueue(uint256 _firstRedemptionTicketId, uint256 _pageSize)
         internal view
         returns (RedemptionTicketInfo.Data[] memory _queue, uint256 _nextRedemptionTicketId)
@@ -39,7 +41,7 @@ library RedemptionQueueInfo {
             // start from beginning
             ticketId = _agentVault == address(0) ? queue.firstTicketId : queue.agents[_agentVault].firstTicketId;
         }
-        require (ticketId == 0 || queue.tickets[ticketId].agentVault != address(0), "invalid ticket id");
+        require (ticketId == 0 || queue.tickets[ticketId].agentVault != address(0), InvalidTicketId());
         RedemptionTicketInfo.Data[] memory result = new RedemptionTicketInfo.Data[](_pageSize);
         uint256 count = 0;
         while (ticketId != 0 && count < _pageSize) {

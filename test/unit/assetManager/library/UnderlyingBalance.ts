@@ -87,7 +87,7 @@ contract(`UnderlyingBalance.sol; ${getTestFile(__filename)};  UnderlyingBalance 
         const txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingRandomAddress, 500, PaymentReference.topup(agentVault.address));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingRandomAddress);
         const res = assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 });
-        await expectRevert(res, 'not underlying address');
+        await expectRevert.custom(res, "NotUnderlyingAddress", []);
     });
     it("should reject confirmation of top up payment - not a topup payment", async () => {
         chain.mint(underlyingRandomAddress,1000);
@@ -95,7 +95,7 @@ contract(`UnderlyingBalance.sol; ${getTestFile(__filename)};  UnderlyingBalance 
         const txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, 500, PaymentReference.topup(randomAddress()));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const res = assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 });
-        await expectRevert(res, 'not a topup payment');
+        await expectRevert.custom(res, "NotATopupPayment", []);
     });
     it("should reject confirmation of top up payment - topup before agent created", async () => {
         chain.mint(underlyingRandomAddress,1000);
@@ -104,6 +104,6 @@ contract(`UnderlyingBalance.sol; ${getTestFile(__filename)};  UnderlyingBalance 
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const res =  assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 });
-        await expectRevert(res, 'topup before agent created');
+        await expectRevert.custom(res, "TopupBeforeAgentCreated", []);
     });
 });

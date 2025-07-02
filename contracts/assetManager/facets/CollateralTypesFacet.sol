@@ -17,6 +17,9 @@ import {SafePct} from "../../utils/library/SafePct.sol";
 contract CollateralTypesFacet is AssetManagerBase {
     using SafeCast for uint256;
 
+    error DeprecationTimeToShort();
+    error TokenNotValid();
+
     /**
      * Add new vault collateral type (new token type and initial collateral ratios).
      * NOTE: may not be called directly - only through asset manager controller by governance.
@@ -52,7 +55,7 @@ contract CollateralTypesFacet is AssetManagerBase {
             SafePct.MAX_BIPS < _ccbMinCollateralRatioBIPS &&
             _ccbMinCollateralRatioBIPS <= _minCollateralRatioBIPS &&
             _minCollateralRatioBIPS <= _safetyMinCollateralRatioBIPS;
-        require(ratiosValid, "invalid collateral ratios");
+        require(ratiosValid, CollateralTypes.InvalidCollateralRatios());
         // update
         CollateralTypeInt.Data storage token = CollateralTypes.get(_collateralClass, _token);
         token.minCollateralRatioBIPS = _minCollateralRatioBIPS.toUint32();
@@ -79,8 +82,8 @@ contract CollateralTypesFacet is AssetManagerBase {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         CollateralTypeInt.Data storage token = CollateralTypes.get(_collateralClass, _token);
         // validate
-        require(token.validUntil == 0 || token.validUntil > block.timestamp, "token not valid");
-        require(_invalidationTimeSec >= settings.tokenInvalidationTimeMinSeconds, "deprecation time to short");
+        require(token.validUntil == 0 || token.validUntil > block.timestamp, TokenNotValid());
+        require(_invalidationTimeSec >= settings.tokenInvalidationTimeMinSeconds, DeprecationTimeToShort());
         // update
         uint256 validUntil = block.timestamp + _invalidationTimeSec;
         token.validUntil = validUntil.toUint64();

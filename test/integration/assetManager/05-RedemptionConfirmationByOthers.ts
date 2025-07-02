@@ -78,9 +78,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assert.equal(request.agentVault, agent.vaultAddress);
             const tx1Hash = await agent.performRedemptionPayment(request);
             // others cannot confirm redemption payment immediately or challenge it as illegal payment
-            await expectRevert(challenger.confirmActiveRedemptionPayment(request, tx1Hash, agent), "only agent vault owner");
-            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
-            await expectRevert(agent.destroy(), "destroy not announced");
+            await expectRevert.custom(challenger.confirmActiveRedemptionPayment(request, tx1Hash, agent), "OnlyAgentVaultOwner", []);
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "MatchingRedemptionActive", []);
+            await expectRevert.custom(agent.destroy(), "DestroyNotAnnounced", []);
             // others can confirm redemption payment after some time
             await time.deterministicIncrease(context.settings.confirmationByOthersAfterSeconds);
             const startChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
@@ -89,7 +89,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const challengerVaultCollateralReward = await agent.usd5ToVaultCollateralWei(toBN(context.settings.confirmationByOthersRewardUSD5));
             assert.approximately(Number(challengerVaultCollateralReward) / 1e18, 100, 10);
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(challengerVaultCollateralReward), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.feeUBA), redeemingUBA: 0 });
-            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "ChallengeTransactionAlreadyConfirmed", []);
             const endChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
             // test rewarding
             assertWeb3Equal(endChallengerVaultCollateralBalance.sub(startChallengerVaultCollateralBalance), challengerVaultCollateralReward);
@@ -124,9 +124,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assert.equal(request.agentVault, agent.vaultAddress);
             const tx1Hash = await agent.performRedemptionPayment(request, { status: TX_BLOCKED, maxFee: 100 });
             // others cannot confirm redemption payment immediatelly or challenge it as illegal payment
-            await expectRevert(challenger.confirmBlockedRedemptionPayment(request, tx1Hash, agent), "only agent vault owner");
-            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
-            await expectRevert(agent.destroy(), "destroy not announced");
+            await expectRevert.custom(challenger.confirmBlockedRedemptionPayment(request, tx1Hash, agent), "OnlyAgentVaultOwner", []);
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "MatchingRedemptionActive", []);
+            await expectRevert.custom(agent.destroy(), "DestroyNotAnnounced", []);
             // others can confirm redemption payment after some time
             await time.deterministicIncrease(context.settings.confirmationByOthersAfterSeconds);
             const startChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
@@ -134,7 +134,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await challenger.confirmBlockedRedemptionPayment(request, tx1Hash, agent);
             const challengerVaultCollateralReward = await agent.usd5ToVaultCollateralWei(toBN(context.settings.confirmationByOthersRewardUSD5));
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(challengerVaultCollateralReward), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.valueUBA).subn(100), redeemingUBA: 0 });
-            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "ChallengeTransactionAlreadyConfirmed", []);
             const endChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
             // test rewarding
             assertWeb3Equal(endChallengerVaultCollateralBalance.sub(startChallengerVaultCollateralBalance), challengerVaultCollateralReward);
@@ -169,9 +169,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assert.equal(request.agentVault, agent.vaultAddress);
             const tx1Hash = await agent.performRedemptionPayment(request, { status: TX_FAILED, gasLimit: 10, gasPrice: 10 });
             // others cannot confirm redemption payment immediatelly or challenge it as illegal payment
-            await expectRevert(challenger.confirmFailedRedemptionPayment(request, tx1Hash, agent), "only agent vault owner");
-            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
-            await expectRevert(agent.destroy(), "destroy not announced");
+            await expectRevert.custom(challenger.confirmFailedRedemptionPayment(request, tx1Hash, agent), "OnlyAgentVaultOwner", []);
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "MatchingRedemptionActive", []);
+            await expectRevert.custom(agent.destroy(), "DestroyNotAnnounced", []);
             // others can confirm redemption payment after some time
             await time.deterministicIncrease(context.settings.confirmationByOthersAfterSeconds);
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.poolFeeUBA, reservedUBA: 0, redeemingUBA: request.valueUBA });
@@ -181,7 +181,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const startPoolBalanceAgent = await agent.poolCollateralBalance();
             const startPoolBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const res = await challenger.confirmFailedRedemptionPayment(request, tx1Hash, agent);
-            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "ChallengeTransactionAlreadyConfirmed", []);
             const endVaultCollateralBalanceChallenger = await agent.vaultCollateralToken().balanceOf(challenger.address);
             const endVaultCollateralBalanceAgent = await agent.vaultCollateralToken().balanceOf(agent.agentVault.address);
             const endVaultCollateralBalanceRedeemer = await agent.vaultCollateralToken().balanceOf(redeemer.address);
@@ -260,12 +260,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await challenger.confirmDefaultedRedemptionPayment(request, tx1Hash, agent);
             const challengerVaultCollateralReward = await agent.usd5ToVaultCollateralWei(toBN(context.settings.confirmationByOthersRewardUSD5));
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(res.redeemedVaultCollateralWei).sub(challengerVaultCollateralReward), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.feeUBA) });
-            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "ChallengeTransactionAlreadyConfirmed", []);
             const endChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
             // test rewarding
             assertWeb3Equal(endChallengerVaultCollateralBalance.sub(startChallengerVaultCollateralBalance), challengerVaultCollateralReward);
             // check that calling finishRedemptionWithoutPayment after confirming redemption payment will revert
-            await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid request id");
+            await expectRevert.custom(agent.finishRedemptionWithoutPayment(request), "InvalidRequestId", []);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(res.redeemedVaultCollateralWei).sub(challengerVaultCollateralReward));
         });

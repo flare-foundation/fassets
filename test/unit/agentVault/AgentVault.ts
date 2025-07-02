@@ -168,7 +168,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
         const user = accounts[20];
         await usdc.mintAmount(user, 2000);
         await usdc.approve(agentVault.address, 1100, { from: user });
-        await expectRevert(agentVault.depositCollateral(usdc.address, 100, { from: user }), "only owner");
+        await expectRevert.custom(agentVault.depositCollateral(usdc.address, 100, { from: user }), "OnlyOwner", []);
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(agentInfo.totalVaultCollateralWei, 0);
     });
@@ -193,7 +193,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
         const user = accounts[20];
         await usdc.mintAmount(user, 2000);
         await usdc.transfer(agentVault.address, 100, { from: user });
-        await expectRevert(agentVault.updateCollateral(usdc.address, { from: user }), "only owner");
+        await expectRevert.custom(agentVault.updateCollateral(usdc.address, { from: user }), "OnlyOwner", []);
     });
 
     it("should withdraw vault collateral from owner", async () => {
@@ -215,7 +215,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
         const agentVault = await AgentVault.new(assetManagerMock.address);
         await usdc.approve(agentVault.address, 2000, { from: owner });
         const res = agentVault.depositCollateral(usdc.address, 100, { from: owner });
-        await expectRevert(res, "invalid agent vault address")
+        await expectRevert.custom(res, "InvalidAgentVaultAddress", [])
     });
 
     it("cannot transfer NAT to agent vault", async () => {
@@ -227,7 +227,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
     it("cannot delegate if not owner", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const res = agentVault.delegate(wNat.address, accounts[2], 50);
-        await expectRevert(res, "only owner")
+        await expectRevert.custom(res, "OnlyOwner", [])
     });
 
     it("should delegate", async () => {
@@ -252,13 +252,13 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
     it("cannot undelegate if not owner", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const res = agentVault.undelegateAll(wNat.address, { from: accounts[2] });
-        await expectRevert(res, "only owner")
+        await expectRevert.custom(res, "OnlyOwner", [])
     });
 
     it("cannot delegate governance if not owner", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const res = agentVault.delegateGovernance(wNat.address, accounts[2]);
-        await expectRevert(res, "only owner")
+        await expectRevert.custom(res, "OnlyOwner", [])
     });
 
     it("should delegate governance", async () => {
@@ -278,7 +278,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
     it("cannot undelegate governance if not owner", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const res = agentVault.undelegateGovernance(wNat.address);
-        await expectRevert(res, "only owner")
+        await expectRevert.custom(res, "OnlyOwner", [])
     });
 
     it("should undelegate governance", async () => {
@@ -298,31 +298,31 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
     it("cannot withdraw collateral if not owner", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const res = agentVault.withdrawCollateral(usdc.address, 100, accounts[2], { from: accounts[2] });
-        await expectRevert(res, "only owner")
+        await expectRevert.custom(res, "OnlyOwner", [])
     });
 
     it("cannot call destroy if not asset manager", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const res = agentVault.destroy({ from: accounts[2] });
-        await expectRevert(res, "only asset manager")
+        await expectRevert.custom(res, "OnlyAssetManager", [])
     });
 
     it("cannot call payout if not asset manager", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const res = agentVault.payout(wNat.address, accounts[2], 100, { from: accounts[2] });
-        await expectRevert(res, "only asset manager")
+        await expectRevert.custom(res, "OnlyAssetManager", [])
     });
 
     it("should not transfer wnat tokens", async () => {
         const agentVault = await createAgentVault(owner, underlyingAgent1);
         const res = agentVault.transferExternalToken(usdc.address, 1, { from: owner });
-        await expectRevert(res, "only non-collateral tokens");
+        await expectRevert.custom(res, "OnlyNonCollateralTokens", []);
     });
 
     it("should not transfer if not owner", async () => {
         const agentVault = await createAgentVault(owner, underlyingAgent1);
         const res = agentVault.transferExternalToken(wNat.address, 1);
-        await expectRevert(res, "only owner");
+        await expectRevert.custom(res, "OnlyOwner", []);
     });
 
     it("should transfer erc20 tokens", async () => {
@@ -343,7 +343,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
         await usdc.approve(agentVault.address, toBN(100), { from: owner })
         await agentVault.depositCollateral(usdc.address, toBN(100), { from: owner });
         //Withdraw token so balance is 0
-        await expectRevert(agentVault.withdrawCollateral(usdc.address, toBN(100), accounts[12], { from: owner }), "withdrawal: not announced");
+        await expectRevert.custom(agentVault.withdrawCollateral(usdc.address, toBN(100), accounts[12], { from: owner }), "WithdrawalNotAnnounced", []);
         await assetManager.announceDestroyAgent(agentVault.address, { from: owner });
         await time.deterministicIncrease(settings.withdrawalWaitMinSeconds);
         await assetManager.destroyAgent(agentVault.address, owner, { from: owner });
@@ -415,7 +415,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
             await assetManagerMock.callFunctionAt(pool.address, abiEncodeCall(pool, (p) => p.fAssetFeeDeposited(toWei(1000))));
             // withdraw pool fees
             const res = agentVault.withdrawPoolFees(toWei(10), owner, { from: accounts[14] });
-            await expectRevert(res, "only owner");
+            await expectRevert.custom(res, "OnlyOwner", []);
         });
 
         it("random address shouldn't be able to redeem collateral pool tokens", async () => {
@@ -427,7 +427,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
             await assetManager.announceAgentPoolTokenRedemption(agentVault.address, tokens, { from: owner });
             await time.deterministicIncrease((await assetManager.getSettings()).withdrawalWaitMinSeconds);
             const res = agentVault.redeemCollateralPoolTokens(tokens, natRecipient, { from: accounts[14] });
-            await expectRevert(res, "only owner");
+            await expectRevert.custom(res, "OnlyOwner", []);
         });
     });
 

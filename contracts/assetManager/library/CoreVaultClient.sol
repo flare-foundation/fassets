@@ -27,6 +27,8 @@ library CoreVaultClient {
     using AgentCollateral for Collateral.CombinedData;
     using PaymentConfirmations for PaymentConfirmations.State;
 
+    error CoreVaultNotEnabled();
+
     struct State {
         // settings
         IICoreVaultManager coreVaultManager;
@@ -138,7 +140,7 @@ library CoreVaultClient {
         internal view
     {
         State storage state = getState();
-        require(address(state.coreVaultManager) != address(0), "core vault not enabled");
+        require(address(state.coreVaultManager) != address(0), CoreVaultNotEnabled());
     }
 
     function _minimumRemainingAfterTransferAMG(

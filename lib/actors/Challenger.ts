@@ -106,7 +106,7 @@ export class Challenger extends ActorBase {
             // due to async nature of challenging (and the fact that challenger might start tracking agent later), there may be some false challenges which will be rejected
             // this is perfectly safe for the system, but the errors must be caught
             await this.context.assetManager.illegalPaymentChallenge(proof, agent.address, { from: this.address })
-                .catch(e => scope.exitOnExpectedError(e, ['chlg: already liquidating', 'chlg: transaction confirmed', 'matching redemption active', 'matching ongoing announced pmt']));
+                .catch(e => scope.exitOnExpectedError(e, ["ChallengeAlreadyLiquidating", "ChallengeTransactionAlreadyConfirmed", "MatchingRedemptionActive", "MatchingAnnouncedPaymentActive"]));
         });
     }
 
@@ -131,7 +131,7 @@ export class Challenger extends ActorBase {
             ]);
             // due to async nature of challenging there may be some false challenges which will be rejected
             await this.context.assetManager.doublePaymentChallenge(proof1, proof2, agent.address, { from: this.address })
-                .catch(e => scope.exitOnExpectedError(e, ['chlg dbl: already liquidating']));
+                .catch(e => scope.exitOnExpectedError(e, ["ChallengeAlreadyLiquidating"]));
         });
     }
 
@@ -173,7 +173,7 @@ export class Challenger extends ActorBase {
                 this.waitForDecreasingBalanceProof(scope, txHash, agent.underlyingAddressString)));
             // due to async nature of challenging there may be some false challenges which will be rejected
             await this.context.assetManager.freeBalanceNegativeChallenge(proofs, agent.address, { from: this.address })
-                .catch(e => scope.exitOnExpectedError(e, ['mult chlg: already liquidating', 'mult chlg: enough balance']));
+                .catch(e => scope.exitOnExpectedError(e, ["ChallengeAlreadyLiquidating", "MultiplePaymentsChallengeEnoughBalance"]));
         });
     }
 

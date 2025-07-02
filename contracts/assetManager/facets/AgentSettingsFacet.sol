@@ -21,6 +21,11 @@ contract AgentSettingsFacet is AssetManagerBase {
     bytes32 internal constant BUY_FASSET_BY_AGENT_FACTOR_BIPS = keccak256("buyFAssetByAgentFactorBIPS");
     bytes32 internal constant POOL_EXIT_COLLATERAL_RATIO_BIPS = keccak256("poolExitCollateralRatioBIPS");
 
+    error NoPendingUpdate();
+    error UpdateNotValidYet();
+    error UpdateNotValidAnymore();
+    error InvalidSettingName();
+
     /**
      * Due to effect on the pool, all agent settings are timelocked.
      * This method announces a setting change. The change can be executed after the timelock expires.
@@ -61,11 +66,11 @@ contract AgentSettingsFacet is AssetManagerBase {
         Agent.State storage agent = Agent.get(_agentVault);
         bytes32 hash = _getAndCheckHash(_name);
         Agent.SettingUpdate storage update = agent.settingUpdates[hash];
-        require(update.validAt != 0, "no pending update");
-        require(update.validAt <= block.timestamp, "update not valid yet");
+        require(update.validAt != 0, NoPendingUpdate());
+        require(update.validAt <= block.timestamp, UpdateNotValidYet());
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         require(update.validAt + settings.agentTimelockedOperationWindowSeconds >= block.timestamp,
-            "update not valid anymore");
+            UpdateNotValidAnymore());
         _executeUpdate(agent, hash, update.value);
         emit IAssetManagerEvents.AgentSettingChanged(_agentVault, _name, update.value);
         delete agent.settingUpdates[hash];
@@ -152,7 +157,7 @@ contract AgentSettingsFacet is AssetManagerBase {
             hash == MINTING_POOL_COLLATERAL_RATIO_BIPS ||
             hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS ||
             hash == POOL_EXIT_COLLATERAL_RATIO_BIPS;
-        require(settingNameValid, "invalid setting name");
+        require(settingNameValid, InvalidSettingName());
         return hash;
     }
 }

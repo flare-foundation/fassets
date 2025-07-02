@@ -81,7 +81,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(endTotalCollateralPool.sub(startTotalCollateralPool), poolFee);
             // check that executing minting after calling mintingPaymentDefault will revert
             const txHash = await minter.performMintingPayment(crt);
-            await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");
+            await expectRevert.custom(minter.executeMinting(crt, txHash), "InvalidCrtId", []);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);
         });
@@ -119,7 +119,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(endTotalCollateralPool.sub(startTotalCollateralPool), poolFee);
             // check that executing minting after calling mintingPaymentDefault will revert
             const txHash = await minter.performMintingPayment(crt);
-            await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");
+            await expectRevert.custom(minter.executeMinting(crt, txHash), "InvalidCrtId", []);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);
         });
@@ -142,7 +142,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // check that calling unstickMinting after no payment will revert if called too soon
-            await expectRevert(agent.unstickMinting(crt), "cannot unstick minting yet");
+            await expectRevert.custom(agent.unstickMinting(crt), "CannotUnstickMintingYet", []);
             await time.deterministicIncrease(DAYS);
             context.skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
             await agent.checkAgentInfo({
@@ -171,7 +171,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(reservedCollateral), freeUnderlyingBalanceUBA: 0, mintedUBA: 0, reservedUBA: 0 });
             // check that executing minting after calling unstickMinting will revert
             const txHash = await minter.performMintingPayment(crt);
-            await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");
+            await expectRevert.custom(minter.executeMinting(crt, txHash), "InvalidCrtId", []);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(reservedCollateral));
         });
@@ -196,7 +196,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // check that calling unstickMinting after failed minting payment will revert if called too soon
-            await expectRevert(agent.unstickMinting(crt), "cannot unstick minting yet");
+            await expectRevert.custom(agent.unstickMinting(crt), "CannotUnstickMintingYet", []);
             await time.deterministicIncrease(DAYS);
             context.skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
             // test rewarding for unstick default
@@ -218,7 +218,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), burnedNAT.add(crFee));
             // check that executing minting after calling unstickMinting will revert
             const txHash = await minter.performMintingPayment(crt);
-            await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");
+            await expectRevert.custom(minter.executeMinting(crt, txHash), "InvalidCrtId", []);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(reservedCollateral));
         });
@@ -244,7 +244,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // check that calling unstickMinting after unconfirmed payment will revert if called too soon
-            await expectRevert(agent.unstickMinting(crt), "cannot unstick minting yet");
+            await expectRevert.custom(agent.unstickMinting(crt), "CannotUnstickMintingYet", []);
             await time.deterministicIncrease(DAYS);
             context.skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
             // test rewarding for unstick default
@@ -265,7 +265,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const burnedNAT = await agent.vaultCollateralToNatBurned(reservedCollateral);
             assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), burnedNAT.add(crFee));
             // check that executing minting after calling unstickMinting will revert
-            await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");
+            await expectRevert.custom(minter.executeMinting(crt, txHash), "InvalidCrtId", []);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(reservedCollateral));
         });

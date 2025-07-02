@@ -75,7 +75,7 @@ contract(`CheckPointHistory.sol; ${getTestFile(__filename)}`, accounts => {
         }
         // Assert
         for (let i = 0; i < 5; i++) {
-            await expectRevert(checkPointHistoryMock.valueAt(b[i]), "CheckPointHistory: reading from cleaned-up block");
+            await expectRevert.custom(checkPointHistoryMock.valueAt(b[i]), "CheckPointHistoryReadingFromCleanedupBlock", []);
         }
         for (let i = 5; i < 10; i++) {
             const value = await checkPointHistoryMock.valueAt(b[i]);

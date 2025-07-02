@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {IAddressValidity, IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IAddressValidity} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {Agents} from "../library/Agents.sol";
 import {Globals} from "../library/Globals.sol";
-import {UnderlyingBlockUpdater} from "../library/UnderlyingBlockUpdater.sol";
 import {TransactionAttestation} from "../library/TransactionAttestation.sol";
 import {Agent} from "../library/data/Agent.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
@@ -19,7 +18,6 @@ import {IICollateralPoolFactory} from "../../collateralPool/interfaces/IICollate
 import {IICollateralPoolTokenFactory} from "../../collateralPool/interfaces/IICollateralPoolTokenFactory.sol";
 import {IUpgradableContractFactory} from "../../utils/interfaces/IUpgradableContractFactory.sol";
 import {IUpgradableProxy} from "../../utils/interfaces/IUpgradableProxy.sol";
-import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {AgentSettings} from "../../userInterfaces/data/AgentSettings.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
@@ -34,6 +32,14 @@ contract AgentVaultManagementFacet is AssetManagerBase {
 
     uint256 internal constant MIN_SUFFIX_LEN = 2;
     uint256 internal constant MAX_SUFFIX_LEN = 20;
+
+    error AddressInvalid();
+    error AgentStillAvailable();
+    error AgentStillActive();
+    error DestroyNotAnnounced();
+    error DestroyNotAllowedYet();
+    error SuffixReserved();
+    error SuffixInvalidFormat();
 
     /**
      * Create an agent.
@@ -62,7 +68,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         // require valid address
         TransactionAttestation.verifyAddressValidity(_addressProof);
         IAddressValidity.ResponseBody memory avb = _addressProof.data.responseBody;
-        require(avb.isValid, "address invalid");
+        require(avb.isValid, AddressInvalid());
         IIAssetManager assetManager = IIAssetManager(address(this));
         // create agent vault
         IIAgentVaultFactory agentVaultFactory = IIAgentVaultFactory(Globals.getSettings().agentVaultFactory);
@@ -119,8 +125,8 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         Agent.State storage agent = Agent.get(_agentVault);
         // all minting must stop and all minted assets must have been cleared
-        require(agent.availableAgentsPos == 0, "agent still available");
-        require(agent.totalBackedAMG() == 0, "agent still active");
+        require(agent.availableAgentsPos == 0, AgentStillAvailable());
+        require(agent.totalBackedAMG() == 0, AgentStillActive());
         // if not destroying yet, start timing
         if (agent.status != Agent.Status.DESTROYING) {
             agent.status = Agent.Status.DESTROYING;
@@ -153,8 +159,8 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
         // destroy must have been announced enough time before
-        require(agent.status == Agent.Status.DESTROYING, "destroy not announced");
-        require(block.timestamp > agent.destroyAllowedAt, "destroy: not allowed yet");
+        require(agent.status == Agent.Status.DESTROYING, DestroyNotAnnounced());
+        require(block.timestamp > agent.destroyAllowedAt, DestroyNotAllowedYet());
         // cannot have any minting when in destroying status
         assert(agent.totalBackedAMG() == 0);
         // destroy pool
@@ -273,18 +279,18 @@ contract AgentVaultManagementFacet is AssetManagerBase {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         // reserve unique suffix
-        require(!state.reservedPoolTokenSuffixes[_suffix], "suffix already reserved");
+        require(!state.reservedPoolTokenSuffixes[_suffix], SuffixReserved());
         state.reservedPoolTokenSuffixes[_suffix] = true;
         // validate - require only printable ASCII characters (no spaces) and limited length
         bytes memory suffixb = bytes(_suffix);
         uint256 len = suffixb.length;
-        require(len >= MIN_SUFFIX_LEN, "suffix too short");
-        require(len <= MAX_SUFFIX_LEN, "suffix too long");
+        require(len >= MIN_SUFFIX_LEN, SuffixInvalidFormat());
+        require(len <= MAX_SUFFIX_LEN, SuffixInvalidFormat());
         for (uint256 i = 0; i < len; i++) {
             bytes1 ch = suffixb[i];
             // allow A-Z, 0-9 and '-' (but not at start or end)
             require((ch >= "A" && ch <= "Z") || (ch >= "0" && ch <= "9") || (i > 0 && i < len - 1 && ch == "-"),
-                "invalid character in suffix");
+                SuffixInvalidFormat());
         }
     }
 

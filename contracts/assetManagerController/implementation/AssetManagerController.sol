@@ -34,6 +34,10 @@ contract AssetManagerController is
 {
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    error AssetManagerNotManaged();
+    error OnlyGovernanceOrEmergencyPauseSenders();
+    error AddressZero();
+
     /**
      * New address in case this controller was replaced.
      * Note: this code contains no checks that replacedBy==0, because when replaced,
@@ -605,7 +609,7 @@ contract AssetManagerController is
         address assetManagerController = addressUpdater.getContractAddress("AssetManagerController");
         address wNat = addressUpdater.getContractAddress("WNat");
         require(newAddressUpdater != address(0) && assetManagerController != address(0) && wNat != address(0),
-            "address zero");
+            AddressZero());
         _updateContracts(_assetManagers, newAddressUpdater, assetManagerController, wNat);
     }
 
@@ -655,7 +659,7 @@ contract AssetManagerController is
     {
         bool byGovernance = msg.sender == governance();
         require(byGovernance || emergencyPauseSenders.contains(msg.sender),
-            "only governance or emergency pause senders");
+            OnlyGovernanceOrEmergencyPauseSenders());
         _callOnManagers(_assetManagers,
             abi.encodeCall(IIAssetManager.emergencyPause, (byGovernance, _duration)));
     }
@@ -665,7 +669,7 @@ contract AssetManagerController is
     {
         bool byGovernance = msg.sender == governance();
         require(byGovernance || emergencyPauseSenders.contains(msg.sender),
-            "only governance or emergency pause senders");
+            OnlyGovernanceOrEmergencyPauseSenders());
         _callOnManagers(_assetManagers,
             abi.encodeCall(IIAssetManager.emergencyPauseTransfers, (byGovernance, _duration)));
     }
@@ -724,7 +728,7 @@ contract AssetManagerController is
     function _callOnManagers(IIAssetManager[] memory _assetManagers, bytes memory _calldata) private {
         for (uint256 i = 0; i < _assetManagers.length; i++) {
             address assetManager = address(_assetManagers[i]);
-            require(assetManagerIndex[assetManager] != 0, "Asset manager not managed");
+            require(assetManagerIndex[assetManager] != 0, AssetManagerNotManaged());
             Address.functionCall(assetManager, _calldata);
         }
     }

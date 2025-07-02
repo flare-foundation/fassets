@@ -214,13 +214,13 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         it("should fail at calling setPoolToken from non asset manager", async () => {
             const prms = collateralPool.setPoolToken(collateralPoolToken.address);
-            await expectRevert(prms, "only asset manager");
+            await expectRevert.custom(prms, "OnlyAssetManager", []);
         });
 
         it("should fail at resetting pool token", async () => {
             const payload = abiEncodeCall(collateralPool, (p) => p.setPoolToken(collateralPoolToken.address));
             const prms = assetManager.callFunctionAt(collateralPool.address, payload);
-            await expectRevert(prms, "pool token already set");
+            await expectRevert.custom(prms, "PoolTokenAlreadySet", []);
         });
 
         it("should correctly set exit collateral ratio", async () => {
@@ -286,7 +286,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // account1 tries to send too many tokens to another account
             const tokens = await collateralPoolToken.balanceOf(accounts[1]);
             const prms = collateralPoolToken.transfer(accounts[2], tokens, { from: accounts[1] });
-            await expectRevert(prms, "insufficient transferable balance");
+            await expectRevert.custom(prms, "InsufficientTransferableBalance", []);
         });
 
         it("should transfer free tokens between users", async () => {
@@ -321,9 +321,9 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 const transferableTokens1 = await collateralPoolToken.transferableBalanceOf(accounts[0]);
                 assertEqualBN(transferableTokens1, BN_ZERO);
                 const prms1 = collateralPoolToken.transfer(accounts[1], ETH(1));
-                await expectRevert(prms1, "insufficient non-timelocked balance");
+                await expectRevert.custom(prms1, "InsufficientNonTimelockedBalance", []);
                 const prms2 = collateralPool.exit(ETH(1));
-                await expectRevert(prms2, "insufficient non-timelocked balance");
+                await expectRevert.custom(prms2, "InsufficientNonTimelockedBalance", []);
                 // increase time by 1 day
                 await time.deterministicIncrease(time.duration.days(1));
                 const timelockedTokens2 = await collateralPoolToken.timelockedBalanceOf(accounts[0]);
@@ -437,13 +437,13 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 const timelockedTokensAcc11 = await collateralPoolToken.timelockedBalanceOf(accounts[1]);
                 // account1 can't send his transferable tokens because of timelock
                 const prms1 = collateralPoolToken.transfer(accounts[2], transferableTokensAcc11, { from: accounts[1] });
-                await expectRevert(prms1, "insufficient non-timelocked balance");
+                await expectRevert.custom(prms1, "InsufficientNonTimelockedBalance", []);
                 // account1 can't send his debt tokens
                 const prms2 = collateralPoolToken.transfer(accounts[2], transferableTokensAcc11.addn(1), { from: accounts[1] });
-                await expectRevert(prms2, "insufficient transferable balance");
+                await expectRevert.custom(prms2, "InsufficientTransferableBalance", []);
                 // account1 can't exit with his timelocked tokens
                 const prms3 = collateralPool.exit(transferableTokensAcc11, { from: accounts[1] });
-                await expectRevert(prms3, "insufficient non-timelocked balance");
+                await expectRevert.custom(prms3, "InsufficientNonTimelockedBalance", []);
                 // account1 gets new timelocked tokens after a while and no new transferable tokens
                 await time.deterministicIncrease(time.duration.minutes(30));
                 await collateralPool.enter({ value: ETH(1000), from: accounts[1] });
@@ -459,7 +459,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 assertEqualBN(transferableTokensAcc13, BN_ZERO);
                 // account1 tries to send non-transferable tokens
                 const prms4 = collateralPoolToken.transfer(accounts[2], BN_ONE, { from: accounts[1] });
-                await expectRevert(prms4, "insufficient transferable balance");
+                await expectRevert.custom(prms4, "InsufficientTransferableBalance", []);
                 await collateralPool.exit(nonTimelockedTokensAcc12.sub(transferableTokensAcc12), { from: accounts[1] });
                 const nonTimelockedTokensAcc13 = await collateralPoolToken.nonTimelockedBalanceOf(accounts[1]);
                 assertEqualBN(nonTimelockedTokensAcc13, BN_ZERO);
@@ -507,19 +507,18 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await wNat.burnAmount(collateralPool.address, ETH(1000));
             // check that entering is disabled
             const prms = collateralPool.enter({ value: MIN_NAT_TO_ENTER, from: accounts[1] });
-            await expectRevert(prms, "pool nat balance too small");
+            await expectRevert.custom(prms, "PoolNatBalanceTooSmall", []);
         });
 
         it("should fail entering the pool with too little funds", async () => {
             const prms = collateralPool.enter({ value: MIN_NAT_TO_ENTER.sub(BN_ONE) });
-            await expectRevert(prms, "amount of nat sent is too low");
+            await expectRevert.custom(prms, "AmountOfNatTooLow", []);
         });
 
         it("should fail entering with f-assets that don't cover the one in a tokenless pool", async () => {
             await givePoolFAssetFees(ETH(10));
             const prms = collateralPool.enter({ value: MIN_NAT_TO_ENTER });
-            await expectRevert(prms,
-                "If pool has no tokens, but holds f-asset, you need to send at least f-asset worth of collateral");
+            await expectRevert.custom(prms, "AmountOfCollateralTooLow", []);
         });
 
         it("should enter tokenless, f-assetless and natless pool", async () => {
@@ -541,8 +540,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(await wNat.balanceOf(collateralPool.address), ETH(10));
             await wNat.mintAmount(accounts[0], ETH(10));
             const prms = collateralPool.enter({ value: ETH(10).subn(1) });
-            await expectRevert(prms,
-                "if pool has no tokens, but holds collateral, you need to send at least that amount of collateral");
+            await expectRevert.custom(prms, "AmountOfCollateralTooLow", []);
             await collateralPool.enter({ value: ETH(10) });
             assertEqualBN(await collateralPoolToken.debtFreeBalanceOf(accounts[0]), ETH(10));
             assertEqualBN(await collateralPoolToken.totalSupply(), ETH(10));
@@ -590,21 +588,21 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         it("should revert on exiting the pool with zero tokens", async () => {
             const prms = collateralPool.exit(0);
-            await expectRevert(prms, "token share is zero");
+            await expectRevert.custom(prms, "TokenShareIsZero", []);
         });
 
         it("should revert on user not having enough tokens", async () => {
             await collateralPool.enter({ value: ETH(10) });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             const prms = collateralPool.exit(tokens.add(BN_ONE));
-            await expectRevert(prms, "token balance too low");
+            await expectRevert.custom(prms, "TokenBalanceTooLow", []);
         });
 
         it("should require that amount of tokens left after exit is large enough", async () => {
             await collateralPool.enter({ value: MIN_TOKEN_SUPPLY_AFTER_EXIT });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             const prms = collateralPool.exit(tokens.sub(MIN_TOKEN_SUPPLY_AFTER_EXIT).add(BN_ONE));
-            await expectRevert(prms, "token supply left after exit is too low and non-zero");
+            await expectRevert.custom(prms, "TokenSupplyAfterExitTooLow", []);
         });
 
         it("should require nat share to be larger than 0", async () => {
@@ -612,7 +610,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await collateralPool.enter({ value: ETH(10) });
             await collateralPool.payout(accounts[0], ETH(1), 0, { from: assetManager.address });
             const prms = collateralPool.exit(BN_ONE);
-            await expectRevert(prms, "amount of sent tokens is too small");
+            await expectRevert.custom(prms, "SentAmountTooLow", []);
         });
 
         it("should require nat share to leave enough pool non-zero collateral", async () => {
@@ -620,7 +618,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await collateralPool.enter({ value: MIN_TOKEN_SUPPLY_AFTER_EXIT.addn(2) });
             await collateralPool.payout(accounts[0], MIN_TOKEN_SUPPLY_AFTER_EXIT.divn(2), 0, { from: assetManager.address });
             const prms = collateralPool.exit(new BN(2));
-            await expectRevert(prms, "collateral left after exit is too low and non-zero");
+            await expectRevert.custom(prms, "CollateralAfterExitTooLow", []);
         });
 
         it("should enter the pool and fail to exit due to CR falling below exitCR", async () => {
@@ -629,8 +627,8 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const natToExit = await getNatRequiredToGetPoolCRAbove(exitCR);
             await collateralPool.enter({ value: natToExit });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
-            await expectRevert(collateralPool.exit(10), "collateral ratio falls below exitCR");
-            await expectRevert(collateralPool.exit(tokens), "collateral ratio falls below exitCR");
+            await expectRevert.custom(collateralPool.exit(10), "CollateralRatioFallsBelowExitCR", []);
+            await expectRevert.custom(collateralPool.exit(tokens), "CollateralRatioFallsBelowExitCR", []);
         });
 
         it("should enter and exit correctly when f-asset supply is zero", async () => {
@@ -751,14 +749,14 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         it("should require token share to be larger than 0", async () => {
             const prms = collateralPool.selfCloseExit(BN_ZERO, true, "", ZERO_ADDRESS);
-            await expectRevert(prms, "token share is zero");
+            await expectRevert.custom(prms, "TokenShareIsZero", []);
         });
 
         it("should require that the token balance is large enough", async () => {
             await collateralPool.enter({ value: ETH(10) });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             const prms = collateralPool.selfCloseExit(tokens.add(BN_ONE), true, "", ZERO_ADDRESS);
-            await expectRevert(prms, "token balance too low");
+            await expectRevert.custom(prms, "TokenBalanceTooLow", []);
         });
 
         it("should require that amount of tokens left after exit is large enough", async () => {
@@ -766,7 +764,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             await collateralPool.depositNat({ from: assetManager.address, value: ETH(1) })
             const prms = collateralPool.selfCloseExit(tokens.sub(MIN_TOKEN_SUPPLY_AFTER_EXIT).add(BN_ONE), true, "", ZERO_ADDRESS);
-            await expectRevert(prms, "token supply left after exit is too low and non-zero");
+            await expectRevert.custom(prms, "TokenSupplyAfterExitTooLow", []);
         });
 
         it("should require nat share to be larger than 0", async () => {
@@ -774,7 +772,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await collateralPool.enter({ value: ETH(10) });
             await collateralPool.payout(accounts[0], ETH(1), 0, { from: assetManager.address });
             const prms = collateralPool.selfCloseExit(BN_ONE, true, "", ZERO_ADDRESS);
-            await expectRevert(prms, "amount of sent tokens is too small");
+            await expectRevert.custom(prms, "SentAmountTooLow", []);
         });
 
         it("should require nat share to leave enough pool non-zero collateral", async () => {
@@ -782,7 +780,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await collateralPool.enter({ value: MIN_NAT_BALANCE_AFTER_EXIT.addn(2) });
             await collateralPool.payout(accounts[0], MIN_TOKEN_SUPPLY_AFTER_EXIT.divn(2), 0, { from: assetManager.address });
             const prms = collateralPool.selfCloseExit(new BN(2), true, "", ZERO_ADDRESS);
-            await expectRevert(prms, "collateral left after exit is too low and non-zero");
+            await expectRevert.custom(prms, "CollateralAfterExitTooLow", []);
         });
 
         it("should do a self-close exit where f-assets are required", async () => {
@@ -801,7 +799,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await collateralPool.enter({ value: ETH(10) });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             const prms = collateralPool.selfCloseExit(tokens, true, "", ZERO_ADDRESS);
-            await expectRevert(prms, "allowance too small");
+            await expectRevert.custom(prms, "FAssetAllowanceTooSmall", []);
         });
 
         it("should do a self-close exit where there are no f-assets to redeem", async () => {
@@ -902,7 +900,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const exitCR = exitCRBIPS.toNumber() / MAX_BIPS;
             const tokensBefore = await collateralPoolToken.balanceOf(accounts[0]);
             const promise = collateralPool.selfCloseExit(tokensBefore, true, "", ZERO_ADDRESS);
-            await expectRevert(promise, "redemption requires closing too many tickets");
+            await expectRevert.custom(promise, "RedemptionRequiresClosingTooManyTickets", []);
         });
 
         it("should fail self close exit because agent's max redeemed f-assets is non-zero but less than required", async () => {
@@ -920,7 +918,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // try self close exit
             const userTokens = await collateralPoolToken.balanceOf(accounts[0]);
             const promise = collateralPool.selfCloseExit(userTokens, true, "", ZERO_ADDRESS);
-            await expectRevert(promise, "redemption requires closing too many tickets");
+            await expectRevert.custom(promise, "RedemptionRequiresClosingTooManyTickets", []);
         });
 
         it("should self-close exit and collect fees with recipient", async () => {
@@ -962,32 +960,32 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // account1 exits with fees using MAXIMIZE_FEE_WITHDRAWAL token exit type
             const exitTokens = ETH(10);
             //
-            await expectRevert(collateralPool.selfCloseExitTo(exitTokens, true, ZERO_ADDRESS, "underlying_1", ZERO_ADDRESS, { from: accounts[0] }), "invalid recipient address");
-            await expectRevert(collateralPool.selfCloseExitTo(exitTokens, true, collateralPool.address, "underlying_1", ZERO_ADDRESS, { from: accounts[0] }), "invalid recipient address");
+            await expectRevert.custom(collateralPool.selfCloseExitTo(exitTokens, true, ZERO_ADDRESS, "underlying_1", ZERO_ADDRESS, { from: accounts[0] }), "InvalidRecipientAddress", []);
+            await expectRevert.custom(collateralPool.selfCloseExitTo(exitTokens, true, collateralPool.address, "underlying_1", ZERO_ADDRESS, { from: accounts[0] }), "InvalidRecipientAddress", []);
             const vaultAddress = await collateralPool.agentVault();
-            await expectRevert(collateralPool.selfCloseExitTo(exitTokens, true, vaultAddress, "underlying_1", ZERO_ADDRESS, { from: accounts[0] }), "invalid recipient address");
+            await expectRevert.custom(collateralPool.selfCloseExitTo(exitTokens, true, vaultAddress, "underlying_1", ZERO_ADDRESS, { from: accounts[0] }), "InvalidRecipientAddress", []);
         });
     });
 
     describe("externally dealing with fasset debt", () => {
 
         it("should fail at trying to withdraw 0 fees", async () => {
-            await expectRevert(collateralPool.withdrawFees(0), "trying to withdraw zero f-assets");
+            await expectRevert.custom(collateralPool.withdrawFees(0), "WithdrawZeroFAsset", []);
         });
 
         it("should fail at trying to withdraw too many f-asset fees", async () => {
             await collateralPool.enter({ value: ETH(10), from: accounts[0] });
             await fAsset.mint(collateralPool.address, ETH(10), { from: assetManager.address });
             const prms = collateralPool.withdrawFees(ETH(10).add(BN_ONE));
-            await expectRevert(prms, "f-asset balance too small");
+            await expectRevert.custom(prms, "FreeFAssetBalanceTooSmall", []);
         });
 
         it("should fail at trying to pay too much f-asset debt", async () => {
-            await expectRevert(collateralPool.payFAssetFeeDebt(BN_ONE), "payment larger than fee debt");
+            await expectRevert.custom(collateralPool.payFAssetFeeDebt(BN_ONE), "PaymentLargerThanFeeDebt", []);
         });
 
         it("should fail at trying to pay zero f-asset debt", async () => {
-            await expectRevert(collateralPool.payFAssetFeeDebt(BN_ZERO), "zero f-asset debt payment");
+            await expectRevert.custom(collateralPool.payFAssetFeeDebt(BN_ZERO), "ZeroFAssetDebtPayment", []);
         });
 
         it("should fail at trying to pay f-asset debt with too low f-asset allowance", async () => {
@@ -999,7 +997,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await fAsset.mint(accounts[1], debt, { from: assetManager.address });
             await fAsset.approve(collateralPool.address, debt.sub(BN_ONE), { from: accounts[1] });
             const prms = collateralPool.payFAssetFeeDebt(debt, { from: accounts[1] });
-            await expectRevert(prms, "f-asset allowance too small");
+            await expectRevert.custom(prms, "FAssetAllowanceTooSmall", []);
         });
 
         it("should enter the pool accruing debt, then mint new debt to collect f-asset rewards", async () => {
@@ -1163,32 +1161,14 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         it("should not receive any collateral during internalWithdraw = false", async () => {
             const prms = collateralPool.send(ETH(1));
-            await expectRevert(prms, "only internal use");
+            await expectRevert.custom(prms, "OnlyInternalUse", []);
         });
 
         it("should fail destroying a pool with issued tokens", async () => {
             await collateralPool.enter({ value: ETH(1) });
             const payload = abiEncodeCall(collateralPool, (p) => p.destroy(agent));
             const prms = assetManager.callFunctionAt(collateralPool.address, payload);
-            await expectRevert(prms, "cannot destroy a pool with issued tokens");
-        });
-
-        it.skip("should fail destroying a pool with collateral", async () => {
-            // give some collateral using mock airdrop
-            const mockAirdrop = await MockContract.new();
-            await mockAirdrop.givenAnyReturnUint(ETH(1));
-            await collateralPool.claimAirdropDistribution(mockAirdrop.address, 1, { from: agent });
-            // destroy
-            const payload = abiEncodeCall(collateralPool, (p) => p.destroy(agent));
-            const prms = assetManager.callFunctionAt(collateralPool.address, payload);
-            await expectRevert(prms, "cannot destroy a pool holding collateral");
-        });
-
-        it.skip("should fail at destroying a pool holding f-assets", async () => {
-            await givePoolFAssetFees(ETH(1));
-            const payload = abiEncodeCall(collateralPool, (p) => p.destroy(agent));
-            const prms = assetManager.callFunctionAt(collateralPool.address, payload);
-            await expectRevert(prms, "cannot destroy a pool holding f-assets");
+            await expectRevert.custom(prms, "CannotDestroyPoolWithIssuedTokens", []);
         });
 
         it("should destroy the pool (without nat balances)", async () => {
@@ -1239,7 +1219,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         it("should fail claiming airdropped distribution from non-agent address", async () => {
             const distributionToDelegators: DistributionToDelegatorsMockInstance = await DistributionToDelegatorsMock.new(wNat.address);
             const prms = collateralPool.claimAirdropDistribution(distributionToDelegators.address, 0, { from: accounts[0] });
-            await expectRevert(prms, "only agent");
+            await expectRevert.custom(prms, "OnlyAgent", []);
         });
 
         it("should claim airdropped distribution", async () => {
@@ -1269,7 +1249,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         it("should fail opting out of airdrop from non-agent address", async () => {
             const distributionToDelegators: DistributionToDelegatorsMockInstance = await DistributionToDelegatorsMock.new(wNat.address);
             const prms = collateralPool.optOutOfAirdrop(distributionToDelegators.address, { from: accounts[0] });
-            await expectRevert(prms, "only agent");
+            await expectRevert.custom(prms, "OnlyAgent", []);
         });
 
         it("should opt out of airdrop", async () => {
@@ -1363,70 +1343,70 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         it("random address shouldn't be able to set exit collateral RatioBIPS", async () => {
             const setTo = BN_ONE;
             const res = collateralPool.setExitCollateralRatioBIPS(setTo, { from: accounts[12] });
-            await expectRevert(res, "only asset manager");
+            await expectRevert.custom(res, "OnlyAssetManager", []);
         });
 
         it("random address shouldn't be able to mint collateral pool tokens", async () => {
             const res = collateralPoolToken.mint(accounts[12], ETH(10000), { from: accounts[5] });
-            await expectRevert(res, "only collateral pool");
+            await expectRevert.custom(res, "OnlyCollateralPool", []);
         });
 
         it("random address shouldn't be able to burn collateral pool tokens", async () => {
             const res = collateralPoolToken.burn(accounts[12], ETH(1), false, { from: accounts[5] });
-            await expectRevert(res, "only collateral pool");
+            await expectRevert.custom(res, "OnlyCollateralPool", []);
         });
 
         it("random address shouldn't be able to destroy collateral pool token", async () => {
             const res = collateralPoolToken.destroy(accounts[12], { from: accounts[5] });
-            await expectRevert(res, "only collateral pool");
+            await expectRevert.custom(res, "OnlyCollateralPool", []);
         });
 
         it("random address shouldn't be able to deposit fasset fees", async () => {
             const res = collateralPool.fAssetFeeDeposited(ETH(1), { from: accounts[5] });
-            await expectRevert(res, "only asset manager");
+            await expectRevert.custom(res, "OnlyAssetManager", []);
         });
 
         it("random address shouldn't be able to destory collateral pool", async () => {
             const res = collateralPool.destroy(accounts[5], { from: accounts[5] });
-            await expectRevert(res, "only asset manager");
+            await expectRevert.custom(res, "OnlyAssetManager", []);
         });
 
         it("random address shouldn't be able to payout", async () => {
             const res = collateralPool.payout(accounts[5], toWei(1), toWei(1), { from: accounts[5] });
-            await expectRevert(res, "only asset manager");
+            await expectRevert.custom(res, "OnlyAssetManager", []);
         });
 
         it("random address shouldn't be able to upgrade wNat contract", async () => {
             const newWNat: ERC20MockInstance = await ERC20Mock.new("new wnat", "WNat");
             const res = collateralPool.upgradeWNatContract(newWNat.address, { from: accounts[5] });
-            await expectRevert(res, "only asset manager");
+            await expectRevert.custom(res, "OnlyAssetManager", []);
         });
 
         it("random address shouldn't be able to claim rewards from reward manager", async () => {
             const distributionToDelegators: DistributionToDelegatorsMockInstance = await DistributionToDelegatorsMock.new(wNat.address);
             await wNat.mintAmount(distributionToDelegators.address, ETH(1));
             const res = collateralPool.claimDelegationRewards(distributionToDelegators.address, 0, [], { from: accounts[5] });
-            await expectRevert(res, "only agent");
+            await expectRevert.custom(res, "OnlyAgent", []);
         });
 
         it("random addresses shouldn't be able to set delegations", async () => {
             const res = collateralPool.delegate(accounts[2], 5_000, { from: accounts[5] });
-            await expectRevert(res, "only agent");
+            await expectRevert.custom(res, "OnlyAgent", []);
         });
 
         it("random address shouldn't be able to undelegate all", async () => {
             const res = collateralPool.undelegateAll({ from: accounts[5] });
-            await expectRevert(res, "only agent");
+            await expectRevert.custom(res, "OnlyAgent", []);
         });
 
         it("random address shouldn't be able to delegate governance", async () => {
             const res = collateralPool.delegateGovernance(accounts[2], { from: accounts[5] });
-            await expectRevert(res, "only agent");
+            await expectRevert.custom(res, "OnlyAgent", []);
         });
 
         it("random address shouldn't be able to undelegate governance", async () => {
             const res = collateralPool.undelegateGovernance({ from: accounts[5] });
-            await expectRevert(res, "only agent");
+            await expectRevert.custom(res, "OnlyAgent", []);
         });
 
     });

@@ -40,7 +40,7 @@ contract(`FakeERC20.sol; ${getTestFile(__filename)}; FakeERC20 basic tests`, acc
 
         it("only governance can mint", async () => {
             const pr1 = coin.mintAmount(accounts[0], 12345);
-            await expectRevert(pr1, "only governance");
+            await expectRevert.custom(pr1, "OnlyGovernance", []);
         });
 
         it("only timelocked governance can mint in production mode", async () => {

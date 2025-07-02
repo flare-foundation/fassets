@@ -8,6 +8,8 @@ import {Reentrancy} from "../../openzeppelin/library/Reentrancy.sol";
 library Transfers {
     uint256 internal constant TRANSFER_GAS_ALLOWANCE = 100_000;
 
+    error TransferFailed();
+
     // make sure the transfer is only called in non-reentrant method
     modifier requireReentrancyGuard {
         Reentrancy.requireReentrancyGuard();
@@ -34,7 +36,7 @@ library Transfers {
             //slither-disable-next-line arbitrary-send-eth
             (bool success, ) = _recipient.call{value: _amount, gas: TRANSFER_GAS_ALLOWANCE}("");
             /* solhint-enable avoid-low-level-calls */
-            require(success, "transfer failed");
+            require(success, TransferFailed());
         }
     }
 

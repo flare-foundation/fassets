@@ -29,7 +29,7 @@ contract(`SafePct.sol; ${getTestFile(__filename)};  SafePct unit tests`, account
 
     it("should revert - division by 0", async () => {
         const tx = safePct.mulDiv(2, 3, 0);
-        await expectRevert(tx, "Division by zero");
+        await expectRevert.custom(tx, "DivisionByZero", []);
     });
 
     it("should calculate correctly - no overflow", async () => {

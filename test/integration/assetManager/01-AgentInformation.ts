@@ -237,7 +237,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // collateral ratios should stay the same
             await agent.checkAgentInfo({ status: 0, vaultCollateralRatioBIPS, poolCollateralRatioBIPS }, "reset");
             // agent should not go to liquidation
-            await expectRevert(context.assetManager.startLiquidation(agent.vaultAddress), "liquidation not started");
+            await expectRevert.custom(context.assetManager.startLiquidation(agent.vaultAddress), "LiquidationNotStarted", []);
             await agent.checkAgentInfo({ status: 0 }, "reset");
             //
             // same if we change NAT decimals
@@ -250,7 +250,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // collateral ratios should stay the same
             await agent.checkAgentInfo({ status: 0, vaultCollateralRatioBIPS, poolCollateralRatioBIPS }, "reset");
             // agent should not go to liquidation
-            await expectRevert(context.assetManager.startLiquidation(agent.vaultAddress), "liquidation not started");
+            await expectRevert.custom(context.assetManager.startLiquidation(agent.vaultAddress), "LiquidationNotStarted", []);
             await agent.checkAgentInfo({ status: 0 }, "reset");
         });
     });

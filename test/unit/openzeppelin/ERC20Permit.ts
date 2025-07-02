@@ -62,9 +62,9 @@ contract('ERC20Permit', function (accounts) {
 
             await token.permit(owner, spender, value, maxDeadline, v, r, s);
 
-            await expectRevert(
+            await expectRevert.custom(
                 token.permit(owner, spender, value, maxDeadline, v, r, s),
-                'ERC20Permit: invalid signature',
+                "ERC20PermitInvalidSignature", []
             );
         });
 
@@ -73,9 +73,9 @@ contract('ERC20Permit', function (accounts) {
 
             const { v, r, s } = await signPermit(token, otherWallet.privateKey, testPermit);
 
-            await expectRevert(
+            await expectRevert.custom(
                 token.permit(owner, spender, value, maxDeadline, v, r, s),
-                'ERC20Permit: invalid signature',
+                "ERC20PermitInvalidSignature", []
             );
         });
 
@@ -85,11 +85,11 @@ contract('ERC20Permit', function (accounts) {
             const { v, r, s } = await signPermit(token, wallet.privateKey, { ...testPermit, deadline });
 
             // check that deadline is the signed one
-            await expectRevert(token.permit(owner, spender, value, maxDeadline, v, r, s),
-                'ERC20Permit: invalid signature');
+            await expectRevert.custom(token.permit(owner, spender, value, maxDeadline, v, r, s),
+                "ERC20PermitInvalidSignature", []);
 
-            await expectRevert(token.permit(owner, spender, value, deadline, v, r, s),
-                'ERC20Permit: expired deadline');
+            await expectRevert.custom(token.permit(owner, spender, value, deadline, v, r, s),
+                "ERC20PermitExpiredDeadline", []);
         });
     });
 

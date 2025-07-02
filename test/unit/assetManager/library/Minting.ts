@@ -231,7 +231,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
         const promise = assetManager.executeMinting(proof, crt.collateralReservationId, { from: accounts[0] });
         // assert
-        await expectRevert(promise, "only minter, executor or agent");
+        await expectRevert.custom(promise, "OnlyMinterExecutorOrAgent", []);
     });
 
     it("should not execute minting if invalid minting reference", async () => {
@@ -246,7 +246,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
         const promise = assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
         // assert
-        await expectRevert(promise, "invalid minting reference");
+        await expectRevert.custom(promise, "InvalidMintingReference", []);
     });
 
     it("should not execute minting if minting payment failed", async () => {
@@ -261,7 +261,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
         const promise = assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
         // assert
-        await expectRevert(promise, "payment failed");
+        await expectRevert.custom(promise, "PaymentFailed", []);
     });
 
     it("should not execute minting if minting payment blocked", async () => {
@@ -276,7 +276,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
         const promise = assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
         // assert
-        await expectRevert(promise, "payment failed");
+        await expectRevert.custom(promise, "PaymentFailed", []);
     });
 
     it("should not execute minting if not minting agent's address", async () => {
@@ -291,7 +291,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, underlyingRandomAddress);
         const promise = assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
         // assert
-        await expectRevert(promise, "not minting agent's address");
+        await expectRevert.custom(promise, "NotMintingAgentsAddress", []);
     });
 
     it("should not execute minting if minting payment too small", async () => {
@@ -306,7 +306,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
         const promise = assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
         // assert
-        await expectRevert(promise, "minting payment too small");
+        await expectRevert.custom(promise, "MintingPaymentTooSmall", []);
     });
 
     it("should unstick minting", async () => {
@@ -322,8 +322,8 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const burnNats = agentCollateral.pool.convertUBAToTokenWei(crt.valueUBA)
             .mul(toBN(settings.vaultCollateralBuyForFlareFactorBIPS)).divn(MAX_BIPS);
         // should provide enough funds
-        await expectRevert(assetManager.unstickMinting(proof, crt.collateralReservationId, { from: agentOwner1, value: burnNats.muln(0.99) }),
-            "not enough funds provided");
+        await expectRevert.custom(assetManager.unstickMinting(proof, crt.collateralReservationId, { from: agentOwner1, value: burnNats.muln(0.99) }),
+            "NotEnoughFundsProvided", []);
         // succeed when there is enough
         await assetManager.unstickMinting(proof, crt.collateralReservationId, { from: agentOwner1, value: burnNats });
     });
@@ -433,7 +433,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const promise = assetManager.selfMint(proof, agentVault.address, lots, { from: accounts[0] });
         // assert
-        await expectRevert(promise, "only agent vault owner");
+        await expectRevert.custom(promise, "OnlyAgentVaultOwner", []);
     });
 
     it("should not self-mint if invalid self-mint reference", async () => {
@@ -448,7 +448,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const promise = assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
         // assert
-        await expectRevert(promise, "invalid self-mint reference");
+        await expectRevert.custom(promise, "InvalidSelfMintReference", []);
     });
 
     it("should not self-mint if payment failed", async () => {
@@ -463,7 +463,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const promise = assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
         // assert
-        await expectRevert(promise, "payment failed");
+        await expectRevert.custom(promise, "PaymentFailed", []);
     });
 
     it("should not self-mint if payment blocked", async () => {
@@ -478,7 +478,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const promise = assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
         // assert
-        await expectRevert(promise, "payment failed");
+        await expectRevert.custom(promise, "PaymentFailed", []);
     });
 
     it("should not self-mint if not agent's address", async () => {
@@ -493,7 +493,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const proof = await attestationProvider.provePayment(txHash, null, underlyingMinter1);
         const promise = assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
         // assert
-        await expectRevert(promise, "self-mint not agent's address");
+        await expectRevert.custom(promise, "SelfMintNotAgentsAddress", []);
     });
 
     it("should not self-mint if self-mint payment too small", async () => {
@@ -508,7 +508,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const promise = assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
         // assert
-        await expectRevert(promise, "self-mint payment too small");
+        await expectRevert.custom(promise, "SelfMintPaymentTooSmall", []);
     });
 
     it("should not self-mint if not enough free collateral", async () => {
@@ -523,7 +523,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const promise = assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
         // assert
-        await expectRevert(promise, "not enough free collateral");
+        await expectRevert.custom(promise, "NotEnoughFreeCollateral", []);
     });
 
     it("should update underlying block with self mint proof", async () => {
@@ -597,7 +597,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const promise = assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
         // assert
-        await expectRevert(promise, "self-mint invalid agent status");
+        await expectRevert.custom(promise, "SelfMintInvalidAgentStatus", []);
     });
 
     it("should not self-mint if self-mint payment too old", async () => {
@@ -618,7 +618,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const promise = assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
         // assert
-        await expectRevert(promise, "self-mint payment too old");
+        await expectRevert.custom(promise, "SelfMintPaymentTooOld", []);
     });
 
     it("should not self-mint if it is emergency paused", async () => {
@@ -636,7 +636,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         await assetManager.emergencyPause(false, 12 * 60, { from: assetManagerController });
         const promise = assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
         // assert
-        await expectRevert(promise, "emergency pause active");
+        await expectRevert.custom(promise, "EmergencyPauseActive", []);
     });
 
     it("should not mint from free underlying if agent's status is not 'NORMAL'", async () => {
@@ -648,7 +648,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const lots = 2;
         const promise = assetManager.mintFromFreeUnderlying(agentVault.address, lots, { from: agentOwner1});
         // assert
-        await expectRevert(promise, "self-mint invalid agent status");
+        await expectRevert.custom(promise, "SelfMintInvalidAgentStatus", []);
     });
 
     it("should not mint from free underlying if minting is paused", async () => {
@@ -660,7 +660,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const lots = 2;
         const promise = assetManager.mintFromFreeUnderlying(agentVault.address, lots, { from: agentOwner1});
         // assert
-        await expectRevert(promise, "minting paused");
+        await expectRevert.custom(promise, "MintingPaused", []);
     });
 
     it("should not mint from free underlying if emergency paused", async () => {
@@ -672,7 +672,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const lots = 2;
         const promise = assetManager.mintFromFreeUnderlying(agentVault.address, lots, { from: agentOwner1});
         // assert
-        await expectRevert(promise, "emergency pause active");
+        await expectRevert.custom(promise, "EmergencyPauseActive", []);
     });
 
     it("should not mint from free underlying if not attached", async () => {
@@ -684,7 +684,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const lots = 2;
         const promise = assetManager.mintFromFreeUnderlying(agentVault.address, lots, { from: agentOwner1});
         // assert
-        await expectRevert(promise, "not attached");
+        await expectRevert.custom(promise, "NotAttached", []);
     });
 
 

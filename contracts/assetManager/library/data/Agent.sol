@@ -6,6 +6,8 @@ import {IICollateralPool} from "../../../collateralPool/interfaces/IICollateralP
 
 
 library Agent {
+    error InvalidAgentVaultAddress();
+
     enum Status {
         EMPTY,              // agent does not exist
         NORMAL,
@@ -208,7 +210,7 @@ library Agent {
         assembly {
             _agent.slot := position
         }
-        require(_agent.status != Agent.Status.EMPTY, "invalid agent vault address");
+        require(_agent.status != Agent.Status.EMPTY, InvalidAgentVaultAddress());
     }
 
     function getWithoutCheck(address _address) internal pure returns (Agent.State storage _agent) {

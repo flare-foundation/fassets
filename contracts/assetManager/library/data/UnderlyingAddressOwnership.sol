@@ -3,6 +3,10 @@ pragma solidity ^0.8.27;
 
 
 library UnderlyingAddressOwnership {
+    error InvalidAddressOwnershipProof();
+    error EOAProofRequired();
+    error AddressAlreadyClaimed();
+
     struct Ownership {
         address owner;
 
@@ -26,7 +30,7 @@ library UnderlyingAddressOwnership {
     {
         Ownership storage ownership = _state.ownership[_underlyingAddressHash];
         // check that currently unclaimed
-        require(ownership.owner == address(0), "address already claimed");
+        require(ownership.owner == address(0), AddressAlreadyClaimed());
         // set the new owner
         ownership.owner = _owner;
     }
