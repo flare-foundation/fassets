@@ -917,10 +917,10 @@
     "@openzeppelin/contracts" "^4.6.0"
     hardhat "^2.22.5"
 
-"@flarenetwork/js-flare-common@^0.0.1-rc.4":
-  version "0.0.1-rc.4"
-  resolved "https://registry.yarnpkg.com/@flarenetwork/js-flare-common/-/js-flare-common-0.0.1-rc.4.tgz#e62d9470277415eaf921e74613ea96e510c38f8f"
-  integrity sha512-hB+DQ++p3QR+/zM/654d4fs/Z6RkaQQi8oQtlG5+AAaZ3cKHqTrQgiMEB5u/bUd4DNjY44bs/Ak/9BeYzXwXRw==
+"@flarenetwork/js-flare-common@^0.0.1":
+  version "0.0.1"
+  resolved "https://registry.yarnpkg.com/@flarenetwork/js-flare-common/-/js-flare-common-0.0.1.tgz#337e84a8cd436a37f0da9efdfa158001957eb1cb"
+  integrity sha512-TY/aNE9N6p/D2GYMt/Z0nhjWOueFTd5+2iK+NHbYnBx1aHE31bFYXIwH8rNK1Y2AfCNMEmNJ+uXjAKa0Wu7udA==
   dependencies:
     ethers "^6.14.4"
 
