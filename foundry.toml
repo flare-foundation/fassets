@@ -13,4 +13,10 @@ remappings = [
     "forge-std/=lib/forge-std/src/"
 ]
 
+[invariant]
+show_metrics = true
+fail_on_revert = false
+runs = 256 # default is 256
+depth = 500 # default is 500
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

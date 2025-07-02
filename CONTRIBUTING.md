@@ -49,6 +49,21 @@ yarn test-with-coverage
 2. Run `git submodule update --init --recursive` to initialize the `forge-std` submodule.
 3. Compile the solidity code for forge: `forge build`.
 
+To run all tests of a contract use
+```bash
+forge test --mc <contract_name>
+```
+To run a specific test function use
+```bash
+forge test --mt <test_name>
+```
+
+The default behavior for forge test is to only display a summary of passing and failing tests. To show more information change the verbosity level with the `-v` flag:
+- `-vv>`: displays logs emitted during tests, including assertion errors (e.g., expected vs. actual values).
+- `-vvv`: shows execution traces for failing tests, in addition to logs.
+- `-vvvv`: displays execution traces for all tests and setup traces for failing tests.
+- `-vvvvv`: provides the most detailed output, showing execution and setup traces for all tests, including storage changes.
+
 ## Static analysis
 
 There are currently three linters included in this repository:

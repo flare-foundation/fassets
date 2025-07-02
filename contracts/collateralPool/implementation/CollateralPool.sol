@@ -392,7 +392,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         emit CPFeeDebtPaid(msg.sender, _fAssets);
     }
 
-    // support for liquidation / redmption default payments
+    // support for liquidation / redemption default payments
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
     function payout(
         address _recipient,
@@ -565,7 +565,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         // Proof: the places where `totalFAssetFees` and `totalFAssetFeeDebt` change are: `enter`,
         // `exit`/`selfCloseExit`, `withdrawFees` and `payFAssetFeeDebt`.
         // In `withdrawFees` and `payFAssetFeeDebt`, amounts of `totalFAssetFees` and `totalFAssetFeeDebt`
-        // change with oposite sign, so virtualFees is unchanged.
+        // change with opposite sign, so virtualFees is unchanged.
         // In `enter`, the `totalFAssetFeeDebt` increases and the other is unchanged, so virtualFees increases.
         // Thus the only place where `totalFAssetFeeDebt` and thus virtualFees decreases is in`exit`/`selfCloseExit`.
         // The decrease there is by `_tokensToVirtualFeeShare()`, which is virtualFees times a factor
