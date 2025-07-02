@@ -52,7 +52,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
-        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        settings = createTestSettings(contracts, ci);
         settings.announcedUnderlyingConfirmationMinSeconds = toBN(60);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
         return { contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
@@ -146,7 +146,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         // init
         const ci = testChainInfo.eth;
         collaterals = createTestCollaterals(contracts, ci);
-        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
+        settings = createTestSettings(contracts, ci, { announcedUnderlyingConfirmationMinSeconds: 10 });
         //Make vault collateral token have no ftso symbol and a direct price pair (relevant when calculating reward for confirmation later)
         collaterals[1].tokenFtsoSymbol="";
         collaterals[1].directPricePair = true;

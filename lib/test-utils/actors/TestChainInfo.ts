@@ -36,7 +36,6 @@ export const testChainInfo: Record<'eth' | 'btc' | 'xrp', TestChainInfo> = {
         finalizationBlocks: 6,
         underlyingBlocksForPayment: 10,
         lotSize: 30,
-        requireEOAProof: true,
     },
     btc: {
         chainId: SourceId.BTC,
@@ -51,7 +50,6 @@ export const testChainInfo: Record<'eth' | 'btc' | 'xrp', TestChainInfo> = {
         finalizationBlocks: 6,
         underlyingBlocksForPayment: 8,
         lotSize: 2,
-        requireEOAProof: false,
     },
     xrp: {
         chainId: SourceId.XRP,
@@ -66,6 +64,5 @@ export const testChainInfo: Record<'eth' | 'btc' | 'xrp', TestChainInfo> = {
         finalizationBlocks: 10,
         underlyingBlocksForPayment: 10,
         lotSize: 10_000,
-        requireEOAProof: false,
     }
 }

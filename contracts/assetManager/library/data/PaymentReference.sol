@@ -18,7 +18,6 @@ library PaymentReference {
     uint256 internal constant REDEMPTION_FROM_CORE_VAULT = 0x4642505266410005 << TYPE_SHIFT;
     uint256 internal constant TOPUP = 0x4642505266410011 << TYPE_SHIFT;
     uint256 internal constant SELF_MINT = 0x4642505266410012 << TYPE_SHIFT;
-    uint256 internal constant ADDRESS_OWNERSHIP = 0x4642505266410013 << TYPE_SHIFT;
 
     // create various payment references
 
@@ -53,10 +52,6 @@ library PaymentReference {
 
     function selfMint(address _agentVault) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(_agentVault)) | SELF_MINT);
-    }
-
-    function addressOwnership(address _agentVault) internal pure returns (bytes32) {
-        return bytes32(uint256(uint160(_agentVault)) | ADDRESS_OWNERSHIP);
     }
 
     // verify and decode payment references

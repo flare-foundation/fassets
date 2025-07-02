@@ -111,7 +111,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
-        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        settings = createTestSettings(contracts, ci);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
         return { contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
     };

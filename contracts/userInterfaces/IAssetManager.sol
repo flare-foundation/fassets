@@ -196,20 +196,6 @@ interface IAssetManager is
     // Agent create / destroy
 
     /**
-     * This method fixes the underlying address to be used by given agent owner.
-     * A proof of payment (can be minimal or to itself) from this address must be provided,
-     * with payment reference being equal to this method caller's address.
-     * NOTE: calling this method before `createAgentVault()` is optional on most chains,
-     * but is required on smart contract chains to make sure the agent is using EOA address
-     * (depends on setting `requireEOAAddressProof`).
-     * NOTE: may only be called by a whitelisted agent (management or work owner address).
-     * @param _payment proof of payment on the underlying chain
-     */
-    function proveUnderlyingAddressEOA(
-        IPayment.Proof calldata _payment
-    ) external;
-
-    /**
      * Create an agent vault.
      * The agent will always be identified by `_agentVault` address.
      * (Externally, one account may own several agent vaults,

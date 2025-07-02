@@ -45,7 +45,7 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
             "not underlying address");
         require(_payment.data.responseBody.standardPaymentReference == PaymentReference.topup(_agentVault),
             "not a topup payment");
-        require(_payment.data.responseBody.blockNumber >= agent.underlyingBlockAtCreation,
+        require(_payment.data.responseBody.blockNumber > agent.underlyingBlockAtCreation,
             "topup before agent created");
         state.paymentConfirmations.confirmIncomingPayment(_payment);
         // update state

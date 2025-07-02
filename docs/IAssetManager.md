@@ -22,9 +22,6 @@ NOTE: anybody can call.
 **setOwnerWorkAddress** - Associate a work address with the agent owner's management owner address. Every owner (management address) can have only one work address, so as soon as the new one is set, the old one stops working.
 NOTE: May only be called by an agent on the allowed agent list and only from the management address.
 
-**proveUnderlyingAddressEOA** - This method fixes the underlying address to be used by given agent owner. A proof of payment (can be minimal or to itself) from this address must be provided, with payment reference being equal to this method caller's address.
-NOTE: calling this method before `createAgentVault()` is optional on most chains, but is required on smart contract chains to make sure the agent is using EOA address (depends on setting `requireEOAAddressProof`). NOTE: may only be called by a whitelisted agent (management or work owner address).
-
 **createAgentVault** - Create an agent. The agent will always be identified by `_agentVault` address. (Externally, one account may own several agent vaults,  but in fasset system, each agent vault acts as an independent agent.)
 NOTE: may only be called by an agent on the allowed agent list. Can be called from the management or the work agent wallet address.
 

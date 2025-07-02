@@ -76,10 +76,6 @@ export class Agent extends AssetContextClient {
 
     static async createTest(ctx: AssetContext, ownerAddress: string, underlyingAddress: string, options?: AgentCreateOptions) {
         if (!(ctx.chain instanceof MockChain)) assert.fail("only for mock chains");
-        // mint some funds on underlying address (just enough to make EOA proof)
-        if (ctx.chainInfo.requireEOAProof) {
-            ctx.chain.mint(underlyingAddress, ctx.chain.requiredFee.addn(1));
-        }
         // create mock wallet
         const wallet = new MockChainWallet(ctx.chain);
         // complete settings
@@ -88,18 +84,12 @@ export class Agent extends AssetContextClient {
     }
 
     static async create(ctx: AssetContext, ownerAddress: string, underlyingAddress: string, wallet: IBlockChainWallet, settings: AgentSettings) {
+        // update current block in asset manager
+        const blockHeightProof = await ctx.attestationProvider.proveConfirmedBlockHeightExists(Number(ctx.settings.attestationWindowSeconds));
+        await ctx.assetManager.updateCurrentBlock(blockHeightProof);
         const ownerManagementAddress = Agent.getManagementAddress(ownerAddress);
         // whitelist agent management address if not already whitelisted
         await whitelistAgentOwner(ctx.agentOwnerRegistry.address, ownerManagementAddress);
-        // create and prove transaction from underlyingAddress if EOA required
-        if (ctx.chainInfo.requireEOAProof) {
-            const txHash = await wallet.addTransaction(underlyingAddress, underlyingAddress, 1, PaymentReference.addressOwnership(ownerAddress));
-            if (ctx.chain.finalizationBlocks > 0) {
-                await ctx.waitForUnderlyingTransactionFinalization(undefined, txHash);
-            }
-            const proof = await ctx.attestationProvider.provePayment(txHash, underlyingAddress, underlyingAddress);
-            await ctx.assetManager.proveUnderlyingAddressEOA(proof, { from: ownerAddress });
-        }
         // validate underlying address
         const addressValidityProof = await ctx.attestationProvider.proveAddressValidity(underlyingAddress);
         // create agent

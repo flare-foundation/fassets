@@ -38,16 +38,16 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
     const agentOwner2 = accounts[23];
     const underlyingAgent1 = "Agent1";
 
-    async function createAgentVaultWithEOA(owner: string, underlyingAddress: string): Promise<AgentVaultInstance> {
+    async function createAgentVault(owner: string, underlyingAddress: string): Promise<AgentVaultInstance> {
+        // update current block in asset manager
+        const blockHeightProof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
+        await assetManager.updateCurrentBlock(blockHeightProof);
         await whitelistAgentOwner(agentOwnerRegistry.address, owner);
         chain.mint(underlyingAddress, toBNExp(100, 18));
-        const txHash = await wallet.addTransaction(underlyingAddress, underlyingBurnAddr, 1, PaymentReference.addressOwnership(owner));
-        const proof = await attestationProvider.provePayment(txHash, underlyingAddress, underlyingBurnAddr);
-        await assetManager.proveUnderlyingAddressEOA(proof, { from: owner });
         const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAddress);
         assert.isTrue(addressValidityProof.data.responseBody.isValid);
-        const settings = createTestAgentSettings(usdc.address);
-        const response = await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(settings), { from: owner });
+        const agentSettings = createTestAgentSettings(usdc.address);
+        const response = await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: owner });
         return AgentVault.at(findRequiredEvent(response, 'AgentVaultCreated').args.agentVault);
     }
 
@@ -68,7 +68,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         await assetManagerController.switchToProductionMode({ from: governance });
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
-        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        settings = createTestSettings(contracts, ci);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals,
             ci.assetName, ci.assetSymbol, { governanceSettings: contracts.governanceSettings, updateExecutor });
 
@@ -171,9 +171,6 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const ownerWorkAddress = accounts[21];
             await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
             await agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
-            const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
-            const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
-            await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
             const agentSettings = createTestAgentSettings(usdc.address);
 
             //Revoke address and wait for timelock
@@ -186,21 +183,13 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const res = assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: ownerWorkAddress });
             await expectRevert(res, "agent not whitelisted");
         });
-
-        it("should not allow proving underlying address eoa if address not whitelisted", async () => {
-            chain.mint(underlyingAgent1, toBNExp(100, 18));
-            const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
-            const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
-            const res = assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
-            await expectRevert(res, "agent not whitelisted");
-        });
     });
 
     describe("setting work address", () => {
         it("should set owner work address", async () => {
             await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
             // create agent
-            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
             // set owner work address
             await agentOwnerRegistry.setWorkAddress("0xe34BDff68a5b89216D7f6021c1AB25c012142425", { from: agentOwner1 });
             const managementAddress = await assetManager.getAgentVaultOwner(agentVault.address);
@@ -250,7 +239,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         it("checking agent vault owner with work address should work", async () => {
             await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
             // create agent
-            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
             const workAddress = "0xe34BDff68a5b89216D7f6021c1AB25c012142425";
             // set owner work address
             await agentOwnerRegistry.setWorkAddress(workAddress, { from: agentOwner1 });

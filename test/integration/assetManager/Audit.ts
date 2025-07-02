@@ -123,7 +123,7 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, accounts => {
         await challenger.illegalPaymentChallenge(agent, fakeTxHash);
     });
 
-    it("should not be allowed to mint with the payment from before eoa proof", async () => {
+    it("should not be allowed to mint with the payment from before agent creation", async () => {
         if (!(context.chain instanceof MockChain)) assert.fail("only for mock chains");
         // create mock wallet
         const wallet = new MockChainWallet(context.chain);
@@ -136,10 +136,11 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, accounts => {
         const guessBlock = Number(await time.latestBlock()) + 20;
         const guessId = guessBlock % 1000 + 1;
         const depositHash = await wallet.addTransaction(underlyingOwner1, underlyingAgent1, amount, PaymentReference.minting(guessId));
-        // create and prove transaction from underlyingAddress if EOA required
-        const eoaHash = await wallet.addTransaction(underlyingAgent1, underlyingOwner1, amount, PaymentReference.addressOwnership(agentOwner1));
-        const eoaProof = await context.attestationProvider.provePayment(eoaHash, underlyingAgent1, underlyingOwner1);
-        await context.assetManager.proveUnderlyingAddressEOA(eoaProof, { from: agentOwner1 });
+        // increase block number
+        context.chain.mine(1);
+        // update current block in asset manager
+        const blockHeightProof = await context.attestationProvider.proveConfirmedBlockHeightExists(Number(context.settings.attestationWindowSeconds));
+        await context.assetManager.updateCurrentBlock(blockHeightProof);
         // create agent
         const agentSettings = createTestAgentSettings(context.usdc.address);
         const addressValidityProof = await context.attestationProvider.proveAddressValidity(underlyingAgent1);

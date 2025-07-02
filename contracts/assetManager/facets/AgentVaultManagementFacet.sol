@@ -36,34 +36,6 @@ contract AgentVaultManagementFacet is AssetManagerBase {
     uint256 internal constant MAX_SUFFIX_LEN = 20;
 
     /**
-     * This method fixes the underlying address to be used by given agent owner.
-     * A proof of payment (can be minimal or to itself) from this address must be provided,
-     * with payment reference being equal to this method caller's address.
-     * NOTE: calling this method before `createAgentVault()` is optional on most chains,
-     * but is required on smart contract chains to make sure the agent is using EOA address
-     * (depends on setting `requireEOAAddressProof`).
-     * NOTE: may only be called by a whitelisted agent
-     * @param _payment proof of payment on the underlying chain
-     */
-    function proveUnderlyingAddressEOA(
-        IPayment.Proof calldata _payment
-    )
-        external
-    {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        TransactionAttestation.verifyPaymentSuccess(_payment);
-        address ownerManagementAddress = _getManagementAddress(msg.sender);
-        Agents.requireWhitelisted(ownerManagementAddress);
-        state.underlyingAddressOwnership.claimWithProof(_payment, state.paymentConfirmations, ownerManagementAddress);
-        // Make sure that current underlying block is at least as high as the EOA proof block.
-        // This ensures that any transaction done at or before EOA check cannot be used as payment proof for minting.
-        // It prevents the attack where an agent guesses the minting id, pays to the underlying address,
-        // then removes all in EOA proof transaction (or a transaction before EOA proof) and finally uses the
-        // proof of transaction for minting.
-        UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
-    }
-
-    /**
      * Create an agent.
      * Agent will always be identified by `_agentVault` address.
      * (Externally, same account may own several agent vaults,
@@ -111,14 +83,11 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         agent.setPoolFeeShareBIPS(_settings.poolFeeShareBIPS);
         agent.setBuyFAssetByAgentFactorBIPS(_settings.buyFAssetByAgentFactorBIPS);
         // claim the underlying address to make sure no other agent is using it
-        // for chains where this is required, also checks that address was proved to be EOA
-        state.underlyingAddressOwnership.claimAndTransfer(ownerManagementAddress, address(agentVault),
-            avb.standardAddressHash, Globals.getSettings().requireEOAAddressProof);
+        state.underlyingAddressOwnership.claimAndTransfer(address(agentVault), avb.standardAddressHash);
         // set underlying address
         agent.underlyingAddressString = avb.standardAddress;
         agent.underlyingAddressHash = avb.standardAddressHash;
-        uint64 eoaProofBlock = state.underlyingAddressOwnership.underlyingBlockOfEOAProof(avb.standardAddressHash);
-        agent.underlyingBlockAtCreation = SafeMath64.max64(state.currentUnderlyingBlock, eoaProofBlock + 1);
+        agent.underlyingBlockAtCreation = state.currentUnderlyingBlock;
         // add collateral pool
         agent.collateralPool = _createCollateralPool(assetManager, address(agentVault), _settings);
         // run the pool setters just for validation

@@ -313,10 +313,6 @@
             "description": "When there are many redemption requests in short time, agent gets\nup to this amount of extra payment time per redemption.",
             "type": "integer"
         },
-        "requireEOAAddressProof": {
-            "description": "For some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address.\nThis must be done by presenting a payment proof from that address.",
-            "type": "boolean"
-        },
         "tokenInvalidationTimeMinSeconds": {
             "description": "Minimum time from the moment token is deprecated to when it becomes invalid and agents still using\nit as vault collateral get liquidated.",
             "minimum": 0,
@@ -396,7 +392,6 @@
         "redemptionDefaultFactorVaultCollateralBIPS",
         "redemptionFeeBIPS",
         "redemptionPaymentExtensionSeconds",
-        "requireEOAAddressProof",
         "tokenInvalidationTimeMinSeconds",
         "underlyingBlocksForPayment",
         "underlyingSecondsForPayment",

@@ -96,7 +96,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         __minUnderlyingBackingBIPS: 0,
         mintingCapAMG: 0,                                   // minting cap disabled
         lotSizeAMG: toBNExp(ci.lotSize, ci.amgDecimals),
-        requireEOAAddressProof: ci.requireEOAProof,
+        __requireEOAAddressProof: false, // no longer used, always false
         underlyingBlocksForPayment: ci.underlyingBlocksForPayment,
         underlyingSecondsForPayment: ci.underlyingBlocksForPayment * ci.blockTime,
         redemptionFeeBIPS: toBIPS("2%"),
@@ -295,17 +295,11 @@ export interface CreateTestAgentDeps {
 }
 
 export async function createTestAgent(deps: CreateTestAgentDeps, owner: string, underlyingAddress: string, vaultCollateralTokenAddress: string, options?: Partial<AgentSettings>) {
+    // update current block in asset manager
+    const blockHeightProof = await deps.attestationProvider.proveConfirmedBlockHeightExists(Number(deps.settings.attestationWindowSeconds));
+    await deps.assetManager.updateCurrentBlock(blockHeightProof);
     // whitelist agent management address if not already whitelisted
     await whitelistAgentOwner(deps.settings.agentOwnerRegistry, owner);
-    if (deps.settings.requireEOAAddressProof) {
-        if (!deps.chain || !deps.wallet) throw new Error("Missing chain data for EOA proof");
-        // mint some funds on underlying address (just enough to make EOA proof)
-        deps.chain.mint(underlyingAddress, 101);
-        // create and prove transaction from underlyingAddress
-        const txHash = await deps.wallet.addTransaction(underlyingAddress, underlyingAddress, 1, PaymentReference.addressOwnership(owner), { maxFee: 100 });
-        const proof = await deps.attestationProvider.provePayment(txHash, underlyingAddress, underlyingAddress);
-        await deps.assetManager.proveUnderlyingAddressEOA(proof, { from: owner });
-    }
     // validate underlying address
     const addressValidityProof = await deps.attestationProvider.proveAddressValidity(underlyingAddress);
     // create agent

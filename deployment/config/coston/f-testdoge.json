@@ -53,7 +53,6 @@
     ],
     "mintingCap": "0",
     "lotSize": "100 00000000",
-    "requireEOAAddressProof": false,
     "collateralReservationFeeBIPS": 10,
     "mintingPoolHoldingsRequiredBIPS": 5000,
     "maxRedeemedTickets": 20,

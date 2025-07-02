@@ -121,7 +121,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
         attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
-        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        settings = createTestSettings(contracts, ci);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
 
         agentVault = await createAgent(agentOwner1, underlyingAgent1);

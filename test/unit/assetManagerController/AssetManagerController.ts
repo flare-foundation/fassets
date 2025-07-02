@@ -52,7 +52,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         await assetManagerController.switchToProductionMode({ from: governance });
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
-        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        settings = createTestSettings(contracts, ci);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol, { governanceSettings, updateExecutor });
         addressUpdatableMock = await AddressUpdatableMock.new(contracts.addressUpdater.address);
         return { contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, assetManagerController, collaterals, settings, assetManager, fAsset, addressUpdatableMock };

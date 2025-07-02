@@ -213,12 +213,6 @@ export interface AssetManagerParameters {
     lotSize: string;
 
     /**
-     * For some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address.
-     * This must be done by presenting a payment proof from that address.
-     */
-    requireEOAAddressProof: boolean;
-
-    /**
      * Collateral reservation fee that must be paid by the minter.
      * Payment is in NAT, but is proportional to the value of assets to be minted.
      * @minimum 0

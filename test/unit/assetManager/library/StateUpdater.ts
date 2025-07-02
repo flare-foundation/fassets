@@ -37,7 +37,7 @@ contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests
         attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
-        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        settings = createTestSettings(contracts, ci);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
         return { contracts, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
     }
@@ -49,7 +49,7 @@ contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests
     it("update current block - twice", async () => {
         chain.mine(3);  // make sure block no and timestamp change
         chain.mint(underlyingAgent1, 200);
-        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingAgent1, 50, PaymentReference.addressOwnership(agentOwner1), { maxFee: 100 });
+        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingAgent1, 50, PaymentReference.topup(agentOwner1), { maxFee: 100 });
         await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingAgent1);
 
         const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));

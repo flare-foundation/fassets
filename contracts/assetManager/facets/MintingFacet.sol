@@ -128,7 +128,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
             "self-mint not agent's address");
         require(_payment.data.responseBody.receivedAmount >= SafeCast.toInt256(mintValueUBA + poolFeeUBA),
             "self-mint payment too small");
-        require(_payment.data.responseBody.blockNumber >= agent.underlyingBlockAtCreation,
+        require(_payment.data.responseBody.blockNumber > agent.underlyingBlockAtCreation,
             "self-mint payment too old");
         state.paymentConfirmations.confirmIncomingPayment(_payment);
         // update underlying block

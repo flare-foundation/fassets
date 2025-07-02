@@ -112,7 +112,7 @@ library AssetManagerSettings {
         // for some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address
         // this must be done by presenting a payment proof from that address
         // immutable
-        bool requireEOAAddressProof;
+        bool __requireEOAAddressProof; // only storage placeholder
 
         // Maximum minted amount of the f-asset.
         // rate-limited

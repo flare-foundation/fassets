@@ -76,7 +76,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
-        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        settings = createTestSettings(contracts, ci);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
         return { contracts, wNat, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
     }
@@ -86,21 +86,29 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
     });
 
     it("should not verify payment - legal payment not proved", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const minterUnderlying = "MINTER_UNDERLYING";
+        const crt = await reserveCollateral(agentVault, chain, 3, minterUnderlying, accounts[4]);
         chain.mint(underlyingAgent1, 10001);
-        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingAgent1, 1, PaymentReference.addressOwnership(agentOwner1), { maxFee: 100 });
+        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingAgent1, 1, PaymentReference.minting(crt.collateralReservationId), { maxFee: 100 });
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingAgent1);
         proof.data.responseBody.blockNumber = toBN(proof.data.responseBody.blockNumber).addn(1).toString();
-        await expectRevert(assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 }), "legal payment not proved")
+        await expectRevert(assetManager.executeMinting(proof, crt.collateralReservationId, { from: agentOwner1 }), "legal payment not proved")
     });
 
     it("should not verify payment - invalid chain", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const minterUnderlying = "MINTER_UNDERLYING";
+        const crt = await reserveCollateral(agentVault, chain, 3, minterUnderlying, accounts[4]);
         const chainId: SourceId = SourceId.DOGE;
         flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, chainId);
         chain.mint(underlyingAgent1, 10001);
-        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingAgent1, 1, PaymentReference.addressOwnership(agentOwner1), { maxFee: 100 });
+        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingAgent1, 1, PaymentReference.minting(crt.collateralReservationId), { maxFee: 100 });
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingAgent1);
-        await expectRevert(assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 }), "invalid chain")
+        await expectRevert(assetManager.executeMinting(proof, crt.collateralReservationId, { from: agentOwner1 }), "invalid chain")
     });
 
     it("should not execute minting payment default - non-payment not proved", async () => {

@@ -233,7 +233,7 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         __minUnderlyingBackingBIPS: 0,
         mintingCapAMG: parseBN(parameters.mintingCap).div(assetMintingGranularityUBA),
         lotSizeAMG: parseBN(parameters.lotSize).div(assetMintingGranularityUBA),
-        requireEOAAddressProof: parameters.requireEOAAddressProof,
+        __requireEOAAddressProof: false, // no longer used, always false
         collateralReservationFeeBIPS: parameters.collateralReservationFeeBIPS,
         mintingPoolHoldingsRequiredBIPS: parameters.mintingPoolHoldingsRequiredBIPS,
         maxRedeemedTickets: parameters.maxRedeemedTickets,

@@ -76,68 +76,12 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         ({ contracts, usdc, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
-    it("should prove EOA address", async () => {
-        // init
-        chain.mint(underlyingAgent1, toBNExp(100, 18));
-        // act
-        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
-        // assert
-        const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
-        // whitelist agent management address
-        await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
-        await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
-    });
-
-    it("should not prove EOA address if wrong payment reference", async () => {
-        // init
-        chain.mint(underlyingAgent1, toBNExp(100, 18));
-        // act
-        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, null);
-        // assert
-        const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
-        // whitelist agent management address
-        await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
-        await expectRevert(assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 }), "invalid address ownership proof");
-    });
-
-    it("should prove EOA address without changing current block number", async () => {
-        // init
-        chain.mint(underlyingAgent1, toBNExp(100, 18));
-        // act
-        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
-        const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
-        chain.mine(3);  // skip some blocks
-        const proofBlock = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
-        await assetManager.updateCurrentBlock(proofBlock);
-        // whitelist agent management address
-        await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
-        await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
-        // assert
-        const { 0: currentBlock } = await assetManager.currentUnderlyingBlock();
-        assertWeb3Equal(currentBlock, proofBlock.data.requestBody.blockNumber);
-        assert.isAbove(Number(currentBlock), Number(proof.data.responseBody.blockNumber) + 2);
-    });
-
-    it("should not prove EOA address - address already claimed", async () => {
-        // init
-        await createAgent(agentOwner1, underlyingAgent1);
-        chain.mint(underlyingAgent1, toBNExp(100, 18));
-        // act
-        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
-        // assert
-        const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
-        await expectRevert(assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 }), "address already claimed");
-    });
-
     it("should create agent", async () => {
         // init
         chain.mint(underlyingAgent1, toBNExp(100, 18));
         // act
-        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
-        const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
         // whitelist agent management address
         await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
-        await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
         const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
         assert.isTrue(addressValidityProof.data.responseBody.isValid);
         const agentSettings = createTestAgentSettings(usdc.address);
@@ -162,9 +106,6 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         const ownerWorkAddress = accounts[21];
         await contracts.agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
         // act
-        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
-        const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
-        await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
         const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
         assert.isTrue(addressValidityProof.data.responseBody.isValid);
         const agentSettings = createTestAgentSettings(usdc.address);
@@ -195,24 +136,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
             "address invalid");
     });
 
-    it("should not create agent - address already claimed (with EOA proof)", async () => {
-        // init
-        const ci = testChainInfo.btc;
-        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
-        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
-        // act
-        await createAgent(agentOwner1, underlyingAgent1);
-        // assert
-        const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
-        assert.isTrue(addressValidityProof.data.responseBody.isValid);
-        const agentSettings = createTestAgentSettings(usdc.address);
-        // whitelist agent management address
-        await whitelistAgentOwner(settings.agentOwnerRegistry, accounts[0]);
-        await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings)),
-            "address already claimed");
-    });
-
-    it("should not create agent - address already claimed (no EOA proof)", async () => {
+    it("should not create agent - address already claimed", async () => {
         // init
         // act
         await createAgent(agentOwner1, underlyingAgent1);
@@ -270,26 +194,10 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
             "invalid character in suffix");
     });
 
-    it("should require EOA check to create agent", async () => {
-        // init
-        const ci = testChainInfo.btc;
-        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
-        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
-        // act
-        // assert
-        const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
-        assert.isTrue(addressValidityProof.data.responseBody.isValid);
-        const agentSettings = createTestAgentSettings(usdc.address);
-        // whitelist agent management address
-        await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
-        await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
-            "EOA proof required");
-    });
-
     it("should require proof that address is valid", async () => {
         // init
         const ci = testChainInfo.btc;
-        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        settings = createTestSettings(contracts, ci);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
         // act
         // assert
