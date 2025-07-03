@@ -46,14 +46,6 @@ export interface CollateralTypeParameters {
     minCollateralRatioBIPS: integer;
 
     /**
-     * Minimum collateral ratio for agent in CCB (Collateral call band).
-     * If the agent's collateral ratio is less than this, skip the CCB and go straight to liquidation.
-     * A bit smaller than minCollateralRatioBIPS.
-     * @minimum 0
-     */
-    ccbMinCollateralRatioBIPS: integer;
-
-    /**
      * Minimum collateral ratio required to get agent out of liquidation.
      * Will always be greater than minCollateralRatioBIPS.
      * @minimum 0
@@ -310,12 +302,6 @@ export interface AssetManagerParameters {
      * @pattern ^[0-9 ]+$
      */
     paymentChallengeRewardUSD5: string;
-
-    /**
-     * Agent can remain in CCB for this much time, after that liquidation starts automatically.
-     * @minimum 0
-     */
-    ccbTimeSeconds: integer;
 
     /**
      * If there was no liquidator for the current liquidation offer,

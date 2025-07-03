@@ -69,7 +69,6 @@ library SettingsInitializer {
         require(_settings.collateralReservationFeeBIPS > 0, CannotBeZero());
         require(_settings.confirmationByOthersRewardUSD5 > 0, CannotBeZero());
         require(_settings.maxRedeemedTickets > 0, CannotBeZero());
-        require(_settings.ccbTimeSeconds > 0, CannotBeZero());
         require(_settings.maxTrustedPriceAgeSeconds > 0, CannotBeZero());
         require(_settings.minUpdateRepeatTimeSeconds > 0, CannotBeZero());
         require(_settings.withdrawalWaitMinSeconds > 0, CannotBeZero());
@@ -92,6 +91,7 @@ library SettingsInitializer {
             _settings.liquidationFactorVaultCollateralBIPS);
         // removed settings
         require(_settings.__whitelist == address(0), MustBeZero());
+        require(_settings.__ccbTimeSeconds == 0, MustBeZero());
         require(_settings.__announcedUnderlyingConfirmationMinSeconds == 0, MustBeZero());
         require(_settings.__buybackCollateralFactorBIPS == 0, MustBeZero());
         require(_settings.__minUnderlyingBackingBIPS == 0, MustBeZero());

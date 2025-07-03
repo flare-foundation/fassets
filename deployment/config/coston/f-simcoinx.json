@@ -17,7 +17,6 @@
         "assetFtsoSymbol": "testXRP",
         "tokenFtsoSymbol": "CFLR",
         "minCollateralRatioBIPS": 20000,
-        "ccbMinCollateralRatioBIPS": 19000,
         "safetyMinCollateralRatioBIPS": 21000
     },
     "vaultCollaterals": [
@@ -28,7 +27,6 @@
             "assetFtsoSymbol": "testXRP",
             "tokenFtsoSymbol": "testUSDC",
             "minCollateralRatioBIPS": 14000,
-            "ccbMinCollateralRatioBIPS": 13000,
             "safetyMinCollateralRatioBIPS": 15000
         },
         {
@@ -38,7 +36,6 @@
             "assetFtsoSymbol": "testXRP",
             "tokenFtsoSymbol": "testUSDT",
             "minCollateralRatioBIPS": 14000,
-            "ccbMinCollateralRatioBIPS": 13000,
             "safetyMinCollateralRatioBIPS": 15000
         },
         {
@@ -48,7 +45,6 @@
             "assetFtsoSymbol": "testXRP",
             "tokenFtsoSymbol": "testETH",
             "minCollateralRatioBIPS": 14000,
-            "ccbMinCollateralRatioBIPS": 13000,
             "safetyMinCollateralRatioBIPS": 15000
         }
     ],
@@ -67,7 +63,6 @@
     "confirmationByOthersRewardUSD5": "100 00000",
     "paymentChallengeRewardBIPS": 0,
     "paymentChallengeRewardUSD5": "300 00000",
-    "ccbTimeSeconds": 180,
     "liquidationStepSeconds": 180,
     "liquidationCollateralFactorBIPS": [
         10500,

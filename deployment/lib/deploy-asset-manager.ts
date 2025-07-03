@@ -204,7 +204,6 @@ export function convertCollateralType(contracts: FAssetContractStore, parameters
         assetFtsoSymbol: parameters.assetFtsoSymbol,
         tokenFtsoSymbol: parameters.tokenFtsoSymbol,
         minCollateralRatioBIPS: parameters.minCollateralRatioBIPS,
-        ccbMinCollateralRatioBIPS: parameters.ccbMinCollateralRatioBIPS,
         safetyMinCollateralRatioBIPS: parameters.safetyMinCollateralRatioBIPS,
     }
 }
@@ -248,7 +247,7 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         confirmationByOthersRewardUSD5: parseBN(parameters.confirmationByOthersRewardUSD5),
         paymentChallengeRewardBIPS: parameters.paymentChallengeRewardBIPS,
         paymentChallengeRewardUSD5: parseBN(parameters.paymentChallengeRewardUSD5),
-        ccbTimeSeconds: parameters.ccbTimeSeconds,
+        __ccbTimeSeconds: 0,
         liquidationStepSeconds: parameters.liquidationStepSeconds,
         liquidationCollateralFactorBIPS: parameters.liquidationCollateralFactorBIPS,
         liquidationFactorVaultCollateralBIPS: parameters.liquidationFactorVaultCollateralBIPS,

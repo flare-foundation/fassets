@@ -87,7 +87,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(endBalance.sub(startBalance), reward);
             // test full liquidation started
             const info = await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(reward), freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA), reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.FULL_LIQUIDATION });
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
             // check that agent cannot withdraw or even announce withdrawal when being fully liquidated
@@ -134,7 +133,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(endBalance.sub(startBalance), reward);
             // test full liquidation started
             const info = await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(reward), freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA), reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.FULL_LIQUIDATION });
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
             // check that agent cannot exit
@@ -180,7 +178,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA).sub(rrq.valueUBA),
                 redeemingUBA: rrq.valueUBA,
             });
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
             // check that agent cannot exit
@@ -351,8 +348,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const liquidationStarted = await challenger.freeBalanceNegativeChallenge(agent, txHashes);
             // check that full liquidation started
             const info = await context.assetManager.getAgentInfo(agent.agentVault.address);
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
         });
@@ -392,7 +387,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: mintedAmount,
                 status: AgentStatus.FULL_LIQUIDATION
             });
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
             // liquidator "buys" f-assets
@@ -424,7 +418,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 totalPoolCollateralNATWei: fullAgentCollateral.add(poolCRFee).sub(liquidationReward1Pool),
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(liquidateUBA),
                 mintedUBA: mintedAmount.sub(liquidateUBA),
-                ccbStartTimestamp: 0,
                 liquidationStartTimestamp: liquidationStarted.timestamp,
                 status: AgentStatus.FULL_LIQUIDATION
             });
@@ -456,7 +449,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 totalPoolCollateralNATWei: fullAgentCollateral.add(poolCRFee).sub(liquidationReward1Pool).sub(liquidationReward2Pool),
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(liquidateUBA.muln(2)),
                 mintedUBA: mintedAmount.sub(liquidateUBA.muln(2)),
-                ccbStartTimestamp: 0,
                 liquidationStartTimestamp: liquidationStarted.timestamp,
                 status: AgentStatus.FULL_LIQUIDATION
             });
@@ -488,7 +480,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 totalPoolCollateralNATWei: fullAgentCollateral.add(poolCRFee).sub(liquidationReward1Pool).sub(liquidationReward2Pool).sub(liquidationReward3Pool),
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(liquidateUBA.muln(3)),
                 mintedUBA: mintedAmount.sub(liquidateUBA.muln(3)),
-                ccbStartTimestamp: 0,
                 liquidationStartTimestamp: liquidationStarted.timestamp,
                 status: AgentStatus.FULL_LIQUIDATION
             });

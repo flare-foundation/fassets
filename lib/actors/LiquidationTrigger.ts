@@ -43,8 +43,7 @@ export class LiquidationTrigger extends ActorBase {
     }
 
     private async checkAgentForLiquidation(agent: TrackedAgentState) {
-        const timestamp = toBN(await latestBlockTimestamp());
-        const newStatus = agent.possibleLiquidationTransition(timestamp);
+        const newStatus = agent.possibleLiquidationTransition();
         if (newStatus > agent.status) {
             await this.context.assetManager.startLiquidation(agent.address, { from: this.address });
         } else if (newStatus < agent.status) {

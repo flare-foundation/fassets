@@ -66,10 +66,8 @@ export class SimulationAgent extends SimulationActor {
         this.eventSubscriptions[agentVaultAddress] = [
             this.runner.assetManagerEvent('RedemptionRequested', { agentVault: agentVaultAddress })
                 .subscribe((args) => this.handleRedemptionRequest(args)),
-            this.runner.assetManagerEvent('AgentInCCB', { agentVault: agentVaultAddress })
-                .subscribe((args) => this.topupCollateral('ccb', args.timestamp)),
             this.runner.assetManagerEvent('LiquidationStarted', { agentVault: agentVaultAddress })
-                .subscribe((args) => this.topupCollateral('liquidation', args.timestamp)),
+                .subscribe((args) => this.topupCollateral()),
             // handle all possible full liquidation ends: Redemption*???, LiquidationPerformed, SelfClose
             this.runner.assetManagerEvent('RedemptionPerformed', { agentVault: agentVaultAddress })
                 .subscribe((args) => this.checkForFullLiquidationEnd()),
@@ -179,7 +177,7 @@ export class SimulationAgent extends SimulationActor {
             .catch(e => scope.exitOnExpectedError(e, []));
     }
 
-    topupCollateral(type: 'ccb' | 'liquidation', timestamp: BN) {
+    topupCollateral() {
         if (!coinFlip(0.5)) {
             this.runner.comment(`Ignoring topup request for ${this.name(this.agent)}`);
             return;
@@ -194,7 +192,7 @@ export class SimulationAgent extends SimulationActor {
                 const trustedPrice = this.state.trustedPrices.get(collateral);
                 const totalUBA = agentState.mintedUBA.add(agentState.reservedUBA).add(agentState.redeemingUBA).addn(1000 /* to be > */);
                 const totalAsTokenWei = minBN(price.convertUBAToTokenWei(totalUBA), trustedPrice.convertUBAToTokenWei(totalUBA));
-                const requiredCR = type === 'liquidation' ? toBN(collateral.safetyMinCollateralRatioBIPS) : toBN(collateral.minCollateralRatioBIPS);
+                const requiredCR = toBN(collateral.safetyMinCollateralRatioBIPS);
                 const requiredCollateral = totalAsTokenWei.mul(requiredCR).divn(MAX_BIPS);
                 const requiredTopup = requiredCollateral.sub(balance);
                 if (requiredTopup.lte(BN_ZERO)) continue;

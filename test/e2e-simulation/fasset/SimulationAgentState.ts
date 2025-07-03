@@ -692,11 +692,7 @@ export class SimulationAgentState extends TrackedAgentState {
             checker.checkNumericDifference(`${agentName}.underlyingBalanceUBA`, underlyingBalanceUBA, 'gte', mintedUBA.add(freeUnderlyingBalanceUBA), { severe: false });
         }
         // status
-        if (!(this.status === AgentStatus.CCB && Number(agentInfo.status) === Number(AgentStatus.LIQUIDATION))) {
-            checker.checkStringEquality(`${agentName}.status`, agentInfo.status, this.status);
-        } else {
-            checker.logger.log(`    ${agentName}.status: CCB -> LIQUIDATION issue, time=${await latestBlockTimestamp() - Number(this.ccbStartTimestamp)}`);
-        }
+        checker.checkStringEquality(`${agentName}.status`, agentInfo.status, this.status);
         // log
         // if (problems > 0) {
         //     this.writeActionLog(checker.logger);

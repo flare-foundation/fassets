@@ -443,7 +443,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert.custom(res1, "IncreaseTooBig", [])
             //
             await assetManager.setCollateralRatiosForToken(CollateralClass.POOL, wNat.address,
-                newMinCR, toBN(ct.ccbMinCollateralRatioBIPS).muln(2), toBN(ct.safetyMinCollateralRatioBIPS).muln(2),
+                newMinCR, toBN(ct.safetyMinCollateralRatioBIPS).muln(2),
                 { from: assetManagerController });
             // still can't increase too much
             await assetManager.announceAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", newMinCR.muln(121).divn(100), { from: agentOwner1 });
@@ -598,17 +598,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should set collateral ratios for token", async () => {
             await assetManager.setCollateralRatiosForToken(collaterals[0].collateralClass, collaterals[0].token,
-                toBIPS(1.5), toBIPS(1.4), toBIPS(1.6), { from: assetManagerController });
+                toBIPS(1.5), toBIPS(1.6), { from: assetManagerController });
             const collateralType = await assetManager.getCollateralType(collaterals[0].collateralClass, collaterals[0].token);
             assertWeb3Equal(collateralType.minCollateralRatioBIPS, toBIPS(1.5));
-            assertWeb3Equal(collateralType.ccbMinCollateralRatioBIPS, toBIPS(1.4));
             assertWeb3Equal(collateralType.safetyMinCollateralRatioBIPS, toBIPS(1.6));
         });
 
         it("should not set collateral ratios for unknown token", async () => {
             const unknownToken = accounts[12];
             const res = assetManager.setCollateralRatiosForToken(collaterals[0].collateralClass, unknownToken,
-                toBIPS(1.5), toBIPS(1.4), toBIPS(1.6), { from: assetManagerController });
+                toBIPS(1.5), toBIPS(1.6), { from: assetManagerController });
             await expectRevert.custom(res, "UnknownToken", []);
         });
 
@@ -724,21 +723,21 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const collateralType = await assetManager.getCollateralType(collaterals[1].collateralClass, collaterals[1].token);
             assertWeb3Equal(collateralType.validUntil, (await time.latest()).add(toBN(settings.tokenInvalidationTimeMinSeconds)));
             // Should not be able to start liquidation before time passes
-            await expectRevert.custom(assetManager.startLiquidation.call(agentVault.address, { from: liquidator }), "LiquidationNotStarted", []);
+            await expectRevert.custom(assetManager.startLiquidation(agentVault.address, { from: liquidator }), "LiquidationNotStarted", []);
             //Wait until you can switch vault collateral token
             await time.deterministicIncrease(settings.tokenInvalidationTimeMinSeconds);
             await time.deterministicIncrease(settings.tokenInvalidationTimeMinSeconds);
             await assetManager.startLiquidation(agentVault.address, { from: liquidator });
             //Check for liquidation status
             const info = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(info.status, 2);
+            assertWeb3Equal(info.status, 1);
             //If agent deposits a non collateral token, it shouldn't get out of liquidation
             const token = await ERC20Mock.new("Some NAT", "SNAT");
             await token.mintAmount(agentOwner1, toWei(3e8));
             await token.approve(agentVault.address, toWei(3e8), { from: agentOwner1 });
             await agentVault.depositCollateral(token.address, toWei(3e8), { from: agentOwner1 });
             const info1 = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(info1.status, 2);
+            assertWeb3Equal(info1.status, 1);
             //Deposit vault collateral and switch
             await usdt.mintAmount(agentOwner1, toWei(3e8));
             await usdt.approve(agentVault.address, toWei(3e8), { from: agentOwner1 });
@@ -913,11 +912,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert.custom(res10, "CannotBeZero", []);
         });
 
-        it("should validate settings - cannot be zero (ccbTimeSeconds)", async () => {
+        it("should validate settings - must be zero (__ccbTimeSeconds)", async () => {
             const newSettings11 = createTestSettings(contracts, testChainInfo.eth);
-            newSettings11.ccbTimeSeconds = 0;
+            newSettings11.__ccbTimeSeconds = 1;
             const res11 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings11, collaterals);
-            await expectRevert.custom(res11, "CannotBeZero", []);
+            await expectRevert.custom(res11, "MustBeZero", []);
         });
 
         it("should validate settings - cannot be zero (liquidationStepSeconds)", async () => {
@@ -1115,8 +1114,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should validate settings - other validators (collateral ratios)", async () => {
             const collaterals6 = createTestCollaterals(contracts, testChainInfo.eth);
-            collaterals6[0].minCollateralRatioBIPS = 1_8000;
-            collaterals6[0].ccbMinCollateralRatioBIPS = 2_2000;
+            collaterals6[0].minCollateralRatioBIPS = 2_8000;
             collaterals6[0].safetyMinCollateralRatioBIPS = 2_4000;
             const res9 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, collaterals6);
             await expectRevert.custom(res9, "InvalidCollateralRatios", []);
@@ -1738,7 +1736,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assertWeb3Equal(illegalPaymentConfirmed.transactionHash, txHash);
             // check that agent went into full liquidation
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(agentInfo.status, 3); // full-liquidation status
+            assertWeb3Equal(agentInfo.status, 2); // full-liquidation status
             // check that challenger was rewarded
             const expectedChallengerReward = await usd5ToVaultCollateralWei(toBN(settings.paymentChallengeRewardUSD5));
             assertWeb3Equal(await usdc.balanceOf(challenger), expectedChallengerReward);
@@ -1761,7 +1759,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assertWeb3Equal(duplicatePaymentConfirmed.transactionHash2, txHash2);
             // check that agent went into full liquidation
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(agentInfo.status, 3); // full-liquidation status
+            assertWeb3Equal(agentInfo.status, 2); // full-liquidation status
             // check that challenger was rewarded
             const expectedChallengerReward = await usd5ToVaultCollateralWei(toBN(settings.paymentChallengeRewardUSD5));
             assertWeb3Equal(await usdc.balanceOf(challenger), expectedChallengerReward);
@@ -1806,7 +1804,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             expectEvent(tx, "LiquidationStarted");
             // check that agent is in liquidation phase
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(agentInfo.status, 2);
+            assertWeb3Equal(agentInfo.status, 1);
         });
 
         it("should liquidate", async () => {
@@ -1837,7 +1835,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // start liquidation
             await assetManager.startLiquidation(agentVault.address, { from: accounts[83] });
             const agentInfo1 = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(agentInfo1.status, 2);
+            assertWeb3Equal(agentInfo1.status, 1);
             // price change #2
             await contracts.priceStore.setCurrentPrice(assetSymbol, testChainInfo.eth.startPrice, 0);
             await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, testChainInfo.eth.startPrice, 0);
@@ -1999,7 +1997,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("random address shouldn't be able to add collateral ratios for token", async () => {
             const r = assetManager.setCollateralRatiosForToken(collaterals[0].collateralClass, collaterals[0].token,
-                toBIPS(1.5), toBIPS(1.4), toBIPS(1.6), { from: accounts[99] });
+                toBIPS(1.5), toBIPS(1.6), { from: accounts[99] });
             await expectRevert.custom(r, "OnlyAssetManagerController", []);
         });
 
@@ -2314,11 +2312,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should not setWithdrawalOrDestroyWaitMinSeconds if not from asset manager controller", async () => {
             const promise = assetManager.setWithdrawalOrDestroyWaitMinSeconds(0);
-            await expectRevert.custom(promise, "OnlyAssetManagerController", []);
-        });
-
-        it("should not setCcbTimeSeconds if not from asset manager controller", async () => {
-            const promise = assetManager.setCcbTimeSeconds(0);
             await expectRevert.custom(promise, "OnlyAssetManagerController", []);
         });
 
@@ -2654,18 +2647,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert.custom(promise, "TooCloseToPreviousUpdate", []);
             await time.deterministicIncrease(1);
             await assetManager.setWithdrawalOrDestroyWaitMinSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
-        });
-
-        it("should not setCcbTimeSeconds if rate limited", async () => {
-            const oldValue = settings.ccbTimeSeconds;
-            await assetManager.setCcbTimeSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
-            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
-            // skip time
-            await time.deterministicIncrease(toBN(minUpdateTime).subn(2));
-            const promise = assetManager.setCcbTimeSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
-            await expectRevert.custom(promise, "TooCloseToPreviousUpdate", []);
-            await time.deterministicIncrease(1);
-            await assetManager.setCcbTimeSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
         });
 
         it("should not setAttestationWindowSeconds if rate limited", async () => {

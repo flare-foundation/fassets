@@ -327,14 +327,6 @@ interface IAssetManagerEvents {
         uint256 dustUBA);
 
     /**
-     * Agent entered CCB (collateral call band) due to being on the border of unhealthy.
-     * Agent has limited time to topup the collateral, otherwise liquidation starts.
-     */
-    event AgentInCCB(
-        address indexed agentVault,
-        uint256 timestamp);
-
-    /**
      * Agent entered liquidation state due to unhealthy position.
      * The liquidation ends when the agent is again healthy or the agent's position is fully liquidated.
      */
@@ -489,17 +481,15 @@ interface IAssetManagerEvents {
         string assetFtsoSymbol,
         string tokenFtsoSymbol,
         uint256 minCollateralRatioBIPS,
-        uint256 ccbMinCollateralRatioBIPS,
         uint256 safetyMinCollateralRatioBIPS);
 
     /**
-     * System defined collateral ratios for the token have changed (minimal, CCB and safety collateral ratio).
+     * System defined collateral ratios for the token have changed (minimal and safety collateral ratio).
      */
     event CollateralRatiosChanged(
         uint8 collateralClass,
         address collateralToken,
         uint256 minCollateralRatioBIPS,
-        uint256 ccbMinCollateralRatioBIPS,
         uint256 safetyMinCollateralRatioBIPS);
 
     /**

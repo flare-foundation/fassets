@@ -16,7 +16,6 @@
         "assetFtsoSymbol": "testDOGE",
         "tokenFtsoSymbol": "NAT",
         "minCollateralRatioBIPS": 20000,
-        "ccbMinCollateralRatioBIPS": 19000,
         "safetyMinCollateralRatioBIPS": 21000
     },
     "vaultCollaterals": [
@@ -27,7 +26,6 @@
             "assetFtsoSymbol": "testDOGE",
             "tokenFtsoSymbol": "testUSDC",
             "minCollateralRatioBIPS": 14000,
-            "ccbMinCollateralRatioBIPS": 13000,
             "safetyMinCollateralRatioBIPS": 15000
         },
         {
@@ -37,7 +35,6 @@
             "assetFtsoSymbol": "testDOGE",
             "tokenFtsoSymbol": "testUSDT",
             "minCollateralRatioBIPS": 15000,
-            "ccbMinCollateralRatioBIPS": 14000,
             "safetyMinCollateralRatioBIPS": 16000
         }
     ],
@@ -56,7 +53,6 @@
     "confirmationByOthersRewardUSD5": "100 00000",
     "paymentChallengeRewardBIPS": 0,
     "paymentChallengeRewardUSD5": "300 00000",
-    "ccbTimeSeconds": 180,
     "liquidationStepSeconds": 90,
     "liquidationCollateralFactorBIPS": [
         12000,

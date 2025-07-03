@@ -124,9 +124,6 @@ interface IIAssetManagerController is
     function setWithdrawalOrDestroyWaitMinSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
         external;
 
-    function setCcbTimeSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
-        external;
-
     function setAttestationWindowSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
         external;
 
@@ -190,7 +187,6 @@ interface IIAssetManagerController is
         CollateralType.Class _class,
         IERC20 _token,
         uint256 _minCollateralRatioBIPS,
-        uint256 _ccbMinCollateralRatioBIPS,
         uint256 _safetyMinCollateralRatioBIPS
     ) external;
 

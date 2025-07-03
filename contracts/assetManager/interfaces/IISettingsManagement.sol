@@ -72,9 +72,6 @@ interface IISettingsManagement {
     function setWithdrawalOrDestroyWaitMinSeconds(uint256 _value)
         external;
 
-    function setCcbTimeSeconds(uint256 _value)
-        external;
-
     function setAttestationWindowSeconds(uint256 _value)
         external;
 

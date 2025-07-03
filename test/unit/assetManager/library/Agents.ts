@@ -394,7 +394,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
         // should update status
         const info = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(info.status, 4);
+        assertWeb3Equal(info.status, 3);
         await time.deterministicIncrease(150);
         // should not change destroy time
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });

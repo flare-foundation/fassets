@@ -107,7 +107,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         paymentChallengeRewardUSD5: toBNExp(300, 5),            // 300 USD
         paymentChallengeRewardBIPS: 0,
         withdrawalWaitMinSeconds: 300,
-        ccbTimeSeconds: 3 * MINUTES,
+        __ccbTimeSeconds: 0,
         maxTrustedPriceAgeSeconds: 8 * MINUTES,
         minUpdateRepeatTimeSeconds: 1 * DAYS,
         attestationWindowSeconds: 1 * DAYS,
@@ -170,7 +170,6 @@ export function createTestCollaterals(contracts: TestSettingsCommonContracts, ci
         assetFtsoSymbol: ci.symbol,
         tokenFtsoSymbol: "NAT",
         minCollateralRatioBIPS: toBIPS(2.0),
-        ccbMinCollateralRatioBIPS: toBIPS(1.9),
         safetyMinCollateralRatioBIPS: toBIPS(2.1),
     };
     const usdcCollateral: CollateralType = {
@@ -182,7 +181,6 @@ export function createTestCollaterals(contracts: TestSettingsCommonContracts, ci
         assetFtsoSymbol: ci.symbol,
         tokenFtsoSymbol: "USDC",
         minCollateralRatioBIPS: toBIPS(1.4),
-        ccbMinCollateralRatioBIPS: toBIPS(1.3),
         safetyMinCollateralRatioBIPS: toBIPS(1.5),
     };
     const usdtCollateral: CollateralType = {
@@ -194,7 +192,6 @@ export function createTestCollaterals(contracts: TestSettingsCommonContracts, ci
         assetFtsoSymbol: ci.symbol,
         tokenFtsoSymbol: "USDT",
         minCollateralRatioBIPS: toBIPS(1.5),
-        ccbMinCollateralRatioBIPS: toBIPS(1.4),
         safetyMinCollateralRatioBIPS: toBIPS(1.6),
     };
     return [poolCollateral, usdcCollateral, usdtCollateral];

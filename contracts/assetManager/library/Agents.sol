@@ -14,7 +14,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {AgentInfo} from "../../userInterfaces/data/AgentInfo.sol";
-import {Liquidation} from "./Liquidation.sol";
 
 library Agents {
     using SafeCast for uint256;
@@ -54,8 +53,7 @@ library Agents {
         if (status == Agent.Status.NORMAL) {
             return AgentInfo.Status.NORMAL;
         } else if (status == Agent.Status.LIQUIDATION) {
-            Agent.LiquidationPhase phase = Liquidation.currentLiquidationPhase(_agent);
-            return phase == Agent.LiquidationPhase.CCB ? AgentInfo.Status.CCB : AgentInfo.Status.LIQUIDATION;
+            return AgentInfo.Status.LIQUIDATION;
         } else if (status == Agent.Status.FULL_LIQUIDATION) {
             return AgentInfo.Status.FULL_LIQUIDATION;
         } else if (status == Agent.Status.DESTROYING) {

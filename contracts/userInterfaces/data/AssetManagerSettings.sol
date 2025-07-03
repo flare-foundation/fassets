@@ -189,7 +189,7 @@ library AssetManagerSettings {
 
         // Agent can remain in CCB for this much time, after that liquidation starts automatically.
         // rate-limited
-        uint64 ccbTimeSeconds;
+        uint64 __ccbTimeSeconds; // only storage placeholder
 
         // Amount of seconds (typically 1 day) that the payment/non-payment proofs must be available.
         // This setting is used in `unstickMinting` and `finishRedemptionWithoutPayment` to prove that the time when

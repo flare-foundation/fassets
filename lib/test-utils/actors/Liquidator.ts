@@ -2,7 +2,6 @@ import { LiquidationEnded, LiquidationStarted } from "../../../typechain-truffle
 import { EventArgs } from "../../utils/events/common";
 import { filterEvents, findEvent, optionalEventArgs, requiredEventArgs } from "../../utils/events/truffle";
 import { BN_ZERO, BNish, toBN } from "../../utils/helpers";
-import { expectEvent } from "../test-helpers";
 import { Agent } from "./Agent";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 
@@ -17,21 +16,20 @@ export class Liquidator extends AssetContextClient {
     }
 
     static async create(ctx: AssetContext, address: string) {
-        // creater object
+        // create object
         return new Liquidator(ctx, address);
     }
 
-    async startLiquidation(agent: Agent): Promise<[ccb: boolean, blockTimestamp: BNish]> {
+    async startLiquidation(agent: Agent): Promise<BNish> {
         const res = await this.assetManager.startLiquidation(agent.agentVault.address, { from: this.address });
-        const liquidationStarted = findEvent(res, 'LiquidationStarted') ?? findEvent(res, 'AgentInCCB');
-        if (!liquidationStarted) assert.fail("Missing liquidation start or CCB event");
+        const liquidationStarted = findEvent(res, 'LiquidationStarted');
+        if (!liquidationStarted) assert.fail("Missing liquidation start event");
         assert.equal(liquidationStarted.args.agentVault, agent.agentVault.address);
-        return [liquidationStarted.event === 'AgentInCCB', liquidationStarted.args.timestamp];
+        return liquidationStarted.args.timestamp;
     }
 
     async liquidate(agent: Agent, amountUBA: BNish): Promise<[liquidatedValueUBA: BN, blockTimestamp: BNish, liquidationStarted: EventArgs<LiquidationStarted> | undefined, liquidationCancelled: EventArgs<LiquidationEnded> | undefined, dustChangesUBA: BN[]]> {
         const res = await this.assetManager.liquidate(agent.agentVault.address, amountUBA, { from: this.address });
-        expectEvent.notEmitted(res, 'AgentInCCB');
         const liquidationPerformed = optionalEventArgs(res, 'LiquidationPerformed');
         const dustChangedEvents = filterEvents(res, 'DustChanged').map(e => e.args);
         if (liquidationPerformed) {
@@ -54,11 +52,9 @@ export class Liquidator extends AssetContextClient {
         return priceNAT.convertAmgToTokenWei(toBN(liquidatedAmountAMG).mul(toBN(factorBIPS)).divn(10_000));
     }
 
-    async getLiquidationFactorBIPS(liquidationStartedAt: BNish, liquidationPerformedAt: BNish, ccb: boolean = false) {
+    async getLiquidationFactorBIPS(liquidationStartedAt: BNish, liquidationPerformedAt: BNish) {
         // calculate premium step based on time since liquidation started
-        const settings = await this.assetManager.getSettings();
-        const ccbTime = ccb ? toBN(settings.ccbTimeSeconds) : BN_ZERO;
-        const liquidationStart = toBN(liquidationStartedAt).add(ccbTime);
+        const liquidationStart = toBN(liquidationStartedAt);
         const startTs = toBN(liquidationPerformedAt);
         const step = Math.min(this.context.settings.liquidationCollateralFactorBIPS.length - 1,
             startTs.sub(liquidationStart).div(toBN(this.context.settings.liquidationStepSeconds)).toNumber());
@@ -72,11 +68,9 @@ export class Liquidator extends AssetContextClient {
         return priceVaultCollateral.convertAmgToTokenWei(toBN(liquidatedAmountAMG).mul(toBN(factorBIPS)).divn(10_000));
     }
 
-    async getLiquidationFactorBIPSVaultCollateral(collateralRatioBIPS: BNish, liquidationStartedAt: BNish, liquidationPerformedAt: BNish, ccb: boolean = false) {
+    async getLiquidationFactorBIPSVaultCollateral(collateralRatioBIPS: BNish, liquidationStartedAt: BNish, liquidationPerformedAt: BNish) {
         // calculate premium step based on time since liquidation started
-        const settings = await this.assetManager.getSettings();
-        const ccbTime = ccb ? toBN(settings.ccbTimeSeconds) : BN_ZERO;
-        const liquidationStart = toBN(liquidationStartedAt).add(ccbTime);
+        const liquidationStart = toBN(liquidationStartedAt);
         const startTs = toBN(liquidationPerformedAt);
         const step = Math.min(this.context.settings.liquidationFactorVaultCollateralBIPS.length - 1,
             startTs.sub(liquidationStart).div(toBN(this.context.settings.liquidationStepSeconds)).toNumber());
@@ -87,9 +81,9 @@ export class Liquidator extends AssetContextClient {
     }
 
     // notice: doesn't cap the factor at pool's CR
-    async getLiquidationFactorBIPSPool(collateralRatioBIPS: BNish, liquidationStartedAt: BNish, liquidationPerformedAt: BNish, ccb: boolean = false) {
-        const liquidationFactor = await this.getLiquidationFactorBIPS(liquidationStartedAt, liquidationPerformedAt, ccb);
-        const liquidationFactorVaultCollateral = await this.getLiquidationFactorBIPSVaultCollateral(collateralRatioBIPS, liquidationStartedAt, liquidationPerformedAt, ccb);
+    async getLiquidationFactorBIPSPool(collateralRatioBIPS: BNish, liquidationStartedAt: BNish, liquidationPerformedAt: BNish) {
+        const liquidationFactor = await this.getLiquidationFactorBIPS(liquidationStartedAt, liquidationPerformedAt);
+        const liquidationFactorVaultCollateral = await this.getLiquidationFactorBIPSVaultCollateral(collateralRatioBIPS, liquidationStartedAt, liquidationPerformedAt);
         return liquidationFactor.sub(liquidationFactorVaultCollateral);
     }
 }

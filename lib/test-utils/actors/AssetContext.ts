@@ -105,9 +105,9 @@ export class AssetContext implements IAssetContext {
         await this.refreshSettings();
     }
 
-    async setCollateralRatiosForToken(collateralClass: BNish, token: string, minCollateralRatioBIPS: BNish, ccbMinCollateralRatioBIPS: BNish, safetyMinCollateralRatioBIPS: BNish) {
+    async setCollateralRatiosForToken(collateralClass: BNish, token: string, minCollateralRatioBIPS: BNish, safetyMinCollateralRatioBIPS: BNish) {
         await waitForTimelock(this.assetManagerController.setCollateralRatiosForToken([this.assetManager.address], collateralClass, token, minCollateralRatioBIPS,
-            ccbMinCollateralRatioBIPS, safetyMinCollateralRatioBIPS, { from: this.governance }), this.assetManagerController, this.governance);
+            safetyMinCollateralRatioBIPS, { from: this.governance }), this.assetManagerController, this.governance);
         await this.refreshSettings();
     }
 

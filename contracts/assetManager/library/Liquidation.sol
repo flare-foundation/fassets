@@ -40,11 +40,8 @@ library Liquidation {
         // if already in full liquidation or destroying, do nothing
         if (_agent.status == Agent.Status.FULL_LIQUIDATION
             || _agent.status == Agent.Status.DESTROYING) return;
-        // if current phase is not LIQUIDATION, restart in LIQUIDATION phase
-        Agent.LiquidationPhase currentPhase = currentLiquidationPhase(_agent);
-        if (currentPhase != Agent.LiquidationPhase.LIQUIDATION) {
+        if (_agent.liquidationStartedAt == 0) {
             _agent.liquidationStartedAt = block.timestamp.toUint64();
-            _agent.initialLiquidationPhase = Agent.LiquidationPhase.LIQUIDATION;
         }
         _agent.status = Agent.Status.FULL_LIQUIDATION;
         emit IAssetManagerEvents.FullLiquidationStarted(_agent.vaultAddress(), block.timestamp);
@@ -60,39 +57,15 @@ library Liquidation {
         if (_agent.status != Agent.Status.LIQUIDATION) return;
         // agent's current collateral ratio
         CRData memory cr = getCollateralRatiosBIPS(_agent);
-        // target collateral ratio is minCollateralRatioBIPS for CCB and safetyMinCollateralRatioBIPS for LIQUIDATION
-        Agent.LiquidationPhase currentPhase = currentLiquidationPhase(_agent);
-        uint256 targetRatioVaultCollateralBIPS = _targetRatioBIPS(_agent, currentPhase, Collateral.Kind.VAULT);
-        uint256 targetRatioPoolBIPS = _targetRatioBIPS(_agent, currentPhase, Collateral.Kind.POOL);
+        // target ratio is minCollateralRatioBIPS if collateral not underwater, otherwise safetyMinCollateralRatioBIPS
+        uint256 targetRatioVaultCollateralBIPS = _targetRatioBIPS(_agent, Collateral.Kind.VAULT);
+        uint256 targetRatioPoolBIPS = _targetRatioBIPS(_agent, Collateral.Kind.POOL);
         // if agent is safe, restore status to NORMAL
         if (cr.vaultCR >= targetRatioVaultCollateralBIPS && cr.poolCR >= targetRatioPoolBIPS) {
             _agent.status = Agent.Status.NORMAL;
             _agent.liquidationStartedAt = 0;
-            _agent.initialLiquidationPhase = Agent.LiquidationPhase.NONE;
             _agent.collateralsUnderwater = 0;
             emit IAssetManagerEvents.LiquidationEnded(_agent.vaultAddress());
-        }
-    }
-
-    // Current liquidation phase (assumed that liquidation/ccb was started in some past transaction,
-    // so the result only depends on time, not on current collateral ratio).
-    // Beware: the result here can be CCB even if it should be LIQUIDATION because CR dropped.
-    function currentLiquidationPhase(
-        Agent.State storage _agent
-    )
-        internal view
-        returns (Agent.LiquidationPhase)
-    {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        Agent.Status status = _agent.status;
-        if (status == Agent.Status.LIQUIDATION) {
-            bool inCCB = _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB
-                && block.timestamp <= _agent.liquidationStartedAt + settings.ccbTimeSeconds;
-            return inCCB ? Agent.LiquidationPhase.CCB : Agent.LiquidationPhase.LIQUIDATION;
-        } else if (status == Agent.Status.FULL_LIQUIDATION) {
-            return Agent.LiquidationPhase.LIQUIDATION;
-        } else {    // any other status - NORMAL or DESTROYING
-            return Agent.LiquidationPhase.NONE;
         }
     }
 
@@ -112,7 +85,7 @@ library Liquidation {
         });
     }
 
-    // The collateral ratio (BIPS) for deciding whether agent is in liquidation or CCB is the maximum
+    // The collateral ratio (BIPS) for deciding whether agent is in liquidation is the maximum
     // of the ratio calculated from FTSO price and the ratio calculated from trusted voters' price.
     // In this way, liquidation due to bad FTSO providers bunching together is less likely.
     function getCollateralRatioBIPS(
@@ -130,26 +103,8 @@ library Liquidation {
         _collateralRatioBIPS = Math.max(ratio, ratioTrusted);
     }
 
-    function getLiquidationStartTimestamp(
-        Agent.State storage _agent
-    )
-        internal view
-        returns (uint256)
-    {
-        Agent.Status status = _agent.status;
-        if (status == Agent.Status.LIQUIDATION) {
-            AssetManagerSettings.Data storage settings = Globals.getSettings();
-            bool startedInCCB = _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB;
-            return _agent.liquidationStartedAt + (startedInCCB ? settings.ccbTimeSeconds : 0);
-        } else if (status == Agent.Status.FULL_LIQUIDATION) {
-            return _agent.liquidationStartedAt;
-        } else {    // any other status - NORMAL or DESTROYING
-            return 0;
-        }
-    }
-
     // Calculate the amount of liquidation that gets agent to safety.
-    // assumed: agentStatus == LIQUIDATION/FULL_LIQUIDATION && liquidationPhase == LIQUIDATION
+    // assumed: agentStatus == LIQUIDATION/FULL_LIQUIDATION
     function maxLiquidationAmountAMG(
         Agent.State storage _agent,
         uint256 _collateralRatioBIPS,
@@ -165,7 +120,7 @@ library Liquidation {
             return _agent.mintedAMG;
         }
         // otherwise, liquidate just enough to get agent to safety
-        uint256 targetRatioBIPS = _targetRatioBIPS(_agent, Agent.LiquidationPhase.LIQUIDATION, _collateralKind);
+        uint256 targetRatioBIPS = _targetRatioBIPS(_agent, _collateralKind);
         if (targetRatioBIPS <= _collateralRatioBIPS) {
             return 0;               // agent already safe
         }
@@ -181,14 +136,13 @@ library Liquidation {
 
     function _targetRatioBIPS(
         Agent.State storage _agent,
-        Agent.LiquidationPhase _currentPhase,
         Collateral.Kind _collateralKind
     )
         private view
         returns (uint256)
     {
         CollateralTypeInt.Data storage collateral = _agent.getCollateral(_collateralKind);
-        if (_currentPhase == Agent.LiquidationPhase.CCB || !_agent.collateralUnderwater(_collateralKind)) {
+        if (!_agent.collateralUnderwater(_collateralKind)) {
             return collateral.minCollateralRatioBIPS;
         } else {
             return collateral.safetyMinCollateralRatioBIPS;

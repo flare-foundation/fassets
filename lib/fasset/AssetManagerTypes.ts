@@ -17,11 +17,10 @@ export interface AgentSettings extends _AgentSettings {}
 // status as returned from GetAgentInfo
 export enum AgentStatus {
     NORMAL = 0,             // agent is operating normally
-    CCB = 1,                // agent in collateral call band
-    LIQUIDATION = 2,        // liquidation due to collateral ratio - ends when agent is healthy
-    FULL_LIQUIDATION = 3,   // illegal payment liquidation - always liquidates all and then agent must close vault
-    DESTROYING = 4,         // agent announced destroy, cannot mint again; all existing mintings have been redeemed before
-    DESTROYED = 5,          // agent has been destroyed, cannot do anything except return info
+    LIQUIDATION = 1,        // liquidation due to collateral ratio - ends when agent is healthy
+    FULL_LIQUIDATION = 2,   // illegal payment liquidation - always liquidates all and then agent must close vault
+    DESTROYING = 3,         // agent announced destroy, cannot mint again; all existing mintings have been redeemed before
+    DESTROYED = 4,          // agent has been destroyed, cannot do anything except return info
 }
 
 type _AgentInfo = Awaited<ReturnType<IIAssetManagerInstance['getAgentInfo']>>;

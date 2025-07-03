@@ -128,7 +128,6 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsMan
         CollateralType.Class _collateralClass,
         IERC20 _token,
         uint256 _minCollateralRatioBIPS,
-        uint256 _ccbMinCollateralRatioBIPS,
         uint256 _safetyMinCollateralRatioBIPS
     ) external;
 

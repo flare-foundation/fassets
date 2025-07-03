@@ -854,17 +854,15 @@ interface IAssetManager is
     // Liquidation
 
     /**
-     * Checks that the agent's collateral is too low and if true, starts the agent's liquidation.
-     * NOTE: always succeeds and returns the new liquidation status.
+     * Checks that the agent's collateral is too low and if true, starts agent's liquidation.
+     * If the agent is already in liquidation, returns the timestamp when liquidation started.
      * @param _agentVault agent vault address
-     * @return _liquidationStatus 0=no liquidation, 1=CCB, 2=liquidation
-     * @return _liquidationStartTs if the status is LIQUIDATION, the timestamp when liquidation started;
-     *  if the status is CCB, the timestamp when liquidation will start; otherwise 0
+     * @return _liquidationStartTs timestamp when liquidation started
      */
     function startLiquidation(
         address _agentVault
     ) external
-        returns (uint8 _liquidationStatus, uint256 _liquidationStartTs);
+        returns (uint256 _liquidationStartTs);
 
     /**
      * Burns up to `_amountUBA` f-assets owned by the caller and pays

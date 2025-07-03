@@ -104,8 +104,7 @@ contract AgentInfoFacet is AssetManagerBase {
         _info.redeemingUBA = Conversion.convertAmgToUBA(agent.redeemingAMG);
         _info.poolRedeemingUBA = Conversion.convertAmgToUBA(agent.poolRedeemingAMG);
         _info.dustUBA = Conversion.convertAmgToUBA(agent.dustAMG);
-        _info.ccbStartTimestamp = _getCCBStartTimestamp(agent);
-        _info.liquidationStartTimestamp = Liquidation.getLiquidationStartTimestamp(agent);
+        _info.liquidationStartTimestamp = agent.liquidationStartedAt;
         (_info.liquidationPaymentFactorVaultBIPS, _info.liquidationPaymentFactorPoolBIPS,
             _info.maxLiquidationAmountUBA) = _getLiquidationFactorsAndMaxAmount(agent, cr);
         _info.underlyingBalanceUBA = agent.underlyingBalanceUBA;
@@ -205,8 +204,8 @@ contract AgentInfoFacet is AssetManagerBase {
         private view
         returns (uint256 _vaultFactorBIPS, uint256 _poolFactorBIPS, uint256 _maxLiquidatedUBA)
     {
-        Agent.LiquidationPhase currentPhase = Liquidation.currentLiquidationPhase(_agent);
-        if (currentPhase != Agent.LiquidationPhase.LIQUIDATION) {
+        Agent.Status agentStatus = _agent.status;
+        if (agentStatus != Agent.Status.LIQUIDATION && agentStatus != Agent.Status.FULL_LIQUIDATION) {
             return (0, 0, 0);
         }
         // split liquidation payment between agent vault and pool
@@ -217,15 +216,5 @@ contract AgentInfoFacet is AssetManagerBase {
             Liquidation.maxLiquidationAmountAMG(_agent, _cr.vaultCR, _vaultFactorBIPS, Collateral.Kind.VAULT),
             Liquidation.maxLiquidationAmountAMG(_agent, _cr.poolCR, _poolFactorBIPS, Collateral.Kind.POOL));
         _maxLiquidatedUBA = Conversion.convertAmgToUBA(maxLiquidatedAMG.toUint64());
-    }
-
-    function _getCCBStartTimestamp(
-        Agent.State storage _agent
-    )
-        private view
-        returns (uint256)
-    {
-        if (_agent.status != Agent.Status.LIQUIDATION) return 0;
-        return _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB ? _agent.liquidationStartedAt : 0;
     }
 }

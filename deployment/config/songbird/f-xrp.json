@@ -16,7 +16,6 @@
         "assetFtsoSymbol": "XRP",
         "tokenFtsoSymbol": "SGB",
         "minCollateralRatioBIPS": 15000,
-        "ccbMinCollateralRatioBIPS": 14000,
         "safetyMinCollateralRatioBIPS": 16000
     },
     "vaultCollaterals": [
@@ -27,7 +26,6 @@
             "assetFtsoSymbol": "XRP",
             "tokenFtsoSymbol": "USDX",
             "minCollateralRatioBIPS": 12000,
-            "ccbMinCollateralRatioBIPS": 11000,
             "safetyMinCollateralRatioBIPS": 13000
         }
     ],
@@ -47,7 +45,6 @@
     "confirmationByOthersRewardUSD5": "50 00000",
     "paymentChallengeRewardBIPS": 0,
     "paymentChallengeRewardUSD5": "250 00000",
-    "ccbTimeSeconds": 600,
     "liquidationStepSeconds": 300,
     "liquidationCollateralFactorBIPS": [
         10400,

@@ -379,21 +379,6 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         emit SettingChanged("withdrawalWaitMinSeconds", _value);
     }
 
-    function setCcbTimeSeconds(uint256 _value)
-        external
-        onlyAssetManagerController
-        rateLimited
-    {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        // validate
-        require(_value > 0, CannotBeZero());
-        require(_value <= settings.ccbTimeSeconds * 2, IncreaseTooBig());
-        require(_value >= settings.ccbTimeSeconds / 2, DecreaseTooBig());
-        // update
-        settings.ccbTimeSeconds = _value.toUint64();
-        emit SettingChanged("ccbTimeSeconds", _value);
-    }
-
     function setAttestationWindowSeconds(uint256 _value)
         external
         onlyAssetManagerController

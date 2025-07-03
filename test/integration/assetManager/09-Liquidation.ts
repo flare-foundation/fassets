@@ -50,355 +50,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
     });
 
     describe("simple scenarios - price change liquidation", () => {
-        it("ccb due to price change (turns into liquidation after time) (NAT price change, pool collateral ratio unsafe)", async () => {
-            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
-            const liquidator = await Liquidator.create(context, liquidatorAddress1);
-            // make agent available
-            const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-            // update block
-            await context.updateUnderlyingBlock();
-            // perform minting
-            const lots = 3;
-            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
-            const txHash = await minter.performMintingPayment(crt);
-            const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
-            // price change
-            await context.priceStore.setCurrentPrice("NAT", 100, 0);
-            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 100, 0);
-            // start ccb
-            const [ccb, ccbStartTimestamp] = await liquidator.startLiquidation(agent);
-            assert.isTrue(ccb);
-            const info = await agent.checkAgentInfo({
-                totalVaultCollateralWei: fullAgentCollateral,
-                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
-                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
-                status: AgentStatus.CCB
-            });
-            assertWeb3Equal(info.ccbStartTimestamp, ccbStartTimestamp);
-            const ccbTimeSeconds = (await context.assetManager.getSettings()).ccbTimeSeconds;
-            assertWeb3Equal(info.liquidationStartTimestamp, toBN(ccbStartTimestamp).add(toBN(ccbTimeSeconds)));
-            // ccb status should show in available agent info
-            const { 0: availableAgentInfos1 } = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
-            assert.equal(Number(availableAgentInfos1[0].status), AgentStatus.CCB);
-            // skip some time
-            await time.deterministicIncrease(300);
-            // now the agent should be in liquidation
-            await agent.checkAgentInfo({
-                status: AgentStatus.LIQUIDATION
-            });
-            const { 0: availableAgentInfos2 } = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
-            assert.equal(Number(availableAgentInfos2[0].status), AgentStatus.LIQUIDATION);
-            // do a complete safe-close
-            await context.fAsset.transfer(agent.ownerWorkAddress, minted.mintedAmountUBA, { from: minter.address });
-            await agent.selfClose(minted.mintedAmountUBA);
-            // now the status should be normal again
-            await agent.checkAgentInfo({
-                status: AgentStatus.NORMAL,
-                mintedUBA: minted.poolFeeUBA,
-                freeUnderlyingBalanceUBA: toBN(minted.agentFeeUBA).add(toBN(minted.mintedAmountUBA))
-            });
-            const { 0: availableAgentInfos3 } = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
-            assert.equal(Number(availableAgentInfos3[0].status), AgentStatus.NORMAL);
-            // agent can exit now
-            await agent.exitAndDestroy();
-        });
-
-        it("ccb due to price change (turns into liquidation after time by calling startLiquidation again)", async () => {
-            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
-            const liquidator = await Liquidator.create(context, liquidatorAddress1);
-            // make agent available
-            const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-            // update block
-            await context.updateUnderlyingBlock();
-            // perform minting
-            const lots = 3;
-            const [minted] = await minter.performMinting(agent.vaultAddress, lots);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
-            // price change
-            await context.priceStore.setCurrentPrice("NAT", 100, 0);
-            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 100, 0);
-            // start ccb
-            const ccbTimeSeconds = toBN(context.settings.ccbTimeSeconds);
-            const [ccb, ccbStartTimestamp] = await liquidator.startLiquidation(agent);
-            assert.isTrue(ccb);
-            const info = await agent.checkAgentInfo({
-                totalVaultCollateralWei: fullAgentCollateral,
-                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
-                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
-                ccbStartTimestamp: ccbStartTimestamp,
-                status: AgentStatus.CCB
-            });
-            assertWeb3Equal(info.liquidationStartTimestamp, toBN(ccbStartTimestamp).add(ccbTimeSeconds));
-            // startLiquidation after 10 seconds should fail
-            await time.deterministicIncrease(10);
-            await expectRevert.custom(liquidator.startLiquidation(agent), "LiquidationNotStarted", []);
-            // after ccb time we can switch to liquidation (and liquidation event should be sent)
-            await time.deterministicIncrease(ccbTimeSeconds);
-            const [ccb2, liquidationStartTimestamp] = await liquidator.startLiquidation(agent);
-            assert.isFalse(ccb2);
-            await agent.checkAgentInfo({
-                ccbStartTimestamp: 0,
-                liquidationStartTimestamp: liquidationStartTimestamp,
-                status: AgentStatus.LIQUIDATION
-            });
-            // do a complete safe-close
-            await context.fAsset.transfer(agent.ownerWorkAddress, minted.mintedAmountUBA, { from: minter.address });
-            await agent.selfClose(minted.mintedAmountUBA);
-            // agent can exit now
-            await agent.exitAndDestroy();
-        });
-
-        it("ccb due to price change (no liquidation due to collateral deposit)(NAT price change, pool collateral ratio unsafe)", async () => {
-            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
-            const liquidator = await Liquidator.create(context, liquidatorAddress1);
-            // make agent available
-            const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-            // update block
-            await context.updateUnderlyingBlock();
-            // perform minting
-            const lots = 3;
-            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
-            const txHash = await minter.performMintingPayment(crt);
-            const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
-            // price change
-            await context.priceStore.setCurrentPrice("NAT", 100, 0);
-            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 100, 0);
-            // start ccb
-            const [ccb, ccbStartTimestamp] = await liquidator.startLiquidation(agent);
-            assert.isTrue(ccb);
-            const info = await agent.checkAgentInfo({
-                totalVaultCollateralWei: fullAgentCollateral,
-                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
-                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
-                status: AgentStatus.CCB
-            });
-            assertWeb3Equal(info.ccbStartTimestamp, ccbStartTimestamp);
-            const ccbTimeSeconds = (await context.assetManager.getSettings()).ccbTimeSeconds;
-            assertWeb3Equal(info.liquidationStartTimestamp, toBN(ccbStartTimestamp).add(toBN(ccbTimeSeconds)));
-            // ccb status should show in available agent info
-            const { 0: availableAgentInfos } = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
-            assert.equal(Number(availableAgentInfos[0].status), AgentStatus.CCB);
-            // deposit collateral
-            const additionalCollateral = toWei(4e6);
-            await agent.depositVaultCollateral(additionalCollateral);
-            await agent.buyCollateralPoolTokens(additionalCollateral);
-            // test that ccb cancelled due to collateral deposit
-            assert.equal((await agent.getAgentInfo()).status, toBN(0));
-            const collateralRatioBIPS = (await agent.getAgentInfo()).poolCollateralRatioBIPS;
-            const collateralTypes = (await context.assetManager.getCollateralTypes())[0];
-            assert(toBN(collateralRatioBIPS).gte(toBN(collateralTypes.ccbMinCollateralRatioBIPS)));
-            assert(toBN(collateralRatioBIPS).lt(toBN(collateralTypes.safetyMinCollateralRatioBIPS)));
-
-            const info2 = await agent.checkAgentInfo({
-                totalVaultCollateralWei: fullAgentCollateral.add(additionalCollateral),
-                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
-                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
-                status: AgentStatus.NORMAL
-            });
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
-            assertWeb3Equal(info2.liquidationStartTimestamp, 0);
-            // agent "buys" f-assets
-            await context.fAsset.transfer(agent.ownerWorkAddress, minted.mintedAmountUBA, { from: minter.address });
-            await agent.selfClose(minted.mintedAmountUBA);
-            // agent can exit now
-            await agent.exitAndDestroy(fullAgentCollateral.add(additionalCollateral));
-        });
-
-        it("ccb due to price change (no liquidation due to collateral deposit)(VaultCollateral price change, vault collateral ratio unsafe)", async () => {
-            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
-            const liquidator = await Liquidator.create(context, liquidatorAddress1);
-            // make agent available
-            const fullAgentCollateral = toWei(3e8);
-            const poolFullAgentCollateral = toWei(5e12);
-            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, poolFullAgentCollateral);
-            // update block
-            await context.updateUnderlyingBlock();
-            // perform minting
-            const lots = 3;
-            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
-            const txHash = await minter.performMintingPayment(crt);
-            const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
-            // price change
-            await agent.setVaultCollateralRatioByChangingAssetPrice(13000);
-            // start ccb
-            const [ccb, ccbStartTimestamp] = await liquidator.startLiquidation(agent);
-            assert.isTrue(ccb);
-            const info = await agent.checkAgentInfo({
-                totalVaultCollateralWei: fullAgentCollateral,
-                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
-                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
-                reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0,
-                status: AgentStatus.CCB
-            });
-
-            assertWeb3Equal(info.ccbStartTimestamp, ccbStartTimestamp);
-            const ccbTimeSeconds = (await context.assetManager.getSettings()).ccbTimeSeconds;
-            assertWeb3Equal(info.liquidationStartTimestamp, toBN(ccbStartTimestamp).add(toBN(ccbTimeSeconds)));
-            // deposit collateral
-            const additionalCollateral = toWei(4e12);
-            await agent.depositVaultCollateral(additionalCollateral);
-            await agent.buyCollateralPoolTokens(additionalCollateral);
-            // test that ccb cancelled due to collateral deposit and collateral ratio is higher than safety and ccb min
-            assert.equal((await agent.getAgentInfo()).status, toBN(0));
-            const collateralRatioBIPS = (await agent.getAgentInfo()).vaultCollateralRatioBIPS;
-            const collateralTypes = (await context.assetManager.getCollateralTypes())[1];
-            assert(toBN(collateralRatioBIPS).gte(toBN(collateralTypes.ccbMinCollateralRatioBIPS)));
-            assert(toBN(collateralRatioBIPS).gte(toBN(collateralTypes.safetyMinCollateralRatioBIPS)));
-            const info2 = await agent.checkAgentInfo({
-                totalVaultCollateralWei: fullAgentCollateral.add(additionalCollateral),
-                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
-                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
-                reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0,
-                status: AgentStatus.NORMAL
-            });
-
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
-            assertWeb3Equal(info2.liquidationStartTimestamp, 0);
-            // agent "buys" f-assets
-            await context.fAsset.transfer(agent.ownerWorkAddress, minted.mintedAmountUBA, { from: minter.address });
-            await agent.selfClose(minted.mintedAmountUBA);
-            // agent can exit now
-            await agent.exitAndDestroy(fullAgentCollateral.add(additionalCollateral));
-        });
-
-        it("ccb due to price change (no liquidation due to partial self close) (pool CR unsafe)", async () => {
-            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
-            const liquidator = await Liquidator.create(context, liquidatorAddress1);
-            // make agent available
-            const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
-            // update block
-            await context.updateUnderlyingBlock();
-            // perform minting
-            const lots = 3;
-            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
-            const txHash = await minter.performMintingPayment(crt);
-            const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
-            await agent.checkAgentInfo({
-                totalVaultCollateralWei: fullAgentCollateral,
-                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
-                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
-                reservedUBA: 0, redeemingUBA: 0
-            });
-            // price change
-            await context.priceStore.setCurrentPrice("NAT", 100, 0);
-            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 100, 0);
-            // start ccb
-            const [ccb, ccbStartTimestamp] = await liquidator.startLiquidation(agent);
-            assert.isTrue(ccb);
-            const info = await agent.checkAgentInfo({
-                totalVaultCollateralWei: fullAgentCollateral,
-                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
-                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
-                reservedUBA: 0, redeemingUBA: 0,
-                announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.CCB
-            });
-            assertWeb3Equal(info.ccbStartTimestamp, ccbStartTimestamp);
-            const ccbTimeSeconds = (await context.assetManager.getSettings()).ccbTimeSeconds;
-            assertWeb3Equal(info.liquidationStartTimestamp, toBN(ccbStartTimestamp).add(toBN(ccbTimeSeconds)));
-            // agent "buys" f-assets
-            await context.fAsset.transfer(agent.ownerWorkAddress, minted.mintedAmountUBA, { from: minter.address });
-            // perform partial self close
-            const selfCloseAmountUBA = context.convertAmgToUBA(5e9);
-            const [, selfClosedValueUBA, liquidationCancelledEvent] = await agent.selfClose(selfCloseAmountUBA);
-            // test that ccb cancelled due to self close
-            assert.isDefined(liquidationCancelledEvent);
-            assert.equal(liquidationCancelledEvent.agentVault, agent.agentVault.address);
-            const collateralRatioBIPS = (await agent.getAgentInfo()).poolCollateralRatioBIPS;
-            const collateralTypes = (await context.assetManager.getCollateralTypes())[0];
-            assert(toBN(collateralRatioBIPS).gte(toBN(collateralTypes.ccbMinCollateralRatioBIPS)));
-            assert(toBN(collateralRatioBIPS).lt(toBN(collateralTypes.safetyMinCollateralRatioBIPS)));
-            const info2 = await agent.checkAgentInfo({
-                totalVaultCollateralWei: fullAgentCollateral,
-                freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(selfClosedValueUBA),
-                mintedUBA: minted.mintedAmountUBA.sub(selfClosedValueUBA).add(minted.poolFeeUBA),
-                reservedUBA: 0, redeemingUBA: 0,
-                announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.NORMAL
-            });
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
-            assertWeb3Equal(info2.liquidationStartTimestamp, 0);
-            // agent "buys" f-assets
-            await agent.selfClose(minted.mintedAmountUBA.sub(selfClosedValueUBA));
-            // agent can exit now
-            await agent.exitAndDestroy(fullAgentCollateral);
-        });
-
-        it("ccb due to price change (no liquidation due to partial self close) (vault CR unsafe)", async () => {
-            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
-            const liquidator = await Liquidator.create(context, liquidatorAddress1);
-            // make agent available
-            const fullAgentCollateral = toWei(3e8);
-            const poolFullAgentCollateral = toWei(5e12);
-            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, poolFullAgentCollateral);
-            // update block
-            await context.updateUnderlyingBlock();
-            // perform minting
-            const lots = 3;
-            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
-            const txHash = await minter.performMintingPayment(crt);
-            const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
-            await agent.checkAgentInfo({
-                totalVaultCollateralWei: fullAgentCollateral,
-                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
-                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
-                reservedUBA: 0, redeemingUBA: 0
-            });
-            // price change
-            await agent.setVaultCollateralRatioByChangingAssetPrice(13000);
-            // start ccb
-            const [ccb, ccbStartTimestamp] = await liquidator.startLiquidation(agent);
-            assert.isTrue(ccb);
-            const info = await agent.checkAgentInfo({
-                totalVaultCollateralWei: fullAgentCollateral,
-                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
-                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
-                reservedUBA: 0, redeemingUBA: 0,
-                announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.CCB
-            });
-            assertWeb3Equal(info.ccbStartTimestamp, ccbStartTimestamp);
-            const ccbTimeSeconds = (await context.assetManager.getSettings()).ccbTimeSeconds;
-            assertWeb3Equal(info.liquidationStartTimestamp, toBN(ccbStartTimestamp).add(toBN(ccbTimeSeconds)));
-            // agent "buys" f-assets
-            await context.fAsset.transfer(agent.ownerWorkAddress, minted.mintedAmountUBA, { from: minter.address });
-            // perform partial self close, that puts CR above min CR
-            const selfCloseAmountUBA = context.convertAmgToUBA(1e10);
-            const [, selfClosedValueUBA, liquidationCancelledEvent] = await agent.selfClose(selfCloseAmountUBA);
-            // test that ccb cancelled due to self close
-            assert.isDefined(liquidationCancelledEvent);
-            assert.equal(liquidationCancelledEvent.agentVault, agent.agentVault.address);
-            const collateralRatioBIPS = (await agent.getAgentInfo()).vaultCollateralRatioBIPS;
-            const collateralTypes = (await context.assetManager.getCollateralTypes())[1];
-            assert(toBN(collateralRatioBIPS).gte(toBN(collateralTypes.ccbMinCollateralRatioBIPS)));
-            assert(toBN(collateralRatioBIPS).lt(toBN(collateralTypes.safetyMinCollateralRatioBIPS)));
-            const info2 = await agent.checkAgentInfo({
-                totalVaultCollateralWei: fullAgentCollateral,
-                freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(selfClosedValueUBA),
-                mintedUBA: minted.mintedAmountUBA.sub(selfClosedValueUBA).add(minted.poolFeeUBA),
-                reservedUBA: 0, redeemingUBA: 0,
-                announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.NORMAL
-            });
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
-            assertWeb3Equal(info2.liquidationStartTimestamp, 0);
-            // agent "buys" f-assets
-            await agent.selfClose(minted.mintedAmountUBA.sub(selfClosedValueUBA));
-            // agent can exit now
-            await agent.exitAndDestroy(fullAgentCollateral);
-        });
-
         it("liquidation due to price change (agent can be safe again) (pool CR too low)", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -428,7 +79,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.priceStore.setCurrentPrice(context.chainInfo.symbol, toBNExp(10, 6), 0);
             await context.priceStore.setCurrentPriceFromTrustedProviders(context.chainInfo.symbol, toBNExp(10, 6), 0);
             // start liquidation
-            const [isCCB, liquidationStartTs] = await liquidator.startLiquidation(agent);   // should put agent to liquidation mode
+            const liquidationStartTs = await liquidator.startLiquidation(agent);   // should put agent to liquidation mode
             await agent.checkAgentInfo({
                 status: AgentStatus.LIQUIDATION,
                 maxLiquidationAmountUBA: context.convertLotsToUBA(2),
@@ -470,7 +121,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0,
                 status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStartTs);
             // liquidation cannot be stopped if agent not safe
             await expectRevert.custom(agent.endLiquidation(), "CannotStopLiquidation", []);
@@ -509,7 +159,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 liquidationPaymentFactorPoolBIPS: 0,
                 status: AgentStatus.NORMAL
             });
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             // final tests
             assert(poolLiquidationFactorBIPS1.lt(poolLiquidationFactorBIPS2));
@@ -529,62 +178,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await agent.exitAndDestroy(fullAgentCollateral.sub(vaultCollateralLiquidationReward1).sub(vaultCollateralLiquidationReward2));
         });
 
-        it("ccb due to collateral ratios change (no liquidation due to collateral deposit)", async () => {
-            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
-            const liquidator = await Liquidator.create(context, liquidatorAddress1);
-            // make agent available
-            const fullAgentCollateral = toWei(1e6);
-            const poolFullAgentCollateral = toWei(3e6);
-            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, poolFullAgentCollateral);
-            // update block
-            await context.updateUnderlyingBlock();
-            // perform minting
-            const lots = 3;
-            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
-            const txHash = await minter.performMintingPayment(crt);
-            const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
-            await agent.checkAgentInfo({
-                totalVaultCollateralWei: fullAgentCollateral,
-                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
-                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
-                reservedUBA: 0, redeemingUBA: 0
-            });
-            // Collateral ratios for class1 token change and that puts agent into ccb
-            await context.setCollateralRatiosForToken(2, context.usdc.address, toBN(context.collaterals[1].minCollateralRatioBIPS).addn(53000),
-                toBN(context.collaterals[1].ccbMinCollateralRatioBIPS).addn(53000), toBN(context.collaterals[1].safetyMinCollateralRatioBIPS).addn(53000));
-            // start ccb
-            const [ccb, ccbStartTimestamp] = await liquidator.startLiquidation(agent);
-            assert.isTrue(ccb);
-            const info = await agent.checkAgentInfo({
-                totalVaultCollateralWei: fullAgentCollateral,
-                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
-                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
-                reservedUBA: 0, redeemingUBA: 0,
-                announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.CCB
-            });
-            assertWeb3Equal(info.ccbStartTimestamp, ccbStartTimestamp);
-            const ccbTimeSeconds = (await context.assetManager.getSettings()).ccbTimeSeconds;
-            assertWeb3Equal(info.liquidationStartTimestamp, toBN(ccbStartTimestamp).add(toBN(ccbTimeSeconds)));
-            // Owner deposits more collateral
-            await agent.depositVaultCollateral(fullAgentCollateral);
-            const info2 = await agent.checkAgentInfo({
-                totalVaultCollateralWei: fullAgentCollateral.add(fullAgentCollateral),
-                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
-                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
-                reservedUBA: 0, redeemingUBA: 0,
-                announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.NORMAL
-            });
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
-            assertWeb3Equal(info2.liquidationStartTimestamp, 0);
-            // agent "buys" f-assets
-            await context.fAsset.transfer(agent.ownerWorkAddress, minted.mintedAmountUBA, { from: minter.address });
-            // agent "buys" f-assets
-            await agent.selfClose(minted.mintedAmountUBA);
-            // agent can exit now
-            await agent.exitAndDestroy(fullAgentCollateral.add(fullAgentCollateral));
-        });
 
         it("liquidation due to price change (agent can be safe again) (vault CR too low)", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
@@ -644,7 +237,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0,
                 status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // liquidation cannot be stopped if agent not safe
             await expectRevert.custom(agent.endLiquidation(), "CannotStopLiquidation", []);
@@ -679,7 +271,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2).add(minted.poolFeeUBA),
                 status: AgentStatus.NORMAL
             });
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             // final tests
             assert(poolLiquidationFactorBIPS1.lt(poolLiquidationFactorBIPS2));
@@ -755,7 +346,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0,
                 status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // wait some time to get next premium
             await time.deterministicIncrease(90);
@@ -786,7 +376,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2).add(minted.poolFeeUBA),
                 status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, liquidationTimestamp1);
             // wait some time to get next premium
             await time.deterministicIncrease(90);
@@ -816,7 +405,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2).sub(liquidatedUBA3).add(minted.poolFeeUBA),
                 status: AgentStatus.NORMAL
             });
-            assertWeb3Equal(info3.ccbStartTimestamp, 0);
             assertWeb3Equal(info3.liquidationStartTimestamp, 0);
             // final tests
             assertWeb3Equal(liquidatedUBA1, liquidatedUBA2);
@@ -890,7 +478,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0,
                 status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // wait some time to get next premium
             await time.deterministicIncrease(90);
@@ -921,7 +508,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2).add(minted.poolFeeUBA),
                 status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, liquidationTimestamp1);
             // wait some time to get next premium
             await time.deterministicIncrease(90);
@@ -951,7 +537,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2).sub(liquidatedUBA3).add(minted.poolFeeUBA),
                 status: AgentStatus.NORMAL
             });
-            assertWeb3Equal(info3.ccbStartTimestamp, 0);
             assertWeb3Equal(info3.liquidationStartTimestamp, 0);
             // final tests
             assertWeb3Equal(liquidatedUBA1, liquidatedUBA2);
@@ -1027,7 +612,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // price change after some time
             await time.deterministicIncrease(90);
@@ -1043,7 +627,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info1.ccbStartTimestamp, 0);
             assertWeb3Equal(info1.liquidationStartTimestamp, liquidationTimestamp1);
             // agent can end liquidation
             await agent.endLiquidation();
@@ -1055,7 +638,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.NORMAL
             });
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             const collateralRatioBIPS2 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(poolLiquidationReward1), minted.mintedAmountUBA.sub(liquidatedUBA1));
             const collateralTypes = (await context.assetManager.getCollateralTypes())[0];
@@ -1125,7 +707,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // price change after some time
             await time.deterministicIncrease(90);
@@ -1138,7 +719,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info1.ccbStartTimestamp, 0);
             assertWeb3Equal(info1.liquidationStartTimestamp, liquidationTimestamp1);
             // agent can end liquidation
             await agent.endLiquidation();
@@ -1150,7 +730,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.NORMAL
             });
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             const collateralRatioBIPS2 = await agent.getCollateralRatioBIPS(fullPoolCollateral.sub(vaultCollateralLiquidationReward1), minted.mintedAmountUBA.sub(liquidatedUBA1));
             const collateralTypes = (await context.assetManager.getCollateralTypes())[1];
@@ -1222,7 +801,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // price change after some time
             await time.deterministicIncrease(90);
@@ -1238,7 +816,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info1.ccbStartTimestamp, 0);
             assertWeb3Equal(info1.liquidationStartTimestamp, liquidationTimestamp1);
             // others can end liquidation
             await liquidator.endLiquidation(agent);
@@ -1250,7 +827,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.NORMAL
             });
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             const collateralRatioBIPS2 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(poolLiquidationReward1), minted.mintedAmountUBA.sub(liquidatedUBA1));
             const collateralTypes = (await context.assetManager.getCollateralTypes())[0];
@@ -1320,7 +896,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // price change after some time
             await time.deterministicIncrease(90);
@@ -1336,7 +911,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info1.ccbStartTimestamp, 0);
             assertWeb3Equal(info1.liquidationStartTimestamp, liquidationTimestamp1);
             // others can end liquidation
             await liquidator.endLiquidation(agent);
@@ -1348,7 +922,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.NORMAL
             });
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             const collateralRatioBIPS2 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(vaultCollateralLiquidationReward1), minted.mintedAmountUBA.sub(liquidatedUBA1));
             const collateralTypes = (await context.assetManager.getCollateralTypes())[1];
@@ -1418,7 +991,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // price change after some time
             await time.deterministicIncrease(90);
@@ -1436,7 +1008,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info1.ccbStartTimestamp, 0);
             assertWeb3Equal(info1.liquidationStartTimestamp, liquidationTimestamp1);
             // liquidate agent (second part) - cannot liquidate anything as agent is safe again due to price change
             const liquidateMaxUBA2 = minted.mintedAmountUBA.sub(liquidatedUBA1);
@@ -1468,7 +1039,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.NORMAL
             });
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             // final tests
             assert(poolLiquidationFactorBIPS1.lt(poolLiquidationFactorBIPS2));
@@ -1539,7 +1109,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // price change after some time
             await time.deterministicIncrease(90);
@@ -1554,7 +1123,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info1.ccbStartTimestamp, 0);
             assertWeb3Equal(info1.liquidationStartTimestamp, liquidationTimestamp1);
             // liquidate agent (second part) - cannot liquidate anything as agent is safe again due to price change
             const liquidateMaxUBA2 = minted.mintedAmountUBA.sub(liquidatedUBA1);
@@ -1586,7 +1154,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA),
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.NORMAL
             });
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             // final tests
             assert(poolLiquidationFactorBIPS1.lt(poolLiquidationFactorBIPS2));
@@ -1660,7 +1227,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0,
                 status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // liquidation cannot be stopped if agent not safe
             await expectRevert.custom(agent.endLiquidation(), "CannotStopLiquidation", []);
@@ -1695,7 +1261,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2).add(minted.poolFeeUBA),
                 status: AgentStatus.NORMAL
             });
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             // final tests
             assert(poolLiquidationFactorBIPS1.lt(poolLiquidationFactorBIPS2));
@@ -1772,7 +1337,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0,
                 status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // liquidation cannot be stopped if agent not safe
             await expectRevert.custom(agent.endLiquidation(), "CannotStopLiquidation", []);
@@ -1807,7 +1371,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2).add(minted.poolFeeUBA),
                 status: AgentStatus.NORMAL
             });
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             // final tests
             assert(poolLiquidationFactorBIPS1.lt(poolLiquidationFactorBIPS2));
@@ -1884,7 +1447,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0,
                 status: AgentStatus.LIQUIDATION
             });
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // liquidation cannot be stopped if agent not safe
             await expectRevert.custom(agent.endLiquidation(), "CannotStopLiquidation", []);
@@ -1919,7 +1481,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2).add(minted.poolFeeUBA),
                 status: AgentStatus.NORMAL
             });
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             // final tests
             assert(poolLiquidationFactorBIPS1.lt(poolLiquidationFactorBIPS2));

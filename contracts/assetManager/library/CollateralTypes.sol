@@ -121,8 +121,7 @@ library CollateralTypes {
         require(state.collateralTokenIndex[tokenKey] == 0, TokenAlreadyExists());
         require(_data.validUntil == 0, CannotAddDeprecatedToken());
         bool ratiosValid =
-            SafePct.MAX_BIPS < _data.ccbMinCollateralRatioBIPS &&
-            _data.ccbMinCollateralRatioBIPS <= _data.minCollateralRatioBIPS &&
+            SafePct.MAX_BIPS < _data.minCollateralRatioBIPS &&
             _data.minCollateralRatioBIPS <= _data.safetyMinCollateralRatioBIPS;
         require(ratiosValid, InvalidCollateralRatios());
         uint256 newTokenIndex = state.collateralTokens.length;
@@ -135,13 +134,13 @@ library CollateralTypes {
             assetFtsoSymbol: _data.assetFtsoSymbol,
             tokenFtsoSymbol: _data.tokenFtsoSymbol,
             minCollateralRatioBIPS: _data.minCollateralRatioBIPS.toUint32(),
-            ccbMinCollateralRatioBIPS: _data.ccbMinCollateralRatioBIPS.toUint32(),
+            __ccbMinCollateralRatioBIPS: 0, // no longer used
             safetyMinCollateralRatioBIPS: _data.safetyMinCollateralRatioBIPS.toUint32()
         }));
         state.collateralTokenIndex[tokenKey] = newTokenIndex + 1;   // 0 means empty
         emit IAssetManagerEvents.CollateralTypeAdded(uint8(_data.collateralClass), address(_data.token),
             _data.decimals, _data.directPricePair, _data.assetFtsoSymbol, _data.tokenFtsoSymbol,
-            _data.minCollateralRatioBIPS, _data.ccbMinCollateralRatioBIPS, _data.safetyMinCollateralRatioBIPS);
+            _data.minCollateralRatioBIPS, _data.safetyMinCollateralRatioBIPS);
         return newTokenIndex;
     }
 
@@ -165,7 +164,6 @@ library CollateralTypes {
             assetFtsoSymbol: token.assetFtsoSymbol,
             tokenFtsoSymbol: token.tokenFtsoSymbol,
             minCollateralRatioBIPS: token.minCollateralRatioBIPS,
-            ccbMinCollateralRatioBIPS: token.ccbMinCollateralRatioBIPS,
             safetyMinCollateralRatioBIPS: token.safetyMinCollateralRatioBIPS
         });
     }

@@ -44,7 +44,7 @@ library CollateralTypeInt {
         // If the agent's collateral ratio is less than this, skip the CCB and go straight to liquidation.
         // A bit smaller than minCollateralRatioBIPS.
         // timelocked
-        uint32 ccbMinCollateralRatioBIPS;
+        uint32 __ccbMinCollateralRatioBIPS; // only storage placeholder
         // Minimum collateral ratio required to get agent out of liquidation.
         // Will always be greater than minCollateralRatioBIPS.
         // timelocked

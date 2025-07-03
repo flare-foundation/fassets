@@ -11,16 +11,10 @@ library Agent {
     enum Status {
         EMPTY,              // agent does not exist
         NORMAL,
-        LIQUIDATION,        // CCB or liquidation due to CR - ends when agent is healthy
+        LIQUIDATION,        // liquidation due to CR - ends when agent is healthy
         FULL_LIQUIDATION,   // illegal payment liquidation - must liquidate all and close vault
         DESTROYING,         // agent announced destroy, cannot mint again
         DESTROYED           // agent has been destroyed, cannot do anything except return info
-    }
-
-    enum LiquidationPhase {
-        NONE,
-        CCB,
-        LIQUIDATION
     }
 
     // For agents to withdraw NAT collateral, they must first announce it and then wait
@@ -89,15 +83,11 @@ library Agent {
         // but it must always be greater than minimum collateral ratio.
         uint32 mintingPoolCollateralRatioBIPS;
 
-        // Timestamp of the startLiquidation call.
-        // If the agent's CR is above ccbCR, agent is put into CCB state for a while.
-        // However, if the agent's CR falls below ccbCR before ccb time expires, anyone can call startLiquidation
-        // again to put agent in liquidation immediately (in this case, liquidationStartedAt and
-        // initialLiquidationPhase are reset to new values).
+        // Timestamp of the startLiquidation (or liquidate) call.
         uint64 liquidationStartedAt;
 
         // Liquidation phase at the time when liquidation started.
-        LiquidationPhase initialLiquidationPhase;
+        uint8 __initialLiquidationPhase; // only storage placeholder
 
         // Bitmap signifying which collateral type(s) triggered liquidation (LF_VAULT | LF_POOL).
         uint8 collateralsUnderwater;

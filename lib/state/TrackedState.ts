@@ -125,7 +125,6 @@ export class TrackedState {
         this.assetManagerEvent('CollateralRatiosChanged').subscribe(args => {
             const collateral = this.collaterals.get(args.collateralClass, args.collateralToken);
             collateral.minCollateralRatioBIPS = toBN(args.minCollateralRatioBIPS);
-            collateral.ccbMinCollateralRatioBIPS = toBN(args.ccbMinCollateralRatioBIPS);
             collateral.safetyMinCollateralRatioBIPS = toBN(args.safetyMinCollateralRatioBIPS);
         });
         this.assetManagerEvent('CollateralTypeDeprecated').subscribe(args => {
@@ -177,7 +176,6 @@ export class TrackedState {
         this.assetManagerEvent('AgentVaultCreated').subscribe(args => this.createAgentVault(args));
         this.assetManagerEvent('AgentDestroyed').subscribe(args => this.destroyAgent(args.agentVault));
         // status changes
-        this.assetManagerEvent('AgentInCCB').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleStatusChange(AgentStatus.CCB, args.timestamp));
         this.assetManagerEvent('LiquidationStarted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleStatusChange(AgentStatus.LIQUIDATION, args.timestamp));
         this.assetManagerEvent('FullLiquidationStarted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleStatusChange(AgentStatus.FULL_LIQUIDATION, args.timestamp));
         this.assetManagerEvent('LiquidationEnded').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleStatusChange(AgentStatus.NORMAL));
@@ -234,7 +232,6 @@ export class TrackedState {
             assetFtsoSymbol: data.assetFtsoSymbol,
             tokenFtsoSymbol: data.tokenFtsoSymbol,
             minCollateralRatioBIPS: toBN(data.minCollateralRatioBIPS),
-            ccbMinCollateralRatioBIPS: toBN(data.ccbMinCollateralRatioBIPS),
             safetyMinCollateralRatioBIPS: toBN(data.safetyMinCollateralRatioBIPS),
         };
         this.collaterals.add(collateral);

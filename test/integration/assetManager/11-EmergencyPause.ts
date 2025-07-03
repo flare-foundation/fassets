@@ -98,7 +98,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // price change
             await context.priceStore.setCurrentPrice("NAT", 200, 0);
             await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 200, 0);
-            //  pause stops liquidation/ccb
+            //  pause stops liquidation
             await context.assetManagerController.emergencyPause([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             await expectRevert.custom(liquidator.startLiquidation(agent), "EmergencyPauseActive", []);
             await agent.checkAgentInfo({ status: AgentStatus.NORMAL }, "reset");

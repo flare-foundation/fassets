@@ -13,7 +13,7 @@ contract MaliciousMintExecutor {
     address immutable public agentVault;
     address immutable public minter;
     address immutable public fasset;
-    uint256 public liquidationStatus;
+    uint256 public liquidationStartedTs;
     uint256 public reserved;
     uint256 public minted;
 
@@ -47,7 +47,7 @@ contract MaliciousMintExecutor {
         vaultCR = IAssetManager(diamond).getAgentInfo(agentVault).vaultCollateralRatioBIPS;
 
         IFAsset(fasset).transferFrom(minter, address(this), IFAsset(fasset).balanceOf(minter));
-        (liquidationStatus,) = IAssetManager(diamond).startLiquidation(agentVault);
+        liquidationStartedTs = IAssetManager(diamond).startLiquidation(agentVault);
         IAssetManager(diamond).liquidate(agentVault, IFAsset(fasset).balanceOf(address(this)));
     }
 }

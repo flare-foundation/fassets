@@ -125,14 +125,14 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         await assetManager.illegalPaymentChallenge(proof, agentVault.address);
         // assert
         const info = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(info.status, 4);
-        //Calling start liquidation again won't change anything
-        await assetManager.startLiquidation(agentVault.address);
-        //Calling liquite won't liquidate anything
-        await assetManager.liquidate(agentVault.address, 1, { from: liquidatorAddress1});
+        assertWeb3Equal(info.status, 3);
+        // Calling start liquidation will revert
+        await expectRevert.custom(assetManager.startLiquidation(agentVault.address), "LiquidationNotPossible", [3]);
+        // Calling liquidate will revert
+        await expectRevert.custom(assetManager.liquidate(agentVault.address, 1, { from: liquidatorAddress1}), "LiquidationNotPossible", [3]);
         // assert
         const info1 = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(info1.status, 4);
+        assertWeb3Equal(info1.status, 3);
     });
 
     it("should not change liquidationStartedAt timestamp when liquidation phase does not change (liquidation -> full_liquidation)", async () => {
@@ -154,16 +154,16 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const info2 = await assetManager.getAgentInfo(agentVault.address);
         // assert
         assertWeb3Equal(info1.liquidationStartTimestamp, info2.liquidationStartTimestamp);
-        assertWeb3Equal(info1.status, 2);
-        assertWeb3Equal(info2.status, 3);
+        assertWeb3Equal(info1.status, 1);
+        assertWeb3Equal(info2.status, 2);
         //Calling start liquidation again won't change anything
         await assetManager.startLiquidation(agentVault.address);
         // assert
         const info3 = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(info3.status, 3);
+        assertWeb3Equal(info3.status, 2);
     });
 
-    it("should revert if callig startLiquidation twice", async () => {
+    it("should not revert if calling startLiquidation twice", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
@@ -173,150 +173,26 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         await contracts.priceStore.setCurrentPrice(assetName, toBNExp(3.521, 9), 0);
         await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(3.521, 9), 0);
 
-        await assetManager.startLiquidation(agentVault.address);
+        const res = await assetManager.startLiquidation(agentVault.address);
+        const liquidationStartedAt = requiredEventArgs(res, 'LiquidationStarted').timestamp;
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         // liquidator "buys" f-assets
         await fAsset.transfer(liquidatorAddress1, minted.mintedAmountUBA.divn(2), { from: minterAddress1 });
         await assetManager.liquidate(agentVault.address, minted.mintedAmountUBA.divn(2), { from: liquidatorAddress1 });
         await contracts.priceStore.setCurrentPrice(assetName, toBNExp(3.521, 5), 0);
 
-        await expectRevert.custom(assetManager.startLiquidation(agentVault.address), "LiquidationNotStarted", []);
+        const liquidationStartedAt2 = await assetManager.startLiquidation.call(agentVault.address);
+        await assetManager.startLiquidation(agentVault.address);
         const info2 = await assetManager.getAgentInfo(agentVault.address);
         await assetManager.endLiquidation(agentVault.address);
         const info3 = await assetManager.getAgentInfo(agentVault.address);
         // assert
+        assertWeb3Equal(liquidationStartedAt, liquidationStartedAt2);
+        assertWeb3Equal(info1.liquidationStartTimestamp, liquidationStartedAt);
         assertWeb3Equal(info1.liquidationStartTimestamp, info2.liquidationStartTimestamp);
-        assertWeb3Equal(info1.status, 2);
-        assertWeb3Equal(info2.status, 2);
-        assertWeb3Equal(info3.status, 0);
-    });
-
-    it("should transition from CCB to liquidation phase because of price changes", async () => {
-        // init
-        chain.mint(underlyingAgent1, 200);
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
-        await mint(agentVault, underlyingMinter1, minterAddress1);
-        //Starting liquidation now should revert, because it can't change status
-        await expectRevert.custom(assetManager.startLiquidation(agentVault.address), "LiquidationNotStarted", []);
-        const info = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(info.status, 0);
-        const assetName = await fAsset.symbol();
-        // act
-        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(7, 8), 0);
-        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(7, 8), 0);
-        // await ftsos.asset.setCurrentPrice(toBNExp(7, 10), 0);
-        // await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(7, 10), 0);
-        await assetManager.startLiquidation(agentVault.address);
-        const info1 = await assetManager.getAgentInfo(agentVault.address);
-        chain.skipTimeTo(toBN(info1.ccbStartTimestamp).toNumber());
-        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(8, 8), 0);
-        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(8, 8), 0);
-        // await ftsos.asset.setCurrentPrice(toBNExp(8, 10), 0);
-        // await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(8, 10), 0);
-        await assetManager.startLiquidation(agentVault.address);
-        const info2 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info1.status, 1);
-        assertWeb3Equal(info2.status, 2);
-    });
-
-    it("agent should be able to get from ccb to normal by depositing more collateral", async () => {
-        // init
-        chain.mint(underlyingAgent1, 200);
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
-        await mint(agentVault, underlyingMinter1, minterAddress1);
-        const assetName = await fAsset.symbol();
-        // act
-        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(7, 8), 0);
-        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(7, 8), 0);
-        await assetManager.startLiquidation(agentVault.address);
-        const info1 = await assetManager.getAgentInfo(agentVault.address);
-
-        //Deposit more collateral
-        await depositCollateral(agentOwner1, agentVault, toWei(3e10));
-        await agentVault.buyCollateralPoolTokens({ from: agentOwner1, value: toWei(3e10) });
-        const info2 = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(info1.status, 1);
-        assertWeb3Equal(info2.status, 0);
-    });
-
-    it("agent should be able to get from ccb to normal if the price rises", async () => {
-        // init
-        chain.mint(underlyingAgent1, 200);
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
-        await mint(agentVault, underlyingMinter1, minterAddress1);
-        const assetName = await fAsset.symbol();
-        const { 0: initial_price } = await contracts.priceReader.getPrice(assetName);
-        // Change price to put agent in ccb
-        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(7, 8), 0);
-        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(7, 8), 0);
-
-        //Change phase to ccb
-        await assetManager.startLiquidation(agentVault.address);
-        const info1 = await assetManager.getAgentInfo(agentVault.address);
-        //Set price back to initial value
-        await contracts.priceStore.setCurrentPrice(assetName, initial_price, 0);
-        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, initial_price, 0);
-
-        await assetManager.endLiquidation(agentVault.address);
-        const info2 = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(info1.status, 1);
-        assertWeb3Equal(info2.status, 0);
-    });
-
-    it("agent in ccb, calling getAgentInfo after CR falls under CCB CR should return new Phase", async () => {
-        // init
-        chain.mint(underlyingAgent1, 200);
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
-        await mint(agentVault, underlyingMinter1, minterAddress1);
-        const assetName = await fAsset.symbol();
-        const initial_price = await contracts.priceReader.getPrice(assetName);
-        const price = initial_price[0];
-        // Change price to put agent in ccb
-        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(7, 8), 0);
-        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(7, 8), 0);
-        //Change phase to ccb
-        await assetManager.startLiquidation(agentVault.address);
-        const info1 = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(info1.status, 1);
-        //Price falls event lower
-        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(9, 8), 0);
-        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(9, 8), 0);
-
-        //Getting agent info should still show status CCB
-        const info2 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info2.status, 1);
-        // call startLiquidation again
-        await assetManager.startLiquidation(agentVault.address);
-        //Getting agent info should show status in Liquidation
-        const info3 = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(info3.status, 2);
-    });
-
-    it("agent in ccb, after waiting enough should automatically progress to Liquidation", async () => {
-        // init
-        chain.mint(underlyingAgent1, 200);
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
-        await mint(agentVault, underlyingMinter1, minterAddress1);
-        const assetName = await fAsset.symbol();
-        const initial_price = await contracts.priceReader.getPrice(assetName);
-        const price = initial_price[0];
-        // Change price to put agent in ccb
-        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(7, 8), 0);
-        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(7, 8), 0);
-        //Change phase to ccb
-        await assetManager.startLiquidation(agentVault.address);
-        const info1 = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(info1.status, 1);
-        //Skip time
-        await time.deterministicIncrease(200);
-        //Getting agent info should show status in Liquidation
-        const info2 = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(info2.status, 2);
+        assertWeb3Equal(info3.status, 0);
     });
 
     it("should not start liquidation if trusted price is ok for agent", async () => {

@@ -41,7 +41,6 @@ contract CollateralTypesFacet is AssetManagerBase {
         CollateralType.Class _collateralClass,
         IERC20 _token,
         uint256 _minCollateralRatioBIPS,
-        uint256 _ccbMinCollateralRatioBIPS,
         uint256 _safetyMinCollateralRatioBIPS
     )
         external
@@ -52,17 +51,15 @@ contract CollateralTypesFacet is AssetManagerBase {
         SettingsUpdater.checkEnoughTimeSinceLastUpdate(actionKey);
         // validate
         bool ratiosValid =
-            SafePct.MAX_BIPS < _ccbMinCollateralRatioBIPS &&
-            _ccbMinCollateralRatioBIPS <= _minCollateralRatioBIPS &&
+            SafePct.MAX_BIPS < _minCollateralRatioBIPS &&
             _minCollateralRatioBIPS <= _safetyMinCollateralRatioBIPS;
         require(ratiosValid, CollateralTypes.InvalidCollateralRatios());
         // update
         CollateralTypeInt.Data storage token = CollateralTypes.get(_collateralClass, _token);
         token.minCollateralRatioBIPS = _minCollateralRatioBIPS.toUint32();
-        token.ccbMinCollateralRatioBIPS = _ccbMinCollateralRatioBIPS.toUint32();
         token.safetyMinCollateralRatioBIPS = _safetyMinCollateralRatioBIPS.toUint32();
         emit IAssetManagerEvents.CollateralRatiosChanged(uint8(_collateralClass), address(_token),
-            _minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS);
+            _minCollateralRatioBIPS, _safetyMinCollateralRatioBIPS);
     }
 
     /**

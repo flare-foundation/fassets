@@ -365,14 +365,6 @@ contract AssetManagerController is
             IISettingsManagement.setWithdrawalOrDestroyWaitMinSeconds.selector, _value);
     }
 
-    function setCcbTimeSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
-        external
-        onlyImmediateGovernance
-    {
-        _setValueOnManagers(_assetManagers,
-            IISettingsManagement.setCcbTimeSeconds.selector, _value);
-    }
-
     function setAttestationWindowSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyImmediateGovernance
@@ -520,7 +512,6 @@ contract AssetManagerController is
         CollateralType.Class _class,
         IERC20 _token,
         uint256 _minCollateralRatioBIPS,
-        uint256 _ccbMinCollateralRatioBIPS,
         uint256 _safetyMinCollateralRatioBIPS
     )
         external
@@ -528,7 +519,7 @@ contract AssetManagerController is
     {
         _callOnManagers(_assetManagers,
             abi.encodeCall(IIAssetManager.setCollateralRatiosForToken,
-                (_class, _token, _minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS)));
+                (_class, _token, _minCollateralRatioBIPS, _safetyMinCollateralRatioBIPS)));
     }
 
     function deprecateCollateralType(
