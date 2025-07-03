@@ -2037,7 +2037,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
                 "@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165"
             );
             const IIAddressUpdatable = artifacts.require(
-                "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interfaces/IIAddressUpdatable.sol:IIAddressUpdatable" as "IIAddressUpdatable"
+                "@flarenetwork/flare-periphery-contracts/flare/addressUpdater/interfaces/IIAddressUpdatable.sol:IIAddressUpdatable" as "IIAddressUpdatable"
             );
             const IICoreVaultManager = artifacts.require("IICoreVaultManager");
             const ICoreVaultManager = artifacts.require("ICoreVaultManager");

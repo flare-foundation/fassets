@@ -5,7 +5,7 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {IIAddressUpdater}
-    from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interfaces/IIAddressUpdater.sol";
+    from "@flarenetwork/flare-periphery-contracts/flare/addressUpdater/interfaces/IIAddressUpdater.sol";
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {IISettingsManagement} from "../../assetManager/interfaces/IISettingsManagement.sol";
 import {IIAssetManagerController} from "../interfaces/IIAssetManagerController.sol";
@@ -21,7 +21,7 @@ import {IGoverned} from "../../governance/interfaces/IGoverned.sol";
 import {IAssetManagerController} from "../../userInterfaces/IAssetManagerController.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IIAddressUpdatable}
-    from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interfaces/IIAddressUpdatable.sol";
+    from "@flarenetwork/flare-periphery-contracts/flare/addressUpdater/interfaces/IIAddressUpdatable.sol";
 import {IAddressUpdatable} from "../../flareSmartContracts/interfaces/IAddressUpdatable.sol";
 import {IRedemptionTimeExtension} from "../../userInterfaces/IRedemptionTimeExtension.sol";
 import {GovernedBase} from "../../governance/implementation/GovernedBase.sol";

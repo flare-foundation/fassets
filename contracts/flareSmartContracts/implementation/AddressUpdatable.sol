@@ -2,7 +2,7 @@
 pragma solidity ^0.8.27;
 
 import {IIAddressUpdatable}
-    from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interfaces/IIAddressUpdatable.sol";
+    from "@flarenetwork/flare-periphery-contracts/flare/addressUpdater/interfaces/IIAddressUpdatable.sol";
 import {IAddressUpdatable} from "../interfaces/IAddressUpdatable.sol";
 
 

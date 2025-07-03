@@ -30,7 +30,7 @@
     "fasset_simulation": "yarn test test/e2e-simulation/fasset/FAssetSimulation.ts",
     "tsrun": "yarn ts-node --files=./type-extensions.ts",
     "---------COMPILE---SCRIPTS": "",
-    "clean": "env rm -rf cache artifacts build build-info typechain typechain-truffle",
+    "clean": "env rm -rf cache artifacts cache-forge artifacts-forge build build-info typechain typechain-truffle",
     "clean-all": "yarn clean && env rm -rf node_modules",
     "compile": "yarn hardhat compile && yarn typechain-truffle-v5",
     "c": "yarn compile && yarn lint",
@@ -85,8 +85,8 @@
     "gas": "cat .gas-report.txt"
   },
   "dependencies": {
-    "@flarenetwork/flare-periphery-contracts": "0.1.28",
-    "@openzeppelin/contracts": "4.9.2"
+    "@flarenetwork/flare-periphery-contracts": "0.1.30",
+    "@openzeppelin/contracts": "4.9.6"
   },
   "devDependencies": {
     "@eslint/compat": "^1.3.0",

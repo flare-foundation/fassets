@@ -12,7 +12,7 @@ import {IFdcVerification, IPayment} from "@flarenetwork/flare-periphery-contract
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 import {GovernedBase} from "../../governance/implementation/GovernedBase.sol";
 import {IIAddressUpdatable}
-    from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interfaces/IIAddressUpdatable.sol";
+    from "@flarenetwork/flare-periphery-contracts/flare/addressUpdater/interfaces/IIAddressUpdatable.sol";
 
 // import is needed for @inheritdoc
 import {ICoreVaultManager} from "../../userInterfaces/ICoreVaultManager.sol"; // solhint-disable-line no-unused-import
