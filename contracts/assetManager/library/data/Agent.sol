@@ -214,7 +214,7 @@ library Agent {
     }
 
     // Like get, but only fail if status is EMPTY.
-    // This is usefule for reading agent info after the agent has been destroyed.
+    // This is useful for reading agent info after the agent has been destroyed.
     function getAllowDestroyed(address _address)
         internal view
         returns (Agent.State storage)

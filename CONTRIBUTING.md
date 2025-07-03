@@ -23,7 +23,7 @@ yarn compile
 # all hardhat tests
 yarn test
 
-# unit and integration tests in hardhat environmet
+# unit and integration tests in hardhat environment
 yarn testHH`
 
 # only unit tests in hardhat environment

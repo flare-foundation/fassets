@@ -62,9 +62,6 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, ac
         }
     });
 
-    // TODO: creating agent vault now requires FDC proof of address validity,
-    // which takes 5 minutes and requires FDC API client, so skip it for now
-
     const testUnderlyingAddresses = {
         [SourceId.XRP]: 'r9N9XrsUKFJgaAwoL3qtefdjXVxjgxUqWi',
         [SourceId.testXRP]: 'r9N9XrsUKFJgaAwoL3qtefdjXVxjgxUqWi',

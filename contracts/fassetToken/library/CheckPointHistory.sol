@@ -13,7 +13,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 library CheckPointHistory {
     using SafeCast for uint256;
 
-    error ValueDoesntFitInOneNinetwoBits();
+    error ValueDoesNotFitInOneNineTwoBits();
     error CheckPointHistoryReadingFromCleanedupBlock();
 
     /**
@@ -188,7 +188,7 @@ library CheckPointHistory {
 
     // SafeCast lib is missing cast to uint192
     function _toUint192(uint256 _value) internal pure returns (uint192) {
-        require(_value < 2**192, ValueDoesntFitInOneNinetwoBits());
+        require(_value < 2**192, ValueDoesNotFitInOneNineTwoBits());
         return uint192(_value);
     }
 }

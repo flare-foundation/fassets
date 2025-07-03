@@ -167,7 +167,6 @@ export class SimulationAgent extends SimulationActor {
         if (mintedAssets.isZero()) return;
         const ownersAssets = await this.context.fAsset.balanceOf(this.ownerWorkAddress);
         if (ownersAssets.isZero()) return;
-        // TODO: buy fassets
         const amountUBA = randomBN(ownersAssets);
         if (this.avoidErrors && amountUBA.isZero()) return;
         await agent.selfClose(amountUBA)

@@ -32,7 +32,6 @@ library LiquidationPaymentStrategy {
         // its CR and pay more of the other. If both collaterals exceed CR, limit both to their CRs.
         _c1FactorBIPS = Math.min(settings.liquidationFactorVaultCollateralBIPS[step], factorBIPS);
         // prevent paying with invalid token (if there is enough of the other tokens)
-        // TODO: should we remove this - is it better to pay with invalidated vault collateral then with pool?
         CollateralTypeInt.Data storage vaultCollateral = _agent.getVaultCollateral();
         CollateralTypeInt.Data storage poolCollateral = _agent.getPoolCollateral();
         if (!vaultCollateral.isValid() && poolCollateral.isValid()) {

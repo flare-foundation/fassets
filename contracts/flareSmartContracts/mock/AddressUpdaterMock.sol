@@ -51,7 +51,7 @@ contract AddressUpdaterMock is IIAddressUpdater, Governed {
     }
 
     /**
-     * @notice Add or update contract names and addreses that are later used in updateContractAddresses calls
+     * @notice Add or update contract names and addresses that are later used in updateContractAddresses calls
      * @param _contractNames                contracts names
      * @param _contractAddresses            addresses of corresponding contracts names
      */
@@ -147,7 +147,7 @@ contract AddressUpdaterMock is IIAddressUpdater, Governed {
     }
 
     /**
-     * @notice Add or update contract names and addreses that are later used in updateContractAddresses calls
+     * @notice Add or update contract names and addresses that are later used in updateContractAddresses calls
      * @param _contractNames                contracts names
      * @param _contractAddresses            addresses of corresponding contracts names
      */

@@ -99,7 +99,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         underlyingBlocksForPayment: ci.underlyingBlocksForPayment,
         underlyingSecondsForPayment: ci.underlyingBlocksForPayment * ci.blockTime,
         redemptionFeeBIPS: toBIPS("2%"),
-        maxRedeemedTickets: 20,                                 // TODO: find number that fits comfortably in gas limits
+        maxRedeemedTickets: 20,
         redemptionDefaultFactorVaultCollateralBIPS: toBIPS(1.1),
         __redemptionDefaultFactorPoolBIPS: 0,
         confirmationByOthersAfterSeconds: 6 * HOURS,            // 6 hours

@@ -14,8 +14,7 @@ import {GovernedBase} from "../../governance/implementation/GovernedBase.sol";
 import {IIAddressUpdatable}
     from "@flarenetwork/flare-periphery-contracts/songbird/addressUpdater/interfaces/IIAddressUpdatable.sol";
 
-// TODO:(matej) this is needed for inherited docs and needs to be looked into
-// maybe we should inherit from IICoreVaultManager instead
+// import is needed for @inheritdoc
 import {ICoreVaultManager} from "../../userInterfaces/ICoreVaultManager.sol"; // solhint-disable-line no-unused-import
 
 //solhint-disable-next-line max-states-count

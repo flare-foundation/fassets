@@ -8,7 +8,7 @@ pragma solidity ^0.8.0;
 
 import { IDiamond } from "./IDiamond.sol";
 
-interface IDiamondCut is IDiamond {    
+interface IDiamondCut is IDiamond {
 
     /// @notice Add/replace/remove any number of functions and optionally execute
     ///         a function with delegatecall
@@ -20,5 +20,5 @@ interface IDiamondCut is IDiamond {
         FacetCut[] calldata _diamondCut,
         address _init,
         bytes calldata _calldata
-    ) external;    
+    ) external;
 }

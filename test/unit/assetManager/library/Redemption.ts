@@ -379,7 +379,6 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     });
 
     it("should self close all but 1 amg and get agent info", async () => {
-        // TODO: update NAT price to be higher than 1 amg, use 10000000000000.42
         const feeBIPS = toBIPS("10%");
         const poolFeeShareBIPS = toBIPS(0.4);
         const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
