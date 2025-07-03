@@ -42,7 +42,7 @@ library Minting {
         uint64 reservationAMG = _crt.valueAMG + Conversion.convertUBAToAmg(Minting.calculatePoolFeeUBA(agent, _crt));
         agent.reservedAMG = agent.reservedAMG - reservationAMG;
         state.totalReservedCollateralAMG -= reservationAMG;
-        assert(_status != CollateralReservation.Status.ACTIVE && _status != CollateralReservation.Status.EMPTY);
+        assert(_status != CollateralReservation.Status.ACTIVE);
         _crt.status = _status;
     }
 
@@ -56,10 +56,9 @@ library Minting {
         require(_crtId > 0, InvalidCrtId());
         AssetManagerState.State storage state = AssetManagerState.get();
         CollateralReservation.Data storage _crt = state.crts[_crtId];
+        require(_crt.valueAMG != 0, InvalidCrtId());
         if (_requireActive) {
             require(_crt.status == CollateralReservation.Status.ACTIVE, InvalidCrtId());
-        } else {
-            require(_crt.status != CollateralReservation.Status.EMPTY, InvalidCrtId());
         }
         return _crt;
     }

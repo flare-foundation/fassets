@@ -143,8 +143,6 @@ contract SystemInfoFacet is AssetManagerBase {
         } else if (_status == CollateralReservation.Status.DEFAULTED) {
             return CollateralReservationInfo.Status.DEFAULTED;
         } else {
-            // status EMPTY cannot happen, because getCollateralReservationAllowComplete never returns empty crts
-            assert(_status == CollateralReservation.Status.EXPIRED);
             return CollateralReservationInfo.Status.EXPIRED;
         }
     }
