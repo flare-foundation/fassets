@@ -126,15 +126,6 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20, UUPSUpgradeable {
         }
     }
 
-    function destroy(
-        address payable _recipient
-    )
-        external
-        onlyCollateralPool
-    { // solhint-disable-line no-empty-blocks
-        // do nothing since selfdestruct is deprecated
-    }
-
     function lockedBalanceOf(
         address _account
     )

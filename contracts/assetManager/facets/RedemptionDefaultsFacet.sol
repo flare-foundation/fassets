@@ -81,7 +81,7 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         // pay the executor if the executor called this
         // guarded against reentrancy in RedemptionDefaultsFacet
         Redemptions.payOrBurnExecutorFee(request);
-        // don't delete redemption request at end - the agent might still confirm failed payment
+        // don't finish redemption request at end - the agent might still confirm failed payment
         request.status = Redemption.Status.DEFAULTED;
     }
 
@@ -125,8 +125,8 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
             // make sure it cannot be defaulted again
             request.status = Redemption.Status.DEFAULTED;
         }
-        // we do not delete redemption request here, because we cannot be certain that proofs have expired,
-        // so deleting the request could lead to successful challenge of the agent that paid, but the proof expired
+        // we do not finish redemption request here, because we cannot be certain that proofs have expired,
+        // so finishing the request could lead to successful challenge of the agent that paid, but the proof expired
     }
 
     function _othersCanConfirmDefault(

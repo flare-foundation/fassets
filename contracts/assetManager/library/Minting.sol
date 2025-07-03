@@ -51,16 +51,15 @@ library Minting {
         bool _requireActive
     )
         internal view
-        returns (CollateralReservation.Data storage)
+        returns (CollateralReservation.Data storage _crt)
     {
         require(_crtId > 0, InvalidCrtId());
         AssetManagerState.State storage state = AssetManagerState.get();
-        CollateralReservation.Data storage _crt = state.crts[_crtId];
+        _crt = state.crts[_crtId];
         require(_crt.valueAMG != 0, InvalidCrtId());
         if (_requireActive) {
             require(_crt.status == CollateralReservation.Status.ACTIVE, InvalidCrtId());
         }
-        return _crt;
     }
 
     function checkMintingCap(

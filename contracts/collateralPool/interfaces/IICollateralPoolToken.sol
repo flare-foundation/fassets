@@ -10,5 +10,4 @@ interface IICollateralPoolToken is ICollateralPoolToken, IERC165 {
 
     function mint(address _account, uint256 _amount) external returns (uint256 _timelockExpiresAt);
     function burn(address _account, uint256 _amount, bool _ignoreTimelocked) external;
-    function destroy(address payable _recipient) external;
 }

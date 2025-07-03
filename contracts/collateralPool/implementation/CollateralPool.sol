@@ -770,7 +770,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         nonReentrant
     {
         require(token.totalSupply() == 0, CannotDestroyPoolWithIssuedTokens());
-        token.destroy(_recipient);
         // transfer native balance as WNat, if any
         Transfers.depositWNat(wNat, _recipient, address(this).balance);
         // transfer untracked f-assets and wNat, if any

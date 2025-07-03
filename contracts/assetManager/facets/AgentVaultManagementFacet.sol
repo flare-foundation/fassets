@@ -140,7 +140,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
     }
 
     /**
-     * Delete all agent data, selfdestruct agent vault and send remaining collateral to the `_recipient`.
+     * Destroy agent - agent vault and collateral pool (send remaining collateral to the `_recipient`).
      * Procedure for destroying agent:
      * - exit available agents list
      * - wait until all assets are redeemed or perform self-close
