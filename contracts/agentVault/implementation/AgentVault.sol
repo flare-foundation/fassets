@@ -25,8 +25,6 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
 
     bool private destroyed;
 
-    address private __ownerAfterDestroy;
-
     modifier onlyOwner {
         require(isOwner(msg.sender), OnlyOwner());
         _;
