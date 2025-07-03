@@ -32,28 +32,36 @@ library Minting {
     }
 
     function releaseCollateralReservation(
-        CollateralReservation.Data storage crt,
-        uint256 _crtId
+        CollateralReservation.Data storage _crt,
+        CollateralReservation.Status _status
     )
         internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        Agent.State storage agent = Agent.get(crt.agentVault);
-        uint64 reservationAMG = crt.valueAMG + Conversion.convertUBAToAmg(Minting.calculatePoolFeeUBA(agent, crt));
+        Agent.State storage agent = Agent.get(_crt.agentVault);
+        uint64 reservationAMG = _crt.valueAMG + Conversion.convertUBAToAmg(Minting.calculatePoolFeeUBA(agent, _crt));
         agent.reservedAMG = agent.reservedAMG - reservationAMG;
         state.totalReservedCollateralAMG -= reservationAMG;
-        delete state.crts[_crtId];
+        assert(_status != CollateralReservation.Status.ACTIVE && _status != CollateralReservation.Status.EMPTY);
+        _crt.status = _status;
     }
 
     function getCollateralReservation(
-        uint256 _crtId
+        uint256 _crtId,
+        bool _requireActive
     )
         internal view
         returns (CollateralReservation.Data storage)
     {
+        require(_crtId > 0, InvalidCrtId());
         AssetManagerState.State storage state = AssetManagerState.get();
-        require(_crtId > 0 && state.crts[_crtId].valueAMG != 0, InvalidCrtId());
-        return state.crts[_crtId];
+        CollateralReservation.Data storage _crt = state.crts[_crtId];
+        if (_requireActive) {
+            require(_crt.status == CollateralReservation.Status.ACTIVE, InvalidCrtId());
+        } else {
+            require(_crt.status != CollateralReservation.Status.EMPTY, InvalidCrtId());
+        }
+        return _crt;
     }
 
     function checkMintingCap(

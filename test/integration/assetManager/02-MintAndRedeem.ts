@@ -1,3 +1,4 @@
+import { CollateralReservationStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
@@ -93,6 +94,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(agentFeeShare, minted.agentFeeUBA);
             const mintedUBA = crt.valueUBA.add(poolFeeShare);
             await agent.checkAgentInfo({ mintedUBA: mintedUBA, reservedUBA: 0 });
+            // check that executing minting after confirmation will revert
+            const txHash2 = await minter.performMintingPayment(crt);
+            await expectRevert.custom(minter.executeMinting(crt, txHash2), "InvalidCrtId", []);
             // check that fee was not burned
             assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), 0);
             // redeemer "buys" f-assets
@@ -874,11 +878,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(crInfo.poolFeeShareBIPS, agentInfo.poolFeeShareBIPS);
             assertWeb3Equal(crInfo.executor, mintReq.executor);
             assertWeb3Equal(crInfo.executorFeeNatWei, mintReq.executorFeeNatWei);
+            assertWeb3Equal(crInfo.status, CollateralReservationStatus.ACTIVE);
             // execute mint
             const mintTxHash = await minter.performMintingPayment(mintReq);
             const minted = await minter.executeMinting(mintReq, mintTxHash);
-            // now the info will fail
-            await expectRevert.custom(context.assetManager.collateralReservationInfo(mintReq.collateralReservationId), "InvalidCrtId", []);
+            // now the info still works, but success status has changed
+            const crInfo2 = await context.assetManager.collateralReservationInfo(mintReq.collateralReservationId);
+            assertWeb3Equal(crInfo2.status, CollateralReservationStatus.SUCCESSFUL);
             // redeem
             await minter.transferFAsset(redeemer.address, context.convertLotsToUBA(5));
             const [[redeemReq]] = await redeemer.requestRedemption(5, executorAddress1, toWei("0.02"));
@@ -910,6 +916,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await agent.performRedemptions([redeemReq]);
             // now info should fail, because the redemption request has been deleted
             await expectRevert.custom(context.assetManager.redemptionRequestInfo(redeemReq.requestId), "InvalidRequestId", []);
+        });
+
+        it("collateral reservation and redemption info revert if the id isn't valid", async () => {
+            await expectRevert.custom(context.assetManager.collateralReservationInfo(100), "InvalidCrtId", []);
         });
     });
 });

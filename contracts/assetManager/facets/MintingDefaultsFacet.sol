@@ -47,7 +47,7 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         external
         nonReentrant
     {
-        CollateralReservation.Data storage crt = Minting.getCollateralReservation(_crtId);
+        CollateralReservation.Data storage crt = Minting.getCollateralReservation(_crtId, true);
         require(!_proof.data.requestBody.checkSourceAddresses, SourceAddressesNotSupported());
         Agent.State storage agent = Agent.get(crt.agentVault);
         Agents.requireAgentVaultOwner(agent);
@@ -69,7 +69,7 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         // calculate total fee before deleting collateral reservation
         uint256 totalFee = crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI;
         // release agent's reserved collateral
-        Minting.releaseCollateralReservation(crt, _crtId); // crt can't be used after this
+        Minting.releaseCollateralReservation(crt, CollateralReservation.Status.DEFAULTED);
         // share collateral reservation fee between the agent's vault and pool
         Minting.distributeCollateralReservationFee(agent, totalFee);
     }
@@ -95,7 +95,7 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         nonReentrant
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        CollateralReservation.Data storage crt = Minting.getCollateralReservation(_crtId);
+        CollateralReservation.Data storage crt = Minting.getCollateralReservation(_crtId, true);
         Agent.State storage agent = Agent.get(crt.agentVault);
         Agents.requireAgentVaultOwner(agent);
         // verify proof
@@ -116,7 +116,7 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         uint256 reservedValueUBA = Conversion.convertAmgToUBA(crt.valueAMG) + Minting.calculatePoolFeeUBA(agent, crt);
         emit IAssetManagerEvents.CollateralReservationDeleted(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
         // release agent's reserved collateral
-        Minting.releaseCollateralReservation(crt, _crtId); // crt can't be used after this
+        Minting.releaseCollateralReservation(crt, CollateralReservation.Status.EXPIRED);
         // If there is some overpaid NAT, send it back.
         Transfers.transferNAT(payable(msg.sender), msg.value - burnedNatWei);
     }

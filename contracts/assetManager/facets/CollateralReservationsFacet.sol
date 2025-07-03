@@ -104,13 +104,14 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
         cr.firstUnderlyingBlock = state.currentUnderlyingBlock;
         cr.lastUnderlyingBlock = lastUnderlyingBlock;
         cr.lastUnderlyingTimestamp = lastUnderlyingTimestamp;
+        cr.status = CollateralReservation.Status.ACTIVE;
         // store cr
         state.crts[crtId] = cr;
         // emit event
         _emitCollateralReservationEvent(agent, cr, crtId);
         // if executor is not set, we return the change to the minter
         if (cr.executor == address(0) && msg.value > reservationFee) {
-            Transfers.transferNAT(payable(cr.minter), msg.value - reservationFee); // cr.minter = msg.sender
+            Transfers.transferNAT(payable(msg.sender), msg.value - reservationFee);
         }
         return crtId;
     }

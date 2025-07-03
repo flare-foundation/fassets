@@ -82,7 +82,7 @@ contract SystemInfoFacet is AssetManagerBase {
         returns (CollateralReservationInfo.Data memory)
     {
         uint64 crtId = SafeCast.toUint64(_collateralReservationId);
-        CollateralReservation.Data storage crt = Minting.getCollateralReservation(crtId);
+        CollateralReservation.Data storage crt = Minting.getCollateralReservation(crtId, false);
         Agent.State storage agent = Agent.get(crt.agentVault);
         return CollateralReservationInfo.Data({
             collateralReservationId: crtId,
@@ -98,7 +98,8 @@ contract SystemInfoFacet is AssetManagerBase {
             lastUnderlyingBlock: crt.lastUnderlyingBlock,
             lastUnderlyingTimestamp: crt.lastUnderlyingTimestamp,
             executor: crt.executor,
-            executorFeeNatWei: crt.executorFeeNatGWei * Conversion.GWEI
+            executorFeeNatWei: crt.executorFeeNatGWei * Conversion.GWEI,
+            status: _convertCollateralReservationStatus(crt.status)
         });
     }
 
@@ -131,5 +132,22 @@ contract SystemInfoFacet is AssetManagerBase {
             executor: request.executor,
             executorFeeNatWei: request.executorFeeNatGWei * Conversion.GWEI
         });
+    }
+
+    function _convertCollateralReservationStatus(CollateralReservation.Status _status)
+        private pure
+        returns (CollateralReservationInfo.Status)
+    {
+        if (_status == CollateralReservation.Status.ACTIVE) {
+            return CollateralReservationInfo.Status.ACTIVE;
+        } else if (_status == CollateralReservation.Status.SUCCESSFUL) {
+            return CollateralReservationInfo.Status.SUCCESSFUL;
+        } else if (_status == CollateralReservation.Status.DEFAULTED) {
+            return CollateralReservationInfo.Status.DEFAULTED;
+        } else {
+            // status EMPTY cannot happen, because getCollateralReservationAllowComplete never returns empty crts
+            assert(_status == CollateralReservation.Status.EXPIRED);
+            return CollateralReservationInfo.Status.EXPIRED;
+        }
     }
 }

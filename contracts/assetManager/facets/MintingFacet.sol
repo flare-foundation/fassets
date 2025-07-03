@@ -65,7 +65,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         external
         nonReentrant
     {
-        CollateralReservation.Data storage crt = Minting.getCollateralReservation(_crtId);
+        CollateralReservation.Data storage crt = Minting.getCollateralReservation(_crtId, true);
         Agent.State storage agent = Agent.get(crt.agentVault);
         // verify transaction
         TransactionAttestation.verifyPaymentSuccess(_payment);
@@ -99,7 +99,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         // add the executor fee if it is not claimed by the executor
         uint256 totalFee = crt.reservationFeeNatWei + executorFee - claimedExecutorFee;
         // release agent's reserved collateral
-        Minting.releaseCollateralReservation(crt, _crtId); // crt can't be used after this
+        Minting.releaseCollateralReservation(crt, CollateralReservation.Status.SUCCESSFUL);
         // share collateral reservation fee between the agent's vault and pool
         Minting.distributeCollateralReservationFee(agent, totalFee);
         // pay executor in WNat to avoid reentrancy

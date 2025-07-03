@@ -1,3 +1,4 @@
+import { CollateralReservationStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
@@ -79,6 +80,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee.sub(poolFee));
             assertWeb3Equal(endBalancePool.sub(startBalancePool), poolFee);
             assertWeb3Equal(endTotalCollateralPool.sub(startTotalCollateralPool), poolFee);
+            // check the final minting status
+            const crinfo = await context.assetManager.collateralReservationInfo(crt.collateralReservationId);
+            assertWeb3Equal(crinfo.status, CollateralReservationStatus.DEFAULTED);
             // check that executing minting after calling mintingPaymentDefault will revert
             const txHash = await minter.performMintingPayment(crt);
             await expectRevert.custom(minter.executeMinting(crt, txHash), "InvalidCrtId", []);
@@ -117,6 +121,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee.sub(poolFee));
             assertWeb3Equal(endBalancePool.sub(startBalancePool), poolFee);
             assertWeb3Equal(endTotalCollateralPool.sub(startTotalCollateralPool), poolFee);
+            // check the final minting status
+            const crinfo = await context.assetManager.collateralReservationInfo(crt.collateralReservationId);
+            assertWeb3Equal(crinfo.status, CollateralReservationStatus.DEFAULTED);
             // check that executing minting after calling mintingPaymentDefault will revert
             const txHash = await minter.performMintingPayment(crt);
             await expectRevert.custom(minter.executeMinting(crt, txHash), "InvalidCrtId", []);
@@ -169,6 +176,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const burnedNAT = await agent.vaultCollateralToNatBurned(reservedCollateral);
             assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), burnedNAT.add(crFee));
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(reservedCollateral), freeUnderlyingBalanceUBA: 0, mintedUBA: 0, reservedUBA: 0 });
+            // check the final minting status
+            const crinfo = await context.assetManager.collateralReservationInfo(crt.collateralReservationId);
+            assertWeb3Equal(crinfo.status, CollateralReservationStatus.EXPIRED);
             // check that executing minting after calling unstickMinting will revert
             const txHash = await minter.performMintingPayment(crt);
             await expectRevert.custom(minter.executeMinting(crt, txHash), "InvalidCrtId", []);
@@ -216,6 +226,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // check that fee and nat worth of reserved collateral (plus premium) were burned
             const burnedNAT = await agent.vaultCollateralToNatBurned(reservedCollateral);
             assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), burnedNAT.add(crFee));
+            // check the final minting status
+            const crinfo = await context.assetManager.collateralReservationInfo(crt.collateralReservationId);
+            assertWeb3Equal(crinfo.status, CollateralReservationStatus.EXPIRED);
             // check that executing minting after calling unstickMinting will revert
             const txHash = await minter.performMintingPayment(crt);
             await expectRevert.custom(minter.executeMinting(crt, txHash), "InvalidCrtId", []);
@@ -264,6 +277,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // check that fee and nat worth of reserved collateral (plus premium) were burned
             const burnedNAT = await agent.vaultCollateralToNatBurned(reservedCollateral);
             assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), burnedNAT.add(crFee));
+            // check the final minting status
+            const crinfo = await context.assetManager.collateralReservationInfo(crt.collateralReservationId);
+            assertWeb3Equal(crinfo.status, CollateralReservationStatus.EXPIRED);
             // check that executing minting after calling unstickMinting will revert
             await expectRevert.custom(minter.executeMinting(crt, txHash), "InvalidCrtId", []);
             // agent can exit now

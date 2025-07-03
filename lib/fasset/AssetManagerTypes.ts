@@ -42,6 +42,13 @@ export type AgentSetting =
 type _RedemptionTicketInfo = Awaited<ReturnType<IIAssetManagerInstance['redemptionQueue']>>[0][0];
 export interface RedemptionTicketInfo extends _RedemptionTicketInfo {}
 
+export enum CollateralReservationStatus {
+    ACTIVE,         // the minting process hasn't finished yet
+    SUCCESSFUL,     // the payment has been confirmed and the FAssets minted
+    DEFAULTED,      // the payment has defaulted and the agent received the collateral reservation fee
+    EXPIRED         // the confirmation time has expired and the agent called unstickMinting
+}
+
 // explicit conversions
 
 export function collateralClass(value: BN | number | string) {
@@ -50,4 +57,8 @@ export function collateralClass(value: BN | number | string) {
 
 export function agentStatus(value: BN | number | string) {
     return Number(value) as AgentStatus;
+}
+
+export function collateralReservationSuccess(value: BN | number | string) {
+    return Number(value) as CollateralReservationStatus;
 }
