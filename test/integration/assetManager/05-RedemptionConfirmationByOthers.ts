@@ -91,6 +91,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(challengerVaultCollateralReward), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.feeUBA), redeemingUBA: 0 });
             await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "ChallengeTransactionAlreadyConfirmed", []);
             const endChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
+            // check that calling finishRedemptionWithoutPayment after confirming redemption payment will revert because of invalid id
+            await expectRevert.custom(agent.finishRedemptionWithoutPayment(request), "InvalidRequestId", []);
             // test rewarding
             assertWeb3Equal(endChallengerVaultCollateralBalance.sub(startChallengerVaultCollateralBalance), challengerVaultCollateralReward);
             // agent can exit now
@@ -136,6 +138,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(challengerVaultCollateralReward), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.valueUBA).subn(100), redeemingUBA: 0 });
             await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "ChallengeTransactionAlreadyConfirmed", []);
             const endChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
+            // check that calling finishRedemptionWithoutPayment after confirming redemption payment will revert because of invalid id
+            await expectRevert.custom(agent.finishRedemptionWithoutPayment(request), "InvalidRequestId", []);
             // test rewarding
             assertWeb3Equal(endChallengerVaultCollateralBalance.sub(startChallengerVaultCollateralBalance), challengerVaultCollateralReward);
             // agent can exit now
@@ -199,6 +203,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(startVaultCollateralBalanceAgent.sub(endVaultCollateralBalanceAgent), challengerVaultCollateralReward.add(res[1].redeemedVaultCollateralWei));
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), res[1].redeemedPoolCollateralWei);
             assertWeb3Equal(startPoolBalanceAgent.sub(endPoolBalanceAgent), res[1].redeemedPoolCollateralWei);
+            // check that calling finishRedemptionWithoutPayment after confirming redemption payment will revert because of invalid id
+            await expectRevert.custom(agent.finishRedemptionWithoutPayment(request), "InvalidRequestId", []);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(challengerVaultCollateralReward).sub(res[1].redeemedVaultCollateralWei));
         });
@@ -264,7 +270,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const endChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
             // test rewarding
             assertWeb3Equal(endChallengerVaultCollateralBalance.sub(startChallengerVaultCollateralBalance), challengerVaultCollateralReward);
-            // check that calling finishRedemptionWithoutPayment after confirming redemption payment will revert
+            // check that calling finishRedemptionWithoutPayment after confirming redemption payment will revert because of invalid id
             await expectRevert.custom(agent.finishRedemptionWithoutPayment(request), "InvalidRequestId", []);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(res.redeemedVaultCollateralWei).sub(challengerVaultCollateralReward));
