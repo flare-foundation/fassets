@@ -49,6 +49,16 @@ export enum CollateralReservationStatus {
     EXPIRED         // the confirmation time has expired and the agent called unstickMinting
 }
 
+export enum RedemptionRequestStatus {
+    ACTIVE,                 // waiting for confirmation/default
+    DEFAULTED_UNCONFIRMED,  // default called, failed or late payment can still be confirmed
+    // final statuses - there can be no valid payment for this redemption anymore
+    SUCCESSFUL,             // successful payment confirmed
+    DEFAULTED_FAILED,       // payment failed   (default was paid)
+    BLOCKED,                // payment blocked
+    REJECTED                // redemption request rejected due to invalid redeemer's address
+}
+
 // explicit conversions
 
 export function collateralClass(value: BN | number | string) {
@@ -59,6 +69,10 @@ export function agentStatus(value: BN | number | string) {
     return Number(value) as AgentStatus;
 }
 
-export function collateralReservationSuccess(value: BN | number | string) {
+export function collateralReservationStatus(value: BN | number | string) {
     return Number(value) as CollateralReservationStatus;
+}
+
+export function redemptionRequestStatus(value: BN | number | string) {
+    return Number(value) as RedemptionRequestStatus;
 }

@@ -1,4 +1,4 @@
-import { CollateralReservationStatus } from "../../../lib/fasset/AssetManagerTypes";
+import { CollateralReservationStatus, RedemptionRequestStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
@@ -109,9 +109,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assert.equal(redemptionRequests.length, 1);
             const request = redemptionRequests[0];
             assert.equal(request.agentVault, agent.vaultAddress);
+            // pay and confirm
             const tx1Hash = await agent.performRedemptionPayment(request);
             await agent.confirmActiveRedemptionPayment(request, tx1Hash);
             await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: agentFeeShare.add(request.feeUBA), redeemingUBA: 0 });
+            // redemption request info should show SUCCESSFUL state
+            const redeemInfo = await context.assetManager.redemptionRequestInfo(request.requestId);
+            assertWeb3Equal(redeemInfo.status, RedemptionRequestStatus.SUCCESSFUL);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);
         });
@@ -911,11 +915,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // info should still return, but status is now DEFAULTED
             const redeemInfo2 = await context.assetManager.redemptionRequestInfo(redeemReq.requestId);
             assertWeb3Equal(redeemInfo2.redemptionRequestId, redeemReq.requestId);
-            assertWeb3Equal(redeemInfo2.status, 1);
+            assertWeb3Equal(redeemInfo2.status, RedemptionRequestStatus.DEFAULTED_UNCONFIRMED);
             // now pay too late and confirm payment
             await agent.performRedemptions([redeemReq]);
-            // now info should fail, because the redemption request has been deleted
-            await expectRevert.custom(context.assetManager.redemptionRequestInfo(redeemReq.requestId), "InvalidRequestId", []);
+            // info should now show FAILED state
+            const redeemInfo3 = await context.assetManager.redemptionRequestInfo(redeemReq.requestId);
+            assertWeb3Equal(redeemInfo3.status, RedemptionRequestStatus.DEFAULTED_FAILED);
         });
 
         it("collateral reservation and redemption info revert if the id isn't valid", async () => {

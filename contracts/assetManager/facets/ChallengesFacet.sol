@@ -11,6 +11,7 @@ import {AgentPayout} from "../library/AgentPayout.sol";
 import {Conversion} from "../library/Conversion.sol";
 import {Globals} from "../library/Globals.sol";
 import {Liquidation} from "../library/Liquidation.sol";
+import {Redemptions} from "../library/Redemptions.sol";
 import {TransactionAttestation} from "../library/TransactionAttestation.sol";
 import {UnderlyingBalance} from "../library/UnderlyingBalance.sol";
 import {Agent} from "../library/data/Agent.sol";
@@ -77,9 +78,7 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
                 // We do not check for timestamp of the payment, because on UTXO chains legal payments can be
                 // delayed by arbitrary time due to high fees and cannot be canceled, which could lead to
                 // unnecessary full liquidations.
-                bool redemptionActive = redemption.agentVault == _agentVault
-                    && (redemption.status == Redemption.Status.ACTIVE ||
-                        redemption.status == Redemption.Status.DEFAULTED);
+                bool redemptionActive = redemption.agentVault == _agentVault && Redemptions.isOpen(redemption);
                 require(!redemptionActive, MatchingRedemptionActive());
             }
             if (PaymentReference.isValid(paymentReference, PaymentReference.ANNOUNCED_WITHDRAWAL)) {
@@ -173,10 +172,13 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
             }
             bytes32 paymentReference = pmi.data.responseBody.standardPaymentReference;
             if (PaymentReference.isValid(paymentReference, PaymentReference.REDEMPTION)) {
-                // for redemption, we don't count the value that should be paid to free balance deduction
+                // for open redemption, we don't count the value that should be paid to free balance deduction.
+                // Note that we don't need to check that the redemption is for this agent, because payments
+                // with redemption reference for other agent can be immediatelly challenged as illegal.
                 uint256 redemptionId = PaymentReference.decodeId(pmi.data.responseBody.standardPaymentReference);
                 Redemption.Request storage request = state.redemptionRequests[redemptionId];
-                total += pmi.data.responseBody.spentAmount - SafeCast.toInt256(request.underlyingValueUBA);
+                uint256 redemptionValue = Redemptions.isOpen(request) ? request.underlyingValueUBA : 0;
+                total += pmi.data.responseBody.spentAmount - SafeCast.toInt256(redemptionValue);
             } else {
                 // for other payment types (announced withdrawal), everything is paid from free balance
                 total += pmi.data.responseBody.spentAmount;

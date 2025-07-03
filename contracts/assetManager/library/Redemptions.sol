@@ -137,33 +137,55 @@ library Redemptions {
         AgentBacking.createNewMinting(_agent, _request.valueAMG);
     }
 
-    function deleteRedemptionRequest(uint256 _redemptionRequestId)
+    function finishRedemptionRequest(
+        uint256 _redemptionRequestId,
+        Redemption.Request storage _request,
+        Redemption.Status _status
+    )
         internal
     {
-        releaseTransferToCoreVault(_redemptionRequestId);
-        AssetManagerState.State storage state = AssetManagerState.get();
-        delete state.redemptionRequests[_redemptionRequestId];
+        assert(_status >= Redemption.Status.SUCCESSFUL);    // must be a final status
+        _request.status = _status;
+        releaseTransferToCoreVault(_redemptionRequestId, _request);
     }
 
-    function releaseTransferToCoreVault(uint256 _redemptionRequestId)
+    function releaseTransferToCoreVault(
+        uint256 _redemptionRequestId,
+        Redemption.Request storage _request
+    )
         internal
     {
-        Redemption.Request storage request = getRedemptionRequest(_redemptionRequestId);
-        if (request.transferToCoreVault) {
-            Agent.State storage agent = Agent.get(request.agentVault);
+        if (_request.transferToCoreVault) {
+            Agent.State storage agent = Agent.get(_request.agentVault);
             if (agent.activeTransferToCoreVault == _redemptionRequestId) {
                 agent.activeTransferToCoreVault = 0;
             }
         }
     }
 
-    function getRedemptionRequest(uint256 _redemptionRequestId)
+    function getRedemptionRequest(
+        uint256 _redemptionRequestId,
+        bool _requireUnconfirmed
+    )
         internal view
         returns (Redemption.Request storage _request)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         require(_redemptionRequestId != 0, InvalidRequestId());
         _request = state.redemptionRequests[_redemptionRequestId];
-        require(_request.status != Redemption.Status.EMPTY, InvalidRequestId());
+        if (_requireUnconfirmed) {
+            require(isOpen(_request), InvalidRequestId());
+        } else {
+            require(_request.status != Redemption.Status.EMPTY, InvalidRequestId());
+        }
+    }
+
+    // true if redemption is valid and has not been confirmed yet
+    function isOpen(Redemption.Request storage _request)
+        internal view
+        returns (bool)
+    {
+        Redemption.Status status = _request.status;
+        return status == Redemption.Status.ACTIVE || status == Redemption.Status.DEFAULTED;
     }
 }

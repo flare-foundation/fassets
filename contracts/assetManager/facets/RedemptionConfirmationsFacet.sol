@@ -60,7 +60,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
         external
         nonReentrant
     {
-        Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
+        Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId, true);
         Agent.State storage agent = Agent.get(request.agentVault);
         // Usually, we require the agent to trigger confirmation.
         // But if the agent doesn't respond for long enough,
@@ -89,19 +89,23 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
             InvalidReceivingAddressSelected());
         // Valid payments are to correct destination, in time, and must have value at least the request payment value.
         (bool paymentValid, string memory failureReason) = _validatePayment(request, _payment);
+        Redemption.Status finalStatus;
         if (paymentValid) {
-            assert(request.status == Redemption.Status.ACTIVE); // checked in _validatePayment
+            assert(request.status == Redemption.Status.ACTIVE); // checked in _validatePayment that is not DEFAULTED
             // release agent collateral
             AgentBacking.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
-            // notify
+            // mark and notify
             if (_payment.data.responseBody.status == TransactionAttestation.PAYMENT_SUCCESS) {
+                finalStatus = Redemption.Status.SUCCESSFUL;
                 emit IAssetManagerEvents.RedemptionPerformed(request.agentVault, request.redeemer,
                     _redemptionRequestId, _payment.data.requestBody.transactionId, request.underlyingValueUBA,
                     _payment.data.responseBody.spentAmount);
                 if (request.transferToCoreVault) {
                     CoreVaultClient.confirmTransferToCoreVault(_payment, agent, _redemptionRequestId);
                 }
-            } else {    // _payment.status == TransactionAttestation.PAYMENT_BLOCKED
+            } else {
+                assert(_payment.data.responseBody.status == TransactionAttestation.PAYMENT_BLOCKED);
+                finalStatus = Redemption.Status.BLOCKED;
                 emit IAssetManagerEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer,
                     _redemptionRequestId, _payment.data.requestBody.transactionId, request.underlyingValueUBA,
                     _payment.data.responseBody.spentAmount);
@@ -109,6 +113,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
             // charge the redemption pool fee share by re-minting some fassets
             _mintPoolFee(agent, request, _redemptionRequestId);
         } else {
+            finalStatus = Redemption.Status.FAILED;
             // We do not allow retrying failed payments, so just default or cancel here if not defaulted already.
             if (request.status == Redemption.Status.ACTIVE) {
                 RedemptionDefaults.executeDefaultOrCancel(agent, request, _redemptionRequestId);
@@ -134,8 +139,8 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
         Liquidation.endLiquidationIfHealthy(agent);
         // update underlying block
         UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
-        // delete redemption request at end
-        Redemptions.deleteRedemptionRequest(_redemptionRequestId);
+        // finish
+        Redemptions.finishRedemptionRequest(_redemptionRequestId, request, finalStatus);
     }
 
     function _mintPoolFee(

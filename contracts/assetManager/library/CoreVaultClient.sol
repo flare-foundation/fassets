@@ -74,7 +74,7 @@ library CoreVaultClient {
         onlyEnabled
     {
         // core vault transfer default - re-create tickets
-        Redemptions.releaseTransferToCoreVault(_redemptionRequestId);
+        Redemptions.releaseTransferToCoreVault(_redemptionRequestId, _request);
         Redemptions.reCreateRedemptionTicket(_agent, _request);
         emit ICoreVaultClient.TransferToCoreVaultDefaulted(_agent.vaultAddress(), _redemptionRequestId,
             _request.underlyingValueUBA);

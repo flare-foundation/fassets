@@ -199,7 +199,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         external
         nonReentrant
     {
-        Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
+        Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId, true);
         assert(!request.transferToCoreVault);   // we have a problem if core vault has invalid address
         Agent.State storage agent = Agent.get(request.agentVault);
         // check status
@@ -223,8 +223,8 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         uint256 valueUBA = Conversion.convertAmgToUBA(request.valueAMG);
         emit IAssetManagerEvents.RedemptionRejected(request.agentVault, request.redeemer,
             _redemptionRequestId, valueUBA);
-        // delete redemption request at end
-        Redemptions.deleteRedemptionRequest(_redemptionRequestId);
+        // finish redemption request at end
+        Redemptions.finishRedemptionRequest(_redemptionRequestId, request, Redemption.Status.REJECTED);
     }
 
     /**

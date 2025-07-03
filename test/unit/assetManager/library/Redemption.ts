@@ -1,4 +1,4 @@
-import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, CollateralType, RedemptionRequestStatus } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { TestChainInfo, testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { impersonateContract, stopImpersonatingContract } from "../../../../lib/test-utils/contract-test-helpers";
@@ -727,6 +727,9 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         expectEvent(res, 'RedemptionRejected', { requestId: request.requestId, redemptionAmountUBA: request.valueUBA });
         const agentInfo3 = await assetManager.getAgentInfo(agentVault.address);
         assert.equal(Number(agentInfo3.freeCollateralLots), Number(agentInfo1.freeCollateralLots));
+        // redemption request info should show DEFAULTED_UNCONFIRMED state
+        const redeemInfo = await assetManager.redemptionRequestInfo(request.requestId);
+        assertWeb3Equal(redeemInfo.status, RedemptionRequestStatus.REJECTED);
     });
 
     it("mint and redeem with address validation - address not normalized", async () => {
@@ -742,6 +745,9 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         expectEvent(res, 'RedemptionRejected', { requestId: request.requestId, redemptionAmountUBA: request.valueUBA });
         const agentInfo3 = await assetManager.getAgentInfo(agentVault.address);
         assert.equal(Number(agentInfo3.freeCollateralLots), Number(agentInfo1.freeCollateralLots));
+        // redemption request info should show DEFAULTED_UNCONFIRMED state
+        const redeemInfo = await assetManager.redemptionRequestInfo(request.requestId);
+        assertWeb3Equal(redeemInfo.status, RedemptionRequestStatus.REJECTED);
     });
 
     it("mint and redeem with address validation - valid address", async () => {
@@ -757,6 +763,9 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await expectRevert.custom(promise, "AddressValid", []);
         const agentInfo3 = await assetManager.getAgentInfo(agentVault.address);
         assert.equal(Number(agentInfo3.freeCollateralLots), Number(agentInfo1.freeCollateralLots) - 2);
+        // redemption request info should show ACTIVE state
+        const redeemInfo = await assetManager.redemptionRequestInfo(request.requestId);
+        assertWeb3Equal(redeemInfo.status, RedemptionRequestStatus.ACTIVE);
     });
 
     it("mint and redeem with address validation - only owner", async () => {

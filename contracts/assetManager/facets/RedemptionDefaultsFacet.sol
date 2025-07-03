@@ -49,7 +49,7 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         nonReentrant
     {
         require(!_proof.data.requestBody.checkSourceAddresses, SourceAddressesNotSupported());
-        Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
+        Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId, true);
         Agent.State storage agent = Agent.get(request.agentVault);
         require(request.status == Redemption.Status.ACTIVE, InvalidRedemptionStatus());
         // verify transaction
@@ -102,7 +102,7 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         nonReentrant
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
+        Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId, true);
         Agent.State storage agent = Agent.get(request.agentVault);
         Agents.requireAgentVaultOwner(agent);
         // the request should have been defaulted by providing a non-payment proof to redemptionPaymentDefault(),

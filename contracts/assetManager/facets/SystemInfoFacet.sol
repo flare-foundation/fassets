@@ -110,12 +110,10 @@ contract SystemInfoFacet is AssetManagerBase {
         returns (RedemptionRequestInfo.Data memory)
     {
         uint64 requestId = SafeCast.toUint64(_redemptionRequestId);
-        Redemption.Request storage request = Redemptions.getRedemptionRequest(requestId);
-        RedemptionRequestInfo.Status status = request.status == Redemption.Status.ACTIVE ?
-                RedemptionRequestInfo.Status.ACTIVE : RedemptionRequestInfo.Status.DEFAULTED;
+        Redemption.Request storage request = Redemptions.getRedemptionRequest(requestId, false);
         return RedemptionRequestInfo.Data({
             redemptionRequestId: requestId,
-            status: status,
+            status: _convertRedemptionStatus(request.status),
             agentVault: request.agentVault,
             redeemer: request.redeemer,
             paymentAddress: request.redeemerUnderlyingAddressString,
@@ -148,6 +146,27 @@ contract SystemInfoFacet is AssetManagerBase {
             // status EMPTY cannot happen, because getCollateralReservationAllowComplete never returns empty crts
             assert(_status == CollateralReservation.Status.EXPIRED);
             return CollateralReservationInfo.Status.EXPIRED;
+        }
+    }
+
+    function _convertRedemptionStatus(Redemption.Status _status)
+        private pure
+        returns (RedemptionRequestInfo.Status)
+    {
+        if (_status == Redemption.Status.ACTIVE) {
+            return RedemptionRequestInfo.Status.ACTIVE;
+        } else if (_status == Redemption.Status.DEFAULTED) {
+            return RedemptionRequestInfo.Status.DEFAULTED_UNCONFIRMED;
+        } else if (_status == Redemption.Status.SUCCESSFUL) {
+            return RedemptionRequestInfo.Status.SUCCESSFUL;
+        } else if (_status == Redemption.Status.FAILED) {
+            return RedemptionRequestInfo.Status.DEFAULTED_FAILED;
+        } else if (_status == Redemption.Status.BLOCKED) {
+            return RedemptionRequestInfo.Status.BLOCKED;
+        } else {
+            // the only possible status, since EMPTY is not allowed
+            assert(_status == Redemption.Status.REJECTED);
+            return RedemptionRequestInfo.Status.REJECTED;
         }
     }
 }

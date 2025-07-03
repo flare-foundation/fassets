@@ -1,4 +1,4 @@
-import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
+import { AgentStatus, RedemptionRequestStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
@@ -99,6 +99,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const tx1Hash = await agent.performRedemptionPayment(request, { status: TX_BLOCKED });
             await agent.confirmBlockedRedemptionPayment(request, tx1Hash);
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.valueUBA), mintedUBA: minted.poolFeeUBA, redeemingUBA: 0 });
+            // redemption request info should show BLOCKED state
+            const redeemInfo = await context.assetManager.redemptionRequestInfo(request.requestId);
+            assertWeb3Equal(redeemInfo.status, RedemptionRequestStatus.BLOCKED);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);
         });
@@ -161,6 +164,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(startVaultCollateralBalanceAgent.sub(endVaultCollateralBalanceAgent), res.redeemedVaultCollateralWei);
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), res.redeemedPoolCollateralWei);
             assertWeb3Equal(startPoolBalanceAgent.sub(endPoolBalanceAgent), res.redeemedPoolCollateralWei);
+            // redemption request info should show DEFAULTED_UNCONFIRMED state
+            const redeemInfo = await context.assetManager.redemptionRequestInfo(request.requestId);
+            assertWeb3Equal(redeemInfo.status, RedemptionRequestStatus.DEFAULTED_UNCONFIRMED);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(res.redeemedVaultCollateralWei));
         });
@@ -225,6 +231,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(startVaultCollateralBalanceAgent.sub(endVaultCollateralBalanceAgent), res.redeemedVaultCollateralWei);
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), res.redeemedPoolCollateralWei);
             assertWeb3Equal(startPoolBalanceAgent.sub(endPoolBalanceAgent), res.redeemedPoolCollateralWei);
+            // redemption request info should show DEFAULTED_UNCONFIRMED state
+            const redeemInfo = await context.assetManager.redemptionRequestInfo(request.requestId);
+            assertWeb3Equal(redeemInfo.status, RedemptionRequestStatus.DEFAULTED_UNCONFIRMED);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(res.redeemedVaultCollateralWei));
         });
@@ -286,6 +295,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), res[1].redeemedPoolCollateralWei);
             assertWeb3Equal(startPoolBalanceAgent.sub(endPoolBalanceAgent), res[1].redeemedPoolCollateralWei);
             assertWeb3Equal(res[1].redeemedPoolCollateralWei, redemptionDefaultValuePool);
+            // redemption request info should show DEFAULTED_FAILED state
+            const redeemInfo = await context.assetManager.redemptionRequestInfo(request.requestId);
+            assertWeb3Equal(redeemInfo.status, RedemptionRequestStatus.DEFAULTED_FAILED);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(res[1].redeemedVaultCollateralWei));
         });
@@ -349,6 +361,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(startVaultCollateralBalanceAgent.sub(endVaultCollateralBalanceAgent), resDefault.redeemedVaultCollateralWei);
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), resDefault.redeemedPoolCollateralWei);
             assertWeb3Equal(startPoolBalanceAgent.sub(endPoolBalanceAgent), resDefault.redeemedPoolCollateralWei);
+            // redemption request info should show DEFAULTED_FAILED state
+            const redeemInfo = await context.assetManager.redemptionRequestInfo(request.requestId);
+            assertWeb3Equal(redeemInfo.status, RedemptionRequestStatus.DEFAULTED_FAILED);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(resDefault.redeemedVaultCollateralWei));
         });
@@ -412,6 +427,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(startVaultCollateralBalanceAgent.sub(endVaultCollateralBalanceAgent), res[1].redeemedVaultCollateralWei);
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), res[1].redeemedPoolCollateralWei);
             assertWeb3Equal(startPoolBalanceAgent.sub(endPoolBalanceAgent), res[1].redeemedPoolCollateralWei);
+            // redemption request info should show DEFAULTED_FAILED state
+            const redeemInfo = await context.assetManager.redemptionRequestInfo(request.requestId);
+            assertWeb3Equal(redeemInfo.status, RedemptionRequestStatus.DEFAULTED_FAILED);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(res[1].redeemedVaultCollateralWei));
         });
@@ -482,6 +500,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(crt.valueUBA), mintedUBA: minted.poolFeeUBA, redeemingUBA: 0
             });
             assert.isUndefined(redDef);
+            // redemption request info should show DEFAULTED_UNCONFIRMED state
+            const redeemInfo = await context.assetManager.redemptionRequestInfo(request.requestId);
+            assertWeb3Equal(redeemInfo.status, RedemptionRequestStatus.DEFAULTED_UNCONFIRMED);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(res.redeemedVaultCollateralWei));
         });
@@ -552,6 +573,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // finishRedemptionWithoutPayment again is a no-op
             const redDef2 = await agent.finishRedemptionWithoutPayment(request);
             assert.isUndefined(redDef2);
+            // redemption request info should show DEFAULTED_UNCONFIRMED state
+            const redeemInfo = await context.assetManager.redemptionRequestInfo(request.requestId);
+            assertWeb3Equal(redeemInfo.status, RedemptionRequestStatus.DEFAULTED_UNCONFIRMED);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(redDef.redeemedVaultCollateralWei));
         });
@@ -615,6 +639,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             });
             // check that calling finishRedemptionWithoutPayment after confirming redemption payment will revert
             await expectRevert.custom(agent.finishRedemptionWithoutPayment(request), "InvalidRequestId", []);
+            // redemption request info should show DEFAULTED_FAILED state
+            const redeemInfo = await context.assetManager.redemptionRequestInfo(request.requestId);
+            assertWeb3Equal(redeemInfo.status, RedemptionRequestStatus.DEFAULTED_FAILED);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(res.redeemedVaultCollateralWei));
         });
@@ -651,6 +678,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const res = await redeemer.redemptionPaymentDefault(request);
             assertApproximatelyEqual(res.redeemedPoolCollateralWei, poolEquivWei.mul(redemptionDefaultFactorVaultBIPS).divn(MAX_BIPS), "absolute", 10);
             assertWeb3Equal(res.redeemedVaultCollateralWei, 0);
+            // redemption request info should show DEFAULTED_UNCONFIRMED state
+            const redeemInfo = await context.assetManager.redemptionRequestInfo(request.requestId);
+            assertWeb3Equal(redeemInfo.status, RedemptionRequestStatus.DEFAULTED_UNCONFIRMED);
         });
 
         it("test sanctioned redemption payment pool token requirements checks", async () => {
@@ -735,6 +765,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const proof2 = await context.attestationProvider.provePayment(txHash, agent.underlyingAddress, redeemer.underlyingAddress);
             const res = await context.assetManager.confirmRedemptionPayment(proof2, req.requestId, { from: agent.ownerWorkAddress });
             expectEvent(res, "RedemptionPerformed", { requestId: req.requestId });
+            // redemption request info should show SUCCESSFUL state
+            const redeemInfo = await context.assetManager.redemptionRequestInfo(req.requestId);
+            assertWeb3Equal(redeemInfo.status, RedemptionRequestStatus.SUCCESSFUL);
             // agent should be ok
             await agent.checkAgentInfo({ status: AgentStatus.NORMAL, redeemingUBA: 0, freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(req.feeUBA) }, 'reset');
         });
