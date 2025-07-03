@@ -49,9 +49,9 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         assetManager = _assetManager;
     }
 
-    // without "onlyOwner" to allow owner to send funds from any source
     function buyCollateralPoolTokens()
         external payable
+        onlyOwner
     {
         collateralPool().enter{value: msg.value}();
     }

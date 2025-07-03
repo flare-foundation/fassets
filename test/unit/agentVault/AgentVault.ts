@@ -358,6 +358,11 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
             const res = agentVault.redeemCollateralPoolTokens(tokens, natRecipient, { from: accounts[14] });
             await expectRevert.custom(res, "OnlyOwner", []);
         });
+
+        it("random address shouldn't be able to buy collateral pool tokens for the vault", async () => {
+            const agentVault = await createAgentVault(owner, underlyingAgent1);
+            await expectRevert.custom(agentVault.buyCollateralPoolTokens({ from: accounts[15], value: toWei(1000) }), "OnlyOwner", []);
+        });
     });
 
     describe("CR calculation", () => {
