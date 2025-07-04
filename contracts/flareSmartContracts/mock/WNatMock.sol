@@ -34,6 +34,10 @@ contract WNatMock is IWNat, ERC20 {
     {
     }
 
+    receive() external payable {
+        deposit();
+    }
+
     function name() public view override(ERC20, IVPToken) returns (string memory) {
         return ERC20.name();
     }
