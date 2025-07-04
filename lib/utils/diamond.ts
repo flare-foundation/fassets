@@ -1,3 +1,4 @@
+import { ZERO_ADDRESS } from "../../deployment/lib/deploy-utils";
 import { IDiamondCutInstance, IDiamondLoupeInstance } from "../../typechain-truffle";
 
 export enum FacetCutAction { Add = 0, Replace = 1, Remove = 2 };
@@ -81,6 +82,15 @@ export class DiamondSelectors {
 
     removeExisting(existing: DiamondSelectors) {
         return this.filter(sel => this.selectorMap.get(sel) !== existing.selectorMap.get(sel));
+    }
+
+    // the delete selectors require facet address to be zero
+    toDeleteSelectors() {
+        const selectorMap = new Map<string, string>();
+        for (const sig of this.selectorMap.keys()) {
+            selectorMap.set(sig, ZERO_ADDRESS)
+        }
+        return new DiamondSelectors(selectorMap);
     }
 
     createCuts(addedOrUpdated: DiamondSelectors, deleted?: DiamondSelectors) {

@@ -33,7 +33,9 @@ export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contra
     // create cuts
     const newSelectorsPossiblyExisting = await createNewSelectors(hre, contracts, cuts.facets, deployer);
     const newSelectors = newSelectorsPossiblyExisting.removeExisting(deployedSelectors);
-    const deletedSelectors = createDeletedSelectors(deployedSelectors, cuts.deleteMethods ?? []);
+    const deletedSelectors = cuts.deleteAllOldMethods
+        ? deployedSelectors.remove(newSelectorsPossiblyExisting).toDeleteSelectors()
+        : createDeletedSelectors(deployedSelectors, cuts.deleteMethods ?? []);
     const diamondCuts = deployedSelectors.createCuts(newSelectors, deletedSelectors);
     // create init
     const [initAddress, initCalldata] = await createInitCall(hre, contracts, cuts.init, deployer);
