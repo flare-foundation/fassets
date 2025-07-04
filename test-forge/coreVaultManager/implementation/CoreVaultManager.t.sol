@@ -125,7 +125,8 @@ contract CoreVaultManagerTest is Test {
         uint256 totalRequests = coreVaultManager.totalRequestAmountWithFee();
         uint128 available = coreVaultManager.availableFunds();
         uint128 escrowed = coreVaultManager.escrowedFunds();
-        assertGe(available + escrowed, totalRequests, "Funds insufficient for requests");
+        uint128 setEscrowsFinishedAmount = handler.setEscrowsFinishedAmount();
+        assertGe(available + escrowed + setEscrowsFinishedAmount, totalRequests, "Funds insufficient for requests");
 
         assertEq(
             available,

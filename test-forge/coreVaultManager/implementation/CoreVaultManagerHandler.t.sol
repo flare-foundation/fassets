@@ -16,6 +16,8 @@ contract CoreVaultManagerHandler is Test {
     bytes32 public coreVaultAddressHash;
     string[] public allowedDestinations;
     uint128 public availableFunds; // ghost variable to available funds
+    bytes32[] private preimageHashes;
+    uint128 public setEscrowsFinishedAmount;
 
     constructor(
         CoreVaultManager _coreVaultManager,
@@ -42,16 +44,14 @@ contract CoreVaultManagerHandler is Test {
         vm.prank(governance);
         coreVaultManager.addTriggeringAccounts(triggeringAccounts);
 
-        bytes32[] memory preimageHashes = new bytes32[](10);
-        for (uint256 i = 0; i < preimageHashes.length; i++) {
-            preimageHashes[i] = keccak256(abi.encodePacked("preimage", i));
+        for (uint256 i = 0; i < 100; i++) {
+            preimageHashes.push(keccak256(abi.encodePacked("preimage", i)));
         }
         vm.prank(governance);
         coreVaultManager.addPreimageHashes(preimageHashes);
     }
 
-    function confirmPayment(uint128 _receivedAmount, bytes32 _transactionId) public {
-        _receivedAmount = uint128(bound(_receivedAmount, 1, type(uint128).max / 2));
+    function confirmPayment(uint64 _receivedAmount, bytes32 _transactionId) public {
 
         // Construct a valid IPayment.Proof
         IPayment.Proof memory proof;
@@ -79,18 +79,19 @@ contract CoreVaultManagerHandler is Test {
     function requestTransferFromCoreVault(
         uint256 _destIndex,
         bytes32 _paymentReference,
-        uint128 _amount,
+        uint64 _amount,
         bool _cancelable
     ) public {
-        _amount = uint128(bound(_amount, 1, type(uint128).max / 2));
         _destIndex = bound(_destIndex, 0, allowedDestinations.length - 1);
+        _amount = uint64(bound(_amount, 1, type(uint64).max / 2));
         string memory destination = allowedDestinations[_destIndex];
 
         (, , , uint128 fee) = coreVaultManager.getSettings();
         uint256 totalRequestAmount = coreVaultManager.totalRequestAmountWithFee() + _amount + fee;
+        if (totalRequestAmount * 2 > type(uint64).max) return;
         if (totalRequestAmount > coreVaultManager.availableFunds() + coreVaultManager.escrowedFunds()) {
             vm.warp(block.timestamp + 1);
-            confirmPayment(uint128(totalRequestAmount * 2), keccak256(abi.encodePacked(block.timestamp)));
+            confirmPayment(uint64(totalRequestAmount * 2), keccak256(abi.encodePacked(block.timestamp)));
         }
 
         vm.prank(assetManager);
@@ -106,6 +107,18 @@ contract CoreVaultManagerHandler is Test {
             requestTransferFromCoreVault(0, keccak256(abi.encodePacked(block.timestamp)), 1000, true);
         }
 
+        if (coreVaultManager.getUnusedPreimageHashes().length == 0) {
+            uint256 len = preimageHashes.length;
+            bytes32[] memory newHashes = new bytes32[](100);
+            for (uint256 i = len; i < len + 100; i++) {
+                bytes32 preimageHash = keccak256(abi.encodePacked("preimage", i));
+                preimageHashes.push(preimageHash);
+                newHashes[i - len] = preimageHash;
+            }
+            vm.prank(governance);
+            coreVaultManager.addPreimageHashes(newHashes);
+        }
+
         uint128 preAvailable = coreVaultManager.availableFunds();
 
         vm.prank(address(this));
@@ -116,28 +129,40 @@ contract CoreVaultManagerHandler is Test {
         availableFunds -= fundsMoved;
     }
 
-    function setEscrowsFinished(bytes32 _preimageHash) public {
-        CoreVaultManager.Escrow[] memory escrows = coreVaultManager.getUnprocessedEscrows();
-        if (escrows.length == 0) {
+    function setEscrowsFinished(uint64 _escrowIndex) public {
+        uint256 numOfEscrows = coreVaultManager.getEscrowsCount();
+        if (numOfEscrows == 0) {
             triggerInstructions();
-            escrows = coreVaultManager.getUnprocessedEscrows();
+            numOfEscrows = coreVaultManager.getEscrowsCount();
         }
+        if (numOfEscrows == 0) return; // no escrows to finish
+        _escrowIndex = uint64(bound(_escrowIndex, 0, numOfEscrows - 1));
 
-        CoreVaultManager.Escrow memory escrow = coreVaultManager.getEscrowByPreimageHash(_preimageHash);
+        CoreVaultManager.Escrow memory escrow = coreVaultManager.getEscrowByIndex(_escrowIndex);
 
         if (block.timestamp < escrow.expiryTs) {
             vm.warp(escrow.expiryTs + 1);
         }
+        if (escrow.finished) return;
 
         uint128 preAvailable = coreVaultManager.availableFunds();
+        uint128 preEscrowFunds = coreVaultManager.escrowedFunds();
         bytes32[] memory hashes = new bytes32[](1);
-        hashes[0] = _preimageHash;
+        hashes[0] = escrow.preimageHash;
         vm.prank(governance);
         coreVaultManager.setEscrowsFinished(hashes);
 
         uint128 postAvailable = coreVaultManager.availableFunds();
-        uint128 fundsAvailableDiff = postAvailable - preAvailable;
-        availableFunds -= fundsAvailableDiff;
+        uint128 postEscrowFunds = coreVaultManager.escrowedFunds();
+        uint128 fundsAvailableDiff = preAvailable - postAvailable;
+        uint128 fundsEscrowedDiff = preEscrowFunds - postEscrowFunds;
+        // successful setEscrowsFinished call
+        if (fundsAvailableDiff > 0) {
+            setEscrowsFinishedAmount += fundsAvailableDiff;
+            availableFunds -= fundsAvailableDiff;
+        } else if (fundsEscrowedDiff > 0) {
+            setEscrowsFinishedAmount += fundsEscrowedDiff;
+        }
     }
 
     function getAvailableFunds() external view returns (uint128) {
