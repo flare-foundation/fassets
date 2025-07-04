@@ -29,7 +29,7 @@ export async function upgradeAgentVaultFactory({ hre, artifacts, contracts, depl
 
     if (await shouldExecute(execute, assetManagerController)) {
         await assetManagerController.setAgentVaultFactory(assetManagers, newAgentVaultFactoryAddress, { from: deployer });
-        printUpgradedContracts(contracts, "AgentVaultFactory", assetManagers, s => s.agentVaultFactory);
+        await printUpgradedContracts(contracts, "AgentVaultFactory", assetManagers, s => s.agentVaultFactory);
     } else {
         console.log(`EXECUTE: AssetManagerController(${assetManagerController.address}).setAgentVaultFactory([${assetManagers.join(", ")}], ${newAgentVaultFactoryAddress})`);
     }
@@ -44,7 +44,7 @@ export async function upgradeCollateralPoolFactory({ hre, artifacts, contracts, 
 
     if (await shouldExecute(execute, assetManagerController)) {
         await assetManagerController.setCollateralPoolFactory(assetManagers, newCollateralPoolFactoryAddress, { from: deployer });
-        printUpgradedContracts(contracts, "CollateralPoolFactory", assetManagers, s => s.collateralPoolFactory);
+        await printUpgradedContracts(contracts, "CollateralPoolFactory", assetManagers, s => s.collateralPoolFactory);
     } else {
         console.log(`EXECUTE: AssetManagerController(${assetManagerController.address}).setCollateralPoolFactory([${assetManagers.join(", ")}], ${newCollateralPoolFactoryAddress})`);
     }
@@ -59,7 +59,7 @@ export async function upgradeCollateralPoolTokenFactory({ hre, artifacts, contra
 
     if (await shouldExecute(execute, assetManagerController)) {
         await assetManagerController.setCollateralPoolTokenFactory(assetManagers, newCollateralPoolTokenFactoryAddress, { from: deployer });
-        printUpgradedContracts(contracts, "CollateralPoolTokenFactory", assetManagers, s => s.collateralPoolTokenFactory);
+        await printUpgradedContracts(contracts, "CollateralPoolTokenFactory", assetManagers, s => s.collateralPoolTokenFactory);
     } else {
         console.log(`EXECUTE: AssetManagerController(${assetManagerController.address}).setCollateralPoolTokenFactory([${assetManagers.join(", ")}], ${newCollateralPoolTokenFactoryAddress})`);
     }
@@ -74,7 +74,7 @@ export async function upgradeFAsset({ hre, artifacts, contracts, deployer }: Dep
 
     if (await shouldExecute(execute, assetManagerController)) {
         await assetManagerController.upgradeFAssetImplementation(assetManagers, newFAssetImplAddress, "0x");
-        printUpgradedContracts(contracts, "FAsset", assetManagers, async s => await getProxyImplementationAddress(hre, s.fAsset));
+        await printUpgradedContracts(contracts, "FAsset", assetManagers, async s => await getProxyImplementationAddress(hre, s.fAsset));
     } else {
         console.log(`EXECUTE: AssetManagerController(${assetManagerController.address}).upgradeFAssetImplementation([${assetManagers.join(", ")}], ${newFAssetImplAddress}, "0x")`);
     }
