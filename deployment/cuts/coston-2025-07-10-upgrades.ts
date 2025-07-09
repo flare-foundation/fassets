@@ -1,5 +1,5 @@
 import { runDeployScript } from "../lib/deploy-scripts";
-import { upgradeAgentVaultFactory, upgradeAssetManagerController, upgradeCollateralPoolFactory, upgradeCollateralPoolTokenFactory, upgradeFAsset } from "../lib/upgrade-contracts";
+import { upgradeAgentVaultFactory, upgradeAgentVaultsAndPools, upgradeAssetManagerController, upgradeCollateralPoolFactory, upgradeCollateralPoolTokenFactory, upgradeFAsset } from "../lib/upgrade-contracts";
 
 runDeployScript(async (deployScriptEnvironment) => {
     // const { hre, artifacts, contracts, deployer } = deployScriptEnvironment;
@@ -8,6 +8,5 @@ runDeployScript(async (deployScriptEnvironment) => {
     await upgradeCollateralPoolFactory(deployScriptEnvironment, true);
     await upgradeCollateralPoolTokenFactory(deployScriptEnvironment, true);
     await upgradeFAsset(deployScriptEnvironment, true);
-
-
+    await upgradeAgentVaultsAndPools(deployScriptEnvironment, true);
 });

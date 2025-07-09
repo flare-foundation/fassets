@@ -80,6 +80,27 @@ export async function upgradeFAsset({ hre, artifacts, contracts, deployer }: Dep
     }
 }
 
+export async function upgradeAgentVaultsAndPools({ artifacts, contracts }: DeployScriptEnvironment, execute: boolean) {
+    const AssetManagerController = artifacts.require("AssetManagerController");
+    const assetManagerController = await AssetManagerController.at(contracts.getAddress("AssetManagerController"));
+    const assetManagers = await assetManagerController.getAssetManagers();
+
+    let maxAgentsCount = 0;
+    const IIAssetManager = artifacts.require("IIAssetManager");
+    for (const addr of assetManagers) {
+        const am = await IIAssetManager.at(addr);
+        const {1: count} = await am.getAllAgents(0, 0); // just to get the count of agents
+        maxAgentsCount = Math.max(maxAgentsCount, count.toNumber());
+    }
+
+    if (await shouldExecute(execute, assetManagerController)) {
+        await assetManagerController.upgradeAgentVaultsAndPools(assetManagers, 0, maxAgentsCount);
+        console.log("AgentVault, CollateralPool and CollateralPoolToken contracts upgraded for all agents on all asset managers.");
+    } else {
+        console.log(`EXECUTE: AssetManagerController(${assetManagerController.address}).upgradeAgentVaultsAndPools([${assetManagers.join(", ")}], 0, ${maxAgentsCount})`);
+    }
+}
+
 async function shouldExecute(execute: boolean, assetManagerController: AssetManagerControllerInstance) {
     const productionMode = await assetManagerController.productionMode();
     return execute && !productionMode;
