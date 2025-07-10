@@ -167,7 +167,7 @@ library CoreVaultClient {
         return maxSupportedAMG.mulBips(state.minimumAmountLeftBIPS);
     }
 
-    bytes32 internal constant STATE_POSITION = keccak256("fasset.CoreVaultClient.State");
+    bytes32 internal constant STATE_POSITION = keccak256("fasset.CoreVault.State");
 
     function getState()
         internal pure
