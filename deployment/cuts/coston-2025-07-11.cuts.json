@@ -1,6 +1,6 @@
 {
     "$schema": "./diamond-cuts.schema.json",
-    "diamond": ["AssetManager_FTestXRP"],
+    "diamond": ["AssetManager_FTestBTC", "AssetManager_FTestDOGE", "AssetManager_FTestXRP", "AssetManager_FSimCoinX"],
     "deleteAllOldMethods": true,
     "facets": [
         {
