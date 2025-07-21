@@ -517,7 +517,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
-        require(_value >= 1 minutes, ValueTooSmall());
+        require(_value >= 1 hours, ValueTooSmall());
         // update
         settings.agentTimelockedOperationWindowSeconds = _value.toUint64();
         emit SettingChanged("agentTimelockedOperationWindowSeconds", _value);

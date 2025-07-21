@@ -2759,14 +2759,21 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should not setAgentTimelockedOperationWindowSeconds if rate limited", async () => {
             const oldValue = settings.agentTimelockedOperationWindowSeconds;
-            await assetManager.setAgentTimelockedOperationWindowSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
+            await assetManager.setAgentTimelockedOperationWindowSeconds(toBN(oldValue).addn(1), { from: assetManagerController });
             const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
             // skip time
             await time.deterministicIncrease(toBN(minUpdateTime).subn(2));
-            const promise = assetManager.setAgentTimelockedOperationWindowSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            const promise = assetManager.setAgentTimelockedOperationWindowSeconds(toBN(oldValue).addn(2), { from: assetManagerController });
             await expectRevert.custom(promise, "TooCloseToPreviousUpdate", []);
             await time.deterministicIncrease(1);
-            await assetManager.setAgentTimelockedOperationWindowSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
+            await assetManager.setAgentTimelockedOperationWindowSeconds(toBN(oldValue).addn(2), { from: assetManagerController });
+        });
+
+        it("should not setAgentTimelockedOperationWindowSeconds if value less than 1 hour", async () => {
+            await expectRevert.custom(assetManager.setAgentTimelockedOperationWindowSeconds(toBN(1 * HOURS).subn(1), { from: assetManagerController }),
+                "ValueTooSmall", []);
+            // 1 hour is ok
+            await assetManager.setAgentTimelockedOperationWindowSeconds(toBN(1 * HOURS), { from: assetManagerController });
         });
 
         it("should not setCollateralPoolTokenTimelockSeconds if rate limited", async () => {
