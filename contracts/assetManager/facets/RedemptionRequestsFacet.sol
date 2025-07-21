@@ -118,7 +118,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         require(_amountUBA != 0, RedemptionOfZero());
         // close redemption tickets
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, false, false);
+        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, false);
         // create redemption request
         RedemptionRequests.AgentRedemptionData memory redemption =
             RedemptionRequests.AgentRedemptionData(_agentVault, closedAMG);
@@ -148,7 +148,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         require(_amountUBA != 0, RedemptionOfZero());
         // close redemption tickets
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true, false);
+        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true);
         // pay in collateral
         uint256 priceAmgToWei = Conversion.currentAmgPriceInTokenWei(agent.vaultCollateralIndex);
         uint256 paymentWei = Conversion.convertAmgToTokenWei(closedAMG, priceAmgToWei)
@@ -250,7 +250,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         Agent.State storage agent = Agent.get(_agentVault);
         require(_amountUBA != 0, SelfCloseOfZero());
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true, false);
+        (, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true);
         // burn the self-closed assets
         Redemptions.burnFAssets(msg.sender, closedUBA);
         // try to pull agent out of liquidation

@@ -92,7 +92,7 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
         require(agent.activeTransferToCoreVault == 0, TransferAlreadyActive());
         // close agent's redemption tickets
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (uint64 transferredAMG,) = Redemptions.closeTickets(agent, amountAMG, false, false);
+        (uint64 transferredAMG,) = Redemptions.closeTickets(agent, amountAMG, false);
         require(transferredAMG > 0, NothingMinted());
         // check the remaining amount
         (uint256 maximumTransferAMG,) = CoreVaultClient.maximumTransferToCoreVaultAMG(agent);

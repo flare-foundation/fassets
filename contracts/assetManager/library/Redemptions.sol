@@ -22,8 +22,7 @@ library Redemptions {
     function closeTickets(
         Agent.State storage _agent,
         uint64 _amountAMG,
-        bool _immediatelyReleaseMinted,
-        bool _closeWholeLotsOnly
+        bool _immediatelyReleaseMinted
     )
         internal
         returns (uint64 _closedAMG, uint256 _closedUBA)
@@ -48,9 +47,6 @@ library Redemptions {
         }
         // now close the dust if anything remains (e.g. if there were not enough tickets to redeem)
         uint64 closeDustAMG = SafeMath64.min64(_amountAMG - _closedAMG, _agent.dustAMG);
-        if (_closeWholeLotsOnly) {
-            closeDustAMG = closeDustAMG - closeDustAMG % lotSize;
-        }
         if (closeDustAMG > 0) {
             _closedAMG += closeDustAMG;
             AgentBacking.decreaseDust(_agent, closeDustAMG);

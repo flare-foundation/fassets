@@ -192,7 +192,7 @@ contract LiquidationFacet is AssetManagerBase, ReentrancyGuard {
             Liquidation.maxLiquidationAmountAMG(_agent, _cr.poolCR, poolFactor, Collateral.Kind.POOL));
         uint64 amountToLiquidateAMG = Math.min(maxLiquidatedAMG, _amountAMG).toUint64();
         // liquidate redemption tickets
-        (_liquidatedAMG,) = Redemptions.closeTickets(_agent, amountToLiquidateAMG, true, false);
+        (_liquidatedAMG,) = Redemptions.closeTickets(_agent, amountToLiquidateAMG, true);
         // calculate payouts to liquidator
         _payoutC1Wei =
             Conversion.convertAmgToTokenWei(uint256(_liquidatedAMG).mulBips(vaultFactor), _cr.amgToC1WeiPrice);
