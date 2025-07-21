@@ -32,6 +32,7 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
 
     error ChallengeNotAgentsAddress();
     error ChallengeAlreadyLiquidating();
+    error ChallengeInvalidAgentStatus();
     error ChallengeNotDuplicate();
     error ChallengeTransactionAlreadyConfirmed();
     error ChallengeSameTransactionRepeated();
@@ -56,9 +57,7 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
-        // if the agent is already being fully liquidated, no need for more challenges
-        // this also prevents double challenges
-        require(agent.status != Agent.Status.FULL_LIQUIDATION, ChallengeAlreadyLiquidating());
+        _validateAgentStatus(agent);
         // verify transaction
         TransactionAttestation.verifyBalanceDecreasingTransaction(_payment);
         // check the payment originates from agent's address
@@ -111,9 +110,7 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
         nonReentrant
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        // if the agent is already being fully liquidated, no need for more challenges
-        // this also prevents double challenges
-        require(agent.status != Agent.Status.FULL_LIQUIDATION, ChallengeAlreadyLiquidating());
+        _validateAgentStatus(agent);
         // verify transactions
         TransactionAttestation.verifyBalanceDecreasingTransaction(_payment1);
         TransactionAttestation.verifyBalanceDecreasingTransaction(_payment2);
@@ -152,9 +149,7 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
-        // if the agent is already being fully liquidated, no need for more challenges
-        // this also prevents double challenges
-        require(agent.status != Agent.Status.FULL_LIQUIDATION, ChallengeAlreadyLiquidating());
+        _validateAgentStatus(agent);
         // check the payments originates from agent's address, are not confirmed already and calculate total
         int256 total = 0;
         for (uint256 i = 0; i < _payments.length; i++) {
@@ -192,6 +187,18 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
         _liquidateAndRewardChallenger(agent, msg.sender, agent.mintedAMG);
         // emit events
         emit IAssetManagerEvents.UnderlyingBalanceTooLow(_agentVault, balanceAfterPayments, requiredBalance);
+    }
+
+    function _validateAgentStatus(Agent.State storage _agent)
+        private view
+    {
+        // If the agent is already being fully liquidated, no need for more challenges; this also prevents
+        // double challenges.
+        Agent.Status status = _agent.status;
+        require(status != Agent.Status.FULL_LIQUIDATION, ChallengeAlreadyLiquidating());
+        // For agents in status destroying, the challenges are pointless (but would still reward the
+        // challenger, so they are better forbidden).
+        require(status != Agent.Status.DESTROYING, ChallengeInvalidAgentStatus());
     }
 
     function _liquidateAndRewardChallenger(

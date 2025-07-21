@@ -114,7 +114,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         await expectRevert.custom(promise, "NotInLiquidation", []);
     });
 
-    it("should not start full liquidation if agent is in status DESTROYING", async () => {
+    it("should not liquidate if agent is in status DESTROYING", async () => {
         // init
         chain.mint(underlyingAgent1, 100);
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
@@ -122,7 +122,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
         const tx = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer1, 100, null);
         const proof = await attestationProvider.proveBalanceDecreasingTransaction(tx, underlyingAgent1);
-        await assetManager.illegalPaymentChallenge(proof, agentVault.address);
+        await expectRevert.custom(assetManager.illegalPaymentChallenge(proof, agentVault.address), "ChallengeInvalidAgentStatus", []);
         // assert
         const info = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info.status, 3);
