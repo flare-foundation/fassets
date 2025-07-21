@@ -45,6 +45,7 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         require(!initialized, AlreadyInitialized());
         initialized = true;
         assetManager = _assetManager;
+        initializeReentrancyGuard();
     }
 
     function buyCollateralPoolTokens()

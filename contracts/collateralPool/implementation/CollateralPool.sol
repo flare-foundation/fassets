@@ -75,8 +75,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         address _fAsset,
         uint32 _exitCollateralRatioBIPS
     ) {
-        initialize(_agentVault, _assetManager, _fAsset,
-            _exitCollateralRatioBIPS);
+        initialize(_agentVault, _assetManager, _fAsset, _exitCollateralRatioBIPS);
     }
 
     function initialize(
@@ -96,6 +95,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         // for proxy implementation, assetManager will be 0
         wNat = address(assetManager) != address(0) ? assetManager.getWNat() : IWNat(address(0));
         exitCollateralRatioBIPS = _exitCollateralRatioBIPS;
+        initializeReentrancyGuard();
     }
 
     receive() external payable {
