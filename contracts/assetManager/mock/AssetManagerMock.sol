@@ -3,6 +3,7 @@
 
 pragma solidity ^0.8.27;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {IIFAsset} from "../../fassetToken/interfaces/IIFAsset.sol";
 import {Agent} from "../library/data/Agent.sol";
@@ -20,6 +21,7 @@ contract AssetManagerMock {
 
     event AgentRedemptionInCollateral(address _recipient, uint256 _amountUBA);
     event AgentRedemption(address _recipient, string _underlying, uint256 _amountUBA, address payable _executor);
+    event CollateralUpdated(address agentVault, address token);
 
     uint256 internal maxRedemption = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     uint256 internal timelockDuration = 0 days;
@@ -56,9 +58,9 @@ contract AssetManagerMock {
         return _address == commonOwner;
     }
 
-    function updateCollateral(address /* _agentVault */, IIFAsset /*_token*/) external {
-        commonOwner = commonOwner;  // just to prevent mutability warning
+    function updateCollateral(address _agentVault, IERC20 _token) external {
         require(!checkForValidAgentVaultAddress, Agent.InvalidAgentVaultAddress());
+        emit CollateralUpdated(_agentVault, address(_token));
     }
 
     function setCheckForValidAgentVaultAddress(bool _check) external {

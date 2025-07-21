@@ -835,6 +835,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         uint256 balanceAfter = wNat.balanceOf(address(this));
         uint256 claimed = balanceAfter - balanceBefore;
         totalCollateral += claimed;
+        assetManager.updateCollateral(agentVault, wNat);
         emit CPClaimedReward(claimed, 1);
         return claimed;
     }
@@ -853,6 +854,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         uint256 balanceAfter = wNat.balanceOf(address(this));
         uint256 claimed = balanceAfter - balanceBefore;
         totalCollateral += claimed;
+        assetManager.updateCollateral(agentVault, wNat);
         emit CPClaimedReward(claimed, 0);
         return claimed;
     }

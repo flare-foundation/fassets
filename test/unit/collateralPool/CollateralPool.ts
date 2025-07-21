@@ -1227,6 +1227,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await wNat.mintAmount(distributionToDelegators.address, ETH(1));
             const resp = await collateralPool.claimAirdropDistribution(distributionToDelegators.address, 0, { from: agent });
             await expectEvent.inTransaction(resp.tx, collateralPool, "CPClaimedReward", { amountNatWei: ETH(1), rewardType: '0' });
+            await expectEvent.inTransaction(resp.tx, assetManager, "CollateralUpdated", { agentVault: agentVault.address, token: wNat.address });
             const collateralPoolBalance = await wNat.balanceOf(collateralPool.address);
             assertEqualBN(collateralPoolBalance, ETH(1));
         });
@@ -1259,8 +1260,6 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
 
         it("should claim rewards from reward manager", async () => {
-            const WNat = artifacts.require("WNatMock");
-            const wNat = await WNat.new(accounts[0], "WNat", "WNAT");
             // create reward manager
             const rewardManager = await RewardManager.new(wNat.address);
             const claimAmount = toBNExp(1, 18);
@@ -1268,6 +1267,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // claim
             const startAmount = await wNat.balanceOf(collateralPool.address);
             const resp = await collateralPool.claimDelegationRewards(rewardManager.address, 5, [], { from: agent });
+            await expectEvent.inTransaction(resp.tx, assetManager, "CollateralUpdated", { agentVault: agentVault.address, token: wNat.address });
             const endAmount = await wNat.balanceOf(collateralPool.address);
             assertEqualBN(endAmount.sub(startAmount), claimAmount);
             assertEqualBN(await wNat.balanceOf(rewardManager.address), toBN(0)); // should be empty now

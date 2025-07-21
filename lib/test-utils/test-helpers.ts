@@ -211,6 +211,21 @@ export namespace expectEvent {
     }
 
     /**
+     * Same as expectEvent, but also works for events emitted in a contract that was indirectly called
+     * (i.e. if it was called by another smart contract and not an externally owned account).
+     * Note: emitter must be the deployed contract instance emitting the expected event.
+     * @param response an object returned by either a web3 Contract or a truffle-contract call.
+     * @param emitter the emitter contract
+     * @param eventName name of the event
+     * @param eventArgs expected event args (not necessarily all)
+     */
+    export async function fromContract<T extends Truffle.AnyEvent = Truffle.AnyEvent>(response: Truffle.TransactionResponse<Truffle.AnyEvent>, emitter: Truffle.ContractInstance, eventName: T['name'], eventArgs?: Partial<StringForBN<T['args']>>): Promise<void> {
+        const events = await eventsFromContract(emitter, response, eventName);
+        assert(events.length > 0, `No '${eventName}' events found`);
+        matchEventListArgs(events, eventArgs);
+    }
+
+    /**
      * Check that event was NOT emitted.
      * @param response an object returned by either a web3 Contract or a truffle-contract call.
      * @param eventName name of the event
@@ -232,13 +247,31 @@ export namespace expectEvent {
             const events = await eventsForTransaction(emitter, receiptTx, eventName);
             assert(events.length === 0, `Unexpected event '${eventName}' was found`);
         }
-    }
+
+        /**
+         * Check that event was NOT emitted (for any contract `emitter`).
+         * @param response an object returned by either a web3 Contract or a truffle-contract call.
+         * @param emitter the emitter contract
+         * @param eventName name of the event
+         * @param eventArgs expected event args (not necessarily all)
+         */
+        export async function fromContract<T extends Truffle.AnyEvent = Truffle.AnyEvent>(response: Truffle.TransactionResponse<Truffle.AnyEvent>, emitter: Truffle.ContractInstance, eventName: T['name']): Promise<void> {
+            const events = await eventsFromContract(emitter, response, eventName);
+            assert(events.length === 0, `Unexpected event '${eventName}' was found`);
+        }
+}
 }
 
 async function eventsForTransaction(emitter: Truffle.ContractInstance, receiptTx: string, name: string) {
     const decoder = new Web3EventDecoder({ emitter });
     const receipt = await web3.eth.getTransactionReceipt(receiptTx);
     const events = decoder.decodeEvents(receipt);
+    return events.filter(ev => ev.event === name);
+}
+
+async function eventsFromContract(emitter: Truffle.ContractInstance, res: Truffle.TransactionResponse<Truffle.AnyEvent> | TransactionReceipt, name: string) {
+    const decoder = new Web3EventDecoder({ emitter });
+    const events = decoder.decodeEvents(res);
     return events.filter(ev => ev.event === name);
 }
 
