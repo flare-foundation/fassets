@@ -63,7 +63,7 @@ export interface AssetManagerParameters {
     // Common parameters (for all f-assets in this network)
 
     /**
-     * Address for burning native currency (e.g. for collateral reservation fee after successful minting).
+     * Address for burning native currency.
      * @pattern ^0x[0-9a-fA-F]{40}$
      */
     burnAddress: string;

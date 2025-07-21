@@ -52,8 +52,7 @@ library AssetManagerSettings {
         // changed via address updater
         address fdcVerification;
 
-        // The address where burned NAt is sent.
-        // (E.g. collateral reservation fee is burned on successful minting.)
+        // The address where burned NAT is sent.
         // immutable
         address payable burnAddress;
 
