@@ -32,7 +32,6 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
     using AgentCollateral for Collateral.CombinedData;
     using PaymentConfirmations for PaymentConfirmations.State;
 
-    error AgentsUnderlyingAddressNotAllowedByCoreVault();
     error CannotReturnZeroLots();
     error InvalidAgentStatus();
     error InvalidPaymentReference();
@@ -47,7 +46,6 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
     error ReturnFromCoreVaultAlreadyRequested();
     error TooLittleMintingLeftAfterTransfer();
     error TransferAlreadyActive();
-    error UnderlyingAddressNotAllowedByCoreVault();
     error ZeroTransferNotAllowed();
 
     // core vault may not be enabled on all chains
@@ -134,8 +132,6 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
     {
         Agent.State storage agent = Agent.get(_agentVault);
         CoreVaultClient.State storage state = CoreVaultClient.getState();
-        require(state.coreVaultManager.isDestinationAddressAllowed(agent.underlyingAddressString),
-            AgentsUnderlyingAddressNotAllowedByCoreVault());
         require(agent.activeReturnFromCoreVaultId == 0, ReturnFromCoreVaultAlreadyRequested());
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         require(_lots > 0, CannotReturnZeroLots());
@@ -247,8 +243,6 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
         nonReentrant
     {
         CoreVaultClient.State storage state = CoreVaultClient.getState();
-        require(state.coreVaultManager.isDestinationAddressAllowed(_redeemerUnderlyingAddress),
-            UnderlyingAddressNotAllowedByCoreVault());
         uint256 availableLots = CoreVaultClient.coreVaultAmountLots();
         require(_lots <= availableLots, NotEnoughAvailableOnCoreVault());
         uint256 minimumRedeemLots = Math.min(state.minimumRedeemLots, availableLots);

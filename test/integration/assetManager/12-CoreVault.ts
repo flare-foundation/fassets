@@ -509,7 +509,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         await agent.transferToCoreVault(transferAmount);
         // target underlying address must be allowed
         await expectRevert.custom(context.assetManager.requestReturnFromCoreVault(agent.vaultAddress, 10, { from: agent.ownerWorkAddress }),
-            "AgentsUnderlyingAddressNotAllowedByCoreVault", []);
+            "DestinationNotAllowed", []);
         // must request more than 0 lots
         await expectRevert.custom(context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 0, { from: agent2.ownerWorkAddress }),
             "CannotReturnZeroLots", []);
@@ -694,8 +694,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
         await prefundCoreVault(minter.underlyingAddress, 1e6);
-        // allow CV manager addresses
-        await coreVaultManager.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
         // make agent available
         await agent.depositCollateralLotsAndMakeAvailable(100);
         // mint
@@ -705,8 +703,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const transferAmount = context.lotSize().muln(10);
         await agent.transferToCoreVault(transferAmount);
         // target underlying address must be allowed
-        await expectRevert.custom(context.assetManager.redeemFromCoreVault(10, minter.underlyingAddress, { from: minter.address }),
-            "UnderlyingAddressNotAllowedByCoreVault", []);
+        await expectRevert.custom(context.assetManager.redeemFromCoreVault(10, redeemer.underlyingAddress, { from: redeemer.address }),
+            "DestinationNotAllowed", []);
+        // allow CV manager addresses
+        await coreVaultManager.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
         // requesting address must have enough fassets
         await expectRevert.custom(context.assetManager.redeemFromCoreVault(10, redeemer.underlyingAddress, { from: accounts[0] }),
             "FAssetBalanceTooLow", []);
