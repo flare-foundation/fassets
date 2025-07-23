@@ -31,6 +31,23 @@ library Minting {
         Transfers.depositWNat(Globals.getWNat(), Agents.getOwnerPayAddress(_agent), _fee - poolFeeShare);
     }
 
+    // pay executor for executor calls in WNat, otherwise burn executor fee
+    function payOrBurnExecutorFee(
+        CollateralReservation.Data storage _crt
+    )
+        internal
+    {
+        uint256 executorFeeNatWei = _crt.executorFeeNatGWei * Conversion.GWEI;
+        if (executorFeeNatWei > 0) {
+            _crt.executorFeeNatGWei = 0;
+            if (msg.sender == _crt.executor) {
+                Transfers.depositWNat(Globals.getWNat(), _crt.executor, executorFeeNatWei);
+            } else {
+                Globals.getBurnAddress().transfer(executorFeeNatWei);
+            }
+        }
+    }
+
     function releaseCollateralReservation(
         CollateralReservation.Data storage _crt,
         CollateralReservation.Status _status
@@ -39,7 +56,7 @@ library Minting {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_crt.agentVault);
-        uint64 reservationAMG = _crt.valueAMG + Conversion.convertUBAToAmg(Minting.calculatePoolFeeUBA(agent, _crt));
+        uint64 reservationAMG = _crt.valueAMG + Conversion.convertUBAToAmg(calculatePoolFeeUBA(agent, _crt));
         agent.reservedAMG = agent.reservedAMG - reservationAMG;
         state.totalReservedCollateralAMG -= reservationAMG;
         assert(_status != CollateralReservation.Status.ACTIVE);

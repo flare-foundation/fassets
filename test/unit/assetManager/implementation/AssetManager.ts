@@ -1285,15 +1285,76 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // execute f-asset minting
             const executorBalanceStart = toBN(await web3.eth.getBalance(executor));
             const minterBalanceStart = toBN(await web3.eth.getBalance(minter));
+            const burnBalanceStart = toBN(await web3.eth.getBalance(settings.burnAddress));
+            const poolWNatBalanceStart = await wNat.balanceOf(agentInfo.collateralPool);
+            const agentWNatBalanceStart = await wNat.balanceOf(agentOwner1);
+            //
             const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minter });
+            //
             const gasFee = calcGasCost(res);
             const executorBalanceEnd = toBN(await web3.eth.getBalance(executor));
             const minterBalanceEnd = toBN(await web3.eth.getBalance(minter));
+            const burnBalanceEnd = toBN(await web3.eth.getBalance(settings.burnAddress));
+            const poolWNatBalanceEnd = await wNat.balanceOf(agentInfo.collateralPool);
+            const agentWNatBalanceEnd = await wNat.balanceOf(agentOwner1);
             const fassets = await fAsset.balanceOf(minter);
             assertWeb3Equal(fassets, crt.valueUBA);
             // executor fee got burned - nobody receives it
             assertWeb3Equal(executorBalanceEnd.sub(executorBalanceStart), BN_ZERO);
             assertWeb3Equal(minterBalanceEnd.sub(minterBalanceStart), gasFee.neg());
+            assertWeb3Equal(burnBalanceEnd.sub(burnBalanceStart), executorFee);
+            // agent and pool shared the collateral reservation fee
+            assert.isTrue(agentWNatBalanceEnd.gt(agentWNatBalanceStart));
+            assert.isTrue(poolWNatBalanceEnd.gt(poolWNatBalanceStart));
+            assertWeb3Equal(poolWNatBalanceEnd.sub(poolWNatBalanceStart).add(agentWNatBalanceEnd.sub(agentWNatBalanceStart)), reservationFee);
+        });
+
+        it("should execute minting (by agent)", async () => {
+            // create agent vault and make available
+            const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
+            // reserve collateral
+            const minter = accounts[80];
+            const executor = accounts[81];
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            const reservationFee = await assetManager.collateralReservationFee(1);
+            const executorFee = toWei(0.1);
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, executor,
+                { from: minter, value: reservationFee.add(executorFee) });
+            const crt = findRequiredEvent(tx, "CollateralReserved").args;
+            // make and prove the payment transaction
+            const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+            chain.mint("underlying_minter", paymentAmount);
+            const txHash = await wallet.addTransaction("underlying_minter", underlyingAgent1, paymentAmount,
+                PaymentReference.minting(crt.collateralReservationId));
+            const proof = await attestationProvider.provePayment(txHash, "underlying_minter", underlyingAgent1);
+            // execute f-asset minting
+            const executorBalanceStart = toBN(await web3.eth.getBalance(executor));
+            const minterBalanceStart = toBN(await web3.eth.getBalance(minter));
+            const agentBalanceStart = toBN(await web3.eth.getBalance(agentOwner1));
+            const burnBalanceStart = toBN(await web3.eth.getBalance(settings.burnAddress));
+            const poolWNatBalanceStart = await wNat.balanceOf(agentInfo.collateralPool);
+            const agentWNatBalanceStart = await wNat.balanceOf(agentOwner1);
+            //
+            const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: agentOwner1 });
+            //
+            const gasFee = calcGasCost(res);
+            const executorBalanceEnd = toBN(await web3.eth.getBalance(executor));
+            const minterBalanceEnd = toBN(await web3.eth.getBalance(minter));
+            const agentBalanceEnd = toBN(await web3.eth.getBalance(agentOwner1));
+            const burnBalanceEnd = toBN(await web3.eth.getBalance(settings.burnAddress));
+            const poolWNatBalanceEnd = await wNat.balanceOf(agentInfo.collateralPool);
+            const agentWNatBalanceEnd = await wNat.balanceOf(agentOwner1);
+            const fassets = await fAsset.balanceOf(minter);
+            assertWeb3Equal(fassets, crt.valueUBA);
+            // executor fee got burned - nobody receives it
+            assertWeb3Equal(executorBalanceEnd.sub(executorBalanceStart), BN_ZERO);
+            assertWeb3Equal(minterBalanceEnd.sub(minterBalanceStart), BN_ZERO);
+            assertWeb3Equal(agentBalanceEnd.sub(agentBalanceStart), gasFee.neg());
+            assertWeb3Equal(burnBalanceEnd.sub(burnBalanceStart), executorFee);
+            // agent and pool shared the collateral reservation fee
+            assert.isTrue(agentWNatBalanceEnd.gt(agentWNatBalanceStart));
+            assert.isTrue(poolWNatBalanceEnd.gt(poolWNatBalanceStart));
+            assertWeb3Equal(poolWNatBalanceEnd.sub(poolWNatBalanceStart).add(agentWNatBalanceEnd.sub(agentWNatBalanceStart)), reservationFee);
         });
 
         it("should execute minting (by executor)", async () => {
@@ -1317,14 +1378,25 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // execute f-asset minting
             const executorBalanceStart = toBN(await web3.eth.getBalance(executor));
             const executorWNatBalanceStart = await wNat.balanceOf(executor);
+            const poolWNatBalanceStart = await wNat.balanceOf(agentInfo.collateralPool);
+            const agentWNatBalanceStart = await wNat.balanceOf(agentOwner1);
+            //
             const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: executor });
+            //
+            const gasFee = calcGasCost(res);
             const executorBalanceEnd = toBN(await web3.eth.getBalance(executor));
             const executorWNatBalanceEnd = await wNat.balanceOf(executor);
-            const gasFee = calcGasCost(res);
+            const poolWNatBalanceEnd = await wNat.balanceOf(agentInfo.collateralPool);
+            const agentWNatBalanceEnd = await wNat.balanceOf(agentOwner1);
             const fassets = await fAsset.balanceOf(minter);
             assertWeb3Equal(fassets, crt.valueUBA);
+            // executor fee paid to executor
             assertWeb3Equal(executorBalanceStart.sub(executorBalanceEnd), gasFee);
             assertWeb3Equal(executorWNatBalanceEnd.sub(executorWNatBalanceStart), executorFee);
+            // agent and pool shared the collateral reservation fee
+            assert.isTrue(agentWNatBalanceEnd.gt(agentWNatBalanceStart));
+            assert.isTrue(poolWNatBalanceEnd.gt(poolWNatBalanceStart));
+            assertWeb3Equal(poolWNatBalanceEnd.sub(poolWNatBalanceStart).add(agentWNatBalanceEnd.sub(agentWNatBalanceStart)), reservationFee);
         });
 
         it("should do a minting payment default", async () => {

@@ -7,7 +7,6 @@ import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
 import {Minting} from "../library/Minting.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
-import {Transfers} from "../../utils/library/Transfers.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {Agents} from "../library/Agents.sol";
@@ -91,19 +90,12 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
             uint256(_payment.data.responseBody.receivedAmount), Minting.calculatePoolFeeUBA(agent, crt));
         // update underlying block
         UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
-        // calculate the fee to be paid to the executor (if the executor called this method)
-        address payable executor = crt.executor;
-        uint256 executorFee = crt.executorFeeNatGWei * Conversion.GWEI;
-        uint256 claimedExecutorFee = msg.sender == executor ? executorFee : 0;
-        // calculate total fee before deleting collateral reservation
-        // add the executor fee if it is not claimed by the executor
-        uint256 totalFee = crt.reservationFeeNatWei + executorFee - claimedExecutorFee;
         // release agent's reserved collateral
         Minting.releaseCollateralReservation(crt, CollateralReservation.Status.SUCCESSFUL);
+        // pay the executor if they executed the minting
+        Minting.payOrBurnExecutorFee(crt);
         // share collateral reservation fee between the agent's vault and pool
-        Minting.distributeCollateralReservationFee(agent, totalFee);
-        // pay executor in WNat to avoid reentrancy
-        Transfers.depositWNat(Globals.getWNat(), executor, claimedExecutorFee);
+        Minting.distributeCollateralReservationFee(agent, crt.reservationFeeNatWei);
     }
 
     /**
