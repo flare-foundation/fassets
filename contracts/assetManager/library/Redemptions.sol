@@ -109,7 +109,6 @@ library Redemptions {
         }
     }
 
-    // WARNING: every call must be guarded for reentrancy (otherwise transfer will fail)
     // burn executor fee
     function burnExecutorFee(
         Redemption.Request storage _request
