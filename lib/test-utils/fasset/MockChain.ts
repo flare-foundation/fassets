@@ -336,10 +336,7 @@ export class MockChainWallet implements IBlockChainWallet {
             // mark transaction failed if too little gas/fee is added (like EVM blockchains)
             options = { ...options, status: TX_FAILED };
         }
-        const success = options.status == null || options.status === TX_SUCCESS;
-        const spent = success ? value.add(maxFee) : maxFee;
-        const received = success ? value : BN_ZERO;
-        return this.createMultiTransaction({ [from]: spent }, { [to]: received }, reference, options);
+        return this.createMultiTransaction({ [from]: value.add(maxFee) }, { [to]: value }, reference, options);
     }
 
     createMultiTransaction(spent_: { [address: string]: BNish }, received_: { [address: string]: BNish }, reference: string | null, options?: MockTransactionOptions): MockChainTransaction {

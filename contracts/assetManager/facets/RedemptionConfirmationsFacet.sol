@@ -85,7 +85,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
         // request, which would wrongly mark payment as FAILED because the receiver is not the redeemer.
         // Following check prevents this for common payments with single receiver while still allowing payments to
         // actually wrong address to be marked as invalid.
-        require(_payment.data.responseBody.receivingAddressHash != agent.underlyingAddressHash,
+        require(_payment.data.responseBody.intendedReceivingAddressHash != agent.underlyingAddressHash,
             InvalidReceivingAddressSelected());
         // Valid payments are to correct destination, in time, and must have value at least the request payment value.
         (bool paymentValid, string memory failureReason) = _validatePayment(request, _payment);
@@ -180,7 +180,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA) - request.underlyingFeeUBA;
         if (_payment.data.responseBody.status == TransactionAttestation.PAYMENT_FAILED) {
             return (false, "transaction failed");
-        } else if (_payment.data.responseBody.receivingAddressHash != request.redeemerUnderlyingAddressHash) {
+        } else if (_payment.data.responseBody.intendedReceivingAddressHash != request.redeemerUnderlyingAddressHash) {
             return (false, "not redeemer's address");
         } else if (_payment.data.responseBody.receivedAmount < int256(paymentValueUBA)) { // paymentValueUBA < 2**128
             // for blocked payments, receivedAmount == 0, but it's still receiver's fault

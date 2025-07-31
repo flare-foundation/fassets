@@ -1,9 +1,9 @@
-import Web3 from "web3";
 import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/js-flare-common";
-import { TX_FAILED, TX_SUCCESS, TxInputOutput } from "../../underlying-chain/interfaces/IBlockChain";
-import { BN_ZERO, sumBN, ZERO_BYTES32 } from "../../utils/helpers";
-import { MockChain, MockChainTransaction } from "./MockChain";
+import Web3 from "web3";
 import { AttestationHelper } from "../../underlying-chain/AttestationHelper";
+import { TX_FAILED, TX_SUCCESS, TxInputOutput } from "../../underlying-chain/interfaces/IBlockChain";
+import { BN_ZERO, ZERO_BYTES32 } from "../../utils/helpers";
+import { MockChain, MockChainTransaction } from "./MockChain";
 
 export class MockAttestationProverError extends Error {
     constructor(message: string) {
@@ -11,28 +11,36 @@ export class MockAttestationProverError extends Error {
     }
 }
 
-function totalValueFor(ios: TxInputOutput[], address: string) {
+function totalValue(ios: TxInputOutput[], address: string | null) {
     let total = BN_ZERO;
     for (const [a, v] of ios) {
-        if (Web3.utils.soliditySha3Raw(a) === address) total = total.add(v);
+        if (address == null || Web3.utils.soliditySha3Raw(a) === address) {
+            total = total.add(v);
+        }
     }
     return total;
 }
 
-function totalSpentValue(transaction: MockChainTransaction, sourceAddressHash: string) {
-    if (transaction.status !== TX_SUCCESS) {
-        // only fee is spent for failed/blocked transactions (fee is diff `totalSpent - totalReceived`)
-        return sumBN(transaction.inputs, it => it[1]).sub(sumBN(transaction.outputs, it => it[1]));
+type Intended = "intended" | "actual";
+
+function totalSpentValue(transaction: MockChainTransaction, sourceAddressHash: string, kind: Intended) {
+    if (transaction.status === TX_SUCCESS || kind === "intended") {
+        // intended spent amount (actually spent on success)
+        return totalValue(transaction.inputs, sourceAddressHash).sub(totalValue(transaction.outputs, sourceAddressHash));
+    } else {
+        // only fee is actually spent for failed/blocked transactions (fee is diff `totalSpent - totalReceived`)
+        return totalValue(transaction.inputs, null).sub(totalValue(transaction.outputs, null));
     }
-    return totalValueFor(transaction.inputs, sourceAddressHash).sub(totalValueFor(transaction.outputs, sourceAddressHash));
 }
 
-function totalReceivedValue(transaction: MockChainTransaction, receivingAddressHash: string) {
-    if (transaction.status !== TX_SUCCESS) {
-        // nothing is received for failed/blocked transactions
+function totalReceivedValue(transaction: MockChainTransaction, receivingAddressHash: string, kind: Intended) {
+    if (transaction.status === TX_SUCCESS || kind === "intended") {
+        // intended spent amount (actually spent on success)
+        return totalValue(transaction.outputs, receivingAddressHash).sub(totalValue(transaction.inputs, receivingAddressHash));
+    } else {
+        // nothing is actually received for failed/blocked transactions
         return BN_ZERO;
     }
-    return totalValueFor(transaction.outputs, receivingAddressHash).sub(totalValueFor(transaction.inputs, receivingAddressHash));
 }
 
 export class MockAttestationProver {
@@ -45,20 +53,18 @@ export class MockAttestationProver {
         const { transaction, block } = this.findTransaction('payment', transactionHash);
         const sourceAddressHash = Web3.utils.soliditySha3Raw(transaction.inputs[Number(inUtxo)][0]);
         const receivingAddressHash = Web3.utils.soliditySha3Raw(transaction.outputs[Number(utxo)][0]);
-        const spent = totalSpentValue(transaction, sourceAddressHash);
-        const received = totalReceivedValue(transaction, receivingAddressHash);
         return {
             blockNumber: String(block.number),
             blockTimestamp: String(block.timestamp),
             sourceAddressHash: sourceAddressHash,
             sourceAddressesRoot: AttestationHelper.merkleRootOfAddresses(transaction.inputs.map(input => input[0])),
-            receivingAddressHash: receivingAddressHash,
+            receivingAddressHash: transaction.status === TX_SUCCESS ? receivingAddressHash : ZERO_BYTES32,
             intendedReceivingAddressHash: receivingAddressHash,
             standardPaymentReference: transaction.reference ?? ZERO_BYTES32,
-            spentAmount: String(spent),
-            intendedSpentAmount: String(spent),
-            receivedAmount: String(received),
-            intendedReceivedAmount: String(received),
+            spentAmount: String(totalSpentValue(transaction, sourceAddressHash, "actual")),
+            intendedSpentAmount: String(totalSpentValue(transaction, sourceAddressHash, "intended")),
+            receivedAmount: String(totalReceivedValue(transaction, receivingAddressHash, "actual")),
+            intendedReceivedAmount: String(totalReceivedValue(transaction, receivingAddressHash, "intended")),
             oneToOne: false,    // not needed
             status: String(transaction.status)
         };
@@ -69,7 +75,7 @@ export class MockAttestationProver {
         const sourceAddressHash = sourceAddressIndicator.length >= 10
             ? sourceAddressIndicator                                                        // sourceAddressIndicator can be hash of the address ...
             : Web3.utils.soliditySha3Raw(transaction.inputs[Number(sourceAddressIndicator)][0]);  // ... or hex encoded utxo number
-        const spent = totalSpentValue(transaction, sourceAddressHash);
+        const spent = totalSpentValue(transaction, sourceAddressHash, "actual");
         return {
             blockNumber: String(block.number),
             blockTimestamp: String(block.timestamp),
@@ -125,8 +131,8 @@ export class MockAttestationProver {
             }
             for (const transaction of block.transactions) {
                 const found = transaction.reference === paymentReference
-                    && totalReceivedValue(transaction, destinationAddressHash).gte(amount)
                     && transaction.status !== TX_FAILED
+                    && totalReceivedValue(transaction, destinationAddressHash, "intended").gte(amount)
                     && (!checkSourceAddresses || sourceAddressesRoot === AttestationHelper.merkleRootOfAddresses(transaction.inputs.map(input => input[0])));
                 if (found) {
                     return [true, startBlock, bn];
