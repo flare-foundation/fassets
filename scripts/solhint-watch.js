@@ -27,7 +27,7 @@ function executeSolhint(all = false) {
     const startTime = Date.now();
     let outputText = "";
     const filesArg = all ? `"contracts/**/*.sol"` : fileList.join(" ");
-    const solhint = cps.spawn(`solhint ${filesArg} --formatter json`, {
+    const solhint = cps.spawn(`solhint ${filesArg} --formatter json --disc`, {
         shell: true,
         stdio: "pipe"
     });

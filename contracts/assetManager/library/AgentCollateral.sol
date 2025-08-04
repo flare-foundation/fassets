@@ -251,10 +251,20 @@ library AgentCollateral {
         internal view
         returns (uint256)
     {
-        uint256 redeemingAMG = _data.kind == Collateral.Kind.POOL ? _agent.poolRedeemingAMG : _agent.redeemingAMG;
-        uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(redeemingAMG);
+        uint256 totalAMG = totalBackedAMG(_agent, _data.kind);
         uint256 backingTokenWei = Conversion.convertAmgToTokenWei(totalAMG, _data.amgToTokenWeiPrice);
         if (backingTokenWei == 0) return 1e10;    // nothing minted - ~infinite collateral ratio (but avoid overflows)
         return _data.fullCollateral.mulDiv(SafePct.MAX_BIPS, backingTokenWei);
+    }
+
+    function totalBackedAMG(
+        Agent.State storage _agent,
+        Collateral.Kind _collateralKind
+    )
+        internal view
+        returns (uint256)
+    {
+        uint256 redeemingAMG = _collateralKind == Collateral.Kind.POOL ? _agent.poolRedeemingAMG : _agent.redeemingAMG;
+        return uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(redeemingAMG);
     }
 }

@@ -127,7 +127,7 @@ library Liquidation {
         if (_collateralRatioBIPS <= _factorBIPS) {
             return _agent.mintedAMG; // cannot achieve target - liquidate all
         }
-        uint256 maxLiquidatedAMG = uint256(_agent.mintedAMG)
+        uint256 maxLiquidatedAMG = AgentCollateral.totalBackedAMG(_agent, _collateralKind)
             .mulDivRoundUp(targetRatioBIPS - _collateralRatioBIPS, targetRatioBIPS - _factorBIPS);
         // round up to whole number of lots
         maxLiquidatedAMG = maxLiquidatedAMG.roundUp(settings.lotSizeAMG);

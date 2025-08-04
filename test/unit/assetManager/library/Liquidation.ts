@@ -1,4 +1,5 @@
 import { AgentSettings, AgentStatus, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerEvents } from "../../../../lib/fasset/IAssetContext";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/MockChain";
@@ -8,8 +9,9 @@ import { createTestAgent, createTestCollaterals, createTestContracts, createTest
 import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { ExtractedEventArgs } from "../../../../lib/utils/events/common";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
+import { BN_ZERO, BNish, deepFormat, toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../../typechain-truffle";
 
 contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`, accounts => {
@@ -57,24 +59,30 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         await assetManager.makeAgentAvailable(agentVault.address, { from: owner });
     }
 
-    async function mint(agentVault: AgentVaultInstance, underlyingMinterAddress: string, minterAddress: string) {
-        // minter
-        chain.mint(underlyingMinterAddress, toBNExp(10000, 18));
-        // perform minting
-        const lots = 3;
+    async function reserveCollateral(agentVault: AgentVaultInstance, minterAddress: string, lots: BNish) {
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const crFee = await assetManager.collateralReservationFee(lots);
         const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, noExecutorAddress, { from: minterAddress, value: crFee });
         const crt = requiredEventArgs(resAg, 'CollateralReserved');
+        return crt;
+    }
+
+    async function performMinting(crt: ExtractedEventArgs<AssetManagerEvents, "CollateralReserved">, underlyingMinterAddress: string) {
+        chain.mint(underlyingMinterAddress, toBNExp(10000, 18));
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         const txHash = await wallet.addTransaction(underlyingMinterAddress, crt.paymentAddress, paymentAmount, crt.paymentReference);
         const proof = await attestationProvider.provePayment(txHash, underlyingMinterAddress, crt.paymentAddress);
-        const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress });
+        const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: crt.minter });
         return requiredEventArgs(res, 'MintingExecuted');
     }
 
-    async function redeem(underlyingRedeemerAddress: string, redeemerAddress: string) {
-        const lots = 3;
+    async function mint(agentVault: AgentVaultInstance, underlyingMinterAddress: string, minterAddress: string, lots: BNish = 3) {
+        // minter
+        const crt = await reserveCollateral(agentVault, minterAddress, lots);
+        return await performMinting(crt, underlyingMinterAddress);
+    }
+
+    async function redeem(underlyingRedeemerAddress: string, redeemerAddress: string, lots: BNish = 3) {
         const resR = await assetManager.redeem(lots, underlyingRedeemerAddress, noExecutorAddress, { from: redeemerAddress });
         const redemptionRequests = filterEvents(resR, 'RedemptionRequested').map(e => e.args);
         const request = redemptionRequests[0];
@@ -224,5 +232,42 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         // liquidator "buys" f-assets
         assertWeb3Equal(info1.status, AgentStatus.LIQUIDATION);
+    });
+
+    it("should account for reserved and redeeming assets in calculating CR and max liquidation amount", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e6));
+        const crt = await reserveCollateral(agentVault, minterAddress1, 5);
+        // change price
+        const assetName = await fAsset.symbol();
+        await contracts.priceStore.setCurrentPrice(assetName, toBNExp(8, 8), 0);
+        await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetName, toBNExp(8, 8), 0);
+        // can start liquidation
+        await assetManager.startLiquidation(agentVault.address);
+        // agent should be in liquidation now, but max liquidation is 0 until the minting is complete
+        const info0 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info0.status, AgentStatus.LIQUIDATION);
+        assertWeb3Equal(info0.mintedUBA, 0);
+        assertWeb3Equal(info0.maxLiquidationAmountUBA, 0);
+        // finish minting now
+        await performMinting(crt, underlyingMinter1);
+        // now max liquidation should be nonzero and smaller than minted amount
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        assert(toBN(info1.maxLiquidationAmountUBA).gt(BN_ZERO));
+        assert(toBN(info1.maxLiquidationAmountUBA).lt(toBN(info1.mintedUBA)));
+        // start small redemption
+        await redeem(underlyingMinter1, minterAddress1, 2);
+        // max liquidated amount should stay the same as long as it is less than the remaining mintedAMG
+        const info2 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info2.maxLiquidationAmountUBA, info1.maxLiquidationAmountUBA);
+        assert(toBN(info2.maxLiquidationAmountUBA).gt(BN_ZERO));
+        assert(toBN(info2.maxLiquidationAmountUBA).lt(toBN(info2.mintedUBA)));
+        // more redemption
+        await redeem(underlyingMinter1, minterAddress1, 2);
+        // max liquidated amount should now be limited by the mintedAMG
+        const info3 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info3.maxLiquidationAmountUBA, info3.mintedUBA);
+        assert(toBN(info3.maxLiquidationAmountUBA).lt(toBN(info1.maxLiquidationAmountUBA)));
     });
 });
