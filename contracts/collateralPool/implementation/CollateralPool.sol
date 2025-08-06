@@ -467,7 +467,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         } else {
             // f-asset that preserves pool CR (assume poolNatBalance >= natShare > 0)
             // solve (N - n) / (F - f) = N / F get f = n F / N
-            resultWithoutRounding = backedFAssets.mulDiv(_natShare, totalCollateral);
+            resultWithoutRounding = backedFAssets.mulDivRoundUp(_natShare, totalCollateral);
         }
         return MathUtils.roundUp(resultWithoutRounding, assetManager.assetMintingGranularityUBA());
     }
