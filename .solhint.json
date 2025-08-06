@@ -30,6 +30,7 @@
       "use-forbidden-name": "error",
       "var-name-mixedcase": "error",
       "visibility-modifier-order": "error",
+      "import-path-check": "error",
       "func-visibility": ["warn", { "ignoreConstructors": true }]
     }
   }
