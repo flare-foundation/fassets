@@ -457,17 +457,19 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         AssetPrice memory assetPrice = _getAssetPrice();
         uint256 exitCR = _safeExitCR();
         uint256 backedFAssets = _agentBackedFAssets();
+        uint256 resultWithoutRounding;
         if (_isAboveCR(assetPrice, backedFAssets, totalCollateral, exitCR)) {
             // f-asset required for CR to stay above exitCR (might not be needed)
             // solve (N - n) / (p / q (F - f)) >= cr get f = max(0, F - q (N - n) / (p cr))
             // assetPrice.mul > 0, exitCR > 1
-            return MathUtils.subOrZero(backedFAssets,
+            resultWithoutRounding = MathUtils.subOrZero(backedFAssets,
                 assetPrice.div * (totalCollateral - _natShare) * SafePct.MAX_BIPS / (assetPrice.mul * exitCR));
         } else {
             // f-asset that preserves pool CR (assume poolNatBalance >= natShare > 0)
             // solve (N - n) / (F - f) = N / F get f = n F / N
-            return backedFAssets.mulDiv(_natShare, totalCollateral);
+            resultWithoutRounding = backedFAssets.mulDiv(_natShare, totalCollateral);
         }
+        return MathUtils.roundUp(resultWithoutRounding, assetManager.assetMintingGranularityUBA());
     }
 
     function _staysAboveExitCR(

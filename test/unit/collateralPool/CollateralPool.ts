@@ -785,10 +785,11 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         it("should do a self-close exit where f-assets are required", async () => {
             await fAsset.mint(accounts[0], ETH(100), { from: assetManager.address });
-            await fAsset.approve(collateralPool.address, ETH(100));
             await collateralPool.enter({ value: ETH(10) });
             await collateralPool.enter({ value: ETH(1), from: accounts[1] });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
+            const requiredFAssets = await collateralPool.fAssetRequiredForSelfCloseExit(tokens);
+            await fAsset.approve(collateralPool.address, requiredFAssets);
             const resp = await collateralPool.selfCloseExit(tokens, true, "", ZERO_ADDRESS);
             await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemptionInCollateral");
         });
@@ -800,6 +801,30 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             const prms = collateralPool.selfCloseExit(tokens, true, "", ZERO_ADDRESS);
             await expectRevert.custom(prms, "FAssetAllowanceTooSmall", []);
+        });
+
+        it("should do a self-close exit where f-assets are required and have to be rounded up to AMG", async () => {
+            await fAsset.mint(accounts[0], ETH(100), { from: assetManager.address });
+            await collateralPool.enter({ value: ETH(10) });
+            await collateralPool.enter({ value: ETH(1), from: accounts[1] });
+            await assetManager.setFAssetsBackedByPool(ETH(12));
+            const tokens = await collateralPoolToken.balanceOf(accounts[0]);
+            // calculate required fasset sent (cannot use collateralPool.fAssetRequiredForSelfCloseExit, because it already rounds correctly)
+            const totalCollateral = await collateralPool.totalCollateral();
+            const backedFAssets = await assetManager.getFAssetsBackedByPool(accounts[0]);
+            const { 0: assetPriceMul, 1: assetPriceDiv } = await assetManager.assetPriceNatWei();
+            const exitCR = await collateralPool.exitCollateralRatioBIPS();
+            const natShare = totalCollateral.mul(tokens).div(await collateralPoolToken.totalSupply());
+            const calculatedRequiredFassets = backedFAssets.sub(assetPriceDiv.mul(totalCollateral.sub(natShare)).muln(MAX_BIPS).div(assetPriceMul.mul(exitCR)));
+            console.log(String(calculatedRequiredFassets));
+            console.log(String(await collateralPool.fAssetRequiredForSelfCloseExit(tokens)));
+            // try exit without rounding
+            await fAsset.approve(collateralPool.address, calculatedRequiredFassets);
+            await expectRevert.custom(collateralPool.selfCloseExit(tokens, true, "", ZERO_ADDRESS), "FAssetAllowanceTooSmall", []);
+            // should work if we increase by 1 amg
+            await fAsset.approve(collateralPool.address, calculatedRequiredFassets.add(await assetManager.assetMintingGranularityUBA()));
+            const resp = await collateralPool.selfCloseExit(tokens, true, "", ZERO_ADDRESS);
+            await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemptionInCollateral");
         });
 
         it("should do a self-close exit where there are no f-assets to redeem", async () => {

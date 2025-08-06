@@ -3,6 +3,7 @@
 
 pragma solidity ^0.8.27;
 
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {IIFAsset} from "../../fassetToken/interfaces/IIFAsset.sol";
@@ -23,12 +24,14 @@ contract AssetManagerMock {
     event AgentRedemption(address _recipient, string _underlying, uint256 _amountUBA, address payable _executor);
     event CollateralUpdated(address agentVault, address token);
 
-    uint256 internal maxRedemption = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    uint256 internal maxRedemption = type(uint256).max;
+    uint256 internal fassetsBackedByPool = type(uint256).max;
     uint256 internal timelockDuration = 0 days;
     uint256 public assetPriceMul = 1;
     uint256 public assetPriceDiv = 2;
     uint256 public lotSize = 1;
     uint256 public minPoolCollateralRatioBIPS = 0;
+    uint256 public assetMintingGranularityUBA = 1e9;
 
     constructor(IWNat _wNat) {
         wNat = _wNat;
@@ -98,7 +101,7 @@ contract AssetManagerMock {
     }
 
     function getFAssetsBackedByPool(address /* _backer */) external view returns (uint256) {
-        return fasset.totalSupply();
+        return Math.min(fassetsBackedByPool, fasset.totalSupply());
     }
 
     function maxRedemptionFromAgent(address /*agentVault*/) external view returns (uint256) {
@@ -141,6 +144,10 @@ contract AssetManagerMock {
 
     function setLotSize(uint256 _lotSize) public {
         lotSize = _lotSize;
+    }
+
+    function setFAssetsBackedByPool(uint256 _fassetsBackedByPool) external {
+        fassetsBackedByPool = _fassetsBackedByPool;
     }
 
     function setMaxRedemptionFromAgent(uint256 _maxRedemption) external {
