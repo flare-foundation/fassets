@@ -12,7 +12,7 @@ import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/tes
 import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BNish, MAX_BIPS, randomAddress, toBIPS, toBN, toBNExp, toNumber, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
+import { BN_ZERO, BNish, MAX_BIPS, randomAddress, toBIPS, toBN, toBNExp, toNumber, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, CollateralPoolInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../../typechain-truffle";
 
 
@@ -199,6 +199,26 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
         const res = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
         expectEvent(res, 'RedemptionPerformed');
+    });
+
+    it("should mint pool redemption fee and it should be whole number of AMG", async () => {
+        // init
+        await assetManager.setLotSizeAmg(toBN(settings.lotSizeAMG).addn(1234), { from: assetManagerController });   // must set weird lot size to have fees not be whole number of AMG
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { redemptionPoolFeeShareBIPS: 1234 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
+        const pool = await CollateralPool.at(await agentVault.collateralPool());
+        //perform redemption payment
+        const paymentAmt = request.valueUBA.sub(request.feeUBA);
+        const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
+        const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
+        const poolFeesBefore = await pool.totalFAssetFees();
+        const res = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
+        const poolFeesAfter = await pool.totalFAssetFees();
+        const redemptionPoolFees = poolFeesAfter.sub(poolFeesBefore);
+        expectEvent(res, 'RedemptionPerformed');
+        assert(redemptionPoolFees.gt(BN_ZERO));
+        assertWeb3Equal(redemptionPoolFees.mod(toBN(settings.assetMintingGranularityUBA)), 0);
     });
 
     it("should update underlying block with redemption proof", async () => {

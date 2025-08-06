@@ -151,6 +151,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
         private
     {
         uint256 poolFeeUBA = uint256(_request.underlyingFeeUBA).mulBips(_request.poolFeeShareBIPS);
+        poolFeeUBA = Conversion.roundUBAToAmg(poolFeeUBA);
         if (poolFeeUBA > 0) {
             AgentBacking.createNewMinting(_agent, Conversion.convertUBAToAmg(poolFeeUBA));
             Globals.getFAsset().mint(address(_agent.collateralPool), poolFeeUBA);
