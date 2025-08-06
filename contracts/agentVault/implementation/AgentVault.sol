@@ -107,7 +107,6 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     function transferExternalToken(IERC20 _token, uint256 _amount)
         external override
         onlyOwner
-        nonReentrant
     {
         require(destroyed || !assetManager.isLockedVaultToken(address(this), _token), OnlyNonCollateralTokens());
         address ownerManagementAddress = assetManager.getAgentVaultOwner(address(this));
