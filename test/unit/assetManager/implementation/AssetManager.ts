@@ -134,11 +134,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         agentVault: AgentVaultInstance, owner: string,
         depositVaultCollateral: BN = toWei(3e8), depositPool: BN = toWei(3e8)
     ) {
-        await usdc.mintAmount(owner, depositVaultCollateral);
-        await usdc.approve(agentVault.address, depositVaultCollateral, { from: owner });
         await wNat.deposit({ from: owner, value: depositVaultCollateral })
-        await wNat.transfer(agentVault.address, depositVaultCollateral, { from: owner })
-        await agentVault.depositCollateral(usdc.address, depositVaultCollateral, { from: owner });
+        await wNat.approve(agentVault.address, depositVaultCollateral, { from: owner });
+        await agentVault.depositCollateral(wNat.address, depositVaultCollateral, { from: owner });
         await agentVault.buyCollateralPoolTokens({ from: owner, value: depositPool });
     }
 
@@ -752,18 +750,18 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             //Check for liquidation status
             const info = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(info.status, 1);
-            //If agent deposits a non collateral token, it shouldn't get out of liquidation
-            const token = await ERC20Mock.new("Some NAT", "SNAT");
-            await token.mintAmount(agentOwner1, toWei(3e8));
-            await token.approve(agentVault.address, toWei(3e8), { from: agentOwner1 });
-            await agentVault.depositCollateral(token.address, toWei(3e8), { from: agentOwner1 });
-            const info1 = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(info1.status, 1);
-            //Deposit vault collateral and switch
+            //Deposit new vault collateral
             await usdt.mintAmount(agentOwner1, toWei(3e8));
             await usdt.approve(agentVault.address, toWei(3e8), { from: agentOwner1 });
             await agentVault.depositCollateral(usdt.address, toWei(3e8), { from: agentOwner1 });
+            //Before switching, the agent is still in liquidation
+            const info1 = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(info1.status, 1);
+            //Agent switches the collateral
             await assetManager.switchVaultCollateral(agentVault.address,collaterals[2].token, { from: agentOwner1 });
+            //Agent still has to call updateCollateral to get out of liquidation
+            const info2 = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(info2.status, 1);
             //Random address can't call collateral deposited
             const res = assetManager.updateCollateral(agentVault.address,usdt.address, { from: accounts[5] });
             await expectRevert.custom(res, "OnlyAgentVaultOrPool", []);
@@ -772,8 +770,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             //Call collateral deposited from owner address to trigger liquidation end
             await agentVault.updateCollateral(usdt.address, { from: agentOwner1 });
             //Check that agent is out of liquidation
-            const info2 = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(info2.status, 0);
+            const info3 = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(info3.status, 0);
         });
 
         it("should set pool collateral token", async () => {
@@ -1161,9 +1159,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assertWeb3Equal(agentInfo.totalVaultCollateralWei, 9000);
         });
 
-        it("Withdraw non-collateral token branch test", async () => {
+        it("Agent can always withdraw a collateral token that is not its current collateral", async () => {
             const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
-            const token = await ERC20Mock.new("Some NAT", "SNAT");
+            const token = usdt;
             await token.mintAmount(agentVault.address, toWei(3e8));
             await token.approve(agentVault.address, toWei(3e8), { from: agentOwner1 });
             const beforeBalance = await token.balanceOf(agentVault.address);

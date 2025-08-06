@@ -218,6 +218,35 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, ac
         await expectRevert.custom(res, "InvalidAgentVaultAddress", [])
     });
 
+    it("cannot deposit/withdraw unknown tokens", async () => {
+        const myToken = await ERC20Mock.new("My Token", "MTOK");
+        const agentVault = await createAgentVault(owner, underlyingAgent1, { vaultCollateralToken: usdc.address });
+        // cannot deposit myToken
+        await myToken.mintAmount(owner, 2000);
+        await myToken.approve(agentVault.address, 2000, { from: owner });
+        await expectRevert.custom(agentVault.depositCollateral(myToken.address, 1000, { from: owner }), "UnknownToken", []);
+        // cannot deposit myToken via updateCollateral
+        await myToken.transfer(agentVault.address, 1000, { from: owner });
+        await expectRevert.custom(agentVault.updateCollateral(myToken.address, { from: owner }), "UnknownToken", []);
+        // cannot withdraw myToken
+        await expectRevert.custom(agentVault.withdrawCollateral(myToken.address, 1000, owner, { from: owner }), "UnknownToken", []);
+    });
+
+    it("but can deposit/withdraw vault collateral tokens even if they are not current collateral for this vault", async () => {
+        const usdt = stablecoins.USDT;
+        await usdt.mintAmount(owner, 2000);
+        const agentVault = await createAgentVault(owner, underlyingAgent1, { vaultCollateralToken: usdc.address });
+        // cannot deposit myToken
+        await usdt.mintAmount(owner, 2000);
+        await usdt.approve(agentVault.address, 2000, { from: owner });
+        await agentVault.depositCollateral(usdt.address, 1000, { from: owner });
+        // cannot deposit myToken via updateCollateral
+        await usdt.transfer(agentVault.address, 1000, { from: owner });
+        await agentVault.updateCollateral(usdt.address, { from: owner });
+        // cannot withdraw myToken
+        await agentVault.withdrawCollateral(usdt.address, 1000, owner, { from: owner });
+    });
+
     it("cannot transfer NAT to agent vault", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const res = web3.eth.sendTransaction({ from: owner, to: agentVault.address, value: 500 });

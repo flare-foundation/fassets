@@ -35,6 +35,11 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         _;
     }
 
+    modifier onlyKnownToken(IERC20 _token) {
+        _validateToken(_token);
+        _;
+    }
+
     // Only used in some tests.
     // The implementation in production will always be deployed with address(0) for _assetManager.
     constructor(IIAssetManager _assetManager) {
@@ -76,6 +81,7 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     function depositCollateral(IERC20 _token, uint256 _amount)
         external override
         onlyOwner
+        onlyKnownToken(_token)
     {
         _token.safeTransferFrom(msg.sender, address(this), _amount);
         assetManager.updateCollateral(address(this), _token);
@@ -85,6 +91,7 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     function updateCollateral(IERC20 _token)
         external override
         onlyOwner
+        onlyKnownToken(_token)
     {
         assetManager.updateCollateral(address(this), _token);
     }
@@ -92,6 +99,7 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
     function withdrawCollateral(IERC20 _token, uint256 _amount, address _recipient)
         external override
         onlyOwner
+        onlyKnownToken(_token)
         nonReentrant
     {
         // check that enough was announced and reduce announcement (not relevant after destroy)
@@ -128,6 +136,7 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
 
     // Used by asset manager for liquidation and failed redemption.
     // Is nonReentrant to prevent reentrancy in case the token has receive hooks.
+    // No need for onlyKnownToken here, because asset manager will always send valid token.
     function payout(IERC20 _token, address _recipient, uint256 _amount)
         external override
         onlyAssetManager
@@ -177,5 +186,11 @@ contract AgentVault is ReentrancyGuard, UUPSUpgradeable, IIAgentVault, IERC165 {
         internal virtual override
         onlyAssetManager
     { // solhint-disable-line no-empty-blocks
+    }
+
+    // Check if the token is one of known collateral tokens (not necessarily still valid as collateral),
+    // to prevent agent owners attacking the system with malicious tokens.
+    function _validateToken(IERC20 _token) private view {
+        require(assetManager.isVaultCollateralToken(_token), UnknownToken());
     }
 }

@@ -10,6 +10,7 @@ interface IAgentVault {
     error OnlyOwner();
     error OnlyAssetManager();
     error AlreadyInitialized();
+    error UnknownToken();
     error OnlyNonCollateralTokens();
 
     /**

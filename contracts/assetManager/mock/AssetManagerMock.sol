@@ -61,6 +61,10 @@ contract AssetManagerMock {
         return _address == commonOwner;
     }
 
+    function isVaultCollateralToken(IERC20 /* _token */) external pure returns (bool) {
+        return true;
+    }
+
     function updateCollateral(address _agentVault, IERC20 _token) external {
         require(!checkForValidAgentVaultAddress, Agent.InvalidAgentVaultAddress());
         emit CollateralUpdated(_agentVault, address(_token));

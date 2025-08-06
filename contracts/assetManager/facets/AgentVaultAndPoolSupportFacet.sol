@@ -9,6 +9,8 @@ import {Globals} from "../library/Globals.sol";
 import {Agent} from "../library/data/Agent.sol";
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
+import {CollateralTypes} from "../library/CollateralTypes.sol";
 
 
 contract AgentVaultAndPoolSupportFacet is AssetManagerBase {
@@ -37,6 +39,16 @@ contract AgentVaultAndPoolSupportFacet is AssetManagerBase {
     {
         Agent.State storage agent = Agent.get(_agentVault);
         return _token == agent.getVaultCollateralToken() || _token == agent.collateralPool.poolToken();
+    }
+
+    /**
+     * Check if `_token` is any of the vault collateral tokens (including already invalidated).
+     */
+    function isVaultCollateralToken(IERC20 _token)
+        external view
+        returns (bool)
+    {
+        return CollateralTypes.exists(CollateralType.Class.VAULT, _token);
     }
 
     function getFAssetsBackedByPool(address _agentVault)

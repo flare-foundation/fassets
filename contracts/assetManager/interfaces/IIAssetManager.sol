@@ -252,6 +252,13 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsMan
         returns (bool);
 
     /**
+     * Check if `_token` is any of the vault collateral tokens (including already invalidated).
+     */
+    function isVaultCollateralToken(IERC20 _token)
+        external view
+        returns (bool);
+
+    /**
      * True if `_address` is either work or management address of the owner of the agent identified by `_agentVault`.
      * Used internally by agent vault.
      */
