@@ -140,6 +140,17 @@ library CoreVaultClient {
         require(address(state.coreVaultManager) != address(0), CoreVaultNotEnabled());
     }
 
+    function coreVaultUnderlyingAddressHash()
+        internal view
+        returns (bytes32)
+    {
+        State storage state = getState();
+        if (address(state.coreVaultManager) == address(0)) {
+            return bytes32(0);
+        }
+        return state.coreVaultManager.coreVaultAddressHash();
+    }
+
     function _minimumRemainingAfterTransferAMG(
         Agent.State storage _agent
     )

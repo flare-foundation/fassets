@@ -11,6 +11,7 @@ import {TransactionAttestation} from "../library/TransactionAttestation.sol";
 import {Agent} from "../library/data/Agent.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 import {UnderlyingAddressOwnership} from "../library/data/UnderlyingAddressOwnership.sol";
+import {CoreVaultClient} from "../library/CoreVaultClient.sol";
 import {IIAgentVault} from "../../agentVault/interfaces/IIAgentVault.sol";
 import {IIAgentVaultFactory} from "../../agentVault/interfaces/IIAgentVaultFactory.sol";
 import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
@@ -42,6 +43,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
     error DestroyNotAllowedYet();
     error SuffixReserved();
     error SuffixInvalidFormat();
+    error AddressUsedByCoreVault();
 
     /**
      * Create an agent.
@@ -71,6 +73,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         TransactionAttestation.verifyAddressValidity(_addressProof);
         IAddressValidity.ResponseBody memory avb = _addressProof.data.responseBody;
         require(avb.isValid, AddressInvalid());
+        require(avb.standardAddressHash != CoreVaultClient.coreVaultUnderlyingAddressHash(), AddressUsedByCoreVault());
         IIAssetManager assetManager = IIAssetManager(address(this));
         // create agent vault
         IIAgentVaultFactory agentVaultFactory = IIAgentVaultFactory(Globals.getSettings().agentVaultFactory);

@@ -492,6 +492,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         await expectRevert.custom(res, "NoActiveReturnRequest", []);
     });
 
+    it("agent should use core vault address", async () => {
+        await expectRevert.custom(Agent.createTest(context, agentOwner1, coreVaultUnderlyingAddress), "AddressUsedByCoreVault", []);
+    });
+
     it("test checks in requesting return from core vault", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
