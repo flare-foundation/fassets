@@ -406,7 +406,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         // slash agent vault's pool tokens worth _agentResponsibilityWei in FLR (or less if there is not enough)
         uint256 agentTokenBalance = token.balanceOf(agentVault);
         uint256 maxSlashedTokens = totalCollateral > 0 ?
-             token.totalSupply().mulDiv(_agentResponsibilityWei, totalCollateral) : agentTokenBalance;
+             token.totalSupply().mulDivRoundUp(_agentResponsibilityWei, totalCollateral) : agentTokenBalance;
         uint256 slashedTokens = Math.min(maxSlashedTokens, agentTokenBalance);
         if (slashedTokens > 0) {
             uint256 debtFAssetFeeShare = _tokensToVirtualFeeShare(slashedTokens);

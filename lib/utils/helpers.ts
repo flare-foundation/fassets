@@ -447,11 +447,16 @@ export function isBNLike(value: unknown): value is BNish {
     return BN.isBN(value) || (typeof value === 'string' && /^\d+$/.test(value));
 }
 
+type DeepFormatOptions = {
+    allowNumericKeys?: boolean;
+    maxDecimals?: number;
+};
+
 /**
  * Some Web3 results are union of array and struct so console.log prints them as array.
  * This function converts it to struct nad also formats values.
  */
-export function deepFormat(value: unknown, options?: { allowNumericKeys?: boolean, maxDecimals?: number }): unknown {
+export function deepFormat(value: unknown, options?: DeepFormatOptions): unknown {
     const opts = { allowNumericKeys: false, maxDecimals: 3, ...options };
     function isNumberLike(key: string | number) {
         return typeof key === 'number' || /^\d+$/.test(key);
@@ -480,10 +485,10 @@ export function deepFormat(value: unknown, options?: { allowNumericKeys?: boolea
 /**
  * Print `name = value` pairs for a dict of format `{name: value, name: value, ...}`
  */
-export function trace(items: Record<string, unknown>) {
+export function trace(items: Record<string, unknown>, options?: DeepFormatOptions) {
     for (const [key, value] of Object.entries(items)) {
         const serialize = typeof value === 'object' && value != null && (value.constructor === Array || value.constructor === Object);
-        const valueS = serialize ? JSON.stringify(deepFormat(value)) : deepFormat(value);
+        const valueS = serialize ? JSON.stringify(deepFormat(value, options)) : deepFormat(value, options);
         console.log(`${key} = ${valueS}`);
     }
 }

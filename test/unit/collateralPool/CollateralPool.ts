@@ -5,7 +5,7 @@ import { calcGasCost, calculateReceivedNat } from "../../../lib/test-utils/eth";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestContracts } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
-import { MAX_BIPS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { MAX_BIPS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, toBN, toBNExp, toWei, trace } from "../../../lib/utils/helpers";
 import {
     AgentVaultMockInstance,
     AssetManagerMockInstance,
@@ -1226,16 +1226,28 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         it("should payout collateral from collateral pool", async () => {
             // agentVault enters the pool
             await agentVault.enterPool(collateralPool.address, { value: ETH(100) });
-            const agentVaultTokensBeforePayout = await collateralPoolToken.balanceOf(agentVault.address);
             // force payout from asset manager
             const collateralPayoutPayload = abiEncodeCall(collateralPool, (p) => p.payout(accounts[0], ETH(1), ETH(1)));
             await assetManager.callFunctionAt(collateralPool.address, collateralPayoutPayload);
             // check that account0 has received specified wNat
             const natOfAccount0 = await wNat.balanceOf(accounts[0]);
             assertEqualBN(natOfAccount0, ETH(1));
+        });
+
+        it("should slash corresponding amount of agent tokens (rounded up) on payout", async () => {
+            // agentVault enters the pool
+            await agentVault.enterPool(collateralPool.address, { value: ETH(100) });
+            await collateralPool.depositNat({ value: ETH(200), from: assetManager.address });   // make token price 1/3 nat price
+            const agentTokensBeforePayout = await collateralPoolToken.balanceOf(agentVault.address);
+            // force payout from asset manager
+            const collateralPayoutPayload = abiEncodeCall(collateralPool, (p) => p.payout(accounts[0], ETH(1), ETH(1)));
+            await assetManager.callFunctionAt(collateralPool.address, collateralPayoutPayload);
             // check that tokens were slashed accordingly
             const agentTokensAfterPayout = await collateralPoolToken.balanceOf(agentVault.address);
-            assertEqualBN(agentTokensAfterPayout, agentVaultTokensBeforePayout.sub(ETH(1)));
+            const agentSlashed = agentTokensBeforePayout.sub(agentTokensAfterPayout);
+            const expectedPayout = ETH(1).divn(3).addn(1);  // slashing should be rounded up
+            trace({ agentSlashed }, { maxDecimals: 18 });
+            assertEqualBN(agentSlashed, expectedPayout);
         });
     });
 
