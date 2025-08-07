@@ -1,22 +1,9 @@
 import { BNish, toBN } from "../utils/helpers";
 
 export abstract class Approximation {
-    constructor(
-        public expected: BN,
-    ) { }
-
     abstract matches(value: BNish): boolean;
 
     abstract assertMatches(value: BNish, message?: string): void;
-
-    absoluteError(value: BNish) {
-        return toBN(value).sub(this.expected).abs();
-    }
-
-    relativeError(value: BNish) {
-        const error = this.absoluteError(value);
-        return error.isZero() ? 0 : Number(error) / Math.max(Math.abs(Number(value)), Math.abs(Number(this.expected)));
-    }
 
     static absolute(value: BNish, error: BNish) {
         return new AbsoluteApproximation(toBN(value), toBN(error));
@@ -29,18 +16,22 @@ export abstract class Approximation {
 
 class AbsoluteApproximation extends Approximation {
     constructor(
-        expected: BN,
+        public expected: BN,
         public maxError: BN,
     ) {
-        super(expected);
+        super();
+    }
+
+    error(value: BNish) {
+        return toBN(value).sub(this.expected).abs();
     }
 
     override matches(value: BNish) {
-        return this.absoluteError(value).lte(this.maxError);
+        return this.error(value).lte(this.maxError);
     }
 
     override assertMatches(value: BNish, message?: string) {
-        const error = this.absoluteError(value);
+        const error = this.error(value);
         if (error.gt(this.maxError)) {
             // should use assert.fail, but it doesn't display expected and actual value
             assert.equal(String(value), String(this.expected), `${message ?? 'Values too different'} - absolute error is ${error}, should be below ${this.maxError}`);
@@ -50,18 +41,23 @@ class AbsoluteApproximation extends Approximation {
 
 class RelativeApproximation extends Approximation {
     constructor(
-        expected: BN,
+        public expected: BN,
         public maxError: number,
     ) {
-        super(expected);
+        super();
+    }
+
+    error(value: BNish) {
+        const error = toBN(value).sub(this.expected).abs();
+        return error.isZero() ? 0 : Number(error) / Math.max(Math.abs(Number(value)), Math.abs(Number(this.expected)));
     }
 
     override matches(value: BNish) {
-        return this.relativeError(value) <= this.maxError;
+        return this.error(value) <= this.maxError;
     }
 
     override assertMatches(value: BNish, message?: string) {
-        const error = this.relativeError(value);
+        const error = this.error(value);
         if (error > this.maxError) {
             assert.equal(String(value), String(this.expected), `${message ?? 'Values too different'} - relative error is ${error.toExponential(3)}, should be below ${this.maxError}`);
         }

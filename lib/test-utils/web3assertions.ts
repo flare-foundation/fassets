@@ -1,3 +1,5 @@
+import { AssertionError } from "chai";
+import { BNish, toBN } from "../utils/helpers";
 import { web3DeepNormalize, web3Normalize } from "../utils/web3normalize";
 
 // Web3 returns struct results as union of array and struct, but later methods interpet it as an array.
@@ -15,6 +17,18 @@ export function web3ResultStruct<T extends object>(value: T): T {
 
 export function assertWeb3Equal(actual: unknown, expected: unknown, message?: string) {
     assert.strictEqual(web3Normalize(actual), web3Normalize(expected), message);
+}
+
+const comparisonValues = { '==': [0], '!=': [-1, 1], '===': [0], '!==': [-1, 1], '<': [-1], '>': [1], '<=': [-1, 0], '>=': [0, 1] };
+
+export function assertWeb3Compare(actual: BNish, comparison: keyof typeof comparisonValues, expected: BNish, message?: string) {
+    const cmp = toBN(actual).cmp(toBN(expected));
+    if (!comparisonValues[comparison].includes(cmp)) {
+        const cmpConvert = { '-1': 'the first is smaller', '0': 'they are equal', '1': 'the first is greater'};
+        message ??= `Expected ${actual} ${comparison} ${expected}, but ${cmpConvert[cmp]}`;
+        // eslint-disable-next-line @typescript-eslint/only-throw-error
+        throw new AssertionError(message, { actual: String(actual), expected: String(expected), showDiff: true });
+    }
 }
 
 export function assertWeb3DeepEqual(actual: unknown, expected: unknown, message?: string) {
