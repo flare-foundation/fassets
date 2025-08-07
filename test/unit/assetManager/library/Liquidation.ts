@@ -1,5 +1,4 @@
 import { AgentSettings, AgentStatus, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
-import { AssetManagerEvents } from "../../../../lib/fasset/IAssetContext";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/MockChain";
@@ -9,10 +8,11 @@ import { createTestAgent, createTestCollaterals, createTestContracts, createTest
 import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { ExtractedEventArgs } from "../../../../lib/utils/events/common";
+import { EventArgs } from "../../../../lib/utils/events/common";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BN_ZERO, BNish, deepFormat, toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
+import { BN_ZERO, BNish, toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../../typechain-truffle";
+import { CollateralReserved } from "../../../../typechain-truffle/IIAssetManager";
 
 contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`, accounts => {
     const governance = accounts[10];
@@ -67,7 +67,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         return crt;
     }
 
-    async function performMinting(crt: ExtractedEventArgs<AssetManagerEvents, "CollateralReserved">, underlyingMinterAddress: string) {
+    async function performMinting(crt: EventArgs<CollateralReserved>, underlyingMinterAddress: string) {
         chain.mint(underlyingMinterAddress, toBNExp(10000, 18));
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         const txHash = await wallet.addTransaction(underlyingMinterAddress, crt.paymentAddress, paymentAmount, crt.paymentReference);

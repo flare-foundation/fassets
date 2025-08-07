@@ -6,14 +6,12 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {MathUtils} from "../../utils/library/MathUtils.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
-import {Globals} from "./Globals.sol";
 import {Agents} from "./Agents.sol";
 import {Conversion} from "./Conversion.sol";
 import {AgentCollateral} from "./AgentCollateral.sol";
 import {Agent} from "./data/Agent.sol";
 import {Collateral} from "./data/Collateral.sol";
 import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
-import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {CollateralTypes} from "./CollateralTypes.sol";
 
 
@@ -114,7 +112,6 @@ library Liquidation {
         internal view
         returns (uint256)
     {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
         // for full liquidation, all minted amount can be liquidated
         if (_agent.status == Agent.Status.FULL_LIQUIDATION) {
             return _agent.mintedAMG;
@@ -129,8 +126,6 @@ library Liquidation {
         }
         uint256 maxLiquidatedAMG = AgentCollateral.totalBackedAMG(_agent, _collateralKind)
             .mulDivRoundUp(targetRatioBIPS - _collateralRatioBIPS, targetRatioBIPS - _factorBIPS);
-        // round up to whole number of lots
-        maxLiquidatedAMG = maxLiquidatedAMG.roundUp(settings.lotSizeAMG);
         return Math.min(maxLiquidatedAMG, _agent.mintedAMG);
     }
 
