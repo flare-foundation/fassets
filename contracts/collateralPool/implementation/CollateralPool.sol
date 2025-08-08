@@ -139,15 +139,13 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
             // this conditions are set for keeping a stable token value
             require(msg.value >= totalCollateral, AmountOfCollateralTooLow());
             AssetPrice memory assetPrice = _getAssetPrice();
-            require(msg.value >= totalFAssetFees.mulDiv(assetPrice.mul, assetPrice.div),
-                    AmountOfCollateralTooLow());
+            require(msg.value >= totalFAssetFees.mulDiv(assetPrice.mul, assetPrice.div), AmountOfCollateralTooLow());
         }
         // calculate obtained pool tokens and free f-assets
         uint256 tokenShare = _collateralToTokenShare(msg.value);
         require(tokenShare > 0, DepositResultsInZeroTokens());
         // calculate and create fee debt
-        uint256 feeDebt = totalPoolTokens > 0 ?
-            _totalVirtualFees().mulDiv(tokenShare, totalPoolTokens) : 0;
+        uint256 feeDebt = totalPoolTokens > 0 ? _totalVirtualFees().mulDiv(tokenShare, totalPoolTokens) : 0;
         _createFAssetFeeDebt(msg.sender, feeDebt);
         // deposit collateral
         _depositWNat();
@@ -406,7 +404,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         // slash agent vault's pool tokens worth _agentResponsibilityWei in FLR (or less if there is not enough)
         uint256 agentTokenBalance = token.balanceOf(agentVault);
         uint256 maxSlashedTokens = totalCollateral > 0 ?
-             token.totalSupply().mulDivRoundUp(_agentResponsibilityWei, totalCollateral) : agentTokenBalance;
+            token.totalSupply().mulDivRoundUp(_agentResponsibilityWei, totalCollateral) : agentTokenBalance;
         uint256 slashedTokens = Math.min(maxSlashedTokens, agentTokenBalance);
         if (slashedTokens > 0) {
             uint256 debtFAssetFeeShare = _tokensToVirtualFeeShare(slashedTokens);
@@ -627,6 +625,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     function _createFAssetFeeDebt(address _account, uint256 _fAssets)
         internal
     {
+        if (_fAssets == 0) return;
         int256 fAssets = _fAssets.toInt256();
         _fAssetFeeDebtOf[_account] += fAssets;
         totalFAssetFeeDebt += fAssets;
@@ -637,6 +636,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     function _deleteFAssetFeeDebt(address _account, uint256 _fAssets)
         internal
     {
+        if (_fAssets == 0) return;
         int256 fAssets = _fAssets.toInt256();
         _fAssetFeeDebtOf[_account] -= fAssets;
         totalFAssetFeeDebt -= fAssets;
