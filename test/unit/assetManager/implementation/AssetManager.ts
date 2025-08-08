@@ -816,17 +816,21 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
     });
 
-    describe("whitelisting", () => {
-        it("should require whitelisting, when whitelist exists, to create agent", async () => {
+    describe("agent owner registry", () => {
+        async function addOwnerRegistry() {
             // create governance settings
             const governanceSettings = await GovernanceSettings.new();
             await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
             // create whitelist
             const agentOwnerRegistry = await AgentOwnerRegistry.new(governanceSettings.address, governance);
             await agentOwnerRegistry.switchToProductionMode({ from: governance });
-            await agentOwnerRegistry.whitelistAndDescribeAgent(whitelistedAccount, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
             await assetManager.setAgentOwnerRegistry(agentOwnerRegistry.address, { from: assetManagerController });
-            // assert
+            return agentOwnerRegistry;
+        }
+
+        it("should require whitelisting, when agent owner registry exists, to create agent", async () => {
+            const agentOwnerRegistry = await addOwnerRegistry();
+            await agentOwnerRegistry.whitelistAndDescribeAgent(whitelistedAccount, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
             const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
             assert.isTrue(addressValidityProof.data.responseBody.isValid);
             const settings = createTestAgentSettings(usdc.address);
@@ -834,11 +838,29 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 "AgentNotWhitelisted", []);
             expectEvent(await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(settings), { from: whitelistedAccount}), "AgentVaultCreated");
         });
+
+        it("should set and get work address", async () => {
+            const agentOwnerRegistry = await addOwnerRegistry();
+            const workAddress = accounts[33];
+            await agentOwnerRegistry.whitelistAndDescribeAgent(whitelistedAccount, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
+            // initially work address is 0
+            assertWeb3Equal(await assetManager.getWorkAddress(whitelistedAccount), ZERO_ADDRESS);
+            // change
+            await agentOwnerRegistry.setWorkAddress(workAddress, { from: whitelistedAccount });
+            assertWeb3Equal(await assetManager.getWorkAddress(whitelistedAccount), workAddress);
+            // create agent vault from work address
+            const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
+            const settings = createTestAgentSettings(usdc.address);
+            expectEvent(await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(settings), { from: workAddress }), "AgentVaultCreated");
+        });
     });
 
     describe("pause and unpause minting", () => {
         it("should pause", async () => {
             assert.isFalse(await assetManager.mintingPaused());
+            await assetManager.pauseMinting({ from: assetManagerController });
+            assert.isTrue(await assetManager.mintingPaused());
+            // pause can be called twice with no extra effect
             await assetManager.pauseMinting({ from: assetManagerController });
             assert.isTrue(await assetManager.mintingPaused());
         });
@@ -2045,7 +2067,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
     });
 
-    describe("branch tests", () => {
+    describe("settings update and validation", () => {
         it("random address shouldn't be able to update settings", async () => {
             const wnatNewAddress = accounts[23];
             const r = assetManager.updateSystemContracts(assetManagerController, wnatNewAddress, { from: accounts[29] });
@@ -2943,355 +2965,352 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
     });
 
-    describe("reading system properties", () => {
-
-        describe("reading settings", () => {
-            it("should read price reader", async () => {
-                const priceReader = await assetManager.priceReader();
-                expect(priceReader).to.not.be.equal(ZERO_ADDRESS);
-                expect(priceReader).to.equal(settings.priceReader);
-            });
-
-            it("should read AMG UBA", async () => {
-                const amgUba = await assetManager.assetMintingGranularityUBA();
-                expect(amgUba.toString()).to.not.equal("0");
-                expect(amgUba.toString()).to.equal(settings.assetMintingGranularityUBA.toString());
-            });
-
-            it("should read asset minting decimals", async () => {
-                const assetMintingDecimals = await assetManager.assetMintingDecimals();
-                expect(assetMintingDecimals.toString()).to.not.equal("0");
-                expect(assetMintingDecimals.toString()).to.equal(settings.assetMintingDecimals.toString());
-            })
-        })
-
-        describe("reading agent info", () => {
-            it("should read agent's vault collateral token", async () => {
-                const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
-                const collateralToken = await assetManager.getAgentVaultCollateralToken(agentVault.address)
-                expect(collateralToken).to.equal(usdc.address);
-            });
-
-            it("should read agent's full vault and pool collaterals", async () => {
-                const vaultCollateralDeposit = toWei(3e8);
-                const poolCollateralDeposit = toWei(3e10);
-                await usdc.mintAmount(agentOwner1, vaultCollateralDeposit);
-                await usdc.approve(assetManager.address, vaultCollateralDeposit, { from: agentOwner1 });
-                const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1, vaultCollateralDeposit, poolCollateralDeposit);
-                const fullVaultCollateral = await assetManager.getAgentFullVaultCollateral(agentVault.address);
-                expect(fullVaultCollateral.toString()).to.equal(vaultCollateralDeposit.toString());
-                const fullPoolCollateral = await assetManager.getAgentFullPoolCollateral(agentVault.address);
-                expect(fullPoolCollateral.toString()).to.equal(poolCollateralDeposit.toString());
-            });
-
-            it("should get agent's liquidation params", async () => {
-                const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
-                const {
-                    0: liquidationPaymentFactorVaultBIPS,
-                    1: liquidationPaymentFactorPoolBIPS,
-                    2: maxLiquidationAmountUBA
-                } = await assetManager.getAgentLiquidationFactorsAndMaxAmount(agentVault.address);
-                expect(liquidationPaymentFactorVaultBIPS.toString()).to.equal("0");
-                expect(liquidationPaymentFactorPoolBIPS.toString()).to.equal("0");
-                expect(maxLiquidationAmountUBA.toString()).to.equal("0");
-            });
-
-            it("should get agent's minimum collateral ratios", async () => {
-                const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
-                const info = await assetManager.getAgentInfo(agentVault.address);
-                const minVaultCR = await assetManager.getAgentMinVaultCollateralRatioBIPS(agentVault.address);
-                const vaultToken = collaterals.filter(x => x.token === info.vaultCollateralToken)[0];
-                expect(minVaultCR.toString()).to.equal(vaultToken.minCollateralRatioBIPS.toString());
-                const minPoolCR = await assetManager.getAgentMinPoolCollateralRatioBIPS(agentVault.address);
-                const poolToken = collaterals.filter(x => x.token === wNat.address)[0];
-                expect(minPoolCR.toString()).to.equal(poolToken.minCollateralRatioBIPS.toString());
-            });
-        })
-
-        describe("emergency pause", () => {
-            async function triggerPauseAndCheck(byGovernance: boolean, duration: number, opts: { expectedEnd?: BN, expectedDuration?: number } = {}) {
-                const response = await assetManager.emergencyPause(byGovernance, duration, { from: assetManagerController });
-                const pauseTime = await time.latest();
-                const expectedPauseEnd = opts.expectedEnd ?? pauseTime.addn(opts.expectedDuration ?? duration);
-                const allowedError = 5; // allow 5s error if clock jumps between two commands
-                const event = findRequiredEvent(response, "EmergencyPauseTriggered");
-                assertApproximatelyEqual(event.args.pausedUntil, expectedPauseEnd, "absolute", allowedError);
-                // check simple
-                assert.isTrue(await assetManager.emergencyPaused());
-                assertWeb3Equal(await assetManager.emergencyPausedUntil(), event.args.pausedUntil);
-                return [pauseTime, toBN(event.args.pausedUntil)];
-            }
-
-            it("only asset manager controller can pause", async () => {
-                await expectRevert.custom(assetManager.emergencyPause(false, 100), "OnlyAssetManagerController", []);
-            });
-
-            it("pause details should work", async () => {
-                // pause by 12 hours first
-                const [time1, expectedEnd1] = await triggerPauseAndCheck(false, 12 * HOURS);
-                // check details
-                const { 0: emergencyPausedUntil1, 1: emergencyPausedTotalDuration1, 2: emergencyPausedByGovernance1 } = await assetManager.emergencyPauseDetails();
-                assertWeb3Equal(emergencyPausedUntil1, expectedEnd1);
-                assert.equal(Number(emergencyPausedTotalDuration1), 12 * HOURS);
-                assert.isFalse(emergencyPausedByGovernance1);
-                // pause by 8 hours by governance
-                const [time2, expectedEnd2] = await triggerPauseAndCheck(true, 20 * HOURS);
-                // check details
-                const { 0: emergencyPausedUntil2, 1: emergencyPausedTotalDuration2, 2: emergencyPausedByGovernance2 } = await assetManager.emergencyPauseDetails();
-                assertWeb3Equal(emergencyPausedUntil2, expectedEnd2);
-                assert.equal(Number(emergencyPausedTotalDuration2), 12 * HOURS);    // total used duration not affected by governance calls
-                assert.isTrue(emergencyPausedByGovernance2);
-            });
-
-            it("pausing with 0 time unpauses", async () => {
-                // pause by 12 hours first
-                const [time1, expectedEnd1] = await triggerPauseAndCheck(false, 12 * HOURS);
-                // after 1 hour pause should still be on
-                await time.deterministicIncrease(1 * HOURS);
-                assert.isTrue(await assetManager.emergencyPaused());
-                assertWeb3Equal(await assetManager.emergencyPausedUntil(), expectedEnd1);
-                // unpause
-                await assetManager.emergencyPause(false, 0, { from: assetManagerController });
-                assert.isFalse(await assetManager.emergencyPaused());
-                assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
-                // now there should be approx. 1 hours spent
-                const { 1: emergencyPausedTotalDuration2 } = await assetManager.emergencyPauseDetails();
-                assert.approximately(Number(emergencyPausedTotalDuration2), 1 * HOURS, 10);
-            });
-
-            it("total emergency pauses by 3rd party are limited", async () => {
-                // pause by 12 hours first
-                const [time1] = await triggerPauseAndCheck(false, 12 * HOURS);
-                // after 1 hour, extend by 15 hours
-                await time.increaseTo(time1.addn(1 * HOURS - 1));
-                await triggerPauseAndCheck(false, 15 * HOURS, { expectedEnd: time1.addn(16 * HOURS) });
-                // after 10 more hours pause should still be on
-                await time.deterministicIncrease(10 * HOURS);
-                assert.isTrue(await assetManager.emergencyPaused());
-                // after 5 more hours, the pause should have ended
-                await time.deterministicIncrease(5 * HOURS);
-                assert.isFalse(await assetManager.emergencyPaused());
-                // creating new pause for 12 hours, should only give us 8 hours now (total is 24)
-                await triggerPauseAndCheck(false, 12 * HOURS, { expectedDuration: 8 * HOURS });
-                // after 12 more hours, the pause should have ended
-                await time.deterministicIncrease(12 * HOURS);
-                assert.isFalse(await assetManager.emergencyPaused());
-                // all the time is used up, calling pause again has no effect
-                const res4 = await assetManager.emergencyPause(false, 12 * HOURS, { from: assetManagerController });
-                expectEvent.notEmitted(res4, "EmergencyPauseTriggered");
-                assert.isFalse(await assetManager.emergencyPaused());
-                assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
-                // after 1 week, the pause time accounting is reset
-                await time.deterministicIncrease(1 * WEEKS);
-                // now the full pause time can be triggered again
-                await triggerPauseAndCheck(false, 30 * HOURS, { expectedDuration: 24 * HOURS });
-            });
-
-            it("governance can pause anytime and for unlimited time", async () => {
-                // use up all pause time
-                await triggerPauseAndCheck(false, 30 * HOURS, { expectedDuration: 24 * HOURS });
-                // after 24 hours, the pause should have ended
-                await time.deterministicIncrease(24 * HOURS);
-                assert.isFalse(await assetManager.emergencyPaused());
-                // all the time is used up, calling pause again has no effect
-                const res2 = await assetManager.emergencyPause(false, 12 * HOURS, { from: assetManagerController });
-                expectEvent.notEmitted(res2, "EmergencyPauseTriggered");
-                assert.isFalse(await assetManager.emergencyPaused());
-                assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
-                // but governance can still pause and for more than 24 hours
-                await triggerPauseAndCheck(true, 48 * HOURS, { expectedDuration: 48 * HOURS });
-                // after 40 more hours pause should still be on
-                await time.deterministicIncrease(40 * HOURS);
-                assert.isTrue(await assetManager.emergencyPaused());
-                // after 8 more hours, the pause should have ended
-                await time.deterministicIncrease(8 * HOURS);
-                assert.isFalse(await assetManager.emergencyPaused());
-            });
-
-            it("governance can reset pause time", async () => {
-                // use up all pause time
-                await triggerPauseAndCheck(false, 24 * HOURS, { expectedDuration: 24 * HOURS });
-                // after 24 hours, the pause should have ended
-                await time.deterministicIncrease(24 * HOURS);
-                assert.isFalse(await assetManager.emergencyPaused());
-                // reset
-                await assetManager.resetEmergencyPauseTotalDuration({ from: assetManagerController });
-                // now we can use all time again
-                await triggerPauseAndCheck(true, 24 * HOURS, { expectedDuration: 24 * HOURS });
-            });
-
-            it("should not reset pause time if not from asset manager controller", async () => {
-                // use up all pause time
-                await triggerPauseAndCheck(false, 24 * HOURS, { expectedDuration: 24 * HOURS });
-                // after 24 hours, the pause should have ended
-                await time.deterministicIncrease(24 * HOURS);
-                assert.isFalse(await assetManager.emergencyPaused());
-                // reset
-                const promise = assetManager.resetEmergencyPauseTotalDuration();
-                await expectRevert.custom(promise, "OnlyAssetManagerController", []);
-            });
-
-            it("others cannot pause/unpause when governance pause is active", async () => {
-                // governance pause
-                const [time1, expectedEnd1] = await triggerPauseAndCheck(true, 4 * HOURS, { expectedDuration: 4 * HOURS });
-                // wait a bit, pause still active
-                await time.deterministicIncrease(2 * HOURS);
-                assert.isTrue(await assetManager.emergencyPaused());
-                // try to unpause
-                await expectRevert.custom(assetManager.emergencyPause(false, 0, { from: assetManagerController }), "PausedByGovernance", []);
-                // try to increase pause
-                await expectRevert.custom(assetManager.emergencyPause(false, 12 * HOURS, { from: assetManagerController }), "PausedByGovernance", []);
-                // still the same pause
-                assert.isTrue(await assetManager.emergencyPaused());
-                assertWeb3Equal(await assetManager.emergencyPausedUntil(), expectedEnd1);
-                // governance can unpause
-                await assetManager.emergencyPause(true, 0, { from: assetManagerController });
-                assert.isFalse(await assetManager.emergencyPaused());
-                assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
-            });
+    describe("reading settings", () => {
+        it("should read price reader", async () => {
+            const priceReader = await assetManager.priceReader();
+            expect(priceReader).to.not.be.equal(ZERO_ADDRESS);
+            expect(priceReader).to.equal(settings.priceReader);
         });
 
-        describe("emergency pause transfers", () => {
-            async function triggerPauseAndCheck(byGovernance: boolean, duration: number, opts: { expectedEnd?: BN, expectedDuration?: number } = {}) {
-                const response = await assetManager.emergencyPauseTransfers(byGovernance, duration, { from: assetManagerController });
-                const pauseTime = await time.latest();
-                const expectedPauseEnd = opts.expectedEnd ?? pauseTime.addn(opts.expectedDuration ?? duration);
-                const allowedError = 5; // allow 5s error if clock jumps between two commands
-                const event = findRequiredEvent(response, "EmergencyPauseTransfersTriggered");
-                assertApproximatelyEqual(event.args.pausedUntil, expectedPauseEnd, "absolute", allowedError);
-                // check simple
-                assert.isTrue(await assetManager.transfersEmergencyPaused());
-                assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), event.args.pausedUntil);
-                return [pauseTime, toBN(event.args.pausedUntil)];
-            }
+        it("should read AMG UBA", async () => {
+            const amgUba = await assetManager.assetMintingGranularityUBA();
+            expect(amgUba.toString()).to.not.equal("0");
+            expect(amgUba.toString()).to.equal(settings.assetMintingGranularityUBA.toString());
+        });
 
-            it("only asset manager controller can pause", async () => {
-                await expectRevert.custom(assetManager.emergencyPauseTransfers(false, 100), "OnlyAssetManagerController", []);
-            });
+        it("should read asset minting decimals", async () => {
+            const assetMintingDecimals = await assetManager.assetMintingDecimals();
+            expect(assetMintingDecimals.toString()).to.not.equal("0");
+            expect(assetMintingDecimals.toString()).to.equal(settings.assetMintingDecimals.toString());
+        })
+    })
 
-            it("pause details should work", async () => {
-                // pause by 12 hours first
-                const [time1, expectedEnd1] = await triggerPauseAndCheck(false, 12 * HOURS);
-                // check details
-                const { 0: transfersEmergencyPausedUntil1, 1: transfersEmergencyPausedTotalDuration1, 2: transfersEmergencyPausedByGovernance1 } = await assetManager.emergencyPauseTransfersDetails();
-                assertWeb3Equal(transfersEmergencyPausedUntil1, expectedEnd1);
-                assert.equal(Number(transfersEmergencyPausedTotalDuration1), 12 * HOURS);
-                assert.isFalse(transfersEmergencyPausedByGovernance1);
-                // pause by 8 hours by governance
-                const [time2, expectedEnd2] = await triggerPauseAndCheck(true, 20 * HOURS);
-                // check details
-                const { 0: transfersEmergencyPausedUntil2, 1: transfersEmergencyPausedTotalDuration2, 2: transfersEmergencyPausedByGovernance2 } = await assetManager.emergencyPauseTransfersDetails();
-                assertWeb3Equal(transfersEmergencyPausedUntil2, expectedEnd2);
-                assert.equal(Number(transfersEmergencyPausedTotalDuration2), 12 * HOURS);    // total used duration not affected by governance calls
-                assert.isTrue(transfersEmergencyPausedByGovernance2);
-            });
+    describe("reading agent info", () => {
+        it("should read agent's vault collateral token", async () => {
+            const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
+            const collateralToken = await assetManager.getAgentVaultCollateralToken(agentVault.address)
+            expect(collateralToken).to.equal(usdc.address);
+        });
 
-            it("pausing with 0 time unpauses", async () => {
-                // pause by 12 hours first
-                const [time1, expectedEnd1] = await triggerPauseAndCheck(false, 12 * HOURS);
-                // after 1 hour pause should still be on
-                await time.deterministicIncrease(1 * HOURS);
-                assert.isTrue(await assetManager.transfersEmergencyPaused());
-                assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), expectedEnd1);
-                // unpause
-                await assetManager.emergencyPauseTransfers(false, 0, { from: assetManagerController });
-                assert.isFalse(await assetManager.transfersEmergencyPaused());
-                assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), 0);
-                // now there should be approx. 1 hours spent
-                const { 1: transfersEmergencyPausedTotalDuration2 } = await assetManager.emergencyPauseTransfersDetails();
-                assert.approximately(Number(transfersEmergencyPausedTotalDuration2), 1 * HOURS, 10);
-            });
+        it("should read agent's full vault and pool collaterals", async () => {
+            const vaultCollateralDeposit = toWei(3e8);
+            const poolCollateralDeposit = toWei(3e10);
+            await usdc.mintAmount(agentOwner1, vaultCollateralDeposit);
+            await usdc.approve(assetManager.address, vaultCollateralDeposit, { from: agentOwner1 });
+            const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1, vaultCollateralDeposit, poolCollateralDeposit);
+            const fullVaultCollateral = await assetManager.getAgentFullVaultCollateral(agentVault.address);
+            expect(fullVaultCollateral.toString()).to.equal(vaultCollateralDeposit.toString());
+            const fullPoolCollateral = await assetManager.getAgentFullPoolCollateral(agentVault.address);
+            expect(fullPoolCollateral.toString()).to.equal(poolCollateralDeposit.toString());
+        });
 
-            it("total emergency pauses by 3rd party are limited", async () => {
-                // pause by 12 hours first
-                const [time1] = await triggerPauseAndCheck(false, 12 * HOURS);
-                // after 1 hour, extend by 15 hours
-                await time.increaseTo(time1.addn(1 * HOURS - 1));
-                await triggerPauseAndCheck(false, 15 * HOURS, { expectedEnd: time1.addn(16 * HOURS) });
-                // after 10 more hours pause should still be on
-                await time.deterministicIncrease(10 * HOURS);
-                assert.isTrue(await assetManager.transfersEmergencyPaused());
-                // after 5 more hours, the pause should have ended
-                await time.deterministicIncrease(5 * HOURS);
-                assert.isFalse(await assetManager.transfersEmergencyPaused());
-                // creating new pause for 12 hours, should only give us 8 hours now (total is 24)
-                await triggerPauseAndCheck(false, 12 * HOURS, { expectedDuration: 8 * HOURS });
-                // after 12 more hours, the pause should have ended
-                await time.deterministicIncrease(12 * HOURS);
-                assert.isFalse(await assetManager.transfersEmergencyPaused());
-                // all the time is used up, calling pause again has no effect
-                const res4 = await assetManager.emergencyPauseTransfers(false, 12 * HOURS, { from: assetManagerController });
-                expectEvent.notEmitted(res4, "EmergencyPauseTransfersTriggered");
-                assert.isFalse(await assetManager.transfersEmergencyPaused());
-                assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), 0);
-                // after 1 week, the pause time accounting is reset
-                await time.deterministicIncrease(1 * WEEKS);
-                // now the full pause time can be triggered again
-                await triggerPauseAndCheck(false, 30 * HOURS, { expectedDuration: 24 * HOURS });
-            });
+        it("should get agent's liquidation params", async () => {
+            const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
+            const {
+                0: liquidationPaymentFactorVaultBIPS,
+                1: liquidationPaymentFactorPoolBIPS,
+                2: maxLiquidationAmountUBA
+            } = await assetManager.getAgentLiquidationFactorsAndMaxAmount(agentVault.address);
+            expect(liquidationPaymentFactorVaultBIPS.toString()).to.equal("0");
+            expect(liquidationPaymentFactorPoolBIPS.toString()).to.equal("0");
+            expect(maxLiquidationAmountUBA.toString()).to.equal("0");
+        });
 
-            it("governance can pause anytime and for unlimited time", async () => {
-                // use up all pause time
-                await triggerPauseAndCheck(false, 30 * HOURS, { expectedDuration: 24 * HOURS });
-                // after 24 hours, the pause should have ended
-                await time.deterministicIncrease(24 * HOURS);
-                assert.isFalse(await assetManager.transfersEmergencyPaused());
-                // all the time is used up, calling pause again has no effect
-                const res2 = await assetManager.emergencyPauseTransfers(false, 12 * HOURS, { from: assetManagerController });
-                expectEvent.notEmitted(res2, "EmergencyPauseTransfersTriggered");
-                assert.isFalse(await assetManager.transfersEmergencyPaused());
-                assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), 0);
-                // but governance can still pause and for more than 24 hours
-                await triggerPauseAndCheck(true, 48 * HOURS, { expectedDuration: 48 * HOURS });
-                // after 40 more hours pause should still be on
-                await time.deterministicIncrease(40 * HOURS);
-                assert.isTrue(await assetManager.transfersEmergencyPaused());
-                // after 8 more hours, the pause should have ended
-                await time.deterministicIncrease(8 * HOURS);
-                assert.isFalse(await assetManager.transfersEmergencyPaused());
-            });
+        it("should get agent's minimum collateral ratios", async () => {
+            const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
+            const info = await assetManager.getAgentInfo(agentVault.address);
+            const minVaultCR = await assetManager.getAgentMinVaultCollateralRatioBIPS(agentVault.address);
+            const vaultToken = collaterals.filter(x => x.token === info.vaultCollateralToken)[0];
+            expect(minVaultCR.toString()).to.equal(vaultToken.minCollateralRatioBIPS.toString());
+            const minPoolCR = await assetManager.getAgentMinPoolCollateralRatioBIPS(agentVault.address);
+            const poolToken = collaterals.filter(x => x.token === wNat.address)[0];
+            expect(minPoolCR.toString()).to.equal(poolToken.minCollateralRatioBIPS.toString());
+        });
+    })
 
-            it("governance can reset pause time", async () => {
-                // use up all pause time
-                await triggerPauseAndCheck(false, 24 * HOURS, { expectedDuration: 24 * HOURS });
-                // after 24 hours, the pause should have ended
-                await time.deterministicIncrease(24 * HOURS);
-                assert.isFalse(await assetManager.transfersEmergencyPaused());
-                // reset
-                await assetManager.resetEmergencyPauseTotalDuration({ from: assetManagerController });
-                // now we can use all time again
-                await triggerPauseAndCheck(true, 24 * HOURS, { expectedDuration: 24 * HOURS });
-            });
+    describe("emergency pause", () => {
+        async function triggerPauseAndCheck(byGovernance: boolean, duration: number, opts: { expectedEnd?: BN, expectedDuration?: number } = {}) {
+            const response = await assetManager.emergencyPause(byGovernance, duration, { from: assetManagerController });
+            const pauseTime = await time.latest();
+            const expectedPauseEnd = opts.expectedEnd ?? pauseTime.addn(opts.expectedDuration ?? duration);
+            const allowedError = 5; // allow 5s error if clock jumps between two commands
+            const event = findRequiredEvent(response, "EmergencyPauseTriggered");
+            assertApproximatelyEqual(event.args.pausedUntil, expectedPauseEnd, "absolute", allowedError);
+            // check simple
+            assert.isTrue(await assetManager.emergencyPaused());
+            assertWeb3Equal(await assetManager.emergencyPausedUntil(), event.args.pausedUntil);
+            return [pauseTime, toBN(event.args.pausedUntil)];
+        }
 
-            it("should not reset pause time if not from asset manager controller", async () => {
-                // use up all pause time
-                await triggerPauseAndCheck(false, 24 * HOURS, { expectedDuration: 24 * HOURS });
-                // after 24 hours, the pause should have ended
-                await time.deterministicIncrease(24 * HOURS);
-                assert.isFalse(await assetManager.transfersEmergencyPaused());
-                // reset
-                const promise = assetManager.resetEmergencyPauseTotalDuration();
-                await expectRevert.custom(promise, "OnlyAssetManagerController", []);
-            });
+        it("only asset manager controller can pause", async () => {
+            await expectRevert.custom(assetManager.emergencyPause(false, 100), "OnlyAssetManagerController", []);
+        });
 
-            it("others cannot pause/unpause when governance pause is active", async () => {
-                // governance pause
-                const [time1, expectedEnd1] = await triggerPauseAndCheck(true, 4 * HOURS, { expectedDuration: 4 * HOURS });
-                // wait a bit, pause still active
-                await time.deterministicIncrease(2 * HOURS);
-                assert.isTrue(await assetManager.transfersEmergencyPaused());
-                // try to unpause
-                await expectRevert.custom(assetManager.emergencyPauseTransfers(false, 0, { from: assetManagerController }), "PausedByGovernance", []);
-                // try to increase pause
-                await expectRevert.custom(assetManager.emergencyPauseTransfers(false, 12 * HOURS, { from: assetManagerController }), "PausedByGovernance", []);
-                // still the same pause
-                assert.isTrue(await assetManager.transfersEmergencyPaused());
-                assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), expectedEnd1);
-                // governance can unpause
-                await assetManager.emergencyPauseTransfers(true, 0, { from: assetManagerController });
-                assert.isFalse(await assetManager.transfersEmergencyPaused());
-                assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), 0);
-            });
+        it("pause details should work", async () => {
+            // pause by 12 hours first
+            const [time1, expectedEnd1] = await triggerPauseAndCheck(false, 12 * HOURS);
+            // check details
+            const { 0: emergencyPausedUntil1, 1: emergencyPausedTotalDuration1, 2: emergencyPausedByGovernance1 } = await assetManager.emergencyPauseDetails();
+            assertWeb3Equal(emergencyPausedUntil1, expectedEnd1);
+            assert.equal(Number(emergencyPausedTotalDuration1), 12 * HOURS);
+            assert.isFalse(emergencyPausedByGovernance1);
+            // pause by 8 hours by governance
+            const [time2, expectedEnd2] = await triggerPauseAndCheck(true, 20 * HOURS);
+            // check details
+            const { 0: emergencyPausedUntil2, 1: emergencyPausedTotalDuration2, 2: emergencyPausedByGovernance2 } = await assetManager.emergencyPauseDetails();
+            assertWeb3Equal(emergencyPausedUntil2, expectedEnd2);
+            assert.equal(Number(emergencyPausedTotalDuration2), 12 * HOURS);    // total used duration not affected by governance calls
+            assert.isTrue(emergencyPausedByGovernance2);
+        });
+
+        it("pausing with 0 time unpauses", async () => {
+            // pause by 12 hours first
+            const [time1, expectedEnd1] = await triggerPauseAndCheck(false, 12 * HOURS);
+            // after 1 hour pause should still be on
+            await time.deterministicIncrease(1 * HOURS);
+            assert.isTrue(await assetManager.emergencyPaused());
+            assertWeb3Equal(await assetManager.emergencyPausedUntil(), expectedEnd1);
+            // unpause
+            await assetManager.emergencyPause(false, 0, { from: assetManagerController });
+            assert.isFalse(await assetManager.emergencyPaused());
+            assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
+            // now there should be approx. 1 hours spent
+            const { 1: emergencyPausedTotalDuration2 } = await assetManager.emergencyPauseDetails();
+            assert.approximately(Number(emergencyPausedTotalDuration2), 1 * HOURS, 10);
+        });
+
+        it("total emergency pauses by 3rd party are limited", async () => {
+            // pause by 12 hours first
+            const [time1] = await triggerPauseAndCheck(false, 12 * HOURS);
+            // after 1 hour, extend by 15 hours
+            await time.increaseTo(time1.addn(1 * HOURS - 1));
+            await triggerPauseAndCheck(false, 15 * HOURS, { expectedEnd: time1.addn(16 * HOURS) });
+            // after 10 more hours pause should still be on
+            await time.deterministicIncrease(10 * HOURS);
+            assert.isTrue(await assetManager.emergencyPaused());
+            // after 5 more hours, the pause should have ended
+            await time.deterministicIncrease(5 * HOURS);
+            assert.isFalse(await assetManager.emergencyPaused());
+            // creating new pause for 12 hours, should only give us 8 hours now (total is 24)
+            await triggerPauseAndCheck(false, 12 * HOURS, { expectedDuration: 8 * HOURS });
+            // after 12 more hours, the pause should have ended
+            await time.deterministicIncrease(12 * HOURS);
+            assert.isFalse(await assetManager.emergencyPaused());
+            // all the time is used up, calling pause again has no effect
+            const res4 = await assetManager.emergencyPause(false, 12 * HOURS, { from: assetManagerController });
+            expectEvent.notEmitted(res4, "EmergencyPauseTriggered");
+            assert.isFalse(await assetManager.emergencyPaused());
+            assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
+            // after 1 week, the pause time accounting is reset
+            await time.deterministicIncrease(1 * WEEKS);
+            // now the full pause time can be triggered again
+            await triggerPauseAndCheck(false, 30 * HOURS, { expectedDuration: 24 * HOURS });
+        });
+
+        it("governance can pause anytime and for unlimited time", async () => {
+            // use up all pause time
+            await triggerPauseAndCheck(false, 30 * HOURS, { expectedDuration: 24 * HOURS });
+            // after 24 hours, the pause should have ended
+            await time.deterministicIncrease(24 * HOURS);
+            assert.isFalse(await assetManager.emergencyPaused());
+            // all the time is used up, calling pause again has no effect
+            const res2 = await assetManager.emergencyPause(false, 12 * HOURS, { from: assetManagerController });
+            expectEvent.notEmitted(res2, "EmergencyPauseTriggered");
+            assert.isFalse(await assetManager.emergencyPaused());
+            assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
+            // but governance can still pause and for more than 24 hours
+            await triggerPauseAndCheck(true, 48 * HOURS, { expectedDuration: 48 * HOURS });
+            // after 40 more hours pause should still be on
+            await time.deterministicIncrease(40 * HOURS);
+            assert.isTrue(await assetManager.emergencyPaused());
+            // after 8 more hours, the pause should have ended
+            await time.deterministicIncrease(8 * HOURS);
+            assert.isFalse(await assetManager.emergencyPaused());
+        });
+
+        it("governance can reset pause time", async () => {
+            // use up all pause time
+            await triggerPauseAndCheck(false, 24 * HOURS, { expectedDuration: 24 * HOURS });
+            // after 24 hours, the pause should have ended
+            await time.deterministicIncrease(24 * HOURS);
+            assert.isFalse(await assetManager.emergencyPaused());
+            // reset
+            await assetManager.resetEmergencyPauseTotalDuration({ from: assetManagerController });
+            // now we can use all time again
+            await triggerPauseAndCheck(true, 24 * HOURS, { expectedDuration: 24 * HOURS });
+        });
+
+        it("should not reset pause time if not from asset manager controller", async () => {
+            // use up all pause time
+            await triggerPauseAndCheck(false, 24 * HOURS, { expectedDuration: 24 * HOURS });
+            // after 24 hours, the pause should have ended
+            await time.deterministicIncrease(24 * HOURS);
+            assert.isFalse(await assetManager.emergencyPaused());
+            // reset
+            const promise = assetManager.resetEmergencyPauseTotalDuration();
+            await expectRevert.custom(promise, "OnlyAssetManagerController", []);
+        });
+
+        it("others cannot pause/unpause when governance pause is active", async () => {
+            // governance pause
+            const [time1, expectedEnd1] = await triggerPauseAndCheck(true, 4 * HOURS, { expectedDuration: 4 * HOURS });
+            // wait a bit, pause still active
+            await time.deterministicIncrease(2 * HOURS);
+            assert.isTrue(await assetManager.emergencyPaused());
+            // try to unpause
+            await expectRevert.custom(assetManager.emergencyPause(false, 0, { from: assetManagerController }), "PausedByGovernance", []);
+            // try to increase pause
+            await expectRevert.custom(assetManager.emergencyPause(false, 12 * HOURS, { from: assetManagerController }), "PausedByGovernance", []);
+            // still the same pause
+            assert.isTrue(await assetManager.emergencyPaused());
+            assertWeb3Equal(await assetManager.emergencyPausedUntil(), expectedEnd1);
+            // governance can unpause
+            await assetManager.emergencyPause(true, 0, { from: assetManagerController });
+            assert.isFalse(await assetManager.emergencyPaused());
+            assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
+        });
+    });
+
+    describe("emergency pause transfers", () => {
+        async function triggerPauseAndCheck(byGovernance: boolean, duration: number, opts: { expectedEnd?: BN, expectedDuration?: number } = {}) {
+            const response = await assetManager.emergencyPauseTransfers(byGovernance, duration, { from: assetManagerController });
+            const pauseTime = await time.latest();
+            const expectedPauseEnd = opts.expectedEnd ?? pauseTime.addn(opts.expectedDuration ?? duration);
+            const allowedError = 5; // allow 5s error if clock jumps between two commands
+            const event = findRequiredEvent(response, "EmergencyPauseTransfersTriggered");
+            assertApproximatelyEqual(event.args.pausedUntil, expectedPauseEnd, "absolute", allowedError);
+            // check simple
+            assert.isTrue(await assetManager.transfersEmergencyPaused());
+            assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), event.args.pausedUntil);
+            return [pauseTime, toBN(event.args.pausedUntil)];
+        }
+
+        it("only asset manager controller can pause", async () => {
+            await expectRevert.custom(assetManager.emergencyPauseTransfers(false, 100), "OnlyAssetManagerController", []);
+        });
+
+        it("pause details should work", async () => {
+            // pause by 12 hours first
+            const [time1, expectedEnd1] = await triggerPauseAndCheck(false, 12 * HOURS);
+            // check details
+            const { 0: transfersEmergencyPausedUntil1, 1: transfersEmergencyPausedTotalDuration1, 2: transfersEmergencyPausedByGovernance1 } = await assetManager.emergencyPauseTransfersDetails();
+            assertWeb3Equal(transfersEmergencyPausedUntil1, expectedEnd1);
+            assert.equal(Number(transfersEmergencyPausedTotalDuration1), 12 * HOURS);
+            assert.isFalse(transfersEmergencyPausedByGovernance1);
+            // pause by 8 hours by governance
+            const [time2, expectedEnd2] = await triggerPauseAndCheck(true, 20 * HOURS);
+            // check details
+            const { 0: transfersEmergencyPausedUntil2, 1: transfersEmergencyPausedTotalDuration2, 2: transfersEmergencyPausedByGovernance2 } = await assetManager.emergencyPauseTransfersDetails();
+            assertWeb3Equal(transfersEmergencyPausedUntil2, expectedEnd2);
+            assert.equal(Number(transfersEmergencyPausedTotalDuration2), 12 * HOURS);    // total used duration not affected by governance calls
+            assert.isTrue(transfersEmergencyPausedByGovernance2);
+        });
+
+        it("pausing with 0 time unpauses", async () => {
+            // pause by 12 hours first
+            const [time1, expectedEnd1] = await triggerPauseAndCheck(false, 12 * HOURS);
+            // after 1 hour pause should still be on
+            await time.deterministicIncrease(1 * HOURS);
+            assert.isTrue(await assetManager.transfersEmergencyPaused());
+            assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), expectedEnd1);
+            // unpause
+            await assetManager.emergencyPauseTransfers(false, 0, { from: assetManagerController });
+            assert.isFalse(await assetManager.transfersEmergencyPaused());
+            assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), 0);
+            // now there should be approx. 1 hours spent
+            const { 1: transfersEmergencyPausedTotalDuration2 } = await assetManager.emergencyPauseTransfersDetails();
+            assert.approximately(Number(transfersEmergencyPausedTotalDuration2), 1 * HOURS, 10);
+        });
+
+        it("total emergency pauses by 3rd party are limited", async () => {
+            // pause by 12 hours first
+            const [time1] = await triggerPauseAndCheck(false, 12 * HOURS);
+            // after 1 hour, extend by 15 hours
+            await time.increaseTo(time1.addn(1 * HOURS - 1));
+            await triggerPauseAndCheck(false, 15 * HOURS, { expectedEnd: time1.addn(16 * HOURS) });
+            // after 10 more hours pause should still be on
+            await time.deterministicIncrease(10 * HOURS);
+            assert.isTrue(await assetManager.transfersEmergencyPaused());
+            // after 5 more hours, the pause should have ended
+            await time.deterministicIncrease(5 * HOURS);
+            assert.isFalse(await assetManager.transfersEmergencyPaused());
+            // creating new pause for 12 hours, should only give us 8 hours now (total is 24)
+            await triggerPauseAndCheck(false, 12 * HOURS, { expectedDuration: 8 * HOURS });
+            // after 12 more hours, the pause should have ended
+            await time.deterministicIncrease(12 * HOURS);
+            assert.isFalse(await assetManager.transfersEmergencyPaused());
+            // all the time is used up, calling pause again has no effect
+            const res4 = await assetManager.emergencyPauseTransfers(false, 12 * HOURS, { from: assetManagerController });
+            expectEvent.notEmitted(res4, "EmergencyPauseTransfersTriggered");
+            assert.isFalse(await assetManager.transfersEmergencyPaused());
+            assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), 0);
+            // after 1 week, the pause time accounting is reset
+            await time.deterministicIncrease(1 * WEEKS);
+            // now the full pause time can be triggered again
+            await triggerPauseAndCheck(false, 30 * HOURS, { expectedDuration: 24 * HOURS });
+        });
+
+        it("governance can pause anytime and for unlimited time", async () => {
+            // use up all pause time
+            await triggerPauseAndCheck(false, 30 * HOURS, { expectedDuration: 24 * HOURS });
+            // after 24 hours, the pause should have ended
+            await time.deterministicIncrease(24 * HOURS);
+            assert.isFalse(await assetManager.transfersEmergencyPaused());
+            // all the time is used up, calling pause again has no effect
+            const res2 = await assetManager.emergencyPauseTransfers(false, 12 * HOURS, { from: assetManagerController });
+            expectEvent.notEmitted(res2, "EmergencyPauseTransfersTriggered");
+            assert.isFalse(await assetManager.transfersEmergencyPaused());
+            assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), 0);
+            // but governance can still pause and for more than 24 hours
+            await triggerPauseAndCheck(true, 48 * HOURS, { expectedDuration: 48 * HOURS });
+            // after 40 more hours pause should still be on
+            await time.deterministicIncrease(40 * HOURS);
+            assert.isTrue(await assetManager.transfersEmergencyPaused());
+            // after 8 more hours, the pause should have ended
+            await time.deterministicIncrease(8 * HOURS);
+            assert.isFalse(await assetManager.transfersEmergencyPaused());
+        });
+
+        it("governance can reset pause time", async () => {
+            // use up all pause time
+            await triggerPauseAndCheck(false, 24 * HOURS, { expectedDuration: 24 * HOURS });
+            // after 24 hours, the pause should have ended
+            await time.deterministicIncrease(24 * HOURS);
+            assert.isFalse(await assetManager.transfersEmergencyPaused());
+            // reset
+            await assetManager.resetEmergencyPauseTotalDuration({ from: assetManagerController });
+            // now we can use all time again
+            await triggerPauseAndCheck(true, 24 * HOURS, { expectedDuration: 24 * HOURS });
+        });
+
+        it("should not reset pause time if not from asset manager controller", async () => {
+            // use up all pause time
+            await triggerPauseAndCheck(false, 24 * HOURS, { expectedDuration: 24 * HOURS });
+            // after 24 hours, the pause should have ended
+            await time.deterministicIncrease(24 * HOURS);
+            assert.isFalse(await assetManager.transfersEmergencyPaused());
+            // reset
+            const promise = assetManager.resetEmergencyPauseTotalDuration();
+            await expectRevert.custom(promise, "OnlyAssetManagerController", []);
+        });
+
+        it("others cannot pause/unpause when governance pause is active", async () => {
+            // governance pause
+            const [time1, expectedEnd1] = await triggerPauseAndCheck(true, 4 * HOURS, { expectedDuration: 4 * HOURS });
+            // wait a bit, pause still active
+            await time.deterministicIncrease(2 * HOURS);
+            assert.isTrue(await assetManager.transfersEmergencyPaused());
+            // try to unpause
+            await expectRevert.custom(assetManager.emergencyPauseTransfers(false, 0, { from: assetManagerController }), "PausedByGovernance", []);
+            // try to increase pause
+            await expectRevert.custom(assetManager.emergencyPauseTransfers(false, 12 * HOURS, { from: assetManagerController }), "PausedByGovernance", []);
+            // still the same pause
+            assert.isTrue(await assetManager.transfersEmergencyPaused());
+            assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), expectedEnd1);
+            // governance can unpause
+            await assetManager.emergencyPauseTransfers(true, 0, { from: assetManagerController });
+            assert.isFalse(await assetManager.transfersEmergencyPaused());
+            assertWeb3Equal(await assetManager.transfersEmergencyPausedUntil(), 0);
         });
     });
 });
