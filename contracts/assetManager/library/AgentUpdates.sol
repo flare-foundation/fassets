@@ -128,6 +128,8 @@ library AgentUpdates {
         require(_poolExitCollateralRatioBIPS <= currentExitCR * 3 / 2 ||
                 _poolExitCollateralRatioBIPS <= minCR * 12 / 10,
                 IncreaseTooBig());
+        // never allow exitCR to grow too big, even in several steps
+        require(_poolExitCollateralRatioBIPS <= minCR * 3, ValueTooHigh());
         _agent.collateralPool.setExitCollateralRatioBIPS(_poolExitCollateralRatioBIPS);
     }
 }

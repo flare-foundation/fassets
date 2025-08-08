@@ -1,3 +1,4 @@
+import { CollateralClass } from "../../../lib/fasset/AssetManagerTypes";
 import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
@@ -14,7 +15,7 @@ import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-he
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { MAX_BIPS, ZERO_ADDRESS, toBN, toWei } from "../../../lib/utils/helpers";
+import { MAX_BIPS, ZERO_ADDRESS, toBIPS, toBN, toWei } from "../../../lib/utils/helpers";
 
 
 contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral pool operations`, accounts => {
@@ -388,7 +389,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
     });
 
     it("self close exit test, too many tickets required to burn", async () => {
-        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { poolExitCollateralRatioBIPS: 1000000 });
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { poolExitCollateralRatioBIPS: toBIPS(6.0) });
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
@@ -406,16 +407,21 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
             const txHash1 = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash1);
         }
-        //Mint a big amount
+        // mint a big amount
         const lots = 500;
         const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
         const txHash1 = await minter.performMintingPayment(crt);
         const minted = await minter.executeMinting(crt, txHash1);
         const minterPoolDeposit1 = toWei(100000000);
+        // enter pool
         const enterRes = await agent.collateralPool.enter({ from: minter.address, value: minterPoolDeposit1 });
         const minterPoolTokens = toBN(requiredEventArgs(enterRes, "CPEntered").receivedTokensWei);
         await context.fAsset.approve(agent.collateralPool.address, toWei(5e12), { from: minter.address });
         await time.deterministicIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for minted token timelock
+        // hugely increase minCR so that the agent can then increase minting CR
+        await context.setCollateralRatiosForToken(CollateralClass.POOL, context.wNat.address, toBIPS(90.0), toBIPS(91.0));
+        await agent.changeSettings({ poolExitCollateralRatioBIPS: toBIPS(100) });
+        // try to exit
         const res = agent.collateralPool.selfCloseExit(minterPoolTokens, false, underlyingMinter1, ZERO_ADDRESS, { from: minter.address });
         await expectRevert.custom(res, "RedemptionRequiresClosingTooManyTickets", [])
     });

@@ -475,6 +475,22 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", { from: agentOwner1 });
         });
 
+        it("should not update agent setting pool exit collateral ratio BIPS to more than 3 time minCR", async () => {
+            async function changeExitCR(mul: BNish, div: BNish) {
+                const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+                const newExitCR = toBN(agentInfo.poolExitCollateralRatioBIPS).mul(toBN(mul)).div(toBN(div));
+                await assetManager.announceAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", newExitCR, { from: agentOwner1 });
+                await time.deterministicIncrease(agentPoolExitCRChangeTimelock);
+                return await assetManager.executeAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", { from: agentOwner1 });
+            }
+            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).poolExitCRChangeTimelockSeconds;
+            const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+            // the third increase by 3/2 should fail because the value becomes more than 3 * minCR
+            await changeExitCR(3, 2);
+            await changeExitCR(3, 2);
+            await expectRevert.custom(changeExitCR(3, 2), "ValueTooHigh", []);
+        });
+
         it("should correctly update agent setting pool exit collateral ratio BIPS", async () => {
             const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).poolExitCRChangeTimelockSeconds;
             const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
