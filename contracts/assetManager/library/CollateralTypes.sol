@@ -8,6 +8,7 @@ import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol"
 import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
 import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Conversion} from "./Conversion.sol";
 
 
 library CollateralTypes {
@@ -17,6 +18,7 @@ library CollateralTypes {
     error CannotAddDeprecatedToken();
     error TokenAlreadyExists();
     error TokenZero();
+    error PriceNotInitialized();
     error UnknownToken();
     error NotAVaultCollateral();
     error NotAPoolCollateralAtZero();
@@ -132,10 +134,19 @@ library CollateralTypes {
         bytes32 tokenKey = _tokenKey(_data.collateralClass, _data.token);
         require(state.collateralTokenIndex[tokenKey] == 0, TokenAlreadyExists());
         require(_data.validUntil == 0, CannotAddDeprecatedToken());
+        // validate collateral ratios
         bool ratiosValid =
             SafePct.MAX_BIPS < _data.minCollateralRatioBIPS &&
             _data.minCollateralRatioBIPS <= _data.safetyMinCollateralRatioBIPS;
         require(ratiosValid, InvalidCollateralRatios());
+        // check that prices are initialized in FTSO price reader
+        (uint256 assetPrice,,) = Conversion.readFtsoPrice(_data.assetFtsoSymbol, false);
+        require(assetPrice != 0, PriceNotInitialized());
+        if (!_data.directPricePair) {
+            (uint256 tokenPrice,,) = Conversion.readFtsoPrice(_data.tokenFtsoSymbol, false);
+            require(tokenPrice != 0, PriceNotInitialized());
+        }
+        // add token
         uint256 newTokenIndex = state.collateralTokens.length;
         state.collateralTokens.push(CollateralTypeInt.Data({
             token: _data.token,

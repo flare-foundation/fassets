@@ -623,12 +623,44 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should correctly add collateral token", async () => {
             const collateral = deepCopy(web3DeepNormalize(collaterals[1]));
-            collateral.token = (await ERC20Mock.new("New Token", "NT")).address;
+            const newToken = await ERC20Mock.new("New Token", "NT");
+            collateral.token = newToken.address;
             collateral.tokenFtsoSymbol = "NT";
-            collateral.assetFtsoSymbol = "NT";
-            await assetManager.addCollateralType(web3DeepNormalize(collateral), { from: assetManagerController });
+            await contracts.priceStore.addFeed("0xd51", "NT");
+            await contracts.priceStore.setDecimals("NT", 5);
+            await contracts.priceStore.setCurrentPrice("NT", "123456", 0);
+            await assetManager.addCollateralType(collateral, { from: assetManagerController });
             const resCollaterals = await assetManager.getCollateralTypes();
             assertWeb3DeepEqual(collateral.token, resCollaterals[3].token);
+        });
+
+        it("should not add collateral token if ftso does not contain symbol or price is not initialized", async () => {
+            const collateral = deepCopy(web3DeepNormalize(collaterals[1]));
+            const newToken = await ERC20Mock.new("New Token", "NT");
+            collateral.token = newToken.address;
+            collateral.directPricePair = false;
+            collateral.tokenFtsoSymbol = "NT";
+            await expectRevert.custom(assetManager.addCollateralType(collateral, { from: assetManagerController }), "SymbolNotSupported", []);
+            await contracts.priceStore.addFeed("0xd51", "NT");
+            await contracts.priceStore.setDecimals("NT", 5);
+            await expectRevert.custom(assetManager.addCollateralType(collateral, { from: assetManagerController }), "PriceNotInitialized", []);
+            await contracts.priceStore.setCurrentPrice("NT", "123456", 0);
+            await assetManager.addCollateralType(collateral, { from: assetManagerController });
+        });
+
+        it("should not add collateral token if ftso does not contain symbol or price is not initialized (direct price pair)", async () => {
+            const collateral = deepCopy(web3DeepNormalize(collaterals[1]));
+            const newToken = await ERC20Mock.new("New Token", "NT");
+            collateral.token = newToken.address;
+            collateral.directPricePair = true;
+            collateral.tokenFtsoSymbol = "";
+            collateral.assetFtsoSymbol = "AtoNT";
+            await expectRevert.custom(assetManager.addCollateralType(collateral, { from: assetManagerController }), "SymbolNotSupported", []);
+            await contracts.priceStore.addFeed("0xd51", "AtoNT");
+            await contracts.priceStore.setDecimals("AtoNT", 5);
+            await expectRevert.custom(assetManager.addCollateralType(collateral, { from: assetManagerController }), "PriceNotInitialized", []);
+            await contracts.priceStore.setCurrentPrice("AtoNT", "123456", 0);
+            await assetManager.addCollateralType(collateral, { from: assetManagerController });
         });
 
         it("should set collateral ratios for token", async () => {

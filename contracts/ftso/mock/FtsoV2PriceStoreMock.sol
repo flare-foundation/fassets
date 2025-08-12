@@ -10,6 +10,11 @@ import {FtsoV2PriceStore} from "../implementation/FtsoV2PriceStore.sol";
 contract FtsoV2PriceStoreMock is FtsoV2PriceStore {
     using SafeCast for uint256;
 
+    function addFeed(bytes21 _feedId, string memory _symbol) external {
+        symbolToFeedId[_symbol] = _feedId;
+        feedIdToSymbol[_feedId] = _symbol;
+    }
+
     function setDecimals(string memory _symbol, int8 _decimals) external {
         PriceStore storage feed = _getFeed(_symbol);
         feed.decimals = _decimals;
@@ -35,7 +40,7 @@ contract FtsoV2PriceStoreMock is FtsoV2PriceStore {
 
     function _getFeed(string memory _symbol) private view returns (PriceStore storage) {
         bytes21 feedId = symbolToFeedId[_symbol];
-        require(feedId != bytes21(0), "symbol not supported");
+        require(feedId != bytes21(0), SymbolNotSupported());
         return latestPrices[feedId];
     }
 
