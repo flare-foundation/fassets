@@ -200,9 +200,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         require(_staysAboveExitCR(natShare), CollateralRatioFallsBelowExitCR());
         // update the fasset fee debt
         uint256 debtFAssetFeeShare = _tokensToVirtualFeeShare(_tokenShare);
-        if (debtFAssetFeeShare > 0) {
-            _deleteFAssetFeeDebt(msg.sender, debtFAssetFeeShare);
-        }
+        _deleteFAssetFeeDebt(msg.sender, debtFAssetFeeShare);
         token.burn(msg.sender, _tokenShare, false);
         _withdrawWNatTo(_recipient, natShare);
         // emit event
@@ -305,9 +303,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
                     agentVault, _recipient, requiredFAssets, _redeemerUnderlyingAddress, _executor);
             }
         }
-        if (debtFAssetFeeShare > 0) {
-            _deleteFAssetFeeDebt(msg.sender, debtFAssetFeeShare);
-        }
+        _deleteFAssetFeeDebt(msg.sender, debtFAssetFeeShare);
         token.burn(msg.sender, _tokenShare, false);
         _withdrawWNatTo(_recipient, natShare);
         if (returnFunds) {
