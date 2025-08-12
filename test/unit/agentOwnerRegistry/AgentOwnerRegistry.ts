@@ -7,9 +7,10 @@ import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/Moc
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createAgentOwnerRegistry, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings, whitelistAgentOwner } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../../../lib/utils/events/truffle";
-import { ZERO_ADDRESS, erc165InterfaceId, toBNExp } from "../../../lib/utils/helpers";
+import { ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, toBNExp } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { AgentOwnerRegistryInstance, AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerControllerInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../typechain-truffle";
 
@@ -362,6 +363,32 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, touUrl, { from: manager });
             expectEvent(res, "AgentDataChanged");
         });
+    });
+
+    describe("UUPS upgrade", () => {
+        it("should upgrade and downgrade", async () => {
+            const TestUUPSProxyImpl = artifacts.require("TestUUPSProxyImpl")
+            const testProxy = await TestUUPSProxyImpl.at(agentOwnerRegistry.address);
+            // test method doesn't work now
+            await expectRevert(testProxy.testResult(), "function selector was not recognized and there's no fallback function");
+            // prepare upgrade
+            const testProxyImpl = await TestUUPSProxyImpl.new();
+            const initCall = abiEncodeCall(testProxyImpl, c => c.initialize("an init message"));
+            // upgrade requires governance
+            await expectRevert.custom(agentOwnerRegistry.upgradeTo(testProxyImpl.address), "OnlyGovernance", []);
+            await expectRevert.custom(agentOwnerRegistry.upgradeToAndCall(testProxyImpl.address, initCall), "OnlyGovernance", []);
+            // upgrade
+            const res = await agentOwnerRegistry.upgradeToAndCall(testProxyImpl.address, initCall, { from: governance });
+            await waitForTimelock(res, agentOwnerRegistry, governance);
+            // test method works now
+            assertWeb3Equal(await testProxy.testResult(), "an init message");
+            // downgrade
+            const registryImpl = await AgentOwnerRegistry.new();
+            await agentOwnerRegistry.upgradeTo(registryImpl.address, { from: governance });
+            // test method doesn't work any more
+            await expectRevert(testProxy.testResult(), "function selector was not recognized and there's no fallback function");
+        });
+
     });
 
     describe("ERC-165 interface identification for Agent Owner Registry", () => {

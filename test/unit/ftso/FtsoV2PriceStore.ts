@@ -603,6 +603,26 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             assert.equal(await priceStore.getAddressUpdater(), accounts[79]);
             assert.equal(await priceStore.relay(), accounts[80]);
         });
+
+        it("should upgrade and downgrade", async () => {
+            const FtsoV2PriceStoreMock = artifacts.require('FtsoV2PriceStoreMock');
+            const mockStore = await FtsoV2PriceStoreMock.at(priceStore.address);
+            const mockStoreImpl = await FtsoV2PriceStoreMock.new();
+            // should not support setCurrentPrice at start
+            await expectRevert(mockStore.setCurrentPrice("USDC", "123456", 0), "function selector was not recognized and there's no fallback function");
+            assertWeb3Equal((await mockStore.getPrice("USDC"))[0], "0");
+            // upgrade
+            await priceStore.upgradeTo(mockStoreImpl.address, { from: governance });
+            // setCurrentPrice should work now
+            await mockStore.setCurrentPrice("USDC", "123456", 0);
+            assertWeb3Equal((await mockStore.getPrice("USDC"))[0], "123456");
+            // downgrade
+            const priceStoreImpl = await FtsoV2PriceStore.new();
+            await priceStore.upgradeTo(priceStoreImpl.address, { from: governance });
+            // setCurrentPrice should not work anymore
+            await expectRevert(mockStore.setCurrentPrice("USDC", "100000", 0), "function selector was not recognized and there's no fallback function");
+            assertWeb3Equal((await mockStore.getPrice("USDC"))[0], "123456");
+        });
     });
 
     describe("ERC-165 interface identification", () => {
