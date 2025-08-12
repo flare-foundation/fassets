@@ -3,9 +3,8 @@ pragma solidity ^0.8.27;
 
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {GovernedProxyImplementation} from "../../governance/implementation/GovernedProxyImplementation.sol";
+import {GovernedUUPSProxyImplementation} from "../../governance/implementation/GovernedUUPSProxyImplementation.sol";
 import {AddressUpdatable} from "../../flareSmartContracts/implementation/AddressUpdatable.sol";
 import {IICoreVaultManager} from "../interfaces/IICoreVaultManager.sol";
 import {IFdcVerification, IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
@@ -19,8 +18,7 @@ import {ICoreVaultManager} from "../../userInterfaces/ICoreVaultManager.sol"; //
 
 //solhint-disable-next-line max-states-count
 contract CoreVaultManager is
-    UUPSUpgradeable,
-    GovernedProxyImplementation,
+    GovernedUUPSProxyImplementation,
     AddressUpdatable,
     IICoreVaultManager,
     IERC165
@@ -110,7 +108,7 @@ contract CoreVaultManager is
     }
 
     constructor()
-        GovernedProxyImplementation()
+        GovernedUUPSProxyImplementation()
         AddressUpdatable(address(0))
     {
     }
@@ -799,41 +797,6 @@ contract CoreVaultManager is
         return _interfaceId == type(IERC165).interfaceId
             || _interfaceId == type(IIAddressUpdatable).interfaceId
             || _interfaceId == type(IICoreVaultManager).interfaceId;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-    // UUPS Proxy
-
-    /**
-     * See UUPSUpgradeable.upgradeTo
-     */
-    function upgradeTo(address newImplementation)
-        public override
-        onlyGovernance
-        onlyProxy
-    {
-        _upgradeToAndCallUUPS(newImplementation, new bytes(0), false);
-    }
-
-    /**
-     * See UUPSUpgradeable.upgradeToAndCall
-     */
-    function upgradeToAndCall(address newImplementation, bytes memory data)
-        public payable override
-        onlyGovernance
-        onlyProxy
-    {
-        _upgradeToAndCallUUPS(newImplementation, data, true);
-    }
-
-    /**
-     * Unused. Only present to satisfy UUPSUpgradeable requirement.
-     * The real check is in onlyGovernance modifier on upgradeTo and upgradeToAndCall.
-     */
-    function _authorizeUpgrade(address  /* _newImplementation */)
-        internal pure override
-    {
-        assert(false);
     }
 
     /**

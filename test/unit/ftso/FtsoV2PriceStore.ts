@@ -8,10 +8,12 @@ import { erc165InterfaceId } from "../../../lib/utils/helpers";
 import { FtsoV2PriceStoreInstance, MockContractInstance } from "../../../typechain-truffle";
 
 const FtsoV2PriceStore = artifacts.require('FtsoV2PriceStore');
+const FtsoV2PriceStoreProxy = artifacts.require('FtsoV2PriceStoreProxy');
 const MockContract = artifacts.require('MockContract');
 
 contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore basic tests`, accounts => {
     let contracts: TestSettingsContracts;
+    let priceStoreImpl: FtsoV2PriceStoreInstance;
     let priceStore: FtsoV2PriceStoreInstance;
     let relayMock: MockContractInstance;
     const governance = accounts[10];
@@ -27,7 +29,9 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
     async function initialize() {
         contracts = await createTestContracts(governance);
         startTs = (await time.latest()).toNumber() - votingEpochDurationSeconds;
-        priceStore = await FtsoV2PriceStore.new(
+        priceStoreImpl = await FtsoV2PriceStore.new();
+        const priceStoreProxy = await FtsoV2PriceStoreProxy.new(
+            priceStoreImpl.address,
             contracts.governanceSettings.address,
             governance,
             contracts.addressUpdater.address,
@@ -35,6 +39,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             votingEpochDurationSeconds,
             ftsoScalingProtocolId
         );
+        priceStore = await FtsoV2PriceStore.at(priceStoreProxy.address);
         relayMock = await MockContract.new();
         await priceStore.setTrustedProviders(trustedProviders, 1, { from: governance });
         await priceStore.updateSettings(feedIds, feedSymbols, feedDecimals, 50, { from: governance });
@@ -52,7 +57,8 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
     describe("method tests", () => {
 
         it("should revert if deploying contract with invalid start time", async () => {
-            await expectRevert.custom(FtsoV2PriceStore.new(
+            await expectRevert.custom(FtsoV2PriceStoreProxy.new(
+                priceStoreImpl.address,
                 contracts.governanceSettings.address,
                 governance,
                 contracts.addressUpdater.address,
@@ -63,7 +69,8 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         });
 
         it("should revert if deploying contract with too short voting epoch duration", async () => {
-            await expectRevert.custom(FtsoV2PriceStore.new(
+            await expectRevert.custom(FtsoV2PriceStoreProxy.new(
+                priceStoreImpl.address,
                 contracts.governanceSettings.address,
                 governance,
                 contracts.addressUpdater.address,

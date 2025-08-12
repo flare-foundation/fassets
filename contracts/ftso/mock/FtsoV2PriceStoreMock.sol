@@ -5,25 +5,10 @@ pragma solidity ^0.8.27;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {FtsoV2PriceStore} from "../implementation/FtsoV2PriceStore.sol";
-import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
-
 
 
 contract FtsoV2PriceStoreMock is FtsoV2PriceStore {
     using SafeCast for uint256;
-
-    constructor(
-        IGovernanceSettings _governanceSettings,
-        address _initialGovernance,
-        address _addressUpdater,
-        uint64 _firstVotingRoundStartTs,
-        uint8 _votingEpochDurationSeconds,
-        uint8 _ftsoProtocolId
-    )
-        FtsoV2PriceStore(_governanceSettings, _initialGovernance, _addressUpdater,
-            _firstVotingRoundStartTs, _votingEpochDurationSeconds, _ftsoProtocolId)
-    {
-    }
 
     function setDecimals(string memory _symbol, int8 _decimals) external {
         PriceStore storage feed = _getFeed(_symbol);

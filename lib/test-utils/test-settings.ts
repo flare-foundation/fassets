@@ -32,6 +32,7 @@ const WNat = artifacts.require("WNatMock");
 const AddressUpdater = artifacts.require('AddressUpdaterMock');
 const FdcVerification = artifacts.require('FdcVerificationMock');
 const FtsoV2PriceStoreMock = artifacts.require('FtsoV2PriceStoreMock');
+const FtsoV2PriceStoreProxy = artifacts.require('FtsoV2PriceStoreProxy');
 const FdcHub = artifacts.require('FdcHubMock');
 const Relay = artifacts.require('RelayMock');
 const GovernanceSettings = artifacts.require('GovernanceSettingsMock');
@@ -314,8 +315,11 @@ export async function createMockFtsoV2PriceStore(governanceSettingsAddress: stri
     const firstVotingRoundStartTs = currentTime.toNumber() - 1 * WEEKS;
     const ftsoScalingProtocolId = 100;
     // create store
-    const priceStore = await FtsoV2PriceStoreMock.new(governanceSettingsAddress, initialGovernance, addressUpdater,
+    const priceStoreImpl = await FtsoV2PriceStoreMock.new();
+    const priceStoreProxy = await FtsoV2PriceStoreProxy.new(priceStoreImpl.address,
+        governanceSettingsAddress, initialGovernance, addressUpdater,
         firstVotingRoundStartTs, votingEpochDurationSeconds, ftsoScalingProtocolId);
+    const priceStore = await FtsoV2PriceStoreMock.at(priceStoreProxy.address);
     // setup
     const feedIdArr = ["0xc1", "0xc2", "0xc3"];
     const symbolArr = ["NAT", "USDC", "USDT"];

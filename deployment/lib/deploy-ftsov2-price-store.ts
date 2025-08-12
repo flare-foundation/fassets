@@ -27,8 +27,14 @@ export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contra
     const parameters = readFtsoV2Parameters(hre);
 
     const FtsoV2PriceStore = artifacts.require(parameters.contractName as "FtsoV2PriceStore");
+    const FtsoV2PriceStoreProxy = artifacts.require("FtsoV2PriceStoreProxy");
 
-    const ftsoV2PriceStore = await FtsoV2PriceStore.new(contracts.GovernanceSettings.address, deployer, deployer, parameters.firstVotingRoundStartTs, parameters.votingEpochDurationSeconds, 100);
+    // deploy via proxy
+    const ftsoV2PriceStoreImpl = await FtsoV2PriceStore.new();
+    const ftsoV2PriceStoreProxy = await FtsoV2PriceStoreProxy.new(ftsoV2PriceStoreImpl.address,
+        contracts.GovernanceSettings.address, deployer, deployer, parameters.firstVotingRoundStartTs, parameters.votingEpochDurationSeconds, 100);
+    const ftsoV2PriceStore = await FtsoV2PriceStore.at(ftsoV2PriceStoreProxy.address);
+
     await ftsoV2PriceStore.updateContractAddresses(encodeContractNames(hre, ["AddressUpdater", "Relay"]), [contracts.AddressUpdater.address, contracts.Relay.address], { from: deployer });
 
     await ftsoV2PriceStore.setTrustedProviders(parameters.trustedProviders, parameters.trustedProvidersThreshold, { from: deployer });
@@ -39,8 +45,9 @@ export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contra
         parameters.maxSpreadBIPS,
         { from: deployer });
 
-    contracts.add("PriceReader", "FtsoV2PriceStore.sol", ftsoV2PriceStore.address);
-    contracts.add("FtsoV2PriceStore", "FtsoV2PriceStore.sol", ftsoV2PriceStore.address, { mustSwitchToProduction: true });
+    contracts.add("PriceReader", "FtsoV2PriceStoreProxy.sol", ftsoV2PriceStore.address);
+    contracts.add("FtsoV2PriceStoreImplementation", "FtsoV2PriceStore.sol", ftsoV2PriceStoreImpl.address);
+    contracts.add("FtsoV2PriceStore", "FtsoV2PriceStoreProxy.sol", ftsoV2PriceStore.address, { mustSwitchToProduction: true });
 
     console.log(`    deployed ${truffleContractMetadata(FtsoV2PriceStore).contractName}`);
 }

@@ -4,14 +4,20 @@ pragma solidity ^0.8.27;
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {IRelay} from "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
-import {Governed} from "../../governance/implementation/Governed.sol";
+import {GovernedUUPSProxyImplementation} from "../../governance/implementation/GovernedUUPSProxyImplementation.sol";
 import {AddressUpdatable} from "../../flareSmartContracts/implementation/AddressUpdatable.sol";
 import {IPriceReader} from "../../ftso/interfaces/IPriceReader.sol";
 import {IPricePublisher} from "../interfaces/IPricePublisher.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 
 
-contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, AddressUpdatable {
+contract FtsoV2PriceStore is
+    GovernedUUPSProxyImplementation,
+    IPriceReader,
+    IPricePublisher,
+    IERC165,
+    AddressUpdatable
+{
     using MerkleProof for bytes32[];
 
     uint256 internal constant MAX_BIPS = 1e4;
@@ -48,13 +54,13 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
     error SymbolNotSupported();
 
     /// Timestamp when the first voting epoch started, in seconds since UNIX epoch.
-    uint64 public immutable firstVotingRoundStartTs;
+    uint64 public firstVotingRoundStartTs;
     /// Duration of voting epochs, in seconds.
-    uint64 public immutable votingEpochDurationSeconds;
+    uint64 public votingEpochDurationSeconds;
     /// Duration of a window for submitting trusted prices, in seconds.
-    uint64 public immutable submitTrustedPricesWindowSeconds;
+    uint64 public submitTrustedPricesWindowSeconds;
     /// The FTSO protocol id.
-    uint8 public immutable ftsoProtocolId;
+    uint8 public ftsoProtocolId;
 
     /// The list of required feed ids to be published.
     bytes21[] internal feedIds;
@@ -84,7 +90,12 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
 
     event PricesPublished(uint32 indexed votingRoundId);
 
-    constructor(
+    constructor()
+        GovernedUUPSProxyImplementation()   // marks as initialized
+        AddressUpdatable(address(0))
+    {}
+
+    function initialize(
         IGovernanceSettings _governanceSettings,
         address _initialGovernance,
         address _addressUpdater,
@@ -92,10 +103,13 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
         uint8 _votingEpochDurationSeconds,
         uint8 _ftsoProtocolId
     )
-        Governed(_governanceSettings, _initialGovernance) AddressUpdatable(_addressUpdater)
+        external
     {
         require(_firstVotingRoundStartTs + _votingEpochDurationSeconds <= block.timestamp, InvalidStartTime());
         require(_votingEpochDurationSeconds > 1, VotingEpochDurationTooShort()); // 90 s
+
+        initialise(_governanceSettings, _initialGovernance);    // also marks as initialized
+        setAddressUpdaterValue(_addressUpdater);
         firstVotingRoundStartTs = _firstVotingRoundStartTs;
         votingEpochDurationSeconds = _votingEpochDurationSeconds;
         submitTrustedPricesWindowSeconds = _votingEpochDurationSeconds / 2; // 45 s
