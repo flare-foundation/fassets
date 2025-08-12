@@ -411,7 +411,7 @@ interface IAssetManager is
      */
     function getAllAgents(uint256 _start, uint256 _end)
         external view
-        returns (address[] memory _agentVaults, uint256 _totalLength);
+        returns (address[] memory _agents, uint256 _totalLength);
 
     /**
      * Return detailed info about an agent, typically needed by a minter.
@@ -537,7 +537,7 @@ interface IAssetManager is
      */
     function getAvailableAgentsList(uint256 _start, uint256 _end)
         external view
-        returns (address[] memory _agentVaults, uint256 _totalLength);
+        returns (address[] memory _agents, uint256 _totalLength);
 
     /**
      * Get (a part of) the list of available agents with extra information about agents' fee, min collateral ratio
