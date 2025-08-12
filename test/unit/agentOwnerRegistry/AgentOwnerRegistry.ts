@@ -5,7 +5,7 @@ import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, w
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
-import { TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings, whitelistAgentOwner } from "../../../lib/test-utils/test-settings";
+import { TestSettingsContracts, createAgentOwnerRegistry, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings, whitelistAgentOwner } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../../../lib/utils/events/truffle";
@@ -72,7 +72,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals,
             ci.assetName, ci.assetSymbol, { governanceSettings: contracts.governanceSettings, updateExecutor });
 
-        agentOwnerRegistry = await AgentOwnerRegistry.new(contracts.governanceSettings.address, governance);
+        agentOwnerRegistry = await createAgentOwnerRegistry(contracts.governanceSettings, governance);
         await agentOwnerRegistry.switchToProductionMode({ from: governance });
 
         const res = await assetManagerController.setAgentOwnerRegistry([assetManager.address], agentOwnerRegistry.address, { from: governance });

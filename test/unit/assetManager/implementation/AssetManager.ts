@@ -8,7 +8,7 @@ import { AssetManagerInitSettings, deployAssetManagerFacets, newAssetManager, ne
 import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectEvent, expectRevert, time } from "../../../../lib/test-utils/test-helpers";
-import { TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings, whitelistAgentOwner } from "../../../../lib/test-utils/test-settings";
+import { TestSettingsContracts, createAgentOwnerRegistry, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings, whitelistAgentOwner } from "../../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
@@ -822,7 +822,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const governanceSettings = await GovernanceSettings.new();
             await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
             // create whitelist
-            const agentOwnerRegistry = await AgentOwnerRegistry.new(governanceSettings.address, governance);
+            const agentOwnerRegistry = await createAgentOwnerRegistry(governanceSettings, governance);
             await agentOwnerRegistry.switchToProductionMode({ from: governance });
             await assetManager.setAgentOwnerRegistry(agentOwnerRegistry.address, { from: assetManagerController });
             return agentOwnerRegistry;

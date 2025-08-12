@@ -16,11 +16,10 @@ import { AssetManagerInitSettings, newAssetManager, waitForTimelock } from "../f
 import { MockChain } from "../fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../fasset/MockFlareDataConnectorClient";
 import { time } from "../test-helpers";
-import { assignCoreVaultManager, CoreVaultManagerInitSettings, createCoreVaultManager, createTestCollaterals, createTestCoreVaultManagerSettings, createTestSettings, TestSettingOptions } from "../test-settings";
+import { assignCoreVaultManager, CoreVaultManagerInitSettings, createAgentOwnerRegistry, createCoreVaultManager, createTestCollaterals, createTestCoreVaultManagerSettings, createTestSettings, TestSettingOptions } from "../test-settings";
 import { CommonContext } from "./CommonContext";
 import { TestChainInfo } from "./TestChainInfo";
 
-const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
 const MockContract = artifacts.require('MockContract');
 
 export interface SettingsOptions {
@@ -123,7 +122,7 @@ export class AssetContext implements IAssetContext {
     }
 
     async createAgentOwnerRegistry() {
-        const agentOwnerRegistry = await AgentOwnerRegistry.new(this.common.governanceSettings.address, this.governance);
+        const agentOwnerRegistry = await createAgentOwnerRegistry(this.common.governanceSettings, this.governance);
         await agentOwnerRegistry.switchToProductionMode({ from: this.governance });
         await this.setAgentOwnerRegistry(agentOwnerRegistry);
     }
@@ -259,7 +258,7 @@ export class AssetContext implements IAssetContext {
         const flareDataConnectorClient = new MockFlareDataConnectorClient(common.fdcHub, common.relay, { [chainInfo.chainId]: chain }, 'on_wait');
         const attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, chainInfo.chainId);
         // create agent owner registry
-        const agentOwnerRegistry = await AgentOwnerRegistry.new(common.governanceSettings.address, common.governance);
+        const agentOwnerRegistry = await createAgentOwnerRegistry(common.governanceSettings, common.governance);
         // create collaterals
         const testSettingsContracts = { ...common, agentOwnerRegistry };
         // create settings

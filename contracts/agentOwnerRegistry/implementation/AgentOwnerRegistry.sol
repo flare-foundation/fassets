@@ -3,11 +3,11 @@ pragma solidity ^0.8.27;
 
 import {IAgentOwnerRegistry} from "../../userInterfaces/IAgentOwnerRegistry.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import {Governed} from "../../governance/implementation/Governed.sol";
+import {GovernedUUPSProxyImplementation} from "../../governance/implementation/GovernedUUPSProxyImplementation.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 
 
-contract AgentOwnerRegistry is Governed, IERC165, IAgentOwnerRegistry {
+contract AgentOwnerRegistry is GovernedUUPSProxyImplementation, IERC165, IAgentOwnerRegistry {
 
     event ManagerChanged(address manager);
 
@@ -35,9 +35,8 @@ contract AgentOwnerRegistry is Governed, IERC165, IAgentOwnerRegistry {
         _;
     }
 
-    constructor(IGovernanceSettings _governanceSettings, address _initialGovernance)
-        Governed(_governanceSettings, _initialGovernance)
-    { // solhint-disable-line no-empty-blocks
+    function initialize(IGovernanceSettings _governanceSettings, address _initialGovernance) external {
+        initialise(_governanceSettings, _initialGovernance);    // also marks as initialized
     }
 
     function revokeAddress(address _address) external onlyGovernanceOrManager {

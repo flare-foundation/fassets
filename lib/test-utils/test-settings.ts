@@ -9,6 +9,7 @@ import {
     FtsoV2PriceStoreMockInstance,
     GovernanceSettingsMockInstance,
     IFdcVerificationInstance,
+    IGovernanceSettingsInstance,
     IIAssetManagerInstance,
     IPriceReaderInstance,
     RelayMockInstance,
@@ -43,6 +44,7 @@ const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
 const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
 const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
+const AgentOwnerRegistryProxy = artifacts.require("AgentOwnerRegistryProxy");
 const CoreVaultManager = artifacts.require('CoreVaultManager');
 const CoreVaultManagerProxy = artifacts.require('CoreVaultManagerProxy');
 
@@ -254,11 +256,17 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     const collateralPoolTokenImplementation = await CollateralPoolToken.new(ZERO_ADDRESS, "", "");
     const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new(collateralPoolTokenImplementation.address);
     // create agent owner registry
-    const agentOwnerRegistry = await AgentOwnerRegistry.new(governanceSettings.address, governance);
+    const agentOwnerRegistry = await createAgentOwnerRegistry(governanceSettings, governance);
     //
     return {
         governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, collateralPoolTokenFactory, relay, fdcHub, fdcVerification,
         priceStore, priceReader: priceStore, agentOwnerRegistry, wNat, stablecoins };
+}
+
+export async function createAgentOwnerRegistry(governanceSettings: IGovernanceSettingsInstance, governance: string) {
+    const agentOwnerRegistryImpl = await AgentOwnerRegistry.new();
+    const agentOwnerRegistryProxy = await AgentOwnerRegistryProxy.new(agentOwnerRegistryImpl.address, governanceSettings.address, governance);
+    return await AgentOwnerRegistry.at(agentOwnerRegistryProxy.address);
 }
 
 export async function createCoreVaultManager(assetManager: IIAssetManagerInstance, addressUpdater: AddressUpdaterMockInstance, settings: CoreVaultManagerInitSettings) {

@@ -9,14 +9,21 @@ export async function deployAgentOwnerRegistry(hre: HardhatRuntimeEnvironment, c
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
+    const AgentOwnerRegistryProxy = artifacts.require("AgentOwnerRegistryProxy");
 
     const { deployer } = loadDeployAccounts(hre);
 
-    const whitelist = await waitFinalize(hre, deployer, () => AgentOwnerRegistry.new(contracts.GovernanceSettings.address, deployer, { from: deployer }));
+    // deploy proxy
+    const agentOwnerRegistryImpl = await waitFinalize(hre, deployer,
+        () => AgentOwnerRegistry.new({ from: deployer }));
+    const agentOwnerRegistryProxy = await waitFinalize(hre, deployer,
+        () => AgentOwnerRegistryProxy.new(agentOwnerRegistryImpl.address, contracts.GovernanceSettings.address, deployer, { from: deployer }));
+    const agentOwnerRegistry = await AgentOwnerRegistry.at(agentOwnerRegistryProxy.address);
 
-    contracts.add("AgentOwnerRegistry", "AgentOwnerRegistry.sol", whitelist.address, { mustSwitchToProduction: true });
+    contracts.add("AgentOwnerRegistryImplementation", "AgentOwnerRegistry.sol", agentOwnerRegistryImpl.address);
+    contracts.add("AgentOwnerRegistry", "AgentOwnerRegistryProxy.sol", agentOwnerRegistry.address, { mustSwitchToProduction: true });
 
-    return whitelist.address;
+    return agentOwnerRegistry.address;
 }
 
 export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
