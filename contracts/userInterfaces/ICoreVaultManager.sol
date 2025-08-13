@@ -86,6 +86,10 @@ interface ICoreVaultManager {
         uint256 amount
     );
 
+    event EscrowExpired(
+        bytes32 indexed preimageHash,
+        uint256 amount);
+
     event NotAllEscrowsProcessed();
 
     event EscrowFinished(

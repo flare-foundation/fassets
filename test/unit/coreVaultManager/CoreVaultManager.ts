@@ -1655,10 +1655,12 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
 
             // process one escrow
             const tx = await coreVaultManager.processEscrows(1);
+            expectEvent.notEmitted(tx, "EscrowExpired");
             expectEvent(tx, "NotAllEscrowsProcessed");
 
             // all escrows are now processed
             const tx1 = await coreVaultManager.processEscrows(1);
+            expectEvent.notEmitted(tx1, "EscrowExpired");
             expectEvent.notEmitted(tx1, "NotAllEscrowsProcessed");
         });
 
@@ -1672,10 +1674,12 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
 
             // process one escrow
             const tx = await coreVaultManager.processEscrows(1);
+            expectEvent(tx, "EscrowExpired", { preimageHash: preimageHash1 });
             expectEvent(tx, "NotAllEscrowsProcessed");
 
             // all escrows are now processed
             const tx1 = await coreVaultManager.processEscrows(1);
+            expectEvent(tx1, "EscrowExpired", { preimageHash: preimageHash2 });
             expectEvent.notEmitted(tx1, "NotAllEscrowsProcessed");
         });
 

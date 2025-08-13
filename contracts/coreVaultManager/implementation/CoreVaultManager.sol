@@ -827,9 +827,11 @@ contract CoreVaultManager is
         {
             if (!escrows[index].finished) {
                 // if the escrow is not finished, add the amount to the available funds
-                uint128 amount = escrows[index].amount;
+                Escrow storage escrow = escrows[index];
+                uint128 amount = escrow.amount;
                 availableFundsTmp += amount;
                 escrowedFundsTmp -= amount;
+                emit EscrowExpired(escrow.preimageHash, amount);
             }
             index++;
             _maxCount--;
