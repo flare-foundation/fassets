@@ -4,9 +4,9 @@ import { upgradeAgentVaultFactory, upgradeAgentVaultsAndPools, upgradeAssetManag
 runDeployScript(async (deployScriptEnvironment) => {
     // const { hre, artifacts, contracts, deployer } = deployScriptEnvironment;
     await upgradeAssetManagerController(deployScriptEnvironment, true);
-    await upgradeAgentVaultFactory(deployScriptEnvironment, true);
-    await upgradeCollateralPoolFactory(deployScriptEnvironment, true);
-    await upgradeCollateralPoolTokenFactory(deployScriptEnvironment, true);
-    await upgradeFAsset(deployScriptEnvironment, true);
-    await upgradeAgentVaultsAndPools(deployScriptEnvironment, true);
+    await upgradeAgentVaultFactory(deployScriptEnvironment, "all", true);
+    await upgradeCollateralPoolFactory(deployScriptEnvironment, "all", true);
+    await upgradeCollateralPoolTokenFactory(deployScriptEnvironment, "all", true);
+    await upgradeFAsset(deployScriptEnvironment, "all", true);
+    await upgradeAgentVaultsAndPools(deployScriptEnvironment, "all", true);
 });

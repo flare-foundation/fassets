@@ -1,6 +1,6 @@
 import { AssetManagerSettings } from "../../lib/fasset/AssetManagerTypes";
 import { AssetManagerControllerInstance } from "../../typechain-truffle";
-import { FAssetContractStore } from "./contracts";
+import { ContractStore, FAssetContractStore } from "./contracts";
 import { deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory } from "./deploy-asset-manager-dependencies";
 import { deployFacet } from "./deploy-asset-manager-facets";
 import { DeployScriptEnvironment } from "./deploy-scripts";
@@ -20,10 +20,10 @@ export async function upgradeAssetManagerController({ hre, artifacts, contracts,
     }
 }
 
-export async function upgradeAgentVaultFactory({ hre, artifacts, contracts, deployer }: DeployScriptEnvironment, execute: boolean) {
+export async function upgradeAgentVaultFactory({ hre, artifacts, contracts, deployer }: DeployScriptEnvironment, assetSymbols: string[] | "all", execute: boolean) {
     const AssetManagerController = artifacts.require("AssetManagerController");
     const assetManagerController = await AssetManagerController.at(contracts.getAddress("AssetManagerController"));
-    const assetManagers = await assetManagerController.getAssetManagers();
+    const assetManagers = await getAssetManagers(contracts, assetManagerController, assetSymbols);
 
     const newAgentVaultFactoryAddress = await deployAgentVaultFactory(hre, contracts);
 
@@ -35,10 +35,10 @@ export async function upgradeAgentVaultFactory({ hre, artifacts, contracts, depl
     }
 }
 
-export async function upgradeCollateralPoolFactory({ hre, artifacts, contracts, deployer }: DeployScriptEnvironment, execute: boolean) {
+export async function upgradeCollateralPoolFactory({ hre, artifacts, contracts, deployer }: DeployScriptEnvironment, assetSymbols: string[] | "all", execute: boolean) {
     const AssetManagerController = artifacts.require("AssetManagerController");
     const assetManagerController = await AssetManagerController.at(contracts.getAddress("AssetManagerController"));
-    const assetManagers = await assetManagerController.getAssetManagers();
+    const assetManagers = await getAssetManagers(contracts, assetManagerController, assetSymbols);
 
     const newCollateralPoolFactoryAddress = await deployCollateralPoolFactory(hre, contracts);
 
@@ -50,10 +50,10 @@ export async function upgradeCollateralPoolFactory({ hre, artifacts, contracts, 
     }
 }
 
-export async function upgradeCollateralPoolTokenFactory({ hre, artifacts, contracts, deployer }: DeployScriptEnvironment, execute: boolean) {
+export async function upgradeCollateralPoolTokenFactory({ hre, artifacts, contracts, deployer }: DeployScriptEnvironment, assetSymbols: string[] | "all", execute: boolean) {
     const AssetManagerController = artifacts.require("AssetManagerController");
     const assetManagerController = await AssetManagerController.at(contracts.getAddress("AssetManagerController"));
-    const assetManagers = await assetManagerController.getAssetManagers();
+    const assetManagers = await getAssetManagers(contracts, assetManagerController, assetSymbols);
 
     const newCollateralPoolTokenFactoryAddress = await deployCollateralPoolTokenFactory(hre, contracts);
 
@@ -65,10 +65,10 @@ export async function upgradeCollateralPoolTokenFactory({ hre, artifacts, contra
     }
 }
 
-export async function upgradeFAsset({ hre, artifacts, contracts, deployer }: DeployScriptEnvironment, execute: boolean) {
+export async function upgradeFAsset({ hre, artifacts, contracts, deployer }: DeployScriptEnvironment, assetSymbols: string[] | "all", execute: boolean) {
     const AssetManagerController = artifacts.require("AssetManagerController");
     const assetManagerController = await AssetManagerController.at(contracts.getAddress("AssetManagerController"));
-    const assetManagers = await assetManagerController.getAssetManagers();
+    const assetManagers = await getAssetManagers(contracts, assetManagerController, assetSymbols);
 
     const newFAssetImplAddress = await deployFacet(hre, "FAssetImplementation", contracts, deployer, "FAsset");
 
@@ -80,10 +80,10 @@ export async function upgradeFAsset({ hre, artifacts, contracts, deployer }: Dep
     }
 }
 
-export async function upgradeAgentVaultsAndPools({ artifacts, contracts }: DeployScriptEnvironment, execute: boolean) {
+export async function upgradeAgentVaultsAndPools({ artifacts, contracts }: DeployScriptEnvironment, assetSymbols: string[] | "all", execute: boolean) {
     const AssetManagerController = artifacts.require("AssetManagerController");
     const assetManagerController = await AssetManagerController.at(contracts.getAddress("AssetManagerController"));
-    const assetManagers = await assetManagerController.getAssetManagers();
+    const assetManagers = await getAssetManagers(contracts, assetManagerController, assetSymbols);
 
     let maxAgentsCount = 0;
     const IIAssetManager = artifacts.require("IIAssetManager");
@@ -101,17 +101,48 @@ export async function upgradeAgentVaultsAndPools({ artifacts, contracts }: Deplo
     }
 }
 
+export async function upgradeGovernedProxy({ hre, artifacts, contracts, deployer }: DeployScriptEnvironment, contractName: string, implementationName: string, implementationContract: string, execute: boolean) {
+    const GovernedUUPSProxyImplementation = artifacts.require("GovernedUUPSProxyImplementation");
+    const proxy = await GovernedUUPSProxyImplementation.at(contracts.getAddress(contractName));
+
+    const newImplAddress = await deployFacet(hre, implementationName, contracts, deployer, implementationContract);
+
+    if (execute && !(await proxy.productionMode())) {
+        await proxy.upgradeTo(newImplAddress, { from: deployer });
+        console.log(`${implementationContract} at ${proxy.address} upgraded to ${await getProxyImplementationAddress(hre, proxy.address)}`);
+    } else {
+        console.log(`EXECUTE: ${implementationContract}(${proxy.address}).upgradeTo(${newImplAddress})`);
+    }
+}
+
 async function shouldExecute(execute: boolean, assetManagerController: AssetManagerControllerInstance) {
     const productionMode = await assetManagerController.productionMode();
     return execute && !productionMode;
 }
 
-async function printUpgradedContracts(contracts: FAssetContractStore, name: string, assetManagers: string[], field: (s: AssetManagerSettings) => any) {
+async function printUpgradedContracts(contracts: FAssetContractStore, name: string, assetManagers: string[], field: (s: AssetManagerSettings) => unknown) {
     const IIAssetManager = artifacts.require("IIAssetManager");
     for (const addr of assetManagers) {
         const am = await IIAssetManager.at(addr);
         const assetManagerName = contracts.findByAddress(addr)?.name ?? addr;
         const settings = await am.getSettings();
         console.log(`${name} on ${assetManagerName} upgraded to ${await field(settings)}`);
+    }
+}
+
+export async function getAssetManagers(contracts: ContractStore, assetManagerController: AssetManagerControllerInstance, assetSymbols: string[] | "all") {
+    const allAssetManagers = await assetManagerController.getAssetManagers();
+    if (assetSymbols === "all") {
+        return allAssetManagers;
+    } else {
+        const assetManagers: string[] = [];
+        for (const symbol of assetSymbols) {
+            const am = contracts.getAddress(`AssetManager_${symbol}`);
+            if (!allAssetManagers.includes(am)) {
+                throw new Error(`Asset manager ${am} not registered in controller`);
+            }
+            assetManagers.push(am);
+        }
+        return assetManagers;
     }
 }
