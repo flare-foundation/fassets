@@ -35,7 +35,8 @@
     "contractName": "AgentVault.sol",
     "addresses": [
       "0x279615157757FecfA7B24Cc285A8970A12E68CCA",
-      "0x5E3b6e722282E017f11ac2aB8022455A7167559B"
+      "0x5E3b6e722282E017f11ac2aB8022455A7167559B",
+      "0x1C7D0085D35F630938f939F812Ce5d2Ff3aeB6a7"
     ]
   },
   {
@@ -43,7 +44,8 @@
     "contractName": "AgentVaultFactory.sol",
     "addresses": [
       "0x0f3B379f36A4854ae0ce52E363d5A3dc9c1CFee7",
-      "0x088c03dda1214d5cAA61070D562504B49E23CA36"
+      "0x088c03dda1214d5cAA61070D562504B49E23CA36",
+      "0x97Ed9b2Ff94aA990A58Aa493aE988096e65Ea0D5"
     ]
   },
   {
@@ -51,7 +53,8 @@
     "contractName": "CollateralPool.sol",
     "addresses": [
       "0xa9fF7ff60119D33e30814BbF91ba8613a3d4F8Ec",
-      "0x6fb1fFF5bD9cFCFed37Ff7aF7c72eB6dFA8f6eE1"
+      "0x6fb1fFF5bD9cFCFed37Ff7aF7c72eB6dFA8f6eE1",
+      "0x299E4bA1A3b5CcEda85962A118e57D82AE85AEa7"
     ]
   },
   {
@@ -59,21 +62,24 @@
     "contractName": "CollateralPoolFactory.sol",
     "addresses": [
       "0x052C7Cb58FBd5964940D7a10cA78C50A90bAD3A7",
-      "0xE803a8Fc4369068FA1d7dDd72b7F6d21E44Eb190"
+      "0xE803a8Fc4369068FA1d7dDd72b7F6d21E44Eb190",
+      "0x226EBB5677AA51711ACFE6c9961862ADaCF313fE"
     ]
   },
   {
     "name": "CollateralPoolTokenProxyImplementation",
     "contractName": "CollateralPoolToken.sol",
     "addresses": [
-      "0x8cde2269953B2f08102aE23ea86F2853e3446912"
+      "0x8cde2269953B2f08102aE23ea86F2853e3446912",
+      "0x25bdf17305361b17b5b097D393C3704C3eD007E3"
     ]
   },
   {
     "name": "CollateralPoolTokenFactory",
     "contractName": "CollateralPoolTokenFactory.sol",
     "addresses": [
-      "0xeed6C3E791e8d3d939e6A50811D8dB3e1e5693BE"
+      "0xeed6C3E791e8d3d939e6A50811D8dB3e1e5693BE",
+      "0x8772FC50AE518c20a6a723ac9Dc7f7C03F872fa4"
     ]
   },
   {
@@ -82,7 +88,8 @@
     "addresses": [
       "0x5bcb8a5d93474126A184e8706e26dc8B086082EC",
       "0x08afa05a5e73820d3b3978DB5295eD2Dee482fce",
-      "0x92C12B3E795185dCC820d9B41Af38dA9449b3484"
+      "0x92C12B3E795185dCC820d9B41Af38dA9449b3484",
+      "0xcd5Be357131c9DEa0E23C539c7A3f02D47aA3cb9"
     ]
   },
   {
@@ -484,7 +491,8 @@
     "name": "CoreVaultManagerImplementation",
     "contractName": "CoreVaultManager.sol",
     "addresses": [
-      "0xE5b27233Baf6C8C8DA18f26DcBC9dC1c00Fc8321"
+      "0xE5b27233Baf6C8C8DA18f26DcBC9dC1c00Fc8321",
+      "0xDD3404dF1d865bd4121062F7a12f97E2b2fee277"
     ]
   },
   {
