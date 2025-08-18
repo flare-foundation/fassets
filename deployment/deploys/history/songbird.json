@@ -3,21 +3,24 @@
     "name": "PriceReader",
     "contractName": "FtsoV2PriceStore.sol",
     "addresses": [
-      "0x85973FA0098F5471e63C2c3FFa3ec8956eDEDF73"
+      "0x85973FA0098F5471e63C2c3FFa3ec8956eDEDF73",
+      "0x9D99A8BadD16A22fB3E9C6e17DF90b3b72838B2d"
     ]
   },
   {
     "name": "FtsoV2PriceStore",
     "contractName": "FtsoV2PriceStore.sol",
     "addresses": [
-      "0x85973FA0098F5471e63C2c3FFa3ec8956eDEDF73"
+      "0x85973FA0098F5471e63C2c3FFa3ec8956eDEDF73",
+      "0x9D99A8BadD16A22fB3E9C6e17DF90b3b72838B2d"
     ]
   },
   {
     "name": "AgentOwnerRegistry",
     "contractName": "AgentOwnerRegistry.sol",
     "addresses": [
-      "0xa7f5d3C81f55f2b072FB62a0D4A03317BFd1a3c0"
+      "0xa7f5d3C81f55f2b072FB62a0D4A03317BFd1a3c0",
+      "0x7b514cE1E3733b94342e0550831d601926088380"
     ]
   },
   {
@@ -487,6 +490,20 @@
     "addresses": [
       "0x4fBd9B0b588c4C2A998915cE493b5E69C1495f59",
       "0x3Aa5404F6d42879F3449cCB1B5332a48851c41f3"
+    ]
+  },
+  {
+    "name": "AgentOwnerRegistryImplementation",
+    "contractName": "AgentOwnerRegistry.sol",
+    "addresses": [
+      "0x305Ee0C2A0D039F2FFe2B544aDd9B48d7B97D935"
+    ]
+  },
+  {
+    "name": "FtsoV2PriceStoreImplementation",
+    "contractName": "FtsoV2PriceStore.sol",
+    "addresses": [
+      "0x32Ebe52b4D6b7A21e46B9959F30C2d01ADc905BE"
     ]
   }
 ]

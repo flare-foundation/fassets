@@ -40,19 +40,29 @@
     "address": "0x4A771Cc1a39FDd8AA08B8EA51F7Fd412e73B3d2B"
   },
   {
-    "name": "PriceReader",
+    "name": "FtsoV2PriceStoreImplementation",
     "contractName": "FtsoV2PriceStore.sol",
-    "address": "0x85973FA0098F5471e63C2c3FFa3ec8956eDEDF73"
+    "address": "0x32Ebe52b4D6b7A21e46B9959F30C2d01ADc905BE"
+  },
+  {
+    "name": "PriceReader",
+    "contractName": "FtsoV2PriceStoreProxy.sol",
+    "address": "0x9D99A8BadD16A22fB3E9C6e17DF90b3b72838B2d"
   },
   {
     "name": "FtsoV2PriceStore",
-    "contractName": "FtsoV2PriceStore.sol",
-    "address": "0x85973FA0098F5471e63C2c3FFa3ec8956eDEDF73"
+    "contractName": "FtsoV2PriceStoreProxy.sol",
+    "address": "0x9D99A8BadD16A22fB3E9C6e17DF90b3b72838B2d"
+  },
+  {
+    "name": "AgentOwnerRegistryImplementation",
+    "contractName": "AgentOwnerRegistry.sol",
+    "address": "0x305Ee0C2A0D039F2FFe2B544aDd9B48d7B97D935"
   },
   {
     "name": "AgentOwnerRegistry",
-    "contractName": "AgentOwnerRegistry.sol",
-    "address": "0xa7f5d3C81f55f2b072FB62a0D4A03317BFd1a3c0"
+    "contractName": "AgentOwnerRegistryProxy.sol",
+    "address": "0x7b514cE1E3733b94342e0550831d601926088380"
   },
   {
     "name": "AgentVaultProxyImplementation",
