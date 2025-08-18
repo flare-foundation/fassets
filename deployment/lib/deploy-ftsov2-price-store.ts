@@ -80,6 +80,9 @@ function readFtsoV2Parameters(hre: HardhatRuntimeEnvironment): FtsoV2PriceStoreP
 export async function verifyFtsoV2PriceStore(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     const parameters = readFtsoV2Parameters(hre);
     const { deployer } = loadDeployAccounts(hre);
+    await verifyContract(hre, "FtsoV2PriceStoreImplementation", contracts, []);
     await verifyContract(hre, "FtsoV2PriceStore", contracts,
-        [contracts.GovernanceSettings.address, deployer, deployer, String(parameters.firstVotingRoundStartTs), String(parameters.votingEpochDurationSeconds), String(100)]);
+        [contracts.getAddress("FtsoV2PriceStoreImplementation"), contracts.GovernanceSettings.address, deployer, deployer,
+            String(parameters.firstVotingRoundStartTs), String(parameters.votingEpochDurationSeconds), String(100)],
+        true);
 }

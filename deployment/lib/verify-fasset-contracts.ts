@@ -16,10 +16,12 @@ export async function verifyContract(hre: HardhatRuntimeEnvironment, contractNam
         if (arg.startsWith('@')) return contracts.getAddress(arg.slice(1));
         return arg;
     });
+    const sourceContract = await qualifiedName(contract);
+    console.log(`Verifiying contract ${contract.name}, source ${sourceContract}`);
     await hre.run("verify:verify", {
         address: contract.address,
         constructorArguments: constructorArgs,
-        contract: await qualifiedName(contract),
+        contract: sourceContract,
         force: force
     });
 }
