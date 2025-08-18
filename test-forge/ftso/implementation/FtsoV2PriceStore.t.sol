@@ -3,13 +3,16 @@ pragma solidity 0.8.27;
 
 import {Test} from "forge-std/Test.sol";
 import {FtsoV2PriceStore, IPricePublisher} from "../../../contracts/ftso/implementation/FtsoV2PriceStore.sol";
+import {FtsoV2PriceStoreProxy} from "../../../contracts/ftso/implementation/FtsoV2PriceStoreProxy.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 import {IRelay} from "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
 
 // solhint-disable func-name-mixedcase
 contract FtsoV2PriceStoreTest is Test {
 
+    FtsoV2PriceStore private ftsoV2PriceStoreImpl;
     FtsoV2PriceStore private ftsoV2PriceStore;
+    FtsoV2PriceStoreProxy private ftsoV2PriceStoreProxy;
 
     address private relayMock;
 
@@ -42,7 +45,9 @@ contract FtsoV2PriceStoreTest is Test {
         ftsoProtocolId = 30;
         vm.warp(firstVotingRoundStartTs + votingEpochDurationSeconds + 1);
 
-        ftsoV2PriceStore = new FtsoV2PriceStore(
+        ftsoV2PriceStoreImpl = new FtsoV2PriceStore();
+        ftsoV2PriceStoreProxy = new FtsoV2PriceStoreProxy(
+            address(ftsoV2PriceStoreImpl),
             IGovernanceSettings(makeAddr("governanceSettings")),
             governance,
             addressUpdater,
@@ -50,6 +55,7 @@ contract FtsoV2PriceStoreTest is Test {
             votingEpochDurationSeconds,
             ftsoProtocolId
         );
+        ftsoV2PriceStore = FtsoV2PriceStore(address(ftsoV2PriceStoreProxy));
 
         contractNameHashes = new bytes32[](2);
         contractAddresses = new address[](2);
