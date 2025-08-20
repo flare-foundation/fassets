@@ -145,7 +145,7 @@ test-slither-check:
 test-forge:
   extends: .test-node-sc
   tags:
-  - flarenetwork-md
+  - flarenetwork-lg
   image: ghcr.io/foundry-rs/foundry:stable
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
