@@ -40,8 +40,8 @@
     "address": "0x48Da21ce34966A64E267CeFb78012C0282D0Ac87"
   },
   {
-    "name": "DistributionToDelegatorsMock",
-    "contractName": "DistributionToDelegatorsMock.sol",
+    "name": "DistributionToDelegators",
+    "contractName": "DistributionToDelegators.sol",
     "address": "0xbd33bDFf04C357F7FC019E72D0504C24CF4Aa010"
   },
   {

@@ -190,11 +190,6 @@
     "address": "0x36d33C6C4EB033e4B552461BA6f089264966cA4f"
   },
   {
-    "name": "RedemptionHandshakeFacet",
-    "contractName": "RedemptionHandshakeFacet.sol",
-    "address": "0xdD762D03dfF8317Ca7b53172c20d6C239B319bE2"
-  },
-  {
     "name": "LiquidationFacet",
     "contractName": "LiquidationFacet.sol",
     "address": "0x76d07b96AE416051444C234A09bdcb4375b6A53B"
@@ -273,11 +268,6 @@
     "name": "RedemptionTimeExtensionFacet",
     "contractName": "RedemptionTimeExtensionFacet.sol",
     "address": "0x08B5c3C541bF671395E9962f1B646A0B478d8BfE"
-  },
-  {
-    "name": "TransferFeeFacet",
-    "contractName": "TransferFeeFacet.sol",
-    "address": "0xB9D6ee6d3e3863b38e570Ffe2338CA1788cc5eD3"
   },
   {
     "name": "EmergencyPauseTransfersFacet",
