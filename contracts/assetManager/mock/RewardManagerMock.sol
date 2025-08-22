@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+// solhint-disable gas-custom-errors
 
-import "@flarenetwork/flare-periphery-contracts/flare/IRewardManager.sol";
-import "../interfaces/IWNat.sol";
+pragma solidity ^0.8.27;
+
+import {IRewardManager} from "@flarenetwork/flare-periphery-contracts/flare/IRewardManager.sol";
+import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 
 contract RewardManagerMock {
     IWNat private wNat;

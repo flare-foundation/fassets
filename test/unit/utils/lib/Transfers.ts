@@ -1,13 +1,13 @@
-import { expectRevert } from "@openzeppelin/test-helpers";
+import { expectRevert } from "../../../../lib/test-utils/test-helpers";
+import { getTestFile } from "../../../../lib/test-utils/test-suite-helpers";
+import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { toBNExp } from "../../../../lib/utils/helpers";
 import { MathUtilsMockInstance, TransfersMockInstance } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/test-helpers";
-import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 const MathUtils = artifacts.require("MathUtilsMock");
 const Transfers = artifacts.require("TransfersMock");
 
-contract(`Transfers.sol; ${getTestFile(__filename)};  Transfers unit tests`, async accounts => {
+contract(`Transfers.sol; ${getTestFile(__filename)};  Transfers unit tests`, accounts => {
     let transfers: TransfersMockInstance;
     let mathUtils: MathUtilsMockInstance;
 
@@ -24,12 +24,12 @@ contract(`Transfers.sol; ${getTestFile(__filename)};  Transfers unit tests`, asy
     });
 
     it("should fail transferring nat to non-payable contract", async () => {
-        await expectRevert(transfers.transferNAT(mathUtils.address, 1000), "transfer failed");
+        await expectRevert.custom(transfers.transferNAT(mathUtils.address, 1000), "TransferFailed", []);
     });
 
     it("unguarded transfers should fail", async () => {
         const account = web3.eth.accounts.create();
-        await expectRevert(transfers.transferNATNoGuard(account.address, 1000), "ReentrancyGuard: guard required");
+        await expectRevert.custom(transfers.transferNATNoGuard(account.address, 1000), "ReentrancyGuardRequired", []);
     });
 
     it("transfers with 0 value should work (but do nothing)", async () => {

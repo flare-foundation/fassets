@@ -1,6 +1,6 @@
 import BN from "bn.js";
 import { BaseEvent } from "./common";
-import { formatBN } from "../helpers";
+import { BNish, formatBN } from "../helpers";
 
 
 export class EventFormatter {
@@ -17,7 +17,7 @@ export class EventFormatter {
         }
     }
 
-    isAddress(s: any): s is string {
+    isAddress(s: unknown): s is string {
         return typeof s === 'string' && /^0x[0-9a-fA-F]{40}$/.test(s);
     }
 
@@ -35,12 +35,13 @@ export class EventFormatter {
         } else if (typeof value === 'object' && value?.constructor === Object) {
             return `{ ${Object.entries(value).map(([k, v]) => `${k}: ${this.formatArg(v)}`).join(', ')} }`;
         } else {
-            return '' + value;
+            return String(value);
         }
     }
 
     formatArgs(event: BaseEvent) {
-        const result: any = {};
+        const result: Record<string, string> = {};
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         for (const [key, value] of Object.entries(event.args)) {
             result[key] = this.formatArg(value);
         }
@@ -57,22 +58,24 @@ export class EventFormatter {
         }
     }
 
-    isBigNumber(x: any) {
+    isBigNumber(x: unknown): x is BNish {
         return BN.isBN(x) || (typeof x === 'string' && /^\d+$/.test(x));
     }
 
-    formatBN(x: any) {
+    formatBN(x: BNish) {
         return formatBN(x);
     }
 
-    static formatEvent(event: BaseEvent, contractName?: string, args: any = event.args) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    static formatEvent(event: BaseEvent, contractName?: string, args: Record<string, string | number> = event.args) {
         const keys = Object.keys(args).filter(k => /^\d+$/.test(k)).map(k => Number(k));
         keys.sort((a, b) => a - b);
         const formattedArgs = keys.map(k => args[k]).map(x => web3.utils.isBN(x) ? x.toString() : x);
         return `${contractName ?? event.address}.${event.event}(${formattedArgs.join(', ')})`;
     }
 
-    static formatEventByNames(event: BaseEvent, contractName?: string, args: any = event.args) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    static formatEventByNames(event: BaseEvent, contractName?: string, args: Record<string, string | number> = event.args) {
         const keys = Object.keys(args).filter(k => !/^\d+$/.test(k) && k !== '__length__');
         const formattedArgs = keys.map(k => args[k]).map(x => web3.utils.isBN(x) ? x.toString() : x);
         const parts = keys.map((k, i) => `${k}: ${formattedArgs[i]}`);

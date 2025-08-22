@@ -11,18 +11,14 @@
       "check-send-result": "error",
       "compiler-version": ["off", "0.8.23"],
       "const-name-snakecase": "error",
+      "immutable-vars-naming": "off",
       "func-name-mixedcase": "error",
-      "gas-custom-errors": "off",
       "ordering": "off",
       "imports-on-top": "error",
-      "immutable-vars-naming": "off",
       "max-line-length": ["error", 119],
-      "no-global-import": "off",
-      "reason-string": "off",
       "max-states-count": ["error", 20],
       "multiple-sends": "error",
       "no-complex-fallback": "error",
-      "no-empty-blocks": "off",
       "no-inline-assembly": "error",
       "no-unused-vars": "error",
       "not-rely-on-block-hash": "error",
@@ -34,6 +30,7 @@
       "use-forbidden-name": "error",
       "var-name-mixedcase": "error",
       "visibility-modifier-order": "error",
+      "import-path-check": "error",
       "func-visibility": ["warn", { "ignoreConstructors": true }]
     }
   }

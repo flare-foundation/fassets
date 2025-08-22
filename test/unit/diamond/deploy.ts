@@ -1,4 +1,5 @@
 import { DiamondCut, DiamondSelectors, FacetCutAction } from '../../../lib/utils/diamond';
+import { abiEncodeCall } from '../../../lib/utils/helpers';
 
 export async function deployDiamond(governanceSettingsAddress: string, initialGovernance: string) {
     // Deploy DiamondInit
@@ -31,7 +32,7 @@ export async function deployDiamond(governanceSettingsAddress: string, initialGo
     // Creating a function call
     // This call gets executed during deployment and can also be executed in upgrades
     // It is executed with delegatecall on the DiamondInit address.
-    let initFunctionCall = diamondInit.contract.methods.init(governanceSettingsAddress, initialGovernance).encodeABI();
+    const initFunctionCall = abiEncodeCall(diamondInit, (d) => d.init(governanceSettingsAddress, initialGovernance));
 
     // deploy Diamond
     const Diamond = artifacts.require("MockDiamond");

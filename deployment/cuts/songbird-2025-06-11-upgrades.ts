@@ -3,6 +3,6 @@ import { upgradeAgentVaultFactory, upgradeAssetManagerController, upgradeCollate
 
 runDeployScript(async (dse: DeployScriptEnvironment) => {
     await upgradeAssetManagerController(dse, false);
-    await upgradeAgentVaultFactory(dse, false);
-    await upgradeCollateralPoolFactory(dse, false);
+    await upgradeAgentVaultFactory(dse, "all", false);
+    await upgradeCollateralPoolFactory(dse, "all", false);
 });

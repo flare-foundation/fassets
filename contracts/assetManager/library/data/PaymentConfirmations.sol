@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IPayment, IBalanceDecreasingTransaction}
+    from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 
 
 library PaymentConfirmations {
+    error PaymentAlreadyConfirmed();
+
     struct State {
         // a store of payment hashes to prevent payment being used / challenged twice
         // structure: map of hash to the next hash in that day
         mapping(bytes32 => bytes32) verifiedPayments;
         // a linked list of payment hashes (one list per day) used for cleanup
-        mapping(uint256 => bytes32) verifiedPaymentsForDay;
+        mapping(uint256 => bytes32) __verifiedPaymentsForDay; // only storage placeholder
         // first day number for which we are tracking verifications
-        uint256 verifiedPaymentsForDayStart;
+        uint256 __verifiedPaymentsForDayStart; // only storage placeholder
     }
-
-    uint256 internal constant DAY = 1 days;
-    uint256 internal constant VERIFICATION_CLEANUP_DAYS = 14;
 
     /**
      * For payment transaction with non-unique payment reference (generated from address, not id),
@@ -78,16 +78,7 @@ library PaymentConfirmations {
     )
         private
     {
-        require(_state.verifiedPayments[_txKey] == 0, "payment already confirmed");
-        // add to cleanup list
-        uint256 day = block.timestamp / DAY;
-        bytes32 first = _state.verifiedPaymentsForDay[day];
-        // set next linked list element - last in list points to itself
-        _state.verifiedPayments[_txKey] = first != 0 ? first : _txKey;
-        // set first linked list element
-        _state.verifiedPaymentsForDay[day] = _txKey;
-        if (_state.verifiedPaymentsForDayStart == 0) {
-            _state.verifiedPaymentsForDayStart = day;
-        }
+        require(_state.verifiedPayments[_txKey] == 0, PaymentAlreadyConfirmed());
+        _state.verifiedPayments[_txKey] = _txKey; // any non-zero value is fine
     }
 }

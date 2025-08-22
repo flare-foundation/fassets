@@ -16,17 +16,17 @@ library AssetManagerSettings {
         address fAsset;
 
         // Factory for creating new agent vaults.
-        // Type: IAgentVaultFactory
+        // Type: IIAgentVaultFactory
         // timelocked
         address agentVaultFactory;
 
         // Factory for creating new agent collateral pools.
-        // Type: ICollateralPoolFactory
+        // Type: IICollateralPoolFactory
         // timelocked
         address collateralPoolFactory;
 
         // Factory for creating new agent collateral pool tokens.
-        // Type: ICollateralPoolTokenFactory
+        // Type: IICollateralPoolTokenFactory
         // timelocked
         address collateralPoolTokenFactory;
 
@@ -39,7 +39,7 @@ library AssetManagerSettings {
         // This can be `address(0)`, in which case no whitelist checks are done.
         // Type: IWhitelist
         // timelocked
-        address whitelist;
+        address __whitelist; // only storage placeholder
 
         // If set, the owner address registry contains a list of allowed agent owner's
         // management addresses and mappings from management to work address.
@@ -52,8 +52,7 @@ library AssetManagerSettings {
         // changed via address updater
         address fdcVerification;
 
-        // The address where burned NAt is sent.
-        // (E.g. collateral reservation fee is burned on successful minting.)
+        // The address where burned NAT is sent.
         // immutable
         address payable burnAddress;
 
@@ -107,12 +106,12 @@ library AssetManagerSettings {
         uint64 lotSizeAMG;
 
         // The percentage of minted f-assets that the agent must hold in his underlying address.
-        uint16 minUnderlyingBackingBIPS;
+        uint16 __minUnderlyingBackingBIPS; // only storage placeholder
 
         // for some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address
         // this must be done by presenting a payment proof from that address
         // immutable
-        bool requireEOAAddressProof;
+        bool __requireEOAAddressProof; // only storage placeholder
 
         // Maximum minted amount of the f-asset.
         // rate-limited
@@ -149,7 +148,7 @@ library AssetManagerSettings {
 
         // This is the part of redemption factor paid from agent's pool collateral.
         // rate-limited
-        uint32 redemptionDefaultFactorPoolBIPS;
+        uint32 __redemptionDefaultFactorPoolBIPS; // only storage placeholder
 
         // If the agent or redeemer becomes unresponsive, we still need payment or non-payment confirmations
         // to be presented eventually to properly track agent's underlying balance.
@@ -189,7 +188,7 @@ library AssetManagerSettings {
 
         // Agent can remain in CCB for this much time, after that liquidation starts automatically.
         // rate-limited
-        uint64 ccbTimeSeconds;
+        uint64 __ccbTimeSeconds; // only storage placeholder
 
         // Amount of seconds (typically 1 day) that the payment/non-payment proofs must be available.
         // This setting is used in `unstickMinting` and `finishRedemptionWithoutPayment` to prove that the time when
@@ -204,23 +203,22 @@ library AssetManagerSettings {
         // Ratio at which the agents can buy back their collateral when f-asset is terminated.
         // Typically a bit more than 1 to incentivize agents to buy f-assets and self-close instead.
         // immutable
-        uint64 buybackCollateralFactorBIPS;
+        uint64 __buybackCollateralFactorBIPS; // only storage placeholder
 
         // Minimum time that has to pass between underlying withdrawal announcement and the confirmation.
         // Any value is ok, but higher values give more security against multiple announcement attack by a miner.
         // Shouldn't be much bigger than Flare data connector response time, so that payments can be confirmed without
         // extra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).
         // rate-limited
-        uint64 announcedUnderlyingConfirmationMinSeconds;
+        uint64 __announcedUnderlyingConfirmationMinSeconds;
 
         // Minimum time from the moment token is deprecated to when it becomes invalid and agents still using
         // it as vault collateral get liquidated.
         // timelocked
         uint64 tokenInvalidationTimeMinSeconds;
 
-        // On some rare occasions (stuck minting, locked fassets after termination), the agent has to unlock
-        // collateral. For this, part of collateral corresponding to FTSO asset value is burned and the rest
-        // is released.
+        // On some rare occasions (stuck minting), the agent has to unlock collateral.
+        // For this, part of collateral corresponding to FTSO asset value is burned and the rest is released.
         // However, we cannot burn typical vault collateral (stablecoins), so the agent must buy them for NAT
         // at FTSO price multiplied with this factor (should be a bit above 1) and then we burn the NATs.
         // timelocked
@@ -239,10 +237,10 @@ library AssetManagerSettings {
         // rate-limited
         uint64 agentMintingCRChangeTimelockSeconds;
 
-        // Amount of seconds that have to pass between agent-set settings for pool exit and topup
-        // (exit CR, topup CR, topup bonus) change announcement and execution.
+        // Amount of seconds that have to pass between agent-set settings for pool exit collateral ratio
+        // change announcement and execution.
         // rate-limited
-        uint64 poolExitAndTopupChangeTimelockSeconds;
+        uint64 poolExitCRChangeTimelockSeconds;
 
         // Amount of seconds that an agent is allowed to execute an update once it is allowed.
         // rate-limited
@@ -283,31 +281,31 @@ library AssetManagerSettings {
         // The amount of time after which the collateral reservation can be cancelled if the
         // handshake is not completed.
         // rate-limited
-        uint64 cancelCollateralReservationAfterSeconds;
+        uint64 __cancelCollateralReservationAfterSeconds; // only storage placeholder
 
         // The amount of collateral reservation fee returned to the minter in case of rejection or cancellation.
         // Expressed in BIPS, e.g. 9500 for factor of 0.95, max 10000 for factor of 1.0.
         // rate-limited
-        uint16 rejectOrCancelCollateralReservationReturnFactorBIPS;
+        uint16 __rejectOrCancelCollateralReservationReturnFactorBIPS; // only storage placeholder
 
         // Time window inside which the agent can reject the redemption request.
         // rate-limited
-        uint64 rejectRedemptionRequestWindowSeconds;
+        uint64 __rejectRedemptionRequestWindowSeconds; // only storage placeholder
 
         // Time window inside which the agent can take over the redemption request from another agent
         // that has rejected it.
         // rate-limited
-        uint64 takeOverRedemptionRequestWindowSeconds;
+        uint64 __takeOverRedemptionRequestWindowSeconds; // only storage placeholder
 
         // On redemption rejection, without take over, redeemer is compensated with
         // redemption value recalculated in flare/sgb times redemption failure factor.
         // Expressed in BIPS, e.g. 12000 for factor of 1.2.
         // This is the part of factor paid from agent's vault collateral.
         // rate-limited
-        uint32 rejectedRedemptionDefaultFactorVaultCollateralBIPS;
+        uint32 __rejectedRedemptionDefaultFactorVaultCollateralBIPS; // only storage placeholder
 
         // This is the part of rejected redemption factor paid from agent's pool collateral.
         // rate-limited
-        uint32 rejectedRedemptionDefaultFactorPoolBIPS;
+        uint32 __rejectedRedemptionDefaultFactorPoolBIPS; // only storage placeholder
     }
 }

@@ -3,13 +3,17 @@
 // OpenZeppelin Contracts (last updated v4.9.0) (security/ReentrancyGuard.sol)
 // Modified by FlareLabs to use diamond storage
 
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 
 /**
  * Code for the `ReentrancyGuard` contract.
  */
 library Reentrancy {
+
+    error ReentrancyGuardReentrantCall();
+    error ReentrancyGuardRequired();
+
     // Booleans are more expensive than uint256 or any type that takes up a full
     // word because each write operation emits an extra SLOAD to first read the
     // slot's contents, replace the bits taken up by the boolean, and then write
@@ -40,7 +44,7 @@ library Reentrancy {
     function nonReentrantBefore() internal {
         ReentrancyGuardState storage state = _reentrancyGuardState();
         // On the first call to nonReentrant, state.status will be _NOT_ENTERED
-        require(state.status != _ENTERED, "ReentrancyGuard: reentrant call");
+        require(state.status != _ENTERED, ReentrancyGuardReentrantCall());
 
         // Any calls to nonReentrant after this point will fail
         state.status = _ENTERED;
@@ -68,7 +72,7 @@ library Reentrancy {
      * and to make them fail at test time.
      */
     function requireReentrancyGuard() internal view {
-        require(reentrancyGuardEntered(), "ReentrancyGuard: guard required");
+        require(reentrancyGuardEntered(), ReentrancyGuardRequired());
     }
 
     function _reentrancyGuardState() private pure returns (ReentrancyGuardState storage _state) {

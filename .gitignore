@@ -7,6 +7,7 @@
 !.vscode/cspell.json
 
 # Typescript
+build
 dist
 typechain
 typechain-truffle
@@ -14,6 +15,7 @@ typechain-web3
 
 # Testing
 test_logs
+test_data
 accounts.json
 
 ## Build generated
@@ -69,3 +71,7 @@ deployments
 
 ## Airdrop transactions
 airdrop/files
+
+# Foundry
+cache-forge/
+artifacts-forge/

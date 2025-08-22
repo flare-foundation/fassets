@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
-import "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
+import {IFdcVerification, IPayment, IBalanceDecreasingTransaction, IReferencedPaymentNonexistence,
+        IConfirmedBlockHeightExists, IAddressValidity, IEVMTransaction, IWeb2Json}
+    from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IRelay} from "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
 
 
 contract FdcVerificationMock is IFdcVerification {

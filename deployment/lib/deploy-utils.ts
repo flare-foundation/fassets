@@ -1,7 +1,6 @@
 import Web3 from "web3";
 import { Artifact, HardhatRuntimeEnvironment } from "hardhat/types";
 
-// same as in @openzeppelin/test-helpers, but including those in hadhat scripts breaks tests for some reason
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 export interface DeployAccounts {
@@ -45,8 +44,10 @@ export async function deployedCodeMatches(hre: HardhatRuntimeEnvironment, artifa
     return artifact.deployedBytecode === code;
 }
 
-export function abiEncodeCall<I extends Truffle.ContractInstance>(instance: I, call: (inst: I) => any) {
-    return call(instance.contract.methods).encodeABI() as string;
+export function abiEncodeCall<I extends Truffle.ContractInstance>(instance: I, call: (inst: I) => Promise<unknown>) {
+    // call in ContractInstance returns a promise, but in contract.methods it returns an object which contains (among others) encodeABI method, so the cast below is safe
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    return (call as any)(instance.contract.methods).encodeABI() as string;
 }
 
 // we use hardhat.json for network with name 'local'
@@ -69,8 +70,8 @@ export async function waitFinalize<T>(hre: HardhatRuntimeEnvironment, address: s
     if (hre.network.name === 'local' || hre.network.name === 'hardhat') {
         return await func();
     }
-    let nonce = await hre.web3.eth.getTransactionCount(address);
-    let res = await func();
+    const nonce = await hre.web3.eth.getTransactionCount(address);
+    const res = await func();
     while (await hre.web3.eth.getTransactionCount(address) <= nonce) {
         await sleep(options.sleepMS);
     }
@@ -86,7 +87,8 @@ export async function waitFinalize<T>(hre: HardhatRuntimeEnvironment, address: s
     return res;
 }
 
-export function truffleContractMetadata(contract: Truffle.Contract<any>): { contractName: string, abi: AbiItem[] } {
+export function truffleContractMetadata(contract: Truffle.Contract<unknown>): { contractName: string, abi: AbiItem[] } {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
     return (contract as any)._json;
 }
 
@@ -116,6 +118,6 @@ export function runAsyncMain(func: (args: string[]) => Promise<void>, errorExitC
 export const ERC1967_STORAGE = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
 
 export async function getProxyImplementationAddress(hre: HardhatRuntimeEnvironment, proxyAddr: string) {
-    const addressBytes32 = await hre.network.provider.send('eth_getStorageAt', [proxyAddr, ERC1967_STORAGE, 'latest']);
+    const addressBytes32 = await hre.network.provider.send('eth_getStorageAt', [proxyAddr, ERC1967_STORAGE, 'latest']) as string;
     return web3.utils.toChecksumAddress('0x' + addressBytes32.slice(26));
 }

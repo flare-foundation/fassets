@@ -1,21 +1,21 @@
 import hre from "hardhat";
 import { requiredEventArgs } from "../../lib/utils/events/truffle";
-import { getTestFile, itSkipIf } from "../../test/utils/test-helpers";
-import { createTestAgent } from "../../test/utils/test-settings";
+import { getTestFile, itSkipIf } from "../../lib/test-utils/test-suite-helpers";
+import { createTestAgent } from "../../lib/test-utils/test-settings";
 import { AgentOwnerRegistryInstance, IAssetManagerControllerInstance } from "../../typechain-truffle";
 import { FAssetContractStore } from "../lib/contracts";
 import { loadDeployAccounts, networkConfigName, requiredEnvironmentVariable } from "../lib/deploy-utils";
 import { SourceId } from "../../lib/underlying-chain/SourceId";
 import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
-import { MockFlareDataConnectorClient } from "../../test/utils/fasset/MockFlareDataConnectorClient";
-import { MockChain } from "../../test/utils/fasset/MockChain";
+import { MockFlareDataConnectorClient } from "../../lib/test-utils/fasset/MockFlareDataConnectorClient";
+import { MockChain } from "../../lib/test-utils/fasset/MockChain";
 import { latestBlockTimestamp, toBN, toBNExp } from "../../lib/utils/helpers";
 
 const IAssetManagerController = artifacts.require('IAssetManagerController');
 const IIAssetManager = artifacts.require('IIAssetManager');
 const AgentOwnerRegistry = artifacts.require('AgentOwnerRegistry');
 
-contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, async accounts => {
+contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, accounts => {
     const networkConfig = networkConfigName(hre);
 
     let contracts: FAssetContractStore;
@@ -61,9 +61,6 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
             assert.equal(Number(redemptionPaymentExtensionSeconds), 30);
         }
     });
-
-    // TODO: creating agent vault now requires FDC proof of address validity,
-    // which takes 5 minutes and requires FDC API client, so skip it for now
 
     const testUnderlyingAddresses = {
         [SourceId.XRP]: 'r9N9XrsUKFJgaAwoL3qtefdjXVxjgxUqWi',

@@ -3,6 +3,13 @@ pragma solidity >=0.7.6 <0.9;
 
 
 library CollateralReservationInfo {
+    enum Status {
+        ACTIVE,         // the minting process hasn't finished yet
+        SUCCESSFUL,     // the payment has been confirmed and the FAssets minted
+        DEFAULTED,      // the payment has defaulted and the agent received the collateral reservation fee
+        EXPIRED         // the confirmation time has expired and the agent called unstickMinting
+    }
+
     struct Data {
         // The id used for executing or defaulting the minting.
         uint64 collateralReservationId;
@@ -48,11 +55,7 @@ library CollateralReservationInfo {
         // The fee in NAT that the executor receives if they successfully execute the minting.
         uint256 executorFeeNatWei;
 
-        // If non-zero, the agent has started the handshake process.
-        uint64 handshakeStartTimestamp;
-
-        // Merkle root of the list of addresses from which the minter is going to deposit the underlying assets
-        // (only needed when handshake is enabled for the agent).
-        bytes32 sourceAddressesRoot;
+        // If the minting process has finished, indication of success/default. Otherwise ACTIVE.
+        CollateralReservationInfo.Status status;
     }
 }

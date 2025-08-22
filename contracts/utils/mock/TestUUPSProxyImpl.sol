@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+// solhint-disable no-empty-blocks
+pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
 contract TestUUPSProxyImpl is UUPSUpgradeable {
     uint256[1000] private _dummy;  // skip original storage
     string private message;
     bool private initialized;
 
-    function _authorizeUpgrade(address newImplementation) internal override {}
+    function _authorizeUpgrade(address newImplementation) internal override {
+        // allow always
+    }
 
     function initialize(string memory _message) external {
         message = _message;

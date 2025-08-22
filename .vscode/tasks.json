@@ -1,19 +1,66 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"type": "npm",
-			"script": "ts-compile-watch",
-			"problemMatcher": ["$tsc-watch"],
-			"isBackground": true,
-			"presentation": {
-				"reveal": "always",
-				"revealProblems": "never"
-			},
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			}
-		}
-	]
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "npm",
+            "script": "ts-compile-watch",
+            "problemMatcher": [
+                "$tsc-watch"
+            ],
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "revealProblems": "never"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "ESLint",
+            "type": "npm",
+            "script": "eslint",
+            "problemMatcher": [
+                "$eslint-stylish"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "revealProblems": "never"
+            }
+        },
+        {
+            "label": "Solhint",
+            "type": "npm",
+            "script": "solhint-watch",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "solhint",
+                "source": "solhint",
+                "pattern": [
+                    {
+                        "regexp": "^([^\\s].*):(\\d+:\\d+) - (\\w+) ([^:]+): (.*)$",
+                        "file": 1,
+                        "location": 2,
+                        "severity": 3,
+                        "code": 4,
+                        "message": 5,
+                    }
+                ],
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}"
+                ],
+                "background": {
+                    "activeOnStart": false,
+                    "beginsPattern": "^Changes detected, executing solhint...",
+                    "endsPattern": "^Solhint completed"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "revealProblems": "never"
+            }
+        }
+    ]
 }

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
-import "../interfaces/IGoverned.sol";
+import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
+import {IGoverned} from "../interfaces/IGoverned.sol";
 
 /**
  * @title Governed Base
@@ -47,6 +47,7 @@ abstract contract GovernedBase is IGoverned {
         _;
     }
 
+    // solhint-disable-next-line no-empty-blocks
     constructor() {
     }
 
@@ -57,11 +58,11 @@ abstract contract GovernedBase is IGoverned {
      */
     function executeGovernanceCall(bytes calldata _encodedCall) external override {
         GovernedState storage state = _governedState();
-        require(isExecutor(msg.sender), "only executor");
+        require(isExecutor(msg.sender), OnlyExecutor());
         bytes32 encodedCallHash = keccak256(_encodedCall);
         uint256 allowedAfterTimestamp = state.timelockedCalls[encodedCallHash];
-        require(allowedAfterTimestamp != 0, "timelock: invalid selector");
-        require(block.timestamp >= allowedAfterTimestamp, "timelock: not allowed yet");
+        require(allowedAfterTimestamp != 0, TimelockInvalidSelector());
+        require(block.timestamp >= allowedAfterTimestamp, TimelockNotAllowedYet());
         delete state.timelockedCalls[encodedCallHash];
         state.executing = true;
         //solhint-disable-next-line avoid-low-level-calls
@@ -79,7 +80,7 @@ abstract contract GovernedBase is IGoverned {
     function cancelGovernanceCall(bytes calldata _encodedCall) external override onlyImmediateGovernance {
         GovernedState storage state = _governedState();
         bytes32 encodedCallHash = keccak256(_encodedCall);
-        require(state.timelockedCalls[encodedCallHash] != 0, "timelock: invalid selector");
+        require(state.timelockedCalls[encodedCallHash] != 0, TimelockInvalidSelector());
         emit TimelockedGovernanceCallCanceled(encodedCallHash);
         delete state.timelockedCalls[encodedCallHash];
     }
@@ -91,7 +92,7 @@ abstract contract GovernedBase is IGoverned {
      */
     function switchToProductionMode() external onlyImmediateGovernance {
         GovernedState storage state = _governedState();
-        require(!state.productionMode, "already in production mode");
+        require(!state.productionMode, AlreadyInProductionMode());
         state.initialGovernance = address(0);
         state.productionMode = true;
         emit GovernedProductionModeEntered(address(state.governanceSettings));
@@ -102,9 +103,9 @@ abstract contract GovernedBase is IGoverned {
      */
     function initialise(IGovernanceSettings _governanceSettings, address _initialGovernance) internal virtual {
         GovernedState storage state = _governedState();
-        require(state.initialised == false, "initialised != false");
-        require(address(_governanceSettings) != address(0), "governance settings zero");
-        require(_initialGovernance != address(0), "_governance zero");
+        require(state.initialised == false, GovernedAlreadyInitialized());
+        require(address(_governanceSettings) != address(0), GovernedAddressZero());
+        require(_initialGovernance != address(0), GovernedAddressZero());
         state.initialised = true;
         state.governanceSettings = _governanceSettings;
         state.initialGovernance = _initialGovernance;
@@ -174,7 +175,7 @@ abstract contract GovernedBase is IGoverned {
     }
 
     function _checkOnlyGovernance() private view {
-        require(msg.sender == governance(), "only governance");
+        require(msg.sender == governance(), OnlyGovernance());
     }
 
     function _governedState() private pure returns (GovernedState storage _state) {

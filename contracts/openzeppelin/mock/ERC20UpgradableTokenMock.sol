@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
+// solhint-disable no-empty-blocks
+// solhint-disable gas-custom-errors
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
 contract ERC20UpgradableTokenMock is ERC20, UUPSUpgradeable {
     string private _name;

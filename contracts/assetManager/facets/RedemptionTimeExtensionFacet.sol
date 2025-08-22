@@ -1,16 +1,24 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "../../userInterfaces/data/AssetManagerSettings.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
-import "../../userInterfaces/IRedemptionTimeExtension.sol";
-import "../library/data/RedemptionTimeExtension.sol";
-import "../library/SettingsUpdater.sol";
-import "../../diamond/library/LibDiamond.sol";
-import "./AssetManagerBase.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {Globals} from "../library/Globals.sol";
+import {SettingsUpdater} from "../library/SettingsUpdater.sol";
+import {RedemptionTimeExtension} from "../library/data/RedemptionTimeExtension.sol";
+import {LibDiamond} from "../../diamond/library/LibDiamond.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {IRedemptionTimeExtension} from "../../userInterfaces/IRedemptionTimeExtension.sol";
+
 
 contract RedemptionTimeExtensionFacet is AssetManagerBase, IRedemptionTimeExtension {
+
+    error ValueMustBeNonzero();
+    error DecreaseTooBig();
+    error IncreaseTooBig();
+    error AlreadyInitialized();
+    error DiamondNotInitialized();
 
     constructor() {
         // implementation initialization - to prevent reinitialization
@@ -23,9 +31,9 @@ contract RedemptionTimeExtensionFacet is AssetManagerBase, IRedemptionTimeExtens
         external
     {
         LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
-        require(ds.supportedInterfaces[type(IERC165).interfaceId], "diamond not initialized");
+        require(ds.supportedInterfaces[type(IERC165).interfaceId], DiamondNotInitialized());
         ds.supportedInterfaces[type(IRedemptionTimeExtension).interfaceId] = true;
-        require(RedemptionTimeExtension.redemptionPaymentExtensionSeconds() == 0, "already initialized");
+        require(RedemptionTimeExtension.redemptionPaymentExtensionSeconds() == 0, AlreadyInitialized());
         // init settings
         RedemptionTimeExtension.setRedemptionPaymentExtensionSeconds(_redemptionPaymentExtensionSeconds);
     }
@@ -38,9 +46,9 @@ contract RedemptionTimeExtensionFacet is AssetManagerBase, IRedemptionTimeExtens
         // validate
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 currentValue = RedemptionTimeExtension.redemptionPaymentExtensionSeconds();
-        require(_value <= currentValue * 4 + settings.averageBlockTimeMS / 1000, "increase too big");
-        require(_value >= currentValue / 4, "decrease too big");
-        require(_value > 0, "value must be nonzero");
+        require(_value <= currentValue * 4 + settings.averageBlockTimeMS / 1000, IncreaseTooBig());
+        require(_value >= currentValue / 4, DecreaseTooBig());
+        require(_value > 0, ValueMustBeNonzero());
         // update
         RedemptionTimeExtension.setRedemptionPaymentExtensionSeconds(_value);
         emit IAssetManagerEvents.SettingChanged("redemptionPaymentExtensionSeconds", _value);

@@ -1,17 +1,35 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import "../interfaces/IIFAsset.sol";
-import "../../utils/lib/SafePct.sol";
-import "../../assetManager/interfaces/IIAssetManager.sol";
-import "../../openzeppelin/token/ERC20Permit.sol";
-import "./CheckPointable.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {IERC5267} from "@openzeppelin/contracts/interfaces/IERC5267.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {IIFAsset} from "../interfaces/IIFAsset.sol";
+import {ERC20Permit} from "../../openzeppelin/token/ERC20Permit.sol";
+import {CheckPointable} from "./CheckPointable.sol";
+import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
+import {IICleanable} from "@flarenetwork/flare-periphery-contracts/flare/token/interfaces/IICleanable.sol";
+import {IFAsset} from "../../userInterfaces/IFAsset.sol";
+import {IICheckPointable} from "../interfaces/IICheckPointable.sol";
 
 
 contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ERC20Permit {
+    error OnlyAssetManager();
+    error AlreadyInitialized();
+    error AlreadyUpgraded();
+    error OnlyDeployer();
+    error ZeroAssetManager();
+    error CannotReplaceAssetManager();
+    error OnlyCleanupBlockManager();
+    error FAssetTerminated();
+    error FAssetBalanceTooLow();
+    error CannotTransferToSelf();
+    error EmergencyPauseOfTransfersActive();
+
     /**
      * The name of the underlying asset.
      */
@@ -34,18 +52,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
      */
     address public override assetManager;
 
-    /**
-     * Nonzero if f-asset is terminated (in that case its value is terminate timestamp).
-     * Stopped f-asset can never be re-enabled.
-     *
-     * When f-asset is terminated, no transfers can be made anymore.
-     * This is an extreme measure to be used as an optional last phase of asset manager upgrade,
-     * when the asset manager minting has already been paused for a long time but there still exist
-     * unredeemable f-assets, which at this point are considered unrecoverable (lost wallet keys etc.).
-     * In such case, the f-asset contract is terminated and then agents can buy back their collateral at market rate
-     * (i.e. they burn market value of backed f-assets in collateral to release the rest of the collateral).
-     */
-    uint64 public terminatedAt = 0;
+    uint64 private __terminatedAt; // only storage placeholder
 
     string private _name;
     string private _symbol;
@@ -57,7 +64,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     uint16 private _version;
 
     modifier onlyAssetManager() {
-        require(msg.sender == assetManager, "only asset manager");
+        require(msg.sender == assetManager, OnlyAssetManager());
         _;
     }
 
@@ -77,7 +84,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     )
         external
     {
-        require(!_initialized, "already initialized");
+        require(!_initialized, AlreadyInitialized());
         _initialized = true;
         _deployer = msg.sender;
         _name = name_;
@@ -89,7 +96,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     }
 
     function initializeV1r1() public {
-        require(_version == 0, "already upgraded");
+        require(_version == 0, AlreadyUpgraded());
         _version = 1;
         initializeEIP712(_name, "1");
     }
@@ -101,9 +108,9 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     function setAssetManager(address _assetManager)
         external
     {
-        require (msg.sender == _deployer, "only deployer");
-        require(_assetManager != address(0), "zero asset manager");
-        require(assetManager == address(0), "cannot replace asset manager");
+        require (msg.sender == _deployer, OnlyDeployer());
+        require(_assetManager != address(0), ZeroAssetManager());
+        require(assetManager == address(0), CannotReplaceAssetManager());
         assetManager = _assetManager;
     }
 
@@ -127,108 +134,6 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
         onlyAssetManager
     {
         _burn(_owner, _amount);
-    }
-
-    /**
-     * @dev See {ERC20-transfer}.
-     *
-     * Perform transfer (like ERC20.transfer) and pay fee by subtracting it from the transferred amount.
-     * NOTE: less than `_amount` will be delivered to `_to`.
-     */
-    function transfer(address _to, uint256 _amount)
-        public virtual override(ERC20, IERC20)
-        returns (bool)
-    {
-        address owner = _msgSender();
-        uint256 transferFee = _transferFeeAmount(_amount);
-        _transfer(owner, _to, _amount - transferFee);
-        _payTransferFee(owner, transferFee);
-        return true;
-    }
-
-    /**
-     * @dev See {ERC20-transferFrom}.
-     *
-     * Perform transfer (like ERC20.transferFrom) and pay fee by subtracting it from the transferred amount.
-     * NOTE: less than `_amount` will be delivered to `_to`.
-     */
-    function transferFrom(address _from, address _to, uint256 _amount)
-        public virtual override(ERC20, IERC20)
-        returns (bool)
-    {
-        address spender = _msgSender();
-        uint256 transferFee = _transferFeeAmount(_amount);
-        _spendAllowance(_from, spender, _amount);
-        _transfer(_from, _to, _amount - transferFee);
-        _payTransferFee(_from, transferFee);
-        return true;
-    }
-
-    /**
-     * Perform transfer (like ERC20.transfer) and pay fee by the `msg.sender`.
-     * NOTE: more than `_amount` will be transferred from `msg.sender`.
-     */
-    function transferExactDest(address _to, uint256 _amount)
-        external
-        returns (bool)
-    {
-        address owner = _msgSender();
-        uint256 transferFee = _transferFeeAmountExactDest(_amount);
-        _transfer(owner, _to, _amount);
-        _payTransferFee(owner, transferFee);
-        return true;
-    }
-
-    /**
-     * Perform transfer (like ERC20.transfer) and pay fee by the `_from` account.
-     * NOTE: more than `_amount` will be transferred from the `_from` account.
-     * Preceding call to `approve()` must account for this, otherwise the transfer will fail.
-     */
-    function transferExactDestFrom(address _from, address _to, uint256 _amount)
-        external
-        returns (bool)
-    {
-        address spender = _msgSender();
-        uint256 transferFee = _transferFeeAmountExactDest(_amount);
-        _spendAllowance(_from, spender, _amount + transferFee);
-        _transfer(_from, _to, _amount);
-        _payTransferFee(_from, transferFee);
-        return true;
-    }
-
-    /**
-     * Transfer without charging fee. Used for transferring fees to agents.
-     * Can only be used by asset manager.
-     */
-    function transferInternally(address _to, uint256 _amount)
-        external
-        onlyAssetManager
-    {
-        _transfer(msg.sender, _to, _amount);
-    }
-
-    /**
-     * Stops all transfers by setting `terminated` flag to true.
-     * Only the assetManager corresponding to this fAsset may call `terminate()`.
-     * Stop is irreversible.
-     */
-    function terminate()
-        external override
-        onlyAssetManager
-    {
-        if (terminatedAt == 0) {
-            terminatedAt = uint64(block.timestamp);    // safe, block timestamp can never exceed 64bit
-        }
-    }
-
-    /**
-     * True if f-asset is terminated.
-     */
-    function terminated()
-        external view override
-        returns (bool)
-    {
-        return terminatedAt != 0;
     }
 
     /**
@@ -261,7 +166,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     function setCleanupBlockNumber(uint256 _blockNumber)
         external override
     {
-        require(msg.sender == cleanupBlockNumberManager, "only cleanup block manager");
+        require(msg.sender == cleanupBlockNumberManager, OnlyCleanupBlockManager());
         _setCleanupBlockNumber(_blockNumber);
     }
 
@@ -296,70 +201,16 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
         cleanupBlockNumberManager = _cleanupBlockNumberManager;
     }
 
-    /**
-     * Return the exact amount the `_to` will receive, if `_from` transfers `_sentAmount`.
-     */
-    function getReceivedAmount(address /*_from*/, address /*_to*/, uint256 _sentAmount)
-        external view
-        returns (uint256 _receivedAmount, uint256 _feeAmount)
-    {
-        _feeAmount = _transferFeeAmount(_sentAmount);
-        _receivedAmount = _sentAmount - _feeAmount;
-    }
-
-    /**
-     * Return the exact amount the `_from` must transfer for  `_to` to receive `_receivedAmount`.
-     */
-    function getSendAmount(address /*_from*/, address /*_to*/, uint256 _receivedAmount)
-        external view
-        returns (uint256 _sendAmount, uint256 _feeAmount)
-    {
-        _feeAmount = _transferFeeAmountExactDest(_receivedAmount);
-        _sendAmount = _receivedAmount + _feeAmount;
-    }
-
-    /**
-     * Prevent transfer if FAsset is terminated.
-     */
     function _beforeTokenTransfer(address _from, address _to, uint256 _amount)
         internal override
     {
-        require(terminatedAt == 0, "f-asset terminated");
-        require(_from == address(0) || balanceOf(_from) >= _amount, "f-asset balance too low");
-        require(_from != _to, "Cannot transfer to self");
+        require(_from == address(0) || balanceOf(_from) >= _amount, FAssetBalanceTooLow());
+        require(_from != _to, CannotTransferToSelf());
         // mint and redeem are allowed on transfer pause, but not transfer
         require(_from == address(0) || _to == address(0) || !IAssetManager(assetManager).transfersEmergencyPaused(),
-            "emergency pause of transfers active");
+            EmergencyPauseOfTransfersActive());
         // update balance history
         _updateBalanceHistoryAtTransfer(_from, _to, _amount);
-    }
-
-    function _payTransferFee(address feePayer, uint256 _transferFee) private {
-        // if fees are not enabled (fee percentage set to 0), do nothing
-        if (_transferFee == 0) return;
-        // The extra require is present so that the caller can tell the difference between too low balance
-        // for the payment and too low balance/allowance for the transfer fee.
-        require(balanceOf(feePayer) >= _transferFee, "balance too low for transfer fee");
-        // Transfer the fee to asset manager which collects the fees that can be later claimed by the agents.
-        _transfer(feePayer, assetManager, _transferFee);
-        // Update fee accounting on asset manager.
-        IIAssetManager(assetManager).fassetTransferFeePaid(_transferFee);
-    }
-
-    function _transferFeeAmount(uint256 _transferAmount)
-        private view
-        returns (uint256)
-    {
-        uint256 feeMillionths = IIAssetManager(assetManager).transferFeeMillionths();
-        return SafePct.mulDivRoundUp(_transferAmount, feeMillionths, 1e6);
-    }
-
-    function _transferFeeAmountExactDest(uint256 _receivedAmount)
-        internal view
-        returns (uint256)
-    {
-        uint256 feeMillionths = IIAssetManager(assetManager).transferFeeMillionths(); // < 1e6
-        return SafePct.mulDivRoundUp(_receivedAmount, feeMillionths, 1e6 - feeMillionths); // 1e6 - feeMillionths > 0
     }
 
     /**
@@ -374,7 +225,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
             || _interfaceId == type(IERC20Metadata).interfaceId
             || _interfaceId == type(IERC5267).interfaceId
             || _interfaceId == type(IERC20Permit).interfaceId
-            || _interfaceId == type(ICheckPointable).interfaceId
+            || _interfaceId == type(IICheckPointable).interfaceId
             || _interfaceId == type(IFAsset).interfaceId
             || _interfaceId == type(IIFAsset).interfaceId
             || _interfaceId == type(IICleanable).interfaceId;
@@ -401,7 +252,6 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     function _authorizeUpgrade(address /* _newImplementation */)
         internal virtual override
         onlyAssetManager
-    {
-        require(terminatedAt == 0, "f-asset terminated");
+    { // solhint-disable-line no-empty-blocks
     }
 }

@@ -1,48 +1,34 @@
-# FAsset contracts
+<p align="left">
+  <a href="https://flare.network/" target="blank"><img src="https://content.flare.network/Flare-2.svg" width="410" height="106" alt="Flare Logo" /></a>
+</p>
 
-Solidity contracts for *Flare Labs* FAsset system.
+# FAsset
+
+FAssets bring non-smart contract assets like XRP into DeFi — securely, scalably, and with full custody retained.
+
+This repository is a implementation of the system: solidity contracts for *Flare Foundation* FAsset.
 
 ## Overview
 
-The FAsset contracts are used to mint assets on top of Flare (or Songbird). The system is designed to handle chains which don’t have (full) smart contract capabilities, although it can also work for smart contract chains. Initially, FAsset system will support assets XRP, BTC, DOGE, and LTC. Later we might add other blockchains.
+The FAsset contracts are used to mint assets on top of Flare. The system is designed to handle chains which don’t have smart contract capabilities. Initially, FAsset system will support XRP native asset on XRPL. At a later date BTC, DOGE, add tokens from other blockchains will be added.
 
-The minted FAssets are secured by collateral, which is in the form of ERC20 tokens on Flare/Songbird chain and native tokens (FLR/SGB). The collateral is locked in contracts that guarantee that minted tokens can always be redeemed for underlying assets or compensated by collateral.
+The minted FAssets are secured by collateral, which is in the form of ERC20 tokens on Flare/Songbird chain and native tokens (FLR/SGB). The collateral is locked in contracts that guarantee that minted tokens can always be redeemed for underlying assets or compensated by collateral. Underlying assets can also be transferred to Core Vault, a vault on the underlying network. When the underlying is on the Core Vault, the agent doesn’t need to back it with collateral so they can mint again or decide to withdraw this collateral.
+
 
 Two novel protocols, available on Flare and Songbird blockchains, enable the FAsset system to operate:
 
-- **FTSO** contracts which provide decentralised price feeds for multiple tokens.
+- **FTSO** contracts which provide decentralized price feeds for multiple tokens.
 - Flare’s **FDC**, which bridges payment data from any connected chain.
 
-## Development
 
-### Getting started
+## Development and contribution
 
-1. Clone this repository.
-2. Run `yarn`.
-3. Compile the solidity code: `yarn c`.
-4. Run basic tests `yarn testHH`.
+If you want to use FAssets in your project, start on [developer hub](https://dev.flare.network/fassets/overview).
 
-#### Flare-smart-contracts dependency
+You can also reach out to us on [discord](https://discord.com/invite/flarenetwork).
 
-Currently, `flare-smart-contracts` dependency is obtained directly from git repository from a tag that supports the required functionality.
+If you're interested in contributing, please see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-For development, it might be beneficial to directly use checked-out code of `flare-smart-contracts`. This can be done with `yarn link`:
+## Security
 
-1. In `flare-smart-contracts` project folder run `yarn link`
-2. In `fasset` project folder run `yarn link flare-smart-contracts`
-
-This creates softlink from `node_modules/flare-smart-contracts` to the flare-smart-contracts project folder.
-
-For development in *VSCode* you might also find VSCode *Workspace* feature useful - it allows you to have multiple projects open in the same window (e.g. both fasset and flare-smart-contracts).
-
-### Testing
-
-Note: be sure to compile (`yarn c`) after any solidity code changes or if starting a clean project as Typescript stubs need to be generated as part of the compilation.
-
-Then one can run different types of tests.
-
-- `yarn testHH` - all tests in hardhat environment (includes following two types of tests).
-- `yarn test_unit_hh` - only unit tests in hardhat environment.
-- `test_integration_hh` - only integration tests in hardhat environment.
-
-To check test coverage run `yarn cov`.
+If you have found a possible vulnerability please see [SECURITY.md](./SECURITY.md)

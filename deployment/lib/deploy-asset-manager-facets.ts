@@ -14,8 +14,8 @@ export const assetManagerFacets = [
     'AvailableAgentsFacet',
     'CollateralReservationsFacet',
     'MintingFacet',
+    'MintingDefaultsFacet',
     'RedemptionRequestsFacet',
-    'RedemptionHandshakeFacet',
     'RedemptionConfirmationsFacet',
     'RedemptionDefaultsFacet',
     'LiquidationFacet',
@@ -39,9 +39,8 @@ export const assetManagerFacets = [
 
 export const assetManagerFacetsDeployedByDiamondCut = [
     'RedemptionTimeExtensionFacet',
-    'TransferFeeFacet',
-    'CoreVaultFacet',
-    'CoreVaultSettingsFacet',
+    'CoreVaultClientFacet',
+    'CoreVaultClientSettingsFacet',
 ]
 
 export async function deployAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, contracts: ContractStore, deployer: string) {
@@ -55,8 +54,9 @@ export async function deployFacet(hre: HardhatRuntimeEnvironment, facetName: str
     const artifact = hre.artifacts.readArtifactSync(facetArtifactName);
     const alreadyDeployed = await deployedCodeMatches(hre, artifact, contracts.get(facetName)?.address);
     if (!alreadyDeployed) {
-        const contractFactory = hre.artifacts.require(facetArtifactName);
-        const instance = await waitFinalize(hre, deployer, () => contractFactory.new({ from: deployer })) as Truffle.ContractInstance;
+        const contractFactory = hre.artifacts.require(facetArtifactName) as Truffle.Contract<Truffle.ContractInstance>;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        const instance: Truffle.ContractInstance = await waitFinalize(hre, deployer, () => contractFactory.new({ from: deployer }));
         contracts.add(facetName, `${facetArtifactName}.sol`, instance.address);
         console.log(facetArtifactName === facetName ? `Deployed facet ${facetName}` : `Deployed facet ${facetName} from ${facetArtifactName}.sol`);
         return instance.address;
@@ -95,7 +95,8 @@ export async function checkAllAssetManagerMethodsImplemented(hre: HardhatRuntime
 }
 
 export async function createDiamondCut(artifact: Artifact, address: string, selectorFilter: Set<string>): Promise<DiamondCut> {
-    const instanceSelectors = artifact.abi.map(it => web3.eth.abi.encodeFunctionSignature(it));
+    const artifactAbi = artifact.abi as AbiItem[];
+    const instanceSelectors = artifactAbi.map(it => web3.eth.abi.encodeFunctionSignature(it));
     const exposedSelectors = instanceSelectors.filter(sel => selectorFilter.has(sel));
     if (exposedSelectors.length === 0) {
         throw new Error(`No exposed methods in ${artifact.contractName}`);

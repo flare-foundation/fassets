@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "../../userInterfaces/IAssetManager.sol";
-import "@flarenetwork/flare-periphery-contracts/flare/IRewardManager.sol";
+import {IRewardManager} from "@flarenetwork/flare-periphery-contracts/flare/IRewardManager.sol";
 
 contract MaliciousRewardManager {
     uint256 public amount = 0;

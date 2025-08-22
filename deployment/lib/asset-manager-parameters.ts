@@ -46,14 +46,6 @@ export interface CollateralTypeParameters {
     minCollateralRatioBIPS: integer;
 
     /**
-     * Minimum collateral ratio for agent in CCB (Collateral call band).
-     * If the agent's collateral ratio is less than this, skip the CCB and go straight to liquidation.
-     * A bit smaller than minCollateralRatioBIPS.
-     * @minimum 0
-     */
-    ccbMinCollateralRatioBIPS: integer;
-
-    /**
      * Minimum collateral ratio required to get agent out of liquidation.
      * Will always be greater than minCollateralRatioBIPS.
      * @minimum 0
@@ -71,7 +63,7 @@ export interface AssetManagerParameters {
     // Common parameters (for all f-assets in this network)
 
     /**
-     * Address for burning native currency (e.g. for collateral reservation fee after successful minting).
+     * Address for burning native currency.
      * @pattern ^0x[0-9a-fA-F]{40}$
      */
     burnAddress: string;
@@ -134,15 +126,6 @@ export interface AssetManagerParameters {
      * @pattern ^\w+$
      */
     agentOwnerRegistry?: string;
-
-    /**
-     * If non-null, the whitelist contains a list of accounts that can call public methods
-     * (minting, redeeming, challenging, etc.)
-     * If null, there will be no user whitelisting.
-     * Can be a contract address (0x...) or a name in contracts.json.
-     * @pattern ^\w+$
-     */
-    userWhitelist: string | null;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////
     // F-asset (chain) specific parameters
@@ -209,13 +192,6 @@ export interface AssetManagerParameters {
     vaultCollaterals: CollateralTypeParameters[];
 
     /**
-     * The percentage of minted f-assets that the agent must hold in his underlying address.
-     * @minimum 0
-     * @maximum 10000
-     */
-    minUnderlyingBackingBIPS: integer;
-
-    /**
      * Maximum minted amount of the f-asset, in base unit of underlying asset.
      * @pattern ^[0-9 ]+$
      */
@@ -227,12 +203,6 @@ export interface AssetManagerParameters {
      * @pattern ^[0-9 ]+$
      */
     lotSize: string;
-
-    /**
-     * For some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address.
-     * This must be done by presenting a payment proof from that address.
-     */
-    requireEOAAddressProof: boolean;
 
     /**
      * Collateral reservation fee that must be paid by the minter.
@@ -268,14 +238,6 @@ export interface AssetManagerParameters {
      * @minimum 0
      */
     redemptionDefaultFactorVaultCollateralBIPS: integer;
-
-    /**
-     * On redemption underlying payment failure, redeemer is compensated with
-     * redemption value recalculated times redemption failure factor.
-     * This is the part of factor paid from pool in FLR/SGB.
-     * @minimum 0
-     */
-    redemptionDefaultFactorPoolBIPS: integer;
 
     /**
      * Number of underlying blocks that the minter or agent is allowed to pay underlying value.
@@ -342,12 +304,6 @@ export interface AssetManagerParameters {
     paymentChallengeRewardUSD5: string;
 
     /**
-     * Agent can remain in CCB for this much time, after that liquidation starts automatically.
-     * @minimum 0
-     */
-    ccbTimeSeconds: integer;
-
-    /**
      * If there was no liquidator for the current liquidation offer,
      * go to the next step of liquidation after a certain period of time.
      * @minimum 1
@@ -383,22 +339,6 @@ export interface AssetManagerParameters {
      * @minimum 0
      */
     withdrawalWaitMinSeconds: integer;
-
-    /**
-     * Minimum time that has to pass between underlying withdrawal announcement and the confirmation.
-     * Any value is ok, but higher values give more security against multiple announcement attack by a miner.
-     * Shouldn't be much bigger than Flare data connector response time, so that payments can be confirmed without
-     * extra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).
-     * @minimum 0
-     */
-    announcedUnderlyingConfirmationMinSeconds: integer;
-
-    /**
-     * Ratio at which the agents can buy back their collateral when f-asset is terminated.
-     * Typically a bit more than 1 to incentivize agents to buy f-assets and self-close instead.
-     * @minimum 0
-     */
-    buybackCollateralFactorBIPS: integer;
 
     /**
      * On some rare occasions (stuck minting, locked fassets after termination), the agent has to unlock
@@ -442,11 +382,11 @@ export interface AssetManagerParameters {
     agentMintingCRChangeTimelockSeconds: integer;
 
     /**
-     * Amount of seconds that have to pass between agent-set settings for pool exit and topup
-     * (exit CR, topup CR, topup bonus) change announcement and execution.
+     * Amount of seconds that have to pass between agent-set settings for pool exit collateral ratio
+     * change announcement and execution.
      * @minimum 0
      */
-    poolExitAndTopupChangeTimelockSeconds: integer;
+    poolExitCRChangeTimelockSeconds: integer;
 
     /**
      * Amount of seconds that an agent is allowed to execute an update once it is allowed.
@@ -484,83 +424,9 @@ export interface AssetManagerParameters {
     emergencyPauseDurationResetAfterSeconds: integer;
 
     /**
-     * The amount of time after which the collateral reservation can be canceled if the
-     * handshake is not completed.
-     * @minimum 1
-     */
-    cancelCollateralReservationAfterSeconds: integer;
-
-    /**
-     * The amount of collateral reservation fee returned to the minter in case of rejection or cancellation.
-     * Expressed in BIPS, e.g. 9500 for factor of 0.95.
-     * @minimum 0
-     * @maximum 10000
-     */
-    rejectOrCancelCollateralReservationReturnFactorBIPS: integer;
-
-    /**
-     * Time window inside which the agent can reject the redemption request.
-     * @minimum 1
-     */
-    rejectRedemptionRequestWindowSeconds: integer;
-
-    /**
-     * Time window inside which the agent can take over the redemption request from another agent
-     * that has rejected it.
-     * @minimum 1
-     */
-    takeOverRedemptionRequestWindowSeconds: integer;
-
-    /**
-     * On redemption rejection, without take over, redeemer is compensated with
-     * redemption value recalculated in flare/sgb times redemption failure factor.
-     * Expressed in BIPS, e.g. 12000 for factor of 1.2.
-     * This is the part of factor paid from agent's vault collateral.
-     * @minimum 0
-     */
-    rejectedRedemptionDefaultFactorVaultCollateralBIPS: integer;
-
-    /**
-     * This is the part of rejected redemption factor paid from agent's pool collateral.
-     * @minimum 0
-     */
-    rejectedRedemptionDefaultFactorPoolBIPS: integer;
-
-    /**
-     * The fee paid for FAsset transfers.
-     * Unlike other ratios that are in BIPS, this one is in millionths (1/1000000), which is 1/100 of a BIP.
-     * This is because the values can be very small, just a few BIPS.
-     */
-    transferFeeMillionths: integer;
-
-    /**
-     * Transfer fees are collected for each "epoch" and can be claimed after the epoch ends.
-     * This setting marks the start timestamp of the epoch 0.
-     */
-    transferFeeClaimFirstEpochStartTs: integer;
-
-    /**
-     * Transfer fees are collected for each "epoch" and can be claimed after the epoch ends.
-     * This setting is the epoch duration (in seconds).
-     */
-    transferFeeClaimEpochDurationSeconds: integer;
-
-    /**
-     * After a while, the epochs become unclaimable and the fees in there are transferred to the latest epoch.
-     * This setting is the number of epochs before expiration.
-     */
-    transferFeeClaimMaxUnexpiredEpochs: integer;
-
-    /**
      * The address that collects the core vault transfer fee.
      */
     coreVaultNativeAddress: string;
-
-    /**
-     * The fee that the agent has to pay for transfer to core vault.
-     * The fee amount is proportional to the transfer amount and paid in FLR/SGB.
-     */
-    coreVaultTransferFeeBIPS: integer;
 
     /**
      * Extra time that transfer to core vault redemption payments get compared

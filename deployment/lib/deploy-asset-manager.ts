@@ -1,4 +1,4 @@
-import { encodeAttestationName } from "@flarenetwork/state-connector-protocol";
+import { encodeAttestationName } from "@flarenetwork/js-flare-common";
 import BN from "bn.js";
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { AssetManagerSettings, CollateralClass, CollateralType } from '../../lib/fasset/AssetManagerTypes';
@@ -12,7 +12,9 @@ import { deployCutsOnDiamond } from "./deploy-cuts";
 import { ZERO_ADDRESS, abiEncodeCall, encodeContractNames, loadDeployAccounts, waitFinalize } from './deploy-utils';
 import { CoreVaultManagerParameters } from "./core-vault-manager-parameters";
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 export const assetManagerParameters = new JsonParameterSchema<AssetManagerParameters>(require('../config/asset-manager-parameters.schema.json'));
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 export const coreVaultManagerParameters = new JsonParameterSchema<CoreVaultManagerParameters>(require('../config/core-vault-manager-parameters.schema.json'));
 
 export async function deployAssetManagerController(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore, managerParameterFiles: string[]) {
@@ -91,26 +93,15 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     await deployCutsOnDiamond(hre, contracts,
         {
             diamond: assetManager.address,
-            facets: [{ contract: "TransferFeeFacet", exposedInterfaces: ["ITransferFees"] }],
-            init: {
-                contract: "TransferFeeFacet",
-                method: "initTransferFeeFacet",
-                args: [parameters.transferFeeMillionths, parameters.transferFeeClaimFirstEpochStartTs, parameters.transferFeeClaimEpochDurationSeconds, parameters.transferFeeClaimMaxUnexpiredEpochs]
-            },
-        },
-        { execute: true, verbose: false });
-    await deployCutsOnDiamond(hre, contracts,
-        {
-            diamond: assetManager.address,
             facets: [
-                { contract: "CoreVaultFacet", exposedInterfaces: ["ICoreVault"] },
-                { contract: "CoreVaultSettingsFacet", exposedInterfaces: ["ICoreVaultSettings"] }
+                { contract: "CoreVaultClientFacet", exposedInterfaces: ["ICoreVaultClient"] },
+                { contract: "CoreVaultClientSettingsFacet", exposedInterfaces: ["ICoreVaultClientSettings"] }
             ],
             init: {
-                contract: "CoreVaultSettingsFacet",
+                contract: "CoreVaultClientSettingsFacet",
                 method: "initCoreVaultFacet",
                 args: [ZERO_ADDRESS, parameters.coreVaultNativeAddress,
-                    parameters.coreVaultTransferFeeBIPS, parameters.coreVaultTransferTimeExtensionSeconds, parameters.coreVaultRedemptionFeeBIPS,
+                    parameters.coreVaultTransferTimeExtensionSeconds, parameters.coreVaultRedemptionFeeBIPS,
                     parameters.coreVaultMinimumAmountLeftBIPS, parameters.coreVaultMinimumRedeemLots]
             },
         },
@@ -213,7 +204,6 @@ export function convertCollateralType(contracts: FAssetContractStore, parameters
         assetFtsoSymbol: parameters.assetFtsoSymbol,
         tokenFtsoSymbol: parameters.tokenFtsoSymbol,
         minCollateralRatioBIPS: parameters.minCollateralRatioBIPS,
-        ccbMinCollateralRatioBIPS: parameters.ccbMinCollateralRatioBIPS,
         safetyMinCollateralRatioBIPS: parameters.safetyMinCollateralRatioBIPS,
     }
 }
@@ -230,7 +220,7 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         collateralPoolTokenFactory: contracts.getAddress(parameters.collateralPoolTokenFactory ?? 'CollateralPoolTokenFactory'),
         fdcVerification: contracts.getAddress(parameters.fdcVerification ?? 'FdcVerification'),
         priceReader: contracts.getAddress(parameters.priceReader ?? 'PriceReader'),
-        whitelist: parameters.userWhitelist ? contracts.getAddress(parameters.userWhitelist) : ZERO_ADDRESS,
+        __whitelist: ZERO_ADDRESS,
         agentOwnerRegistry: contracts.getAddress(parameters.agentOwnerRegistry ?? 'AgentOwnerRegistry'),
         burnAddress: parameters.burnAddress,
         chainId: encodeAttestationName(parameters.chainName),
@@ -239,16 +229,16 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         assetUnitUBA: assetUnitUBA,
         assetMintingDecimals: parameters.assetMintingDecimals,
         assetMintingGranularityUBA: assetMintingGranularityUBA,
-        minUnderlyingBackingBIPS: parameters.minUnderlyingBackingBIPS,
+        __minUnderlyingBackingBIPS: 0,
         mintingCapAMG: parseBN(parameters.mintingCap).div(assetMintingGranularityUBA),
         lotSizeAMG: parseBN(parameters.lotSize).div(assetMintingGranularityUBA),
-        requireEOAAddressProof: parameters.requireEOAAddressProof,
+        __requireEOAAddressProof: false, // no longer used, always false
         collateralReservationFeeBIPS: parameters.collateralReservationFeeBIPS,
         mintingPoolHoldingsRequiredBIPS: parameters.mintingPoolHoldingsRequiredBIPS,
         maxRedeemedTickets: parameters.maxRedeemedTickets,
         redemptionFeeBIPS: parameters.redemptionFeeBIPS,
         redemptionDefaultFactorVaultCollateralBIPS: parameters.redemptionDefaultFactorVaultCollateralBIPS,
-        redemptionDefaultFactorPoolBIPS: parameters.redemptionDefaultFactorPoolBIPS,
+        __redemptionDefaultFactorPoolBIPS: 0,
         underlyingBlocksForPayment: parameters.underlyingBlocksForPayment,
         underlyingSecondsForPayment: parameters.underlyingSecondsForPayment,
         attestationWindowSeconds: parameters.attestationWindowSeconds,
@@ -257,32 +247,32 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         confirmationByOthersRewardUSD5: parseBN(parameters.confirmationByOthersRewardUSD5),
         paymentChallengeRewardBIPS: parameters.paymentChallengeRewardBIPS,
         paymentChallengeRewardUSD5: parseBN(parameters.paymentChallengeRewardUSD5),
-        ccbTimeSeconds: parameters.ccbTimeSeconds,
+        __ccbTimeSeconds: 0,
         liquidationStepSeconds: parameters.liquidationStepSeconds,
         liquidationCollateralFactorBIPS: parameters.liquidationCollateralFactorBIPS,
         liquidationFactorVaultCollateralBIPS: parameters.liquidationFactorVaultCollateralBIPS,
         maxTrustedPriceAgeSeconds: parameters.maxTrustedPriceAgeSeconds,
         withdrawalWaitMinSeconds: parameters.withdrawalWaitMinSeconds,
-        announcedUnderlyingConfirmationMinSeconds: parameters.announcedUnderlyingConfirmationMinSeconds,
-        buybackCollateralFactorBIPS: parameters.buybackCollateralFactorBIPS,
+        __announcedUnderlyingConfirmationMinSeconds: 0,
+        __buybackCollateralFactorBIPS: 0,
         vaultCollateralBuyForFlareFactorBIPS: parameters.vaultCollateralBuyForFlareFactorBIPS,
         minUpdateRepeatTimeSeconds: parameters.minUpdateRepeatTimeSeconds,
         tokenInvalidationTimeMinSeconds: parameters.tokenInvalidationTimeMinSeconds,
         agentExitAvailableTimelockSeconds: parameters.agentExitAvailableTimelockSeconds,
         agentFeeChangeTimelockSeconds: parameters.agentFeeChangeTimelockSeconds,
         agentMintingCRChangeTimelockSeconds: parameters.agentMintingCRChangeTimelockSeconds,
-        poolExitAndTopupChangeTimelockSeconds: parameters.poolExitAndTopupChangeTimelockSeconds,
+        poolExitCRChangeTimelockSeconds: parameters.poolExitCRChangeTimelockSeconds,
         agentTimelockedOperationWindowSeconds: parameters.agentTimelockedOperationWindowSeconds,
         collateralPoolTokenTimelockSeconds: parameters.collateralPoolTokenTimelockSeconds,
         diamondCutMinTimelockSeconds: parameters.diamondCutMinTimelockSeconds,
         maxEmergencyPauseDurationSeconds: parameters.maxEmergencyPauseDurationSeconds,
         emergencyPauseDurationResetAfterSeconds: parameters.emergencyPauseDurationResetAfterSeconds,
-        cancelCollateralReservationAfterSeconds: parameters.cancelCollateralReservationAfterSeconds,
-        rejectOrCancelCollateralReservationReturnFactorBIPS: parameters.rejectOrCancelCollateralReservationReturnFactorBIPS,
-        rejectRedemptionRequestWindowSeconds: parameters.rejectRedemptionRequestWindowSeconds,
-        takeOverRedemptionRequestWindowSeconds: parameters.takeOverRedemptionRequestWindowSeconds,
-        rejectedRedemptionDefaultFactorVaultCollateralBIPS: parameters.rejectedRedemptionDefaultFactorVaultCollateralBIPS,
-        rejectedRedemptionDefaultFactorPoolBIPS: parameters.rejectedRedemptionDefaultFactorPoolBIPS,
+        __cancelCollateralReservationAfterSeconds: 0,
+        __rejectOrCancelCollateralReservationReturnFactorBIPS: 0,
+        __rejectRedemptionRequestWindowSeconds: 0,
+        __takeOverRedemptionRequestWindowSeconds: 0,
+        __rejectedRedemptionDefaultFactorVaultCollateralBIPS: 0,
+        __rejectedRedemptionDefaultFactorPoolBIPS: 0,
     };
 }
 

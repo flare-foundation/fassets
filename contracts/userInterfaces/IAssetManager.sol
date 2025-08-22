@@ -1,24 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "../diamond/interfaces/IDiamondLoupe.sol";
-import "./data/AssetManagerSettings.sol";
-import "./data/CollateralType.sol";
-import "./data/AgentInfo.sol";
-import "./data/AgentSettings.sol";
-import "./data/AvailableAgentInfo.sol";
-import "./data/RedemptionTicketInfo.sol";
-import "./data/RedemptionRequestInfo.sol";
-import "./data/CollateralReservationInfo.sol";
-import "./IAssetManagerEvents.sol";
-import "./IAgentPing.sol";
-import "./IRedemptionTimeExtension.sol";
-import "./ITransferFees.sol";
-import "./ICoreVault.sol";
-import "./ICoreVaultSettings.sol";
-import "./IAgentAlwaysAllowedMinters.sol";
+import {IConfirmedBlockHeightExists, IPayment, IAddressValidity, IReferencedPaymentNonexistence,
+        IBalanceDecreasingTransaction}
+    from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {IDiamondLoupe} from "../diamond/interfaces/IDiamondLoupe.sol";
+import {AssetManagerSettings} from "./data/AssetManagerSettings.sol";
+import {CollateralType} from "./data/CollateralType.sol";
+import {AgentInfo} from "./data/AgentInfo.sol";
+import {AgentSettings} from "./data/AgentSettings.sol";
+import {AvailableAgentInfo} from "./data/AvailableAgentInfo.sol";
+import {RedemptionTicketInfo} from "./data/RedemptionTicketInfo.sol";
+import {RedemptionRequestInfo} from "./data/RedemptionRequestInfo.sol";
+import {CollateralReservationInfo} from "./data/CollateralReservationInfo.sol";
+import {IAssetManagerEvents} from "./IAssetManagerEvents.sol";
+import {IAgentPing} from "./IAgentPing.sol";
+import {IRedemptionTimeExtension} from "./IRedemptionTimeExtension.sol";
+import {ICoreVaultClient} from "./ICoreVaultClient.sol";
+import {ICoreVaultClientSettings} from "./ICoreVaultClientSettings.sol";
+import {IAgentAlwaysAllowedMinters} from "./IAgentAlwaysAllowedMinters.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 /**
@@ -30,9 +32,8 @@ interface IAssetManager is
     IAssetManagerEvents,
     IAgentPing,
     IRedemptionTimeExtension,
-    ITransferFees,
-    ICoreVault,
-    ICoreVaultSettings,
+    ICoreVaultClient,
+    ICoreVaultClientSettings,
     IAgentAlwaysAllowedMinters
 {
     ////////////////////////////////////////////////////////////////////////////////////
@@ -148,19 +149,6 @@ interface IAssetManager is
         external view
         returns (bool);
 
-    /**
-     * True if the asset manager is terminated.
-     * In terminated state almost all operations (minting, redeeming, liquidation) are disabled and f-assets are
-     * not transferable any more. The only operation still permitted is for agents to release the locked collateral
-     * by calling `buybackAgentCollateral`.
-     * An asset manager can be terminated after being paused for at least a month
-     * (to redeem as many f-assets as possible).
-     * The terminated asset manager can not be revived anymore.
-     */
-    function terminated()
-        external view
-        returns (bool);
-
     ////////////////////////////////////////////////////////////////////////////////////
     // Timekeeping for underlying chain
 
@@ -206,20 +194,6 @@ interface IAssetManager is
 
     ////////////////////////////////////////////////////////////////////////////////////
     // Agent create / destroy
-
-    /**
-     * This method fixes the underlying address to be used by given agent owner.
-     * A proof of payment (can be minimal or to itself) from this address must be provided,
-     * with payment reference being equal to this method caller's address.
-     * NOTE: calling this method before `createAgentVault()` is optional on most chains,
-     * but is required on smart contract chains to make sure the agent is using EOA address
-     * (depends on setting `requireEOAAddressProof`).
-     * NOTE: may only be called by a whitelisted agent (management or work owner address).
-     * @param _payment proof of payment on the underlying chain
-     */
-    function proveUnderlyingAddressEOA(
-        IPayment.Proof calldata _payment
-    ) external;
 
     /**
      * Create an agent vault.
@@ -326,7 +300,7 @@ interface IAssetManager is
     ) external;
 
     /**
-     * When current pool collateral token contract (WNat) is replaced by the method setPoolCollateralType,
+     * When current pool collateral token contract (WNat) is replaced by the method setPoolWNatCollateralType,
      * pools don't switch automatically. Instead, the agent must call this method that swaps old WNat tokens for
      * new ones and sets it for use by the pool.
      * NOTE: may only be called by the agent vault owner.
@@ -427,24 +401,6 @@ interface IAssetManager is
     ) external;
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Terminated asset manager support
-
-    /**
-     * When f-asset is terminated, an agent can burn the market price of backed f-assets with his collateral,
-     * to release the remaining collateral (and, formally, underlying assets).
-     * This method ONLY works when f-asset is terminated, which will only be done when the asset manager
-     * is already paused at least for a month and most f-assets are already burned and the only ones
-     * remaining are unrecoverable.
-     * NOTE: may only be called by the agent vault owner.
-     * NOTE: the agent (management address) receives the vault collateral and NAT is burned instead. Therefore
-     *      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral
-     *      amount multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
-     */
-    function buybackAgentCollateral(
-        address _agentVault
-    ) external payable;
-
-    ////////////////////////////////////////////////////////////////////////////////////
     // Agent information
 
     /**
@@ -455,7 +411,7 @@ interface IAssetManager is
      */
     function getAllAgents(uint256 _start, uint256 _end)
         external view
-        returns (address[] memory _agentVaults, uint256 _totalLength);
+        returns (address[] memory _agents, uint256 _totalLength);
 
     /**
      * Return detailed info about an agent, typically needed by a minter.
@@ -473,8 +429,7 @@ interface IAssetManager is
      * @param _agentVault agent vault address
      * @param _name setting name, one of: `feeBIPS`, `poolFeeShareBIPS`, `redemptionPoolFeeShareBIPS`,
      *  `mintingVaultCollateralRatioBIPS`, `mintingPoolCollateralRatioBIPS`,`buyFAssetByAgentFactorBIPS`,
-     *  `poolExitCollateralRatioBIPS`, `poolTopupCollateralRatioBIPS`, `poolTopupTokenPriceFactorBIPS`,
-     *  `handshakeType`
+     *  `poolExitCollateralRatioBIPS`
      */
     function getAgentSetting(address _agentVault, string memory _name)
         external view
@@ -582,7 +537,7 @@ interface IAssetManager is
      */
     function getAvailableAgentsList(uint256 _start, uint256 _end)
         external view
-        returns (address[] memory _agentVaults, uint256 _totalLength);
+        returns (address[] memory _agents, uint256 _totalLength);
 
     /**
      * Get (a part of) the list of available agents with extra information about agents' fee, min collateral ratio
@@ -604,15 +559,11 @@ interface IAssetManager is
      * Before paying underlying assets for minting, minter has to reserve collateral and
      * pay collateral reservation fee. Collateral is reserved at ratio of agent's agentMinCollateralRatio
      * to requested lots NAT market price.
-     * If the agent requires handshake, then HandshakeRequired event is emitted and
-     * the minter has to wait for the agent to approve or reject the reservation. If there is no response within
-     * the `cancelCollateralReservationAfterSeconds`, the minter can cancel the reservation and get the fee back.
-     * If handshake is not required, the minter receives instructions for underlying payment
+     * The minter receives instructions for underlying payment
      * (value, fee and payment reference) in event CollateralReserved.
      * Then the minter has to pay `value + fee` on the underlying chain.
-     * If the minter pays the underlying amount, the collateral reservation fee is burned and minter obtains
-     * f-assets. Otherwise the agent collects the collateral reservation fee.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
+     * If the minter pays the underlying amount, minter obtains f-assets.
+     * The collateral reservation fee is split between the agent and the collateral pool.
      * NOTE: the owner of the agent vault must be in the AgentOwnerRegistry.
      * @param _agentVault agent vault address
      * @param _lots the number of lots for which to reserve collateral
@@ -621,46 +572,14 @@ interface IAssetManager is
      *      and increasing fee (that would mean that the minter would have to pay raised fee or forfeit
      *      collateral reservation fee)
      * @param _executor the account that is allowed to execute minting (besides minter and agent)
-     * @param _minterUnderlyingAddresses array of minter's underlying addresses - needed only if handshake is required
      */
     function reserveCollateral(
         address _agentVault,
         uint256 _lots,
         uint256 _maxMintingFeeBIPS,
-        address payable _executor,
-        string[] calldata _minterUnderlyingAddresses
+        address payable _executor
     ) external payable
         returns (uint256 _collateralReservationId);
-
-    /**
-     * Agent approves the collateral reservation request after checking the minter's identity.
-     * NOTE: may only be called by the agent vault owner.
-     * @param _collateralReservationId collateral reservation id
-     */
-    function approveCollateralReservation(
-        uint256 _collateralReservationId
-    ) external;
-
-    /**
-     * Agent rejects the collateral reservation request after checking the minter's identity.
-     * The collateral reservation fee is returned to the minter.
-     * NOTE: may only be called by the agent vault owner.
-     * @param _collateralReservationId collateral reservation id
-     */
-    function rejectCollateralReservation(
-        uint256 _collateralReservationId
-    ) external;
-
-    /**
-     * Minter cancels the collateral reservation request if the agent didn't respond in time.
-     * The collateral reservation fee is returned to the minter.
-     * It can only be called after `cancelCollateralReservationAfterSeconds` from the collateral reservation request.
-     * NOTE: may only be called by the minter.
-     * @param _collateralReservationId collateral reservation id
-     */
-    function cancelCollateralReservation(
-        uint256 _collateralReservationId
-    ) external;
 
     /**
      * Return the collateral reservation fee amount that has to be passed to the `reserveCollateral` method.
@@ -687,8 +606,6 @@ interface IAssetManager is
     /**
      * After obtaining proof of underlying payment, the minter calls this method to finish the minting
      * and collect the minted f-assets.
-     * NOTE: In case handshake was required, the payment must be done using only all provided addresses,
-     * so `sourceAddressesRoot` matches the calculated Merkle root, otherwise the proof will be rejected.
      * NOTE: may only be called by the minter (= creator of CR, the collateral reservation request),
      *   the executor appointed by the minter, or the agent owner (= owner of the agent vault in CR).
      * @param _payment proof of the underlying payment (must contain exact `value + fee` amount and correct
@@ -704,9 +621,7 @@ interface IAssetManager is
      * When the time for the minter to pay the underlying amount is over (i.e. the last underlying block has passed),
      * the agent can declare payment default. Then the agent collects the collateral reservation fee
      * (it goes directly to the vault), and the reserved collateral is unlocked.
-     * NOTE: In case handshake was required, the attestation request must be done using `checkSourceAddresses=true`
-     * and correct `sourceAddressesRoot`, otherwise the proof will be rejected. If there was no handshake required,
-     * the attestation request must be done with `checkSourceAddresses=false`.
+     * NOTE: The attestation request must be done with `checkSourceAddresses=false`.
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
      * @param _proof proof that the minter didn't pay with correct payment reference on the underlying chain
      * @param _collateralReservationId id of a collateral reservation created by the minter
@@ -778,7 +693,6 @@ interface IAssetManager is
      * of remaining lots.
      * Agent receives redemption request id and instructions for underlying payment in
      * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _lots number of lots to redeem
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
@@ -791,28 +705,6 @@ interface IAssetManager is
         address payable _executor
     ) external payable
         returns (uint256 _redeemedAmountUBA);
-
-    /**
-     * In case agent requires handshake the redemption request can be rejected by the agent.
-     * Any other agent can take over the redemption request.
-     * If no agent takes over the redemption, the redeemer can request the default payment.
-     * NOTE: may only be called by the owner of the agent vault in the redemption request
-     * @param _redemptionRequestId id of an existing redemption request
-     */
-    function rejectRedemptionRequest(
-        uint256 _redemptionRequestId
-    ) external;
-
-    /**
-     * The agent can take over the rejected redemption request - it cannot be rejected again.
-     * NOTE: may only be called by the owner of the agent vault
-     * @param _agentVault agent vault address
-     * @param _redemptionRequestId id of an existing redemption request
-     */
-    function takeOverRedemptionRequest(
-        address _agentVault,
-        uint256 _redemptionRequestId
-    ) external;
 
     /**
      * If the redeemer provides invalid address, the agent should provide the proof of address invalidity from the
@@ -862,20 +754,6 @@ interface IAssetManager is
      */
     function redemptionPaymentDefault(
         IReferencedPaymentNonexistence.Proof calldata _proof,
-        uint256 _redemptionRequestId
-    ) external;
-
-    /**
-     * If the agent rejected the redemption request and no other agent took over the redemption,
-     * the redeemer calls this method and receives payment in collateral (with some extra).
-     * The agent can also call default if the redeemer is unresponsive, to payout the redeemer and free the
-     * remaining collateral.
-     * NOTE: may only be called by the redeemer (= creator of the redemption request),
-     *   the executor appointed by the redeemer,
-     *   or the agent owner (= owner of the agent vault in the redemption request)
-     * @param _redemptionRequestId id of an existing redemption request
-     */
-    function rejectedRedemptionPaymentDefault(
         uint256 _redemptionRequestId
     ) external;
 
@@ -976,18 +854,15 @@ interface IAssetManager is
     // Liquidation
 
     /**
-     * Checks that the agent's collateral is too low and if true, starts the agent's liquidation.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
-     * NOTE: always succeeds and returns the new liquidation status.
+     * Checks that the agent's collateral is too low and if true, starts agent's liquidation.
+     * If the agent is already in liquidation, returns the timestamp when liquidation started.
      * @param _agentVault agent vault address
-     * @return _liquidationStatus 0=no liquidation, 1=CCB, 2=liquidation
-     * @return _liquidationStartTs if the status is LIQUIDATION, the timestamp when liquidation started;
-     *  if the status is CCB, the timestamp when liquidation will start; otherwise 0
+     * @return _liquidationStartTs timestamp when liquidation started
      */
     function startLiquidation(
         address _agentVault
     ) external
-        returns (uint8 _liquidationStatus, uint256 _liquidationStartTs);
+        returns (uint256 _liquidationStartTs);
 
     /**
      * Burns up to `_amountUBA` f-assets owned by the caller and pays
@@ -995,7 +870,6 @@ interface IAssetManager is
      * (premium depends on the liquidation state).
      * If the agent isn't in liquidation yet, but satisfies conditions,
      * automatically puts the agent in liquidation status.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _agentVault agent vault address
      * @param _amountUBA the amount of f-assets to liquidate
      * @return _liquidatedAmountUBA liquidated amount of f-asset
@@ -1029,12 +903,11 @@ interface IAssetManager is
      * no valid payment reference exists (valid payment references are from redemption and
      * underlying withdrawal announcement calls).
      * On success, immediately triggers full agent liquidation and rewards the caller.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
-     * @param _transaction proof of a transaction from the agent's underlying address
+     * @param _payment proof of a transaction from the agent's underlying address
      * @param _agentVault agent vault address
      */
     function illegalPaymentChallenge(
-        IBalanceDecreasingTransaction.Proof calldata _transaction,
+        IBalanceDecreasingTransaction.Proof calldata _payment,
         address _agentVault
     ) external;
 
@@ -1042,7 +915,6 @@ interface IAssetManager is
      * Called with proofs of two payments made from the agent's underlying address
      * with the same payment reference (each payment reference is valid for only one payment).
      * On success, immediately triggers full agent liquidation and rewards the caller.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _payment1 proof of first payment from the agent's underlying address
      * @param _payment2 proof of second payment from the agent's underlying address
      * @param _agentVault agent vault address
@@ -1058,7 +930,6 @@ interface IAssetManager is
      * underlying free balance negative (i.e. the underlying address balance is less than
      * the total amount of backed f-assets).
      * On success, immediately triggers full agent liquidation and rewards the caller.
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _payments proofs of several distinct payments from the agent's underlying address
      * @param _agentVault agent vault address
      */

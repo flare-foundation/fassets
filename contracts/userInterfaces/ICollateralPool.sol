@@ -2,62 +2,81 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
-import "@flarenetwork/flare-periphery-contracts/flare/IClaimSetupManager.sol";
-import "@flarenetwork/flare-periphery-contracts/flare/IDistributionToDelegators.sol";
-import "@flarenetwork/flare-periphery-contracts/flare/IRewardManager.sol";
-import "./ICollateralPoolToken.sol";
+import {IDistributionToDelegators} from "@flarenetwork/flare-periphery-contracts/flare/IDistributionToDelegators.sol";
+import {IRewardManager} from "@flarenetwork/flare-periphery-contracts/flare/IRewardManager.sol";
+import {ICollateralPoolToken} from "./ICollateralPoolToken.sol";
 
 
 interface ICollateralPool {
-    enum TokenExitType { MAXIMIZE_FEE_WITHDRAWAL, MINIMIZE_FEE_DEBT, KEEP_RATIO }
-
-    // Also emitted in case of fee debt payment - in this case `amountNatWei = receivedTokensWei = 0`.
-    event Entered(
+    event CPEntered(
         address indexed tokenHolder,
         uint256 amountNatWei,
         uint256 receivedTokensWei,
-        uint256 addedFAssetFeesUBA,
-        uint256 newFAssetFeeDebt,
         uint256 timelockExpiresAt);
 
-    // In case of self-close exit, `closedFAssetsUBA` is nonzero and includes `receivedFAssetFeesUBA`.
-    // Also emitted in case of fee withdrawal - in this case `burnedTokensWei = receivedNatWei = 0`.
-    event Exited(
+    event CPExited(
+        address indexed tokenHolder,
+        uint256 burnedTokensWei,
+        uint256 receivedNatWei);
+
+    event CPSelfCloseExited(
         address indexed tokenHolder,
         uint256 burnedTokensWei,
         uint256 receivedNatWei,
-        uint256 receviedFAssetFeesUBA,
-        uint256 closedFAssetsUBA,
-        uint256 newFAssetFeeDebt);
+        uint256 closedFAssetsUBA);
+
+    event CPFeeDebtPaid(
+        address indexed tokenHolder,
+        uint256 paidFeesUBA);
+
+    event CPFeesWithdrawn(
+        address indexed tokenHolder,
+        uint256 withdrawnFeesUBA);
+
+    event CPFeeDebtChanged(
+        address indexed tokenHolder,
+        int256 newFeeDebtUBA);
 
     // Emitted when asset manager forces payout from the pool
-    event PaidOut(
+    event CPPaidOut(
         address indexed recipient,
         uint256 paidNatWei,
         uint256 burnedTokensWei);
 
-    event ClaimedReward(
+    event CPClaimedReward(
         uint256 amountNatWei,
         uint8 rewardType);
 
-    /**
-     * In the case of self-close exit, it can happen that not all tokens could be spent, as agent could
-     * not redeem all required f-asset in one transaction. In this case, the event is emitted.
-     */
-    event IncompleteSelfCloseExit(
-        uint256 burnedTokensWei,
-        uint256 redeemedFAssetUBA);
+    error OnlyAssetManager();
+    error OnlyAgent();
+    error AlreadyInitialized();
+    error OnlyInternalUse();
+    error PoolTokenAlreadySet();
+    error AmountOfNatTooLow();
+    error AmountOfCollateralTooLow();
+    error DepositResultsInZeroTokens();
+    error TokenShareIsZero();
+    error TokenBalanceTooLow();
+    error SentAmountTooLow();
+    error CollateralRatioFallsBelowExitCR();
+    error InvalidRecipientAddress();
+    error RedemptionRequiresClosingTooManyTickets();
+    error FreeFAssetBalanceTooSmall();
+    error WithdrawZeroFAsset();
+    error ZeroFAssetDebtPayment();
+    error PaymentLargerThanFeeDebt();
+    error FAssetAllowanceTooSmall();
+    error TokenSupplyAfterExitTooLow();
+    error CollateralAfterExitTooLow();
+    error CannotDestroyPoolWithIssuedTokens();
 
     /**
-     * Enters the collateral pool by depositing NAT and f-asset, obtaining pool tokens, allowing holder
-     * to exit with NAT and f-asset fees later. If the user doesn't provide enough f-assets, they are
-     * still able to collect future f-asset fees and exit with NAT, but their tokens are non-transferable.
-     * Tokens can be made transferable by paying the f-asset fee debt and non-transferable by withdrawing
-     * f-asset fees.
-     * @param _fAssets                 The maximum number of f-assets that can be spent along the deposited NAT
-     * @param _enterWithFullFassets    Specifies whether to enter with all "required" f-assets
+     * Enters the collateral pool by depositing NAT.
+     * The tokens have a timelock before which exiting or transferring tokens is not possible.
+     * If there are some FAsset fees already in the pool, tokens also have some fee debt, which
+     * has to be paid off to make tokens transferable (but they can be redeemed).
      */
-    function enter(uint256 _fAssets, bool _enterWithFullFassets)
+    function enter()
         external payable
         returns (uint256 _receivedTokens, uint256 _timelockExpiresAt);
 
@@ -69,11 +88,10 @@ interface ICollateralPool {
      * Exiting with collateral that sinks pool's collateral ratio below exit CR is not allowed and
      *  will revert. In that case, see selfCloseExit.
      * @param _tokenShare   The amount of pool tokens to be redeemed
-     * @param _exitType     The ratio used to redeem transferable and non-transferable tokens
      */
-    function exit(uint256 _tokenShare, TokenExitType _exitType)
+    function exit(uint256 _tokenShare)
         external
-        returns (uint256 _natShare, uint256 _fassetShare);
+        returns (uint256 _natShare);
 
     /**
      * Exits the pool by redeeming the given amount of pool tokens and burning f-assets in a way that doesn't
@@ -118,11 +136,10 @@ interface ICollateralPool {
      *  will revert. In that case, see selfCloseExit.
      * @param _tokenShare   The amount of pool tokens to be redeemed
      * @param _recipient    The address to which NATs and FAsset fees will be transferred
-     * @param _exitType     The ratio used to redeem transferable and non-transferable tokens
      */
-    function exitTo(uint256 _tokenShare, address payable _recipient, TokenExitType _exitType)
+    function exitTo(uint256 _tokenShare, address payable _recipient)
         external
-        returns (uint256 _natShare, uint256 _fassetShare);
+        returns (uint256 _natShare);
 
     /**
      * Exits the pool by redeeming the given amount of pool tokens and burning f-assets in a way that doesn't
@@ -229,23 +246,6 @@ interface ICollateralPool {
         external view
         returns (uint32);
 
-    /**
-     * Get the topup collateral ratio in BIPS.
-     * If the pool's collateral ratio sinks below this value, users are encouraged to
-     * buy collateral by making tokens have discount prices
-     */
-    function topupCollateralRatioBIPS()
-        external view
-        returns (uint32);
-
-    /**
-     * Get the topup token discount in BIPS.
-     * If the pool's collateral ratio sinks below topup collateral ratio, tokens are
-     * discounted by this factor
-     */
-    function topupTokenPriceFactorBIPS()
-        external view
-        returns (uint16);
 
     /**
      * Return total amount of collateral in the pool.
@@ -283,14 +283,14 @@ interface ICollateralPool {
      */
     function fAssetFeeDebtOf(address _account)
         external view
-        returns (uint256);
+        returns (int256);
 
     /**
      * Returns the total f-asset fee debt for all users.
      */
     function totalFAssetFeeDebt()
         external view
-        returns (uint256);
+        returns (int256);
 
     /**
      * Get the amount of fassets that need to be burned to perform self close exit.

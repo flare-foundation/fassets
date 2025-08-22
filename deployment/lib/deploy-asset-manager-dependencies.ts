@@ -3,36 +3,27 @@ import { FAssetContractStore } from "./contracts";
 import { loadDeployAccounts, waitFinalize, ZERO_ADDRESS } from "./deploy-utils";
 
 
-export async function deployUserWhitelist(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
-    console.log(`Deploying UserWhitelist`);
-
-    const artifacts = hre.artifacts as Truffle.Artifacts;
-
-    const Whitelist = artifacts.require("Whitelist");
-
-    const { deployer } = loadDeployAccounts(hre);
-
-    const whitelist = await waitFinalize(hre, deployer, () => Whitelist.new(contracts.GovernanceSettings.address, deployer, false, { from: deployer }));
-
-    contracts.add(`UserWhitelist`, "Whitelist.sol", whitelist.address, { mustSwitchToProduction: true });
-
-    return whitelist.address;
-}
-
 export async function deployAgentOwnerRegistry(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     console.log(`Deploying AgentOwnerRegistry`);
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
+    const AgentOwnerRegistryProxy = artifacts.require("AgentOwnerRegistryProxy");
 
     const { deployer } = loadDeployAccounts(hre);
 
-    const whitelist = await waitFinalize(hre, deployer, () => AgentOwnerRegistry.new(contracts.GovernanceSettings.address, deployer, true, { from: deployer }));
+    // deploy proxy
+    const agentOwnerRegistryImpl = await waitFinalize(hre, deployer,
+        () => AgentOwnerRegistry.new({ from: deployer }));
+    const agentOwnerRegistryProxy = await waitFinalize(hre, deployer,
+        () => AgentOwnerRegistryProxy.new(agentOwnerRegistryImpl.address, contracts.GovernanceSettings.address, deployer, { from: deployer }));
+    const agentOwnerRegistry = await AgentOwnerRegistry.at(agentOwnerRegistryProxy.address);
 
-    contracts.add("AgentOwnerRegistry", "AgentOwnerRegistry.sol", whitelist.address, { mustSwitchToProduction: true });
+    contracts.add("AgentOwnerRegistryImplementation", "AgentOwnerRegistry.sol", agentOwnerRegistryImpl.address);
+    contracts.add("AgentOwnerRegistry", "AgentOwnerRegistryProxy.sol", agentOwnerRegistry.address, { mustSwitchToProduction: true });
 
-    return whitelist.address;
+    return agentOwnerRegistry.address;
 }
 
 export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
@@ -64,7 +55,7 @@ export async function deployCollateralPoolFactory(hre: HardhatRuntimeEnvironment
 
     const { deployer } = loadDeployAccounts(hre);
 
-    const collateralPoolImplementation = await waitFinalize(hre, deployer, () => CollateralPool.new(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0, 0, 0, { from: deployer }));
+    const collateralPoolImplementation = await waitFinalize(hre, deployer, () => CollateralPool.new(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0, { from: deployer }));
     const collateralPoolFactory = await waitFinalize(hre, deployer, () => CollateralPoolFactory.new(collateralPoolImplementation.address, { from: deployer }));
 
     contracts.add("CollateralPoolProxyImplementation", "CollateralPool.sol", collateralPoolImplementation.address);

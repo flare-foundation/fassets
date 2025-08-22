@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+// solhint-disable no-empty-blocks
+pragma solidity ^0.8.27;
 
-import "@flarenetwork/flare-periphery-contracts/flare/IFdcHub.sol";
-import "./FdcRequestFeeConfigurationsMock.sol";
-
+import {IFdcHub} from "@flarenetwork/flare-periphery-contracts/flare/IFdcHub.sol";
+import {FdcRequestFeeConfigurationsMock} from "./FdcRequestFeeConfigurationsMock.sol";
+import {IFdcRequestFeeConfigurations}
+    from "@flarenetwork/flare-periphery-contracts/flare/IFdcRequestFeeConfigurations.sol";
+import {IFdcInflationConfigurations}
+    from "@flarenetwork/flare-periphery-contracts/flare/IFdcInflationConfigurations.sol";
 
 contract FdcHubMock is IFdcHub {
     /// The FDC request fee configurations contract.

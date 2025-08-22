@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "../../userInterfaces/IAssetManager.sol";
-import "../../userInterfaces/IFAsset.sol";
+import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
+import {IFAsset} from "../../userInterfaces/IFAsset.sol";
+import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+
 
 
 contract MaliciousMintExecutor {
@@ -11,7 +13,7 @@ contract MaliciousMintExecutor {
     address immutable public agentVault;
     address immutable public minter;
     address immutable public fasset;
-    uint256 public liquidationStatus;
+    uint256 public liquidationStartedTs;
     uint256 public reserved;
     uint256 public minted;
 
@@ -44,8 +46,8 @@ contract MaliciousMintExecutor {
         poolCR = IAssetManager(diamond).getAgentInfo(agentVault).poolCollateralRatioBIPS;
         vaultCR = IAssetManager(diamond).getAgentInfo(agentVault).vaultCollateralRatioBIPS;
 
-        IFAsset(fasset).transferExactDestFrom(minter, address(this), IFAsset(fasset).balanceOf(minter));
-        (liquidationStatus,) = IAssetManager(diamond).startLiquidation(agentVault);
+        IFAsset(fasset).transferFrom(minter, address(this), IFAsset(fasset).balanceOf(minter));
+        liquidationStartedTs = IAssetManager(diamond).startLiquidation(agentVault);
         IAssetManager(diamond).liquidate(agentVault, IFAsset(fasset).balanceOf(address(this)));
     }
 }

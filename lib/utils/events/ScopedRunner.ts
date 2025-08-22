@@ -1,15 +1,17 @@
 import { reportError } from "../helpers";
 import { EventScope, ExitScope } from "./ScopedEvents";
 
+export type RunnerThreadBody = (scope: EventScope) => Promise<void>;
+
 export class ScopedRunner {
-    logError: (e: any) => void = reportError;
+    logError: (e: unknown) => void = reportError;
 
     scopes = new Set<EventScope>();
 
     lastThreadId = 0;
-    runningThreads = new Map<number, Function>();
+    runningThreads = new Map<number, RunnerThreadBody>();
 
-    uncaughtErrors: any[] = [];
+    uncaughtErrors: unknown[] = [];
 
     get runningThreadCount() {
         return this.runningThreads.size;
@@ -26,12 +28,12 @@ export class ScopedRunner {
         this.scopes.delete(scope);
     }
 
-    startThread(method: (scope: EventScope) => Promise<void>): number {
+    startThread(method: RunnerThreadBody): number {
         const scope = this.newScope();
         const threadId = ++this.lastThreadId;
         this.runningThreads.set(threadId, method);
         void method(scope)
-            .catch(e => {
+            .catch((e: unknown) => {
                 if (e instanceof ExitScope) {
                     if (e.scope == null || e.scope === scope) return;
                 }
@@ -45,11 +47,11 @@ export class ScopedRunner {
         return threadId;
     }
 
-    async startScope(method: (scope: EventScope) => Promise<void>): Promise<void> {
+    async startScope(method: RunnerThreadBody): Promise<void> {
         return this.startScopeIn(undefined, method);
     }
 
-    async startScopeIn(parentScope: EventScope | undefined, method: (scope: EventScope) => Promise<void>): Promise<void> {
+    async startScopeIn(parentScope: EventScope | undefined, method: RunnerThreadBody): Promise<void> {
         const scope = this.newScope(parentScope);
         try {
             await method(scope);

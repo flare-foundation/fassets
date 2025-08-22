@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../utils/lib/SafePct.sol";
-import "../../utils/lib/MathUtils.sol";
-import "./data/AssetManagerState.sol";
-import "./data/Collateral.sol";
-import "./Conversion.sol";
-import "./Agents.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
+import {MathUtils} from "../../utils/library/MathUtils.sol";
+import {Collateral} from "./data/Collateral.sol";
+import {Conversion} from "./Conversion.sol";
+import {Agents} from "./Agents.sol";
+import {Agent} from "./data/Agent.sol";
+import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {Globals} from "./Globals.sol";
 
 
 library AgentCollateral {
@@ -248,10 +251,20 @@ library AgentCollateral {
         internal view
         returns (uint256)
     {
-        uint256 redeemingAMG = _data.kind == Collateral.Kind.POOL ? _agent.poolRedeemingAMG : _agent.redeemingAMG;
-        uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(redeemingAMG);
+        uint256 totalAMG = totalBackedAMG(_agent, _data.kind);
         uint256 backingTokenWei = Conversion.convertAmgToTokenWei(totalAMG, _data.amgToTokenWeiPrice);
         if (backingTokenWei == 0) return 1e10;    // nothing minted - ~infinite collateral ratio (but avoid overflows)
         return _data.fullCollateral.mulDiv(SafePct.MAX_BIPS, backingTokenWei);
+    }
+
+    function totalBackedAMG(
+        Agent.State storage _agent,
+        Collateral.Kind _collateralKind
+    )
+        internal view
+        returns (uint256)
+    {
+        uint256 redeemingAMG = _collateralKind == Collateral.Kind.POOL ? _agent.poolRedeemingAMG : _agent.redeemingAMG;
+        return uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(redeemingAMG);
     }
 }

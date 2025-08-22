@@ -1,23 +1,20 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "../../interfaces/IICollateralPool.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {IICollateralPool} from "../../../collateralPool/interfaces/IICollateralPool.sol";
 
 
 library Agent {
+    error InvalidAgentVaultAddress();
+
     enum Status {
         EMPTY,              // agent does not exist
         NORMAL,
-        LIQUIDATION,        // CCB or liquidation due to CR - ends when agent is healthy
+        LIQUIDATION,        // liquidation due to CR - ends when agent is healthy
         FULL_LIQUIDATION,   // illegal payment liquidation - must liquidate all and close vault
-        DESTROYING          // agent announced destroy, cannot mint again
-    }
-
-    enum LiquidationPhase {
-        NONE,
-        CCB,
-        LIQUIDATION
+        DESTROYING,         // agent announced destroy, cannot mint again
+        DESTROYED           // agent has been destroyed, cannot do anything except return info
     }
 
     // For agents to withdraw NAT collateral, they must first announce it and then wait
@@ -46,8 +43,8 @@ library Agent {
         // management and work addresses.
         address ownerManagementAddress;
 
-        // Current address for underlying agent's collateral.
-        // Agent can change this address anytime and it affects future mintings.
+        // Current underlying address for this agent vault.
+        // The address is immutable.
         string underlyingAddressString;
 
         // `underlyingAddressString` is only used for sending the minter a correct payment address;
@@ -86,15 +83,11 @@ library Agent {
         // but it must always be greater than minimum collateral ratio.
         uint32 mintingPoolCollateralRatioBIPS;
 
-        // Timestamp of the startLiquidation call.
-        // If the agent's CR is above ccbCR, agent is put into CCB state for a while.
-        // However, if the agent's CR falls below ccbCR before ccb time expires, anyone can call startLiquidation
-        // again to put agent in liquidation immediately (in this case, liquidationStartedAt and
-        // initialLiquidationPhase are reset to new values).
+        // Timestamp of the startLiquidation (or liquidate) call.
         uint64 liquidationStartedAt;
 
         // Liquidation phase at the time when liquidation started.
-        LiquidationPhase initialLiquidationPhase;
+        uint8 __initialLiquidationPhase; // only storage placeholder
 
         // Bitmap signifying which collateral type(s) triggered liquidation (LF_VAULT | LF_POOL).
         uint8 collateralsUnderwater;
@@ -166,7 +159,7 @@ library Agent {
 
         // Agent's handshake type - minting or redeeming can be rejected.
         // 0 - no verification, 1 - manual verification, ...
-        uint32 handshakeType;
+        uint32 __handshakeType; // only storage placeholder
 
         // There can only be one transfer to core vault per agent active at any time.
         uint64 activeTransferToCoreVault;
@@ -199,8 +192,30 @@ library Agent {
 
     bytes32 internal constant AGENTS_POSITION = keccak256("fasset.AssetManager.Agent");
 
+    // only return valid agent - fail if status is EMPTY or DESTROYED
     function get(address _address)
         internal view
+        returns (Agent.State storage)
+    {
+        Agent.State storage agent = getWithoutCheck(_address);
+        Agent.Status status = agent.status;
+        require(status != Agent.Status.EMPTY && status != Agent.Status.DESTROYED, InvalidAgentVaultAddress());
+        return agent;
+    }
+
+    // Like get, but only fail if status is EMPTY.
+    // This is useful for reading agent info after the agent has been destroyed.
+    function getAllowDestroyed(address _address)
+        internal view
+        returns (Agent.State storage)
+    {
+        Agent.State storage agent = getWithoutCheck(_address);
+        require(agent.status != Agent.Status.EMPTY, InvalidAgentVaultAddress());
+        return agent;
+    }
+
+    function getWithoutCheck(address _address)
+        internal pure
         returns (Agent.State storage _agent)
     {
         bytes32 position = bytes32(uint256(AGENTS_POSITION) ^ (uint256(uint160(_address)) << 64));
@@ -208,38 +223,17 @@ library Agent {
         assembly {
             _agent.slot := position
         }
-        require(_agent.status != Agent.Status.EMPTY, "invalid agent vault address");
     }
 
-    function getWithoutCheck(address _address) internal pure returns (Agent.State storage _agent) {
-        bytes32 position = bytes32(uint256(AGENTS_POSITION) ^ (uint256(uint160(_address)) << 64));
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            _agent.slot := position
-        }
-    }
-
-    function vaultAddress(Agent.State storage _agent) internal pure returns (address) {
+    function vaultAddress(Agent.State storage _agent)
+        internal pure
+        returns (address)
+    {
         bytes32 position;
         // solhint-disable-next-line no-inline-assembly
         assembly {
             position := _agent.slot
         }
         return address(uint160((uint256(position) ^ uint256(AGENTS_POSITION)) >> 64));
-    }
-
-    // Using `delete` doesn't work for storage pointers, so this is a workaround for
-    // clearing agent storage at calculated location. The last member of the agent struct
-    // must always be empty `_endMarker` for calculating the size to delete.
-    function deleteStorage(Agent.State storage _agent) internal {
-        uint256[1] storage endMarker = _agent._endMarker;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            let pos := _agent.slot
-            let end := endMarker.slot
-            for { } lt(pos, end) { pos := add(pos, 1) } {
-                sstore(pos, 0)
-            }
-        }
     }
 }

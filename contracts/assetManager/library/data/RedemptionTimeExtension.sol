@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../../utils/lib/SafeMath64.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {SafeMath64} from "../../../utils/library/SafeMath64.sol";
 
 
 library RedemptionTimeExtension {

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "../../fassetToken/interfaces/IIFAsset.sol";
-import "../interfaces/IWNat.sol";
-import "../../userInterfaces/data/AssetManagerSettings.sol";
-import "../../userInterfaces/IAgentOwnerRegistry.sol";
-import "./data/AssetManagerState.sol";
+import {IIFAsset} from "../../fassetToken/interfaces/IIFAsset.sol";
+import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {IAgentOwnerRegistry} from "../../userInterfaces/IAgentOwnerRegistry.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
 
 
 // global state helpers
@@ -53,5 +54,13 @@ library Globals {
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         return IAgentOwnerRegistry(settings.agentOwnerRegistry);
+    }
+
+    function getBurnAddress()
+        internal view
+        returns (address payable)
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        return settings.burnAddress;
     }
 }

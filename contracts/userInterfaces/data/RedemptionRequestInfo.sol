@@ -4,8 +4,13 @@ pragma solidity >=0.7.6 <0.9;
 
 library RedemptionRequestInfo {
     enum Status {
-        ACTIVE,
-        DEFAULTED
+        ACTIVE,                 // waiting for confirmation/default
+        DEFAULTED_UNCONFIRMED,  // default called, failed or late payment can still be confirmed
+        // final statuses - there can be no valid payment for this redemption anymore
+        SUCCESSFUL,             // successful payment confirmed
+        DEFAULTED_FAILED,       // payment failed   (default was paid)
+        BLOCKED,                // payment blocked
+        REJECTED                // redemption request rejected due to invalid redeemer's address
     }
 
     struct Data {
@@ -62,11 +67,5 @@ library RedemptionRequestInfo {
 
         // The fee in NAT that the executor receives if they successfully call default.
         uint256 executorFeeNatWei;
-
-        // If non-zero, request was rejected in handshake process.
-        uint64 rejectionTimestamp;
-
-        // If non-zero, handshake-rejected request was taken over by another agent.
-        uint64 takeOverTimestamp;
     }
 }

@@ -48,8 +48,6 @@
 
 **DustConvertedToTicket** - The amount of dust was more than one lot, and the whole lot part of it was converted to a redemption ticket.
 
-**AgentInCCB** - Agent entered CCB (collateral call band) due to being on the border of unhealthy. Agent has limited time to topup the collateral, otherwise liquidation starts.
-
 **LiquidationStarted** - Agent entered liquidation state due to unhealthy position. The liquidation ends when the agent is again healthy or the agent's position is fully liquidated.
 
 **FullLiquidationStarted** - Agent entered liquidation state due to illegal payment. Full liquidation will always liquidate the whole agent's position and the agent can never use the same vault and underlying address for minting again.
@@ -82,6 +80,6 @@
 
 **CollateralTypeAdded** - New collateral token has been added.
 
-**CollateralRatiosChanged** - System defined collateral ratios for the token have changed (minimal, CCB and safety collateral ratio).
+**CollateralRatiosChanged** - System defined collateral ratios for the token have changed (minimal and safety collateral ratio).
 
 **CollateralTypeDeprecated** - Collateral token has been marked as deprecated. After the timestamp `validUntil` passes, it will be considered invalid and the agents who haven't switched their collateral before will be liquidated.

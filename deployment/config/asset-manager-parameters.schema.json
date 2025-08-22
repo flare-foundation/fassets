@@ -10,11 +10,6 @@
                     "pattern": "^\\w+$",
                     "type": "string"
                 },
-                "ccbMinCollateralRatioBIPS": {
-                    "description": "Minimum collateral ratio for agent in CCB (Collateral call band).\nIf the agent's collateral ratio is less than this, skip the CCB and go straight to liquidation.\nA bit smaller than minCollateralRatioBIPS.",
-                    "minimum": 0,
-                    "type": "integer"
-                },
                 "decimals": {
                     "description": "Same as token.decimals(), when that exists.",
                     "minimum": 0,
@@ -47,7 +42,6 @@
             },
             "required": [
                 "assetFtsoSymbol",
-                "ccbMinCollateralRatioBIPS",
                 "decimals",
                 "directPricePair",
                 "minCollateralRatioBIPS",
@@ -93,11 +87,6 @@
             "pattern": "^\\w+$",
             "type": "string"
         },
-        "announcedUnderlyingConfirmationMinSeconds": {
-            "description": "Minimum time that has to pass between underlying withdrawal announcement and the confirmation.\nAny value is ok, but higher values give more security against multiple announcement attack by a miner.\nShouldn't be much bigger than Flare data connector response time, so that payments can be confirmed without\nextra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).",
-            "minimum": 0,
-            "type": "integer"
-        },
         "assetDecimals": {
             "description": "The number of decimals in asset.",
             "minimum": 0,
@@ -133,24 +122,9 @@
             "type": "integer"
         },
         "burnAddress": {
-            "description": "Address for burning native currency (e.g. for collateral reservation fee after successful minting).",
+            "description": "Address for burning native currency.",
             "pattern": "^0x[0-9a-fA-F]{40}$",
             "type": "string"
-        },
-        "buybackCollateralFactorBIPS": {
-            "description": "Ratio at which the agents can buy back their collateral when f-asset is terminated.\nTypically a bit more than 1 to incentivize agents to buy f-assets and self-close instead.",
-            "minimum": 0,
-            "type": "integer"
-        },
-        "cancelCollateralReservationAfterSeconds": {
-            "description": "The amount of time after which the collateral reservation can be canceled if the\nhandshake is not completed.",
-            "minimum": 1,
-            "type": "integer"
-        },
-        "ccbTimeSeconds": {
-            "description": "Agent can remain in CCB for this much time, after that liquidation starts automatically.",
-            "minimum": 0,
-            "type": "integer"
         },
         "chainName": {
             "description": "Chain name; must match the Flare data connector chainId, when encoded as bytes.",
@@ -200,10 +174,6 @@
         },
         "coreVaultRedemptionFeeBIPS": {
             "description": "The fee charged for direct redemption from the core vault.",
-            "type": "integer"
-        },
-        "coreVaultTransferFeeBIPS": {
-            "description": "The fee that the agent has to pay for transfer to core vault.\nThe fee amount is proportional to the transfer amount and paid in FLR/SGB.",
             "type": "integer"
         },
         "coreVaultTransferTimeExtensionSeconds": {
@@ -270,12 +240,6 @@
             "minimum": 0,
             "type": "integer"
         },
-        "minUnderlyingBackingBIPS": {
-            "description": "The percentage of minted f-assets that the agent must hold in his underlying address.",
-            "maximum": 10000,
-            "minimum": 0,
-            "type": "integer"
-        },
         "minUpdateRepeatTimeSeconds": {
             "description": "Minimum time after an update of a setting before the same setting can be updated again.",
             "minimum": 0,
@@ -305,8 +269,8 @@
             "$ref": "#/definitions/CollateralTypeParameters",
             "description": "Data about the collateral used in the collateral pool, token is always WNat (FLR/SGB)."
         },
-        "poolExitAndTopupChangeTimelockSeconds": {
-            "description": "Amount of seconds that have to pass between agent-set settings for pool exit and topup\n(exit CR, topup CR, topup bonus) change announcement and execution.",
+        "poolExitCRChangeTimelockSeconds": {
+            "description": "Amount of seconds that have to pass between agent-set settings for pool exit collateral ratio\nchange announcement and execution.",
             "minimum": 0,
             "type": "integer"
         },
@@ -318,11 +282,6 @@
             "description": "Price reader contract is a simple abstraction of FTSO system.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'FdcVerification' in contracts.json.",
             "pattern": "^\\w+$",
             "type": "string"
-        },
-        "redemptionDefaultFactorPoolBIPS": {
-            "description": "On redemption underlying payment failure, redeemer is compensated with\nredemption value recalculated times redemption failure factor.\nThis is the part of factor paid from pool in FLR/SGB.",
-            "minimum": 0,
-            "type": "integer"
         },
         "redemptionDefaultFactorVaultCollateralBIPS": {
             "description": "On redemption underlying payment failure, redeemer is compensated with\nredemption value recalculated times redemption failure factor.\nThis is the part of factor paid from agent's vault collateral.",
@@ -338,55 +297,9 @@
             "description": "When there are many redemption requests in short time, agent gets\nup to this amount of extra payment time per redemption.",
             "type": "integer"
         },
-        "rejectOrCancelCollateralReservationReturnFactorBIPS": {
-            "description": "The amount of collateral reservation fee returned to the minter in case of rejection or cancellation.\nExpressed in BIPS, e.g. 9500 for factor of 0.95.",
-            "maximum": 10000,
-            "minimum": 0,
-            "type": "integer"
-        },
-        "rejectRedemptionRequestWindowSeconds": {
-            "description": "Time window inside which the agent can reject the redemption request.",
-            "minimum": 1,
-            "type": "integer"
-        },
-        "rejectedRedemptionDefaultFactorPoolBIPS": {
-            "description": "This is the part of rejected redemption factor paid from agent's pool collateral.",
-            "minimum": 0,
-            "type": "integer"
-        },
-        "rejectedRedemptionDefaultFactorVaultCollateralBIPS": {
-            "description": "On redemption rejection, without take over, redeemer is compensated with\nredemption value recalculated in flare/sgb times redemption failure factor.\nExpressed in BIPS, e.g. 12000 for factor of 1.2.\nThis is the part of factor paid from agent's vault collateral.",
-            "minimum": 0,
-            "type": "integer"
-        },
-        "requireEOAAddressProof": {
-            "description": "For some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address.\nThis must be done by presenting a payment proof from that address.",
-            "type": "boolean"
-        },
-        "takeOverRedemptionRequestWindowSeconds": {
-            "description": "Time window inside which the agent can take over the redemption request from another agent\nthat has rejected it.",
-            "minimum": 1,
-            "type": "integer"
-        },
         "tokenInvalidationTimeMinSeconds": {
             "description": "Minimum time from the moment token is deprecated to when it becomes invalid and agents still using\nit as vault collateral get liquidated.",
             "minimum": 0,
-            "type": "integer"
-        },
-        "transferFeeClaimEpochDurationSeconds": {
-            "description": "Transfer fees are collected for each \"epoch\" and can be claimed after the epoch ends.\nThis setting is the epoch duration (in seconds).",
-            "type": "integer"
-        },
-        "transferFeeClaimFirstEpochStartTs": {
-            "description": "Transfer fees are collected for each \"epoch\" and can be claimed after the epoch ends.\nThis setting marks the start timestamp of the epoch 0.",
-            "type": "integer"
-        },
-        "transferFeeClaimMaxUnexpiredEpochs": {
-            "description": "After a while, the epochs become unclaimable and the fees in there are transferred to the latest epoch.\nThis setting is the number of epochs before expiration.",
-            "type": "integer"
-        },
-        "transferFeeMillionths": {
-            "description": "The fee paid for FAsset transfers.\nUnlike other ratios that are in BIPS, this one is in millionths (1/1000000), which is 1/100 of a BIP.\nThis is because the values can be very small, just a few BIPS.",
             "type": "integer"
         },
         "underlyingBlocksForPayment": {
@@ -398,14 +311,6 @@
             "description": "Minimum time to allow agent to pay for redemption or minter to pay for minting.\nThis is useful for fast chains, when there can be more than one block per second.\nRedemption/minting payment failure can be called only after underlyingSecondsForPayment have elapsed\non underlying chain.\nCAREFUL: Count starts from the current proved block timestamp, so the minters and agents should\nmake sure that current block timestamp is fresh, otherwise they might not have enough time for payment.\nThis is partially mitigated by adding local duration since the last block height update to\nthe current underlying block timestamp.",
             "minimum": 0,
             "type": "integer"
-        },
-        "userWhitelist": {
-            "description": "If non-null, the whitelist contains a list of accounts that can call public methods\n(minting, redeeming, challenging, etc.)\nIf null, there will be no user whitelisting.\nCan be a contract address (0x...) or a name in contracts.json.",
-            "pattern": "^\\w+$",
-            "type": [
-                "null",
-                "string"
-            ]
         },
         "vaultCollateralBuyForFlareFactorBIPS": {
             "description": "On some rare occasions (stuck minting, locked fassets after termination), the agent has to unlock\ncollateral. For this, part of collateral corresponding to FTSO asset value is burned and the rest is released.\nHowever, we cannot burn typical vault collateral (stablecoins), so the agent must buy them for NAT\nat FTSO price multiplied with this factor (should be a bit above 1) and then we burn the NATs.",
@@ -430,7 +335,6 @@
         "agentFeeChangeTimelockSeconds",
         "agentMintingCRChangeTimelockSeconds",
         "agentTimelockedOperationWindowSeconds",
-        "announcedUnderlyingConfirmationMinSeconds",
         "assetDecimals",
         "assetMintingDecimals",
         "assetName",
@@ -438,9 +342,6 @@
         "attestationWindowSeconds",
         "averageBlockTimeMS",
         "burnAddress",
-        "buybackCollateralFactorBIPS",
-        "cancelCollateralReservationAfterSeconds",
-        "ccbTimeSeconds",
         "chainName",
         "collateralPoolTokenTimelockSeconds",
         "collateralReservationFeeBIPS",
@@ -450,7 +351,6 @@
         "coreVaultMinimumRedeemLots",
         "coreVaultNativeAddress",
         "coreVaultRedemptionFeeBIPS",
-        "coreVaultTransferFeeBIPS",
         "coreVaultTransferTimeExtensionSeconds",
         "diamondCutMinTimelockSeconds",
         "emergencyPauseDurationResetAfterSeconds",
@@ -463,33 +363,20 @@
         "maxEmergencyPauseDurationSeconds",
         "maxRedeemedTickets",
         "maxTrustedPriceAgeSeconds",
-        "minUnderlyingBackingBIPS",
         "minUpdateRepeatTimeSeconds",
         "mintingCap",
         "mintingPoolHoldingsRequiredBIPS",
         "paymentChallengeRewardBIPS",
         "paymentChallengeRewardUSD5",
         "poolCollateral",
-        "poolExitAndTopupChangeTimelockSeconds",
+        "poolExitCRChangeTimelockSeconds",
         "poolTokenSuffix",
-        "redemptionDefaultFactorPoolBIPS",
         "redemptionDefaultFactorVaultCollateralBIPS",
         "redemptionFeeBIPS",
         "redemptionPaymentExtensionSeconds",
-        "rejectOrCancelCollateralReservationReturnFactorBIPS",
-        "rejectRedemptionRequestWindowSeconds",
-        "rejectedRedemptionDefaultFactorPoolBIPS",
-        "rejectedRedemptionDefaultFactorVaultCollateralBIPS",
-        "requireEOAAddressProof",
-        "takeOverRedemptionRequestWindowSeconds",
         "tokenInvalidationTimeMinSeconds",
-        "transferFeeClaimEpochDurationSeconds",
-        "transferFeeClaimFirstEpochStartTs",
-        "transferFeeClaimMaxUnexpiredEpochs",
-        "transferFeeMillionths",
         "underlyingBlocksForPayment",
         "underlyingSecondsForPayment",
-        "userWhitelist",
         "vaultCollateralBuyForFlareFactorBIPS",
         "vaultCollaterals",
         "withdrawalWaitMinSeconds"

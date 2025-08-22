@@ -1,11 +1,12 @@
-import { expectRevert, time } from '@openzeppelin/test-helpers';
+import { expectRevert, time } from '../../../../lib/test-utils/test-helpers';
+import { getTestFile } from '../../../../lib/test-utils/test-suite-helpers';
+import { assertWeb3Equal } from '../../../../lib/test-utils/web3assertions';
 import { toBN } from '../../../../lib/utils/helpers';
-import { CheckPointableMockContract, CheckPointableMockInstance } from '../../../../typechain-truffle';
-import { getTestFile } from '../../../utils/test-helpers';
+import { CheckPointableMockInstance } from '../../../../typechain-truffle';
 
-const CheckPointable = artifacts.require("CheckPointableMock") as CheckPointableMockContract;
+const CheckPointable = artifacts.require("CheckPointableMock");
 
-contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit tests`, async accounts => {
+contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit tests`, accounts => {
     // contains a fresh contract for each test
     let checkPointable: CheckPointableMockInstance;
 
@@ -21,9 +22,9 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
         b[0] = await web3.eth.getBlockNumber();
         await checkPointable.mintForAtNow(accounts[1], 20);
         // Act
-        let value = await checkPointable.balanceOfAt(accounts[1], b[0]);
+        const value = await checkPointable.balanceOfAt(accounts[1], b[0]);
         // Assert
-        assert.equal(value as any, 10);
+        assertWeb3Equal(value, 10);
     });
 
     it("Should store historic supply", async () => {
@@ -34,9 +35,9 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
         b[0] = await web3.eth.getBlockNumber();
         await checkPointable.burnForAtNow(accounts[2], 10);
         // Act
-        let value = await checkPointable.totalSupplyAt(b[0]);
+        const value = await checkPointable.totalSupplyAt(b[0]);
         // Assert
-        assert.equal(value as any, 30);
+        assertWeb3Equal(value, 30);
     });
 
     it("Should transmit value now for historic retrieval", async () => {
@@ -50,10 +51,10 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
         await checkPointable.burnForAtNow(accounts[2], 10);
         b[1] = await web3.eth.getBlockNumber();
         // Assert
-        let account2PastValue = await checkPointable.balanceOfAt(accounts[2], b[0]);
-        let account2Value = await checkPointable.balanceOfAt(accounts[2], b[1]);
-        assert.equal(account2PastValue as any, 10);
-        assert.equal(account2Value as any, 0);
+        const account2PastValue = await checkPointable.balanceOfAt(accounts[2], b[0]);
+        const account2Value = await checkPointable.balanceOfAt(accounts[2], b[1]);
+        assertWeb3Equal(account2PastValue, 10);
+        assertWeb3Equal(account2Value, 0);
     });
 
     it("Should set cleanup block", async () => {
@@ -76,9 +77,9 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
         // Act
         await checkPointable.setCleanupBlockNumber(blk);
         // Assert
-        await expectRevert(checkPointable.setCleanupBlockNumber(blk - 1), "Cleanup block number must never decrease");
+        await expectRevert.custom(checkPointable.setCleanupBlockNumber(blk - 1), "CleanupBlockNumberMustNeverDecrease", []);
         const blk2 = await web3.eth.getBlockNumber();
-        await expectRevert(checkPointable.setCleanupBlockNumber(blk2 + 1), "Cleanup block must be in the past");
+        await expectRevert.custom(checkPointable.setCleanupBlockNumber(blk2 + 1), "CleanupBlockMustBeInThePast", []);
     });
 
     it("Should cleanup history", async () => {
@@ -94,8 +95,8 @@ contract(`CheckPointable.sol; ${getTestFile(__filename)}; CheckPointable unit te
         const blk3 = await web3.eth.getBlockNumber();
         // Assert
         // should fail at blk1
-        await expectRevert(checkPointable.balanceOfAt(accounts[1], blk1),
-            "CheckPointable: reading from cleaned-up block");
+        await expectRevert.custom(checkPointable.balanceOfAt(accounts[1], blk1),
+                "CheckPointableReadingFromCleanedupBlock", []);
         // and work at blk2
         const value = await checkPointable.balanceOfAt(accounts[1], blk2);
         assert.equal(value.toNumber(), 90);

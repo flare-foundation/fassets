@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../../utils/lib/SafeMath64.sol";
-import "../interfaces/IIAgentVault.sol";
-import "./data/AssetManagerState.sol";
-import "./data/Collateral.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
-import "./Globals.sol";
-import "./Conversion.sol";
-import "./CollateralTypes.sol";
-import "./AgentCollateral.sol";
-import "./TransferFees.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {Collateral} from "./data/Collateral.sol";
+import {Globals} from "./Globals.sol";
+import {Conversion} from "./Conversion.sol";
+import {Agent} from "./data/Agent.sol";
+import {RedemptionQueue} from "./data/RedemptionQueue.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
+import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
+import {AgentInfo} from "../../userInterfaces/data/AgentInfo.sol";
 
 library Agents {
     using SafeCast for uint256;
@@ -20,370 +21,47 @@ library Agents {
     using Agent for Agent.State;
     using RedemptionQueue for RedemptionQueue.State;
 
-    function setMintingVaultCollateralRatioBIPS(
-        Agent.State storage _agent,
-        uint256 _mintingVaultCollateralRatioBIPS
-    )
-        internal
-    {
-        CollateralTypeInt.Data storage collateral = getVaultCollateral(_agent);
-        require(_mintingVaultCollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
-            "collateral ratio too small");
-        _agent.mintingVaultCollateralRatioBIPS = _mintingVaultCollateralRatioBIPS.toUint32();
-    }
+    error AgentNotWhitelisted();
+    error OnlyAgentVaultOwner();
+    error OnlyCollateralPool();
 
-    function setMintingPoolCollateralRatioBIPS(
-        Agent.State storage _agent,
-        uint256 _mintingPoolCollateralRatioBIPS
-    )
-        internal
-    {
-        CollateralTypeInt.Data storage collateral = getPoolCollateral(_agent);
-        require(_mintingPoolCollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
-            "collateral ratio too small");
-        _agent.mintingPoolCollateralRatioBIPS = _mintingPoolCollateralRatioBIPS.toUint32();
-    }
 
-    function setFeeBIPS(
-        Agent.State storage _agent,
-        uint256 _feeBIPS
+    function getAllAgents(
+        uint256 _start,
+        uint256 _end
     )
-        internal
-    {
-        require(_feeBIPS <= SafePct.MAX_BIPS, "fee too high");
-        _agent.feeBIPS = _feeBIPS.toUint16();
-    }
-
-    function setPoolFeeShareBIPS(
-        Agent.State storage _agent,
-        uint256 _poolFeeShareBIPS
-    )
-        internal
-    {
-        require(_poolFeeShareBIPS <= SafePct.MAX_BIPS, "value too high");
-        _agent.poolFeeShareBIPS = _poolFeeShareBIPS.toUint16();
-    }
-
-    function setRedemptionPoolFeeShareBIPS(
-        Agent.State storage _agent,
-        uint256 _redemptionPoolFeeShareBIPS
-    )
-        internal
-    {
-        require(_redemptionPoolFeeShareBIPS <= SafePct.MAX_BIPS, "value too high");
-        _agent.redemptionPoolFeeShareBIPS = _redemptionPoolFeeShareBIPS.toUint16();
-    }
-
-    function setBuyFAssetByAgentFactorBIPS(
-        Agent.State storage _agent,
-        uint256 _buyFAssetByAgentFactorBIPS
-    )
-        internal
-    {
-        // This factor's function is to compensate agent in case of price fluctuations, so allowing it
-        // above 100% doesn't make sense - it is only good for exploits.
-        require(_buyFAssetByAgentFactorBIPS <= SafePct.MAX_BIPS, "value too high");
-        // We also don't want to allow it to be too low as this allows agents to underpay
-        // the exiting collateral providers.
-        require(_buyFAssetByAgentFactorBIPS >= 9000, "value too low");
-        _agent.buyFAssetByAgentFactorBIPS = _buyFAssetByAgentFactorBIPS.toUint16();
-    }
-
-    function setPoolExitCollateralRatioBIPS(
-        Agent.State storage _agent,
-        uint256 _poolExitCollateralRatioBIPS
-    )
-        internal
-    {
-        CollateralTypeInt.Data storage collateral = getPoolCollateral(_agent);
-        uint256 minCR = collateral.minCollateralRatioBIPS;
-        require(_poolExitCollateralRatioBIPS >= minCR, "value too low");
-        uint256 currentExitCR = _agent.collateralPool.exitCollateralRatioBIPS();
-        // if minCollateralRatioBIPS is increased too quickly, it may be impossible for pool exit CR
-        // to be increased fast enough, so it can always be changed up to 1.2 * minCR
-        require(_poolExitCollateralRatioBIPS <= currentExitCR * 3 / 2 ||
-                _poolExitCollateralRatioBIPS <= minCR * 12 / 10,
-            "increase too big");
-        _agent.collateralPool.setExitCollateralRatioBIPS(_poolExitCollateralRatioBIPS);
-    }
-
-    function setPoolTopupCollateralRatioBIPS(
-        Agent.State storage _agent,
-        uint256 _poolTopupCollateralRatioBIPS
-    )
-        internal
-    {
-        CollateralTypeInt.Data storage collateral = getPoolCollateral(_agent);
-        require(_poolTopupCollateralRatioBIPS >= collateral.minCollateralRatioBIPS, "value too low");
-        _agent.collateralPool.setTopupCollateralRatioBIPS(_poolTopupCollateralRatioBIPS);
-    }
-
-    function setPoolTopupTokenPriceFactorBIPS(
-        Agent.State storage _agent,
-        uint256 _poolTopupTokenPriceFactorBIPS
-    )
-        internal
-    {
-        require(_poolTopupTokenPriceFactorBIPS >= SafePct.MAX_BIPS * 3 / 4, "value too low");
-        _agent.collateralPool.setTopupTokenPriceFactorBIPS(_poolTopupTokenPriceFactorBIPS);
-    }
-
-    function setHandshakeType(
-        Agent.State storage _agent,
-        uint256 _handshakeType
-    )
-        internal
-    {
-        require(_handshakeType <= 1, "invalid handshake type");
-        _agent.handshakeType = _handshakeType.toUint32();
-    }
-
-    function allocateMintedAssets(
-        Agent.State storage _agent,
-        uint64 _valueAMG
-    )
-        internal
-    {
-        _agent.mintedAMG = _agent.mintedAMG + _valueAMG;
-        TransferFees.updateMintingHistory(_agent.vaultAddress(), _agent.mintedAMG);
-    }
-
-    function releaseMintedAssets(
-        Agent.State storage _agent,
-        uint64 _valueAMG
-    )
-        internal
-    {
-        _agent.mintedAMG = SafeMath64.sub64(_agent.mintedAMG, _valueAMG, "not enough minted");
-        TransferFees.updateMintingHistory(_agent.vaultAddress(), _agent.mintedAMG);
-    }
-
-    function startRedeemingAssets(
-        Agent.State storage _agent,
-        uint64 _valueAMG,
-        bool _poolSelfCloseRedemption
-    )
-        internal
-    {
-        _agent.redeemingAMG += _valueAMG;
-        if (!_poolSelfCloseRedemption) {
-            _agent.poolRedeemingAMG += _valueAMG;
-        }
-        releaseMintedAssets(_agent, _valueAMG);
-    }
-
-    function endRedeemingAssets(
-        Agent.State storage _agent,
-        uint64 _valueAMG,
-        bool _poolSelfCloseRedemption
-    )
-        internal
-    {
-        _agent.redeemingAMG = SafeMath64.sub64(_agent.redeemingAMG, _valueAMG, "not enough redeeming");
-        if (!_poolSelfCloseRedemption) {
-            _agent.poolRedeemingAMG = SafeMath64.sub64(_agent.poolRedeemingAMG, _valueAMG, "not enough redeeming");
-        }
-    }
-
-    function createNewMinting(
-        Agent.State storage _agent,
-        uint64 _valueAMG
-    )
-        internal
-    {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        // Add value with dust, then take the whole number of lots from it to create the new ticket,
-        // and the remainder as new dust. At the end, there will always be less than 1 lot of dust left.
-        uint64 valueWithDustAMG = _agent.dustAMG + _valueAMG;
-        uint64 newDustAMG = valueWithDustAMG % settings.lotSizeAMG;
-        uint64 ticketValueAMG = valueWithDustAMG - newDustAMG;
-        // create ticket and change dust
-        allocateMintedAssets(_agent, _valueAMG);
-        if (ticketValueAMG > 0) {
-            createRedemptionTicket(_agent, ticketValueAMG);
-        }
-        changeDust(_agent, newDustAMG);
-    }
-
-    function createRedemptionTicket(
-        Agent.State storage _agent,
-        uint64 _ticketValueAMG
-    )
-        internal
+        internal view
+        returns (address[] memory _agents, uint256 _totalLength)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        if (_ticketValueAMG == 0) return;
-        address vaultAddress = _agent.vaultAddress();
-        uint64 lastTicketId = state.redemptionQueue.lastTicketId;
-        RedemptionQueue.Ticket storage lastTicket = state.redemptionQueue.getTicket(lastTicketId);
-        if (lastTicket.agentVault == vaultAddress) {
-            // last ticket is from the same agent - merge the new ticket with the last
-            lastTicket.valueAMG += _ticketValueAMG;
-            uint256 ticketValueUBA = Conversion.convertAmgToUBA(lastTicket.valueAMG);
-            emit IAssetManagerEvents.RedemptionTicketUpdated(vaultAddress, lastTicketId, ticketValueUBA);
+        _totalLength = state.allAgents.length;
+        _end = Math.min(_end, _totalLength);
+        _start = Math.min(_start, _end);
+        _agents = new address[](_end - _start);
+        for (uint256 i = _start; i < _end; i++) {
+            _agents[i - _start] = state.allAgents[i];
+        }
+    }
+
+    function getAgentStatus(
+        Agent.State storage _agent
+    )
+        internal view
+        returns (AgentInfo.Status)
+    {
+        Agent.Status status = _agent.status;
+        if (status == Agent.Status.NORMAL) {
+            return AgentInfo.Status.NORMAL;
+        } else if (status == Agent.Status.LIQUIDATION) {
+            return AgentInfo.Status.LIQUIDATION;
+        } else if (status == Agent.Status.FULL_LIQUIDATION) {
+            return AgentInfo.Status.FULL_LIQUIDATION;
+        } else if (status == Agent.Status.DESTROYING) {
+            return AgentInfo.Status.DESTROYING;
         } else {
-            // either queue is empty or the last ticket belongs to another agent - create new ticket
-            uint64 ticketId = state.redemptionQueue.createRedemptionTicket(vaultAddress, _ticketValueAMG);
-            uint256 ticketValueUBA = Conversion.convertAmgToUBA(_ticketValueAMG);
-            emit IAssetManagerEvents.RedemptionTicketCreated(vaultAddress, ticketId, ticketValueUBA);
+            assert (status == Agent.Status.DESTROYED);
+            return AgentInfo.Status.DESTROYED;
         }
-    }
-
-    function changeDust(
-        Agent.State storage _agent,
-        uint64 _newDustAMG
-    )
-        internal
-    {
-        if (_agent.dustAMG == _newDustAMG) return;
-        _agent.dustAMG = _newDustAMG;
-        uint256 dustUBA = Conversion.convertAmgToUBA(_newDustAMG);
-        emit IAssetManagerEvents.DustChanged(_agent.vaultAddress(), dustUBA);
-    }
-
-    function decreaseDust(
-        Agent.State storage _agent,
-        uint64 _dustDecreaseAMG
-    )
-        internal
-    {
-        uint64 newDustAMG = SafeMath64.sub64(_agent.dustAMG, _dustDecreaseAMG, "not enough dust");
-        changeDust(_agent, newDustAMG);
-    }
-
-    function payoutFromVault(
-        Agent.State storage _agent,
-        address _receiver,
-        uint256 _amountWei
-    )
-        internal
-        returns (uint256 _amountPaid)
-    {
-        CollateralTypeInt.Data storage collateral = getVaultCollateral(_agent);
-        // don't want the calling method to fail due to too small balance for payout
-        IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
-        _amountPaid = Math.min(_amountWei, collateral.token.balanceOf(address(vault)));
-        vault.payout(collateral.token, _receiver, _amountPaid);
-    }
-
-    function tryPayoutFromVault(
-        Agent.State storage _agent,
-        address _receiver,
-        uint256 _amountWei
-    )
-        internal
-        returns (bool _success, uint256 _amountPaid)
-    {
-        CollateralTypeInt.Data storage collateral = getVaultCollateral(_agent);
-        // don't want the calling method to fail due to too small balance for payout
-        IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
-        _amountPaid = Math.min(_amountWei, collateral.token.balanceOf(address(vault)));
-        try vault.payout(collateral.token, _receiver, _amountPaid) {
-            _success = true;
-        } catch {
-            _success = false;
-            _amountPaid = 0;
-        }
-    }
-
-    function payoutFromPool(
-        Agent.State storage _agent,
-        address _receiver,
-        uint256 _amountWei,
-        uint256 _agentResponsibilityWei
-    )
-        internal
-        returns (uint256 _amountPaid)
-    {
-        // don't want the calling method to fail due to too small balance for payout
-        uint256 poolBalance = _agent.collateralPool.totalCollateral();
-        _amountPaid = Math.min(_amountWei, poolBalance);
-        _agentResponsibilityWei = Math.min(_agentResponsibilityWei, _amountPaid);
-        _agent.collateralPool.payout(_receiver, _amountPaid, _agentResponsibilityWei);
-    }
-
-    function payForConfirmationByOthers(
-        Agent.State storage _agent,
-        address _receiver
-    )
-        internal
-    {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        uint256 amount = Agents.convertUSD5ToVaultCollateralWei(_agent, settings.confirmationByOthersRewardUSD5);
-        Agents.payoutFromVault(_agent, _receiver, amount);
-    }
-
-    // We cannot burn typical vault collateral (stablecoins), so the agent must buy them for NAT
-    // at FTSO price multiplied by vaultCollateralBuyForFlareFactorBIPS and then we burn the NATs.
-    function burnVaultCollateral(
-        Agent.State storage _agent,
-        uint256 _amountVaultCollateralWei
-    )
-        internal
-    {
-        CollateralTypeInt.Data storage vaultCollateral = getVaultCollateral(_agent);
-        CollateralTypeInt.Data storage poolCollateral = getPoolCollateral(_agent);
-        if (vaultCollateral.token == poolCollateral.token) {
-            require(msg.value == 0, "msg.value must be 0");
-            // If vault collateral is NAT, just burn directly.
-            burnVaultNATCollateral(_agent, _amountVaultCollateralWei);
-        } else {
-            AssetManagerSettings.Data storage settings = Globals.getSettings();
-            IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
-            // Calculate NAT amount the agent has to pay to receive the "burned" vault collateral tokens.
-            // The price is FTSO price plus configurable premium (vaultCollateralBuyForFlareFactorBIPS).
-            uint256 amountNatWei = Conversion.convert(_amountVaultCollateralWei, vaultCollateral, poolCollateral)
-                .mulBips(settings.vaultCollateralBuyForFlareFactorBIPS);
-            // Transfer vault collateral to the agent vault owner
-            vault.payout(vaultCollateral.token, _agent.ownerManagementAddress, _amountVaultCollateralWei);
-            // Burn the NAT equivalent (must be provided with the call).
-            require(msg.value >= amountNatWei, "not enough funds provided");
-            burnDirectNAT(amountNatWei);
-            // If there is some overpaid NAT, just send it to the agent's vault.
-            if (msg.value > amountNatWei) {
-                vault.depositNat{ value: msg.value - amountNatWei }(Globals.getWNat());
-            }
-        }
-    }
-
-    function burnVaultNATCollateral(
-        Agent.State storage _agent,
-        uint256 _amountNATWei
-    )
-        internal
-    {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
-        vault.payoutNAT(Globals.getWNat(), settings.burnAddress, _amountNATWei);
-    }
-
-    function burnDirectNAT(
-        uint256 _amountNATWei
-    )
-        internal
-    {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        settings.burnAddress.transfer(_amountNATWei);
-    }
-
-    function setVaultCollateral(
-        Agent.State storage _agent,
-        IERC20 _token
-    )
-        internal
-    {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        uint256 tokenIndex = CollateralTypes.getIndex(CollateralType.Class.VAULT, _token);
-        CollateralTypeInt.Data storage collateral = state.collateralTokens[tokenIndex];
-        assert(collateral.collateralClass == CollateralType.Class.VAULT);
-        // agent should never switch to a deprecated or already invalid collateral
-        require(collateral.validUntil == 0, "collateral deprecated");
-        // set the new index
-        _agent.vaultCollateralIndex = tokenIndex.toUint16();
-        // check there is enough collateral for current mintings
-        Collateral.Data memory switchCollateralData = AgentCollateral.agentVaultCollateralData(_agent);
-        uint256 crBIPS = AgentCollateral.collateralRatioBIPS(switchCollateralData, _agent);
-        require(crBIPS >= collateral.minCollateralRatioBIPS, "not enough collateral");
     }
 
     function isOwner(
@@ -393,9 +71,22 @@ library Agents {
         internal view
         returns (bool)
     {
-        address ownerManagementAddress = _agent.ownerManagementAddress;
-        return _address == ownerManagementAddress ||
-            _address == Globals.getAgentOwnerRegistry().getWorkAddress(ownerManagementAddress);
+        return _address == _agent.ownerManagementAddress || _address == getWorkAddress(_agent);
+    }
+
+    function getWorkAddress(Agent.State storage _agent)
+        internal view
+        returns (address)
+    {
+        return Globals.getAgentOwnerRegistry().getWorkAddress(_agent.ownerManagementAddress);
+    }
+
+    function getOwnerPayAddress(Agent.State storage _agent)
+        internal view
+        returns (address payable)
+    {
+        address workAddress = getWorkAddress(_agent);
+        return workAddress != address(0) ? payable(workAddress) : payable(_agent.ownerManagementAddress);
     }
 
     function requireWhitelisted(
@@ -404,7 +95,7 @@ library Agents {
         internal view
     {
         require(Globals.getAgentOwnerRegistry().isWhitelisted(_ownerManagementAddress),
-            "agent not whitelisted");
+            AgentNotWhitelisted());
     }
 
     function requireWhitelistedAgentVaultOwner(
@@ -420,7 +111,7 @@ library Agents {
     )
         internal view
     {
-        require(isOwner(Agent.get(_agentVault), msg.sender), "only agent vault owner");
+        require(isOwner(Agent.get(_agentVault), msg.sender), OnlyAgentVaultOwner());
     }
 
     function requireAgentVaultOwner(
@@ -428,7 +119,7 @@ library Agents {
     )
         internal view
     {
-        require(isOwner(_agent, msg.sender), "only agent vault owner");
+        require(isOwner(_agent, msg.sender), OnlyAgentVaultOwner());
     }
 
     function requireCollateralPool(
@@ -436,7 +127,7 @@ library Agents {
     )
         internal view
     {
-        require(msg.sender == address(_agent.collateralPool), "only collateral pool");
+        require(msg.sender == address(_agent.collateralPool), OnlyCollateralPool());
     }
 
     function isCollateralToken(

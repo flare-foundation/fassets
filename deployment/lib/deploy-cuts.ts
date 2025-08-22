@@ -7,6 +7,7 @@ import { deployFacet } from "./deploy-asset-manager-facets";
 import { ZERO_ADDRESS, abiEncodeCall, loadDeployAccounts, waitFinalize } from "./deploy-utils";
 import { contractMetadata } from "../../lib/utils/helpers";
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const diamondCutJsonSchema = new JsonParameterSchema<DiamondCutJson>(require('../cuts/diamond-cuts.schema.json'));
 
 export type DiamondCutsOptions = { execute?: boolean, verbose?: boolean };
@@ -32,7 +33,9 @@ export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contra
     // create cuts
     const newSelectorsPossiblyExisting = await createNewSelectors(hre, contracts, cuts.facets, deployer);
     const newSelectors = newSelectorsPossiblyExisting.removeExisting(deployedSelectors);
-    const deletedSelectors = createDeletedSelectors(deployedSelectors, cuts.deleteMethods ?? []);
+    const deletedSelectors = cuts.deleteAllOldMethods
+        ? deployedSelectors.remove(newSelectorsPossiblyExisting).toDeleteSelectors()
+        : createDeletedSelectors(deployedSelectors, cuts.deleteMethods ?? []);
     const diamondCuts = deployedSelectors.createCuts(newSelectors, deletedSelectors);
     // create init
     const [initAddress, initCalldata] = await createInitCall(hre, contracts, cuts.init, deployer);
@@ -62,9 +65,12 @@ export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contra
     }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function resultToTuple(value: any): any {
     if (typeof value === "object") {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         if (web3.utils.isBN(value)) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
             return value.ltn(1e9) ? Number(value) : String(value);
         }
         if (Array.isArray(value)) {
@@ -73,6 +79,7 @@ function resultToTuple(value: any): any {
         // convert object with numeric props to array
         const tuple = [];
         for (let i = 0; i in value; i++) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             tuple.push(resultToTuple(value[i]));
         }
         return tuple;
@@ -125,6 +132,7 @@ async function createInitCall(hre: HardhatRuntimeEnvironment, contracts: Contrac
     const address = await deployFacet(hre, init.contract, contracts, deployer);
     const instance = await contract.at(address);
     const args = init.args ?? [];
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const encodedCall = await instance.contract.methods[init.method](...args).encodeABI() as string;
     return [address, encodedCall] as const;
 }

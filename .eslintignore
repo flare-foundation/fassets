@@ -1,7 +1,0 @@
-artifacts
-cache
-coverage
-node_modules
-test_logs
-typechain
-typechain-truffle

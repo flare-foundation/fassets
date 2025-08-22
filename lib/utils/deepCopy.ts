@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+
 export interface DeepCopyable {
     deepCopyThis(copiedObjectsMap: Map<any, any>): this;
 }
@@ -8,11 +12,11 @@ type DeepCopyCondition<T = any> = (object: T) => boolean;
 
 const deepCopySpecialCases: Array<{ name: string, condition: DeepCopyCondition, copy: DeepCopyFunction }> = [];
 
-function isInstance(cls: Function) {
-    return (obj: any) => obj instanceof cls;
+function isInstance<T>(cls: { new(...args: any): T }) {
+    return (obj: unknown): obj is T => obj instanceof cls;
 }
 
-function isDeepCopyable(object: {}): object is DeepCopyable {
+function isDeepCopyable(object: object): object is DeepCopyable {
     return typeof (object as any).deepCopyThis === 'function';
 }
 
@@ -72,7 +76,8 @@ export function deepCopy<T>(object: T, copiedObjectsMap?: Map<any, any>): T {
     }
 }
 
-export function deepCopyWithObjectCreate<T extends {}>(object: T, copiedObjectsMap: Map<any, any>): T {
+export function deepCopyWithObjectCreate<T extends object>(object: T, copiedObjectsMap: Map<any, any>): T {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument
     const res = Object.create(object.constructor.prototype, {
         constructor: { value: object.constructor, enumerable: false, writable: true, configurable: true },
     });

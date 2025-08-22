@@ -2,14 +2,11 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
-import "./IWNat.sol";
+import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 
 
 interface IISettingsManagement {
     function updateSystemContracts(address _controller, IWNat _wNat)
-        external;
-
-    function setWhitelist(address _value)
         external;
 
     function setAgentOwnerRegistry(address _value)
@@ -51,9 +48,6 @@ interface IISettingsManagement {
     function setLotSizeAmg(uint256 _value)
         external;
 
-    function setMinUnderlyingBackingBips(uint256 _value)
-        external;
-
     function setMaxTrustedPriceAgeSeconds(uint256 _value)
         external;
 
@@ -63,7 +57,7 @@ interface IISettingsManagement {
     function setRedemptionFeeBips(uint256 _value)
         external;
 
-    function setRedemptionDefaultFactorBips(uint256 _vaultFactor, uint256 _poolFactor)
+    function setRedemptionDefaultFactorVaultCollateralBIPS(uint256 _value)
         external;
 
     function setConfirmationByOthersAfterSeconds(uint256 _value)
@@ -78,16 +72,10 @@ interface IISettingsManagement {
     function setWithdrawalOrDestroyWaitMinSeconds(uint256 _value)
         external;
 
-    function setCcbTimeSeconds(uint256 _value)
-        external;
-
     function setAttestationWindowSeconds(uint256 _value)
         external;
 
     function setAverageBlockTimeMS(uint256 _value)
-        external;
-
-    function setAnnouncedUnderlyingConfirmationMinSeconds(uint256 _value)
         external;
 
     function setMintingPoolHoldingsRequiredBIPS(uint256 _value)
@@ -111,7 +99,7 @@ interface IISettingsManagement {
     function setAgentMintingCRChangeTimelockSeconds(uint256 _value)
         external;
 
-    function setPoolExitAndTopupChangeTimelockSeconds(uint256 _value)
+    function setPoolExitCRChangeTimelockSeconds(uint256 _value)
         external;
 
     function setAgentTimelockedOperationWindowSeconds(uint256 _value)
@@ -132,20 +120,5 @@ interface IISettingsManagement {
         external;
 
     function setEmergencyPauseDurationResetAfterSeconds(uint256 _value)
-        external;
-
-    function setCancelCollateralReservationAfterSeconds(uint256 _value)
-        external;
-
-    function setRejectOrCancelCollateralReservationReturnFactorBIPS(uint256 _value)
-        external;
-
-    function setRejectRedemptionRequestWindowSeconds(uint256 _value)
-        external;
-
-    function setTakeOverRedemptionRequestWindowSeconds(uint256 _value)
-        external;
-
-    function setRejectedRedemptionDefaultFactorBips(uint256 _vaultF, uint256 _poolF)
         external;
 }

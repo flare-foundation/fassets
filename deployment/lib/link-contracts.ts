@@ -3,7 +3,7 @@ import { Artifact, HardhatRuntimeEnvironment } from 'hardhat/types';
 import { Contract, loadContractsList, saveContractsList } from './contracts';
 import { readDeployedCode } from './deploy-utils';
 
-export async function linkContracts(hre: HardhatRuntimeEnvironment, contracts: string[], mapfile: string | null) {
+export async function linkContracts(hre: HardhatRuntimeEnvironment, contracts: string[], mapfile: string | undefined) {
     const web3 = hre.web3;
 
     const accounts = await web3.eth.getAccounts();
@@ -30,7 +30,7 @@ export async function linkContracts(hre: HardhatRuntimeEnvironment, contracts: s
         const defaults = hre.config.solidity.compilers[0];
         return {
             version: defaults.version,
-            settings: { ...defaults.settings, libraries: {} }
+            settings: { ...defaults.settings, libraries: {} }   // eslint-disable-line @typescript-eslint/no-unsafe-assignment
         };
     };
 
@@ -85,6 +85,7 @@ export async function linkContracts(hre: HardhatRuntimeEnvironment, contracts: s
             const overrides = overrideTemplate();
             for (const lib of info.dependencies) {
                 const libInfo = contractInfos.get(lib)!;
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                 overrides.settings.libraries[libInfo.artifact.sourceName] = {
                     [libInfo.artifact.contractName]: deployedLibs.get(lib)!
                 };

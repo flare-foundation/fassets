@@ -29,7 +29,6 @@ export interface FAssetContracts {
     CollateralPoolTokenFactory?: Contract;
     AssetManagerController?: Contract;
     PriceReader?: Contract;
-    UserWhitelist?: Contract;
     AgentOwnerRegistry?: Contract;
 }
 
@@ -44,8 +43,10 @@ export class ContractStore {
         public autosave: boolean,
         public readonly historyFilename: string = ContractStore.historyDefaultFilename(filename),
     ) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const list: Contract[] = existsSync(filename) ? JSON.parse(readFileSync(filename).toString()) : [];
         this.map = ContractStore.listToMap(list, filename);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const historyList: ContractHistory[] = existsSync(historyFilename) ? JSON.parse(readFileSync(historyFilename).toString()) : [];
         this.history = ContractStore.listToMap(historyList, historyFilename);
     }
@@ -140,12 +141,11 @@ export class FAssetContractStore extends ContractStore implements FAssetContract
     get CollateralPoolTokenFactory() { return this.get('CollateralPoolTokenFactory'); }
     get AssetManagerController() { return this.get('AssetManagerController'); }
     get PriceReader() { return this.get('PriceReader'); }
-    get UserWhitelist() { return this.get('UserWhitelist'); }
     get AgentOwnerRegistry() { return this.get('AgentOwnerRegistry'); }
 }
 
 export function loadContractsList(filename: string): Contract[] {
-    return JSON.parse(readFileSync(filename).toString());
+    return JSON.parse(readFileSync(filename).toString()) as Contract[];
 }
 
 export function saveContractsList(filename: string, contractList: Contract[]) {

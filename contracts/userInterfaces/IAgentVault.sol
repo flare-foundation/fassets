@@ -2,13 +2,17 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
-import "@flarenetwork/flare-periphery-contracts/flare/IVPToken.sol";
-import "@flarenetwork/flare-periphery-contracts/flare/IClaimSetupManager.sol";
-import "@flarenetwork/flare-periphery-contracts/flare/IDistributionToDelegators.sol";
-import "@flarenetwork/flare-periphery-contracts/flare/IRewardManager.sol";
-import "./ICollateralPool.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ICollateralPool} from "./ICollateralPool.sol";
+
 
 interface IAgentVault {
+    error OnlyOwner();
+    error OnlyAssetManager();
+    error AlreadyInitialized();
+    error UnknownToken();
+    error OnlyNonCollateralTokens();
+
     /**
      * Deposit vault collateral.
      * Parameter `_token` is explicit to allow depositing before collateral switch.
@@ -64,68 +68,6 @@ interface IAgentVault {
      * the agent vault owner, e.g. owner's management or work address.
      */
     function redeemCollateralPoolTokens(uint256 _amount, address payable _recipient) external;
-
-    /**
-     * Delegate WNat vote power for a collateral token held in this vault.
-     * NOTE: only the owner of the agent vault may call this method.
-     */
-    function delegate(IVPToken _token, address _to, uint256 _bips) external;
-
-    /**
-     * Undelegate WNat vote power for a collateral token held in this vault.
-     * NOTE: only the owner of the agent vault may call this method.
-     */
-    function undelegateAll(IVPToken _token) external;
-
-    /**
-     * Revoke WNat vote power delegation for a block in the past for a collateral token held in this vault.
-     * NOTE: only the owner of the agent vault may call this method.
-     */
-    function revokeDelegationAt(IVPToken _token, address _who, uint256 _blockNumber) external;
-
-    /**
-     * Delegate governance vote power for possible NAT collateral token held in this vault.
-     * NOTE: only the owner of the agent vault may call this method.
-     */
-    function delegateGovernance(IVPToken _token, address _to) external;
-
-    /**
-     * Undelegate governance vote power for possible NAT collateral token held in this vault.
-     * NOTE: only the owner of the agent vault may call this method.
-     */
-    function undelegateGovernance(IVPToken _token) external;
-
-    /**
-     * Claim the rewards earned by delegating.
-     * Alternatively, you can set a claim executor and then claim directly from RewardManager.
-     * NOTE: only the owner of the agent vault may call this method.
-     */
-    function claimDelegationRewards(
-        IRewardManager _rewardManager,
-        uint24 _lastRewardEpoch,
-        address payable _recipient,
-        IRewardManager.RewardClaimWithProof[] calldata _proofs
-    ) external
-        returns (uint256);
-
-    /**
-     * Claim airdrops earned by holding wNAT in the vault.
-     * NOTE: only the owner of the agent vault may call this method.
-     */
-    function claimAirdropDistribution(
-        IDistributionToDelegators _distribution,
-        uint256 _month,
-        address payable _recipient
-    ) external
-        returns(uint256);
-
-    /**
-     * Opt out of airdrops for wNAT in the vault.
-     * NOTE: only the owner of the agent vault may call this method.
-     */
-    function optOutOfAirdrop(
-        IDistributionToDelegators _distribution
-    ) external;
 
     /**
      * Get the address of the collateral pool contract corresponding to this agent vault

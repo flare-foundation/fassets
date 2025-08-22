@@ -1,5 +1,5 @@
-import { expectRevert } from '@openzeppelin/test-helpers';
-import { assertWeb3Equal } from "../../utils/web3assertions";
+import { expectRevert } from "../../../lib/test-utils/test-helpers";
+import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { ReentrancyMockInstance } from '../../../typechain-truffle';
 
 const ReentrancyMock = artifacts.require('ReentrancyMock');
@@ -38,7 +38,7 @@ contract('ReentrancyGuard', function () {
             // I put them here as documentation, and to monitor any changes
             // in the side-effects.
             it('does not allow local recursion', async function () {
-                await expectRevert(reentrancyMock.countLocalRecursive(10), 'ReentrancyGuard: reentrant call');
+                await expectRevert.custom(reentrancyMock.countLocalRecursive(10), 'ReentrancyGuardReentrantCall', []);
             });
 
             it('does not allow indirect local recursion', async function () {
@@ -46,7 +46,7 @@ contract('ReentrancyGuard', function () {
             });
 
             it("unguarded method should fail when it contains requireReentrancyGuard", async () => {
-                await expectRevert(reentrancyMock.unguardedMethodThatShouldFail(), 'ReentrancyGuard: guard required');
+                await expectRevert.custom(reentrancyMock.unguardedMethodThatShouldFail(), 'ReentrancyGuardRequired', []);
             });
         });
     }

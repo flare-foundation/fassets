@@ -14,7 +14,6 @@ export namespace PaymentReference {
     export const REDEMPTION_FROM_CORE_VAULT = toBN('0x4642505266410005').shln(TYPE_SHIFT);
     export const TOPUP = toBN('0x4642505266410011').shln(TYPE_SHIFT);
     export const SELF_MINT = toBN('0x4642505266410012').shln(TYPE_SHIFT);
-    export const ADDRESS_OWNERSHIP = toBN('0x4642505266410013').shln(TYPE_SHIFT);
 
     export function minting(id: BNish) {
         return toHex(toBN(id).or(MINTING), 32);
@@ -42,10 +41,6 @@ export namespace PaymentReference {
 
     export function selfMint(address: string) {
         return toHex(toBN(address).or(SELF_MINT), 32);
-    }
-
-    export function addressOwnership(address: string) {
-        return toHex(toBN(address).or(ADDRESS_OWNERSHIP), 32);
     }
 
     export function isValid(reference: string | null): reference is string {

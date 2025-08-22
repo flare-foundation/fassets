@@ -2,7 +2,7 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface ICollateralPoolToken is IERC20 {
 

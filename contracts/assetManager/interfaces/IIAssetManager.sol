@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "../../diamond/interfaces/IDiamondCut.sol";
-import "../../governance/interfaces/IGoverned.sol";
-import "../../userInterfaces/IAssetManager.sol";
-import "./IWNat.sol";
-import "./IISettingsManagement.sol";
+import {IDiamondCut} from "../../diamond/interfaces/IDiamondCut.sol";
+import {IGoverned} from "../../governance/interfaces/IGoverned.sol";
+import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
+import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
+import {IISettingsManagement} from "./IISettingsManagement.sol";
+import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 /**
@@ -86,20 +88,10 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsMan
     function pauseMinting() external;
 
     /**
-     * If f-asset was not terminated yet, minting can continue.
+     * Minting can continue.
      * NOTE: may not be called directly - only through asset manager controller by governance.
      */
     function unpauseMinting() external;
-
-    /**
-     * When f-asset is terminated, no transfers can be made anymore.
-     * This is an extreme measure to be used only when the asset manager minting has been already paused
-     * for a long time but there still exist unredeemable f-assets. In such case, the f-asset contract is
-     * terminated and then agents can buy back the collateral at market rate (i.e. they burn market value
-     * of backed f-assets in collateral to release the rest of the collateral).
-     * NOTE: may not be called directly - only through asset manager controller by governance.
-     */
-    function terminate() external;
 
     /**
      * When agent vault, collateral pool or collateral pool token factory is upgraded, new agent vaults
@@ -136,7 +128,6 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsMan
         CollateralType.Class _collateralClass,
         IERC20 _token,
         uint256 _minCollateralRatioBIPS,
-        uint256 _ccbMinCollateralRatioBIPS,
         uint256 _safetyMinCollateralRatioBIPS
     ) external;
 
@@ -257,6 +248,13 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsMan
      * Used internally by agent vault.
      */
     function isLockedVaultToken(address _agentVault, IERC20 _token)
+        external view
+        returns (bool);
+
+    /**
+     * Check if `_token` is any of the vault collateral tokens (including already invalidated).
+     */
+    function isVaultCollateralToken(IERC20 _token)
         external view
         returns (bool);
 

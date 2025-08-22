@@ -3,11 +3,10 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
-import "../utils/EIP712.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {Counters} from "@openzeppelin/contracts/utils/Counters.sol";
+import {EIP712} from "../utils/EIP712.sol";
 
 /**
  * @dev Implementation of the ERC20 Permit extension allowing approvals to be made via signatures, as defined in
@@ -25,6 +24,9 @@ import "../utils/EIP712.sol";
  */
 abstract contract ERC20Permit is IERC20Permit, EIP712 {
     using Counters for Counters.Counter;
+
+    error ERC20PermitExpiredDeadline();
+    error ERC20PermitInvalidSignature();
 
     struct ERC20PermitState {
         mapping(address => Counters.Counter) nonces;
@@ -48,7 +50,7 @@ abstract contract ERC20Permit is IERC20Permit, EIP712 {
         bytes32 r,
         bytes32 s
     ) public virtual override {
-        require(block.timestamp <= deadline, "ERC20Permit: expired deadline");
+        require(block.timestamp <= deadline, ERC20PermitExpiredDeadline());
 
         bytes32 structHash =
             keccak256(abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline));
@@ -56,7 +58,7 @@ abstract contract ERC20Permit is IERC20Permit, EIP712 {
         bytes32 hash = _hashTypedDataV4(structHash);
 
         address signer = ECDSA.recover(hash, v, r, s);
-        require(signer == owner, "ERC20Permit: invalid signature");
+        require(signer == owner, ERC20PermitInvalidSignature());
 
         _approve(owner, spender, value);
     }

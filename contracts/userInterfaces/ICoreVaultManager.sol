@@ -1,12 +1,31 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 
 /**
  * Core vault manager
  */
 interface ICoreVaultManager {
+
+    error InvalidAddress();
+    error InvalidChain();
+    error InvalidAmount();
+    error PaymentFailed();
+    error PaymentNotProven();
+    error NotCoreVault();
+    error AmountZero();
+    error DestinationNotAllowed();
+    error RequestExists();
+    error InsufficientFunds();
+    error NotFound();
+    error NotAuthorized();
+    error FeeZero();
+    error InvalidEndTime();
+    error InvalidPreimageHash();
+    error EscrowAlreadyFinished();
+    error OnlyAssetManager();
+    error ContractPaused();
 
     // Structs
     struct Escrow {
@@ -66,6 +85,10 @@ interface ICoreVaultManager {
         bytes32 paymentReference,
         uint256 amount
     );
+
+    event EscrowExpired(
+        bytes32 indexed preimageHash,
+        uint256 amount);
 
     event NotAllEscrowsProcessed();
 

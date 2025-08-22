@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "./Globals.sol";
+import {Globals} from "./Globals.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 
 
 library SettingsUpdater {
+    error TooCloseToPreviousUpdate();
+
     struct UpdaterState {
         mapping (bytes32 => uint256) lastUpdate;
     }
@@ -20,7 +23,7 @@ library SettingsUpdater {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 lastUpdate = _state.lastUpdate[_action];
         require(lastUpdate == 0 || block.timestamp >= lastUpdate + settings.minUpdateRepeatTimeSeconds,
-            "too close to previous update");
+            TooCloseToPreviousUpdate());
         _state.lastUpdate[_action] = block.timestamp;
     }
 

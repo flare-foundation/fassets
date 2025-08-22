@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../userInterfaces/IAssetManagerEvents.sol";
-import "../library/data/AssetManagerState.sol";
-import "../library/Globals.sol";
-import "./AssetManagerBase.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {Globals} from "../library/Globals.sol";
+import {AssetManagerState} from "../library/data/AssetManagerState.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 
 
 contract EmergencyPauseFacet is AssetManagerBase, IAssetManagerEvents {
     using SafeCast for uint256;
+
+    error PausedByGovernance();
 
     function emergencyPause(bool _byGovernance, uint256 _duration)
         external
@@ -23,7 +26,7 @@ contract EmergencyPauseFacet is AssetManagerBase, IAssetManagerEvents {
             state.emergencyPausedByGovernance = true;
         } else {
             if (pausedAtStart && state.emergencyPausedByGovernance) {
-                revert("paused by governance");
+                revert PausedByGovernance();
             }
             AssetManagerSettings.Data storage settings = Globals.getSettings();
             if (state.emergencyPausedUntil + settings.emergencyPauseDurationResetAfterSeconds <= block.timestamp) {

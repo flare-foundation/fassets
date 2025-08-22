@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 
 /**
@@ -12,8 +11,10 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
  * @dev Store value history by block number with detachable state.
  **/
 library CheckPointHistory {
-    using SafeMath for uint256;
     using SafeCast for uint256;
+
+    error ValueDoesNotFitInOneNineTwoBits();
+    error CheckPointHistoryReadingFromCleanedupBlock();
 
     /**
      * @dev `CheckPoint` is the structure that attaches a block number to a
@@ -55,13 +56,13 @@ library CheckPointHistory {
     {
         // Binary search of the value by given block number in the array
         uint256 min = _startIndex;
-        uint256 max = _endIndex.sub(1);
+        uint256 max = _endIndex - 1;
         while (max > min) {
-            uint256 mid = (max.add(min).add(1)).div(2);
+            uint256 mid = (max + min + 1) / 2;
             if (_checkpoints[mid].fromBlock <= _blockNumber) {
                 min = mid;
             } else {
-                max = mid.sub(1);
+                max = mid - 1;
             }
         }
         return min;
@@ -95,7 +96,7 @@ library CheckPointHistory {
         uint256 startIndex = _self.startIndex;
         if (_blockNumber < _self.checkpoints[startIndex].fromBlock) {
             // reading data before `startIndex` is only safe before first cleanup
-            require(startIndex == 0, "CheckPointHistory: reading from cleaned-up block");
+            require(startIndex == 0, CheckPointHistoryReadingFromCleanedupBlock());
             return 0;
         }
 
@@ -172,7 +173,7 @@ library CheckPointHistory {
         if (length == 0) return 0;
         uint256 startIndex = _self.startIndex;
         // length - 1 is safe, since length != 0 (check above)
-        uint256 endIndex = Math.min(startIndex.add(_count), length - 1);    // last element can never be deleted
+        uint256 endIndex = Math.min(startIndex + _count, length - 1);    // last element can never be deleted
         uint256 index = startIndex;
         // we can delete `checkpoint[index]` while the next checkpoint is at `_cleanupBlockNumber` or before
         while (index < endIndex && _self.checkpoints[index + 1].fromBlock <= _cleanupBlockNumber) {
@@ -187,7 +188,7 @@ library CheckPointHistory {
 
     // SafeCast lib is missing cast to uint192
     function _toUint192(uint256 _value) internal pure returns (uint192) {
-        require(_value < 2**192, "value doesn't fit in 192 bits");
+        require(_value < 2**192, ValueDoesNotFitInOneNineTwoBits());
         return uint192(_value);
     }
 }

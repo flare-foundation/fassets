@@ -6,5 +6,4 @@ export interface ChainInfo {
     assetSymbol: string;
     decimals: number;
     amgDecimals: number;
-    requireEOAProof: boolean;
 }

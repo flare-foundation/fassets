@@ -1,7 +1,7 @@
 import { signTypedMessage } from 'eth-sig-util';
 import { objectMap } from '../../../lib/utils/helpers';
 import { EIP712DomainMockInstance } from '../../../typechain-truffle';
-import { getChainId } from '../../utils/contract-test-helpers';
+import { getChainId } from '../../../lib/test-utils/contract-test-helpers';
 import { domainSeparator, domainType, EIP712Domain, EIP712DomainType, getDomain, hashTypedData, hexStringToBuffer } from '../../../lib/utils/eip712';
 
 const EIP712Verifier = artifacts.require('EIP712DomainMock');

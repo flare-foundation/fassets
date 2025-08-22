@@ -1,17 +1,17 @@
 import { stopImpersonatingAccount } from "@nomicfoundation/hardhat-network-helpers";
-import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
-import { abiEncodeCall, BNish, erc165InterfaceId, toBN, toBNExp, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
-import { FAssetInstance } from "../../../../typechain-truffle";
-import { impersonateContract } from "../../../utils/contract-test-helpers";
-import { deterministicTimeIncrease, getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
-import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { impersonateContract } from "../../../../lib/test-utils/contract-test-helpers";
+import { expectRevert, time } from "../../../../lib/test-utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
+import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { Permit, signPermit } from "../../../../lib/utils/erc20permits";
+import { abiEncodeCall, BNish, erc165InterfaceId, MAX_UINT256, toBN, toBNExp, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
+import { FAssetInstance } from "../../../../typechain-truffle";
 
 const FAsset = artifacts.require('FAsset');
 const FAssetProxy = artifacts.require('FAssetProxy');
 const MockContract = artifacts.require('MockContract');
 
-contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async accounts => {
+contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, accounts => {
     const governance = accounts[10];
     let fAsset: FAssetInstance;
     let assetManager: string;
@@ -47,32 +47,18 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
 
         it('should not set asset manager if not governance', async function () {
             const promise = fAsset.setAssetManager(assetManager);
-            await expectRevert(promise, "only deployer")
+            await expectRevert.custom(promise, "OnlyDeployer", [])
         });
 
         it('should not set asset manager to zero address', async function () {
             const promise = fAsset.setAssetManager(ZERO_ADDRESS, { from: governance });
-            await expectRevert(promise, "zero asset manager")
+            await expectRevert.custom(promise, "ZeroAssetManager", [])
         });
 
         it('should not replace asset manager', async function () {
             await fAsset.setAssetManager(assetManager, { from: governance });
             const promise = fAsset.setAssetManager(assetManager, { from: governance });
-            await expectRevert(promise, "cannot replace asset manager")
-        });
-
-        it('should only be terminated by asset manager', async function () {
-            await fAsset.setAssetManager(assetManager, { from: governance });
-            const promise = fAsset.terminate({ from: governance });
-            await expectRevert(promise, "only asset manager");
-            assert.isFalse(await fAsset.terminated());
-            await fAsset.terminate({ from: assetManager });
-            assert.isTrue(await fAsset.terminated());
-            const terminatedAt = await fAsset.terminatedAt();
-            await deterministicTimeIncrease(100);
-            await fAsset.terminate({ from: assetManager });
-            const terminatedAt2 = await fAsset.terminatedAt();
-            assertWeb3Equal(terminatedAt, terminatedAt2);
+            await expectRevert.custom(promise, "CannotReplaceAssetManager", [])
         });
 
         it('should mint FAsset', async function () {
@@ -87,14 +73,14 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             await fAsset.setAssetManager(assetManager, { from: governance });
             const amount = 100;
             await fAsset.mint(accounts[1], amount, { from: assetManager });
-            await expectRevert(fAsset.transfer(accounts[1], amount, { from: accounts[1] }), "Cannot transfer to self");
+            await expectRevert.custom(fAsset.transfer(accounts[1], amount, { from: accounts[1] }), "CannotTransferToSelf", []);
         });
 
         it('only asset manager should be able to mint FAssets', async function () {
             await fAsset.setAssetManager(assetManager, { from: governance });
             const amount = 100;
-            let res = fAsset.mint(accounts[1], amount,{ from: accounts[5] });
-            await expectRevert(res, "only asset manager");
+            const res = fAsset.mint(accounts[1], amount,{ from: accounts[5] });
+            await expectRevert.custom(res, "OnlyAssetManager", []);
         });
 
         it('only asset manager should be able to burn FAssets', async function () {
@@ -102,8 +88,8 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             const mint_amount = 100;
             const burn_amount = 20;
             await fAsset.mint(accounts[1], mint_amount,{ from: assetManager });
-            let res = fAsset.burn(accounts[1], burn_amount,{ from: accounts[5] } );
-            await expectRevert(res, "only asset manager");
+            const res = fAsset.burn(accounts[1], burn_amount,{ from: accounts[5] } );
+            await expectRevert.custom(res, "OnlyAssetManager", []);
         });
 
         it('should burn FAsset', async function () {
@@ -122,32 +108,23 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             const burn_amount = 20;
             await fAsset.mint(accounts[1], mint_amount,{ from: assetManager });
             const res = fAsset.burn(accounts[1], burn_amount,{ from: assetManager } );
-            await expectRevert(res, "f-asset balance too low");
-        });
-
-        it('should not be able to transfer if terminated', async function () {
-            await fAsset.setAssetManager(assetManager, { from: governance });
-            const mint_amount = 100;
-            await fAsset.mint(accounts[1], mint_amount,{ from: assetManager });
-            await fAsset.terminate({ from: assetManager });
-            const res = fAsset.transfer(accounts[2], 50, { from: accounts[1]});
-            await expectRevert(res, "f-asset terminated");
+            await expectRevert.custom(res, "FAssetBalanceTooLow", []);
         });
     });
 
-    describe("history cleanup", async function() {
+    describe("history cleanup", function() {
         beforeEach(async () => {
             await fAsset.setAssetManager(assetManager, { from: governance });
             await fAsset.setCleanupBlockNumberManager(accounts[8], { from: assetManager });
         });
 
         it("some methods may only be cleaned by asset manager", async () => {
-            await expectRevert(fAsset.setCleanerContract(accounts[8]), "only asset manager");
-            await expectRevert(fAsset.setCleanupBlockNumberManager(accounts[8]), "only asset manager");
+            await expectRevert.custom(fAsset.setCleanerContract(accounts[8]), "OnlyAssetManager", []);
+            await expectRevert.custom(fAsset.setCleanupBlockNumberManager(accounts[8]), "OnlyAssetManager", []);
         });
 
         it("cleanup block number may only be called by the cleanup block number manager", async () => {
-            await expectRevert(fAsset.setCleanupBlockNumber(5), "only cleanup block manager");
+            await expectRevert.custom(fAsset.setCleanupBlockNumber(5), "OnlyCleanupBlockManager", []);
         });
 
         it("calling history cleanup methods directly is forbidden", async () => {
@@ -159,8 +136,8 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             // Act
             await fAsset.setCleanupBlockNumber(blk2, { from: accounts[8] });
             // Assert
-            await expectRevert(fAsset.totalSupplyHistoryCleanup(1), "Only cleaner contract");
-            await expectRevert(fAsset.balanceHistoryCleanup(accounts[1], 1), "Only cleaner contract");
+            await expectRevert.custom(fAsset.totalSupplyHistoryCleanup(1), "OnlyCleanerContract", []);
+            await expectRevert.custom(fAsset.balanceHistoryCleanup(accounts[1], 1), "OnlyCleanerContract", []);
         });
 
         it("cleaning empty history is a no-op", async () => {
@@ -218,8 +195,8 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             await fAsset.setCleanerContract(accounts[5], { from: assetManager });
             await fAsset.setCleanupBlockNumber(blk2, { from: accounts[8] });
             // Assert
-            await expectRevert(fAsset.totalSupplyAt(blk1), "CheckPointable: reading from cleaned-up block");
-            await expectRevert(fAsset.balanceOfAt(accounts[1], blk1), "CheckPointable: reading from cleaned-up block");
+            await expectRevert.custom(fAsset.totalSupplyAt(blk1), "CheckPointableReadingFromCleanedupBlock", []);
+            await expectRevert.custom(fAsset.balanceOfAt(accounts[1], blk1), "CheckPointableReadingFromCleanedupBlock", []);
         });
 
         it("cleanup block number must be in correct range", async () => {
@@ -233,9 +210,9 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             await fAsset.setCleanerContract(accounts[5], { from: assetManager });
             await fAsset.setCleanupBlockNumber(blk2, { from: accounts[8] });
             // Assert
-            await expectRevert(fAsset.setCleanupBlockNumber(blk1, { from: accounts[8] }), "Cleanup block number must never decrease");
+            await expectRevert.custom(fAsset.setCleanupBlockNumber(blk1, { from: accounts[8] }), "CleanupBlockNumberMustNeverDecrease", []);
             const lastBlock = await time.latestBlock();
-            await expectRevert(fAsset.setCleanupBlockNumber(lastBlock.addn(1), { from: accounts[8] }), "Cleanup block must be in the past");
+            await expectRevert.custom(fAsset.setCleanupBlockNumber(lastBlock.addn(1), { from: accounts[8] }), "CleanupBlockMustBeInThePast", []);
         });
 
         it("values at cleanup block are still available after cleanup", async () => {
@@ -339,17 +316,17 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             // upgrade
             const newFAssetImpl = await FAsset.new();
             const callData = abiEncodeCall(fAsset, f => f.initialize("FXRP", "FXRP", "XRP", "XRP", 6));
-            await expectRevert(fAssetProxy.upgradeToAndCall(newFAssetImpl.address, callData, { from: assetManager }),
-                "already initialized");
+            await expectRevert.custom(fAssetProxy.upgradeToAndCall(newFAssetImpl.address, callData, { from: assetManager }),
+                "AlreadyInitialized", []);
         });
 
         it("only asset manager can upgrade", async () => {
             const fAssetProxy = await FAsset.at(fAsset.address);
             // upgrade
             const newFAssetImpl = await FAsset.new();
-            await expectRevert(fAssetProxy.upgradeTo(newFAssetImpl.address), "only asset manager");
+            await expectRevert.custom(fAssetProxy.upgradeTo(newFAssetImpl.address), "OnlyAssetManager", []);
             const callData = abiEncodeCall(fAsset, f => f.mint(accounts[18], 1234));
-            await expectRevert(fAssetProxy.upgradeToAndCall(newFAssetImpl.address, callData), "only asset manager");
+            await expectRevert.custom(fAssetProxy.upgradeToAndCall(newFAssetImpl.address, callData), "OnlyAssetManager", []);
         });
     });
 
@@ -358,7 +335,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
         const spender = accounts[5];
         const target = accounts[6];
 
-        async function createPermit(owner: string, spender: string, value: BNish, deadline: BNish = constants.MAX_UINT256): Promise<Permit> {
+        async function createPermit(owner: string, spender: string, value: BNish, deadline: BNish = MAX_UINT256): Promise<Permit> {
             const nonce = await fAsset.nonces(owner);
             return { owner, spender, value: toBN(value), nonce, deadline: toBN(deadline) };
         }
@@ -390,13 +367,13 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             // quick permit execution works
             const deadline1 = (await time.latest()).addn(1000);
             const permit1 = await createPermit(wallet.address, spender, 500, deadline1);
-            await deterministicTimeIncrease(500);
+            await time.deterministicIncrease(500);
             await signAndExecutePermit(wallet.privateKey, permit1);
             // but going over deadline fails
             const deadline2 = (await time.latest()).addn(1000);
             const permit2 = await createPermit(wallet.address, spender, 500, deadline2);
-            await deterministicTimeIncrease(1001);
-            await expectRevert(signAndExecutePermit(wallet.privateKey, permit2), "ERC20Permit: expired deadline");
+            await time.deterministicIncrease(1001);
+            await expectRevert.custom(signAndExecutePermit(wallet.privateKey, permit2), "ERC20PermitExpiredDeadline", []);
         });
 
         it("should not execute same permit twice", async () => {
@@ -406,7 +383,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             await signAndExecutePermit(wallet.privateKey, permit);
             await fAsset.transferFrom(wallet.address, target, 500, { from: spender });
             // trying again should fail
-            await expectRevert(signAndExecutePermit(wallet.privateKey, permit), "ERC20Permit: invalid signature");
+            await expectRevert.custom(signAndExecutePermit(wallet.privateKey, permit), "ERC20PermitInvalidSignature", []);
         });
     });
 
@@ -416,7 +393,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             const IERC20 = artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20" as "IERC20");
             const IERC20Metadata = artifacts.require("@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol:IERC20Metadata" as "IERC20Metadata");
             const IICleanable = artifacts.require("@flarenetwork/flare-periphery-contracts/flare/token/interfaces/IICleanable.sol:IICleanable" as "IICleanable");
-            const ICheckPointable = artifacts.require("ICheckPointable");
+            const IICheckPointable = artifacts.require("IICheckPointable");
             const IFasset = artifacts.require("IFAsset");
             const IIFasset = artifacts.require("IIFAsset");
             //
@@ -425,7 +402,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             const iERC20Metadata = await IERC20Metadata.at(fAsset.address);
             const iFasset = await IFasset.at(fAsset.address);
             const iiFasset = await IIFasset.at(fAsset.address);
-            const iCheckPointable = await ICheckPointable.at(fAsset.address);
+            const iCheckPointable = await IICheckPointable.at(fAsset.address);
             const iiCleanable = await IICleanable.at(fAsset.address);
             //
             assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iERC165.abi)));

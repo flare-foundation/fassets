@@ -1,10 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
+import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 
 
 interface IGoverned {
+
+    error OnlyExecutor();
+    error OnlyGovernance();
+    error TimelockInvalidSelector();
+    error TimelockNotAllowedYet();
+    error AlreadyInProductionMode();
+    error GovernedAlreadyInitialized();
+    error GovernedAddressZero();
+
     /**
      * Governance call was timelocked. It can be executed after `allowedAfterTimestamp` by one of the executors.
      * @param encodedCall ABI encoded call data, to be used in executeGovernanceCall

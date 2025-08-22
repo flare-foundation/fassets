@@ -12,7 +12,7 @@ import { web3DeepNormalize, web3Normalize } from "../utils/web3normalize";
 import { CollateralList, isPoolCollateral } from "./CollateralIndexedList";
 import { Prices } from "./Prices";
 import { tokenContract } from "./TokenPrice";
-import { ExtendedAgentInfo, InitialAgentData, TrackedAgentState } from "./TrackedAgentState";
+import { InitialAgentData, TrackedAgentState } from "./TrackedAgentState";
 
 export class TrackedCoreVaultState {
     // confirmed balance by CoreVaultManager
@@ -110,13 +110,13 @@ export class TrackedState {
         // track setting changes
         this.assetManagerEvent('SettingChanged').subscribe(args => {
             if (!(args.name in this.settings)) assert.fail(`Invalid setting change ${args.name}`);
-            this.logger?.log(`SETTING CHANGED ${args.name} FROM ${(this.settings as any)[args.name]} TO ${args.value}`);
-            (this.settings as any)[args.name] = web3Normalize(args.value);
+            this.logger?.log(`SETTING CHANGED ${args.name} FROM ${(this.settings as Record<string, unknown>)[args.name]} TO ${args.value}`);
+            (this.settings as Record<string, unknown>)[args.name] = web3Normalize(args.value);
         });
         this.assetManagerEvent('SettingArrayChanged').subscribe(args => {
             if (!(args.name in this.settings)) assert.fail(`Invalid setting array change ${args.name}`);
-            this.logger?.log(`SETTING ARRAY CHANGED ${args.name} FROM ${stringifyJson((this.settings as any)[args.name])} TO ${stringifyJson(args.value)}`);
-            (this.settings as any)[args.name] = web3DeepNormalize(args.value);
+            this.logger?.log(`SETTING ARRAY CHANGED ${args.name} FROM ${stringifyJson((this.settings as Record<string, unknown>)[args.name])} TO ${stringifyJson(args.value)}`);
+            (this.settings as Record<string, unknown>)[args.name] = web3DeepNormalize(args.value);
         });
         // track collateral token changes
         this.assetManagerEvent('CollateralTypeAdded').subscribe(args => {
@@ -125,7 +125,6 @@ export class TrackedState {
         this.assetManagerEvent('CollateralRatiosChanged').subscribe(args => {
             const collateral = this.collaterals.get(args.collateralClass, args.collateralToken);
             collateral.minCollateralRatioBIPS = toBN(args.minCollateralRatioBIPS);
-            collateral.ccbMinCollateralRatioBIPS = toBN(args.ccbMinCollateralRatioBIPS);
             collateral.safetyMinCollateralRatioBIPS = toBN(args.safetyMinCollateralRatioBIPS);
         });
         this.assetManagerEvent('CollateralTypeDeprecated').subscribe(args => {
@@ -133,6 +132,7 @@ export class TrackedState {
             collateral.validUntil = toBN(args.validUntil);
         });
         // track price changes
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
         this.truffleEvents.event(this.context.priceStore, 'PricesPublished').immediate().subscribe(async args => {
             const [prices, trustedPrices] = await this.getPrices();
             this.logger?.log(`PRICES CHANGED  ftso=${this.prices}->${prices}  trusted=${this.trustedPrices}->${trustedPrices}`);
@@ -176,7 +176,6 @@ export class TrackedState {
         this.assetManagerEvent('AgentVaultCreated').subscribe(args => this.createAgentVault(args));
         this.assetManagerEvent('AgentDestroyed').subscribe(args => this.destroyAgent(args.agentVault));
         // status changes
-        this.assetManagerEvent('AgentInCCB').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleStatusChange(AgentStatus.CCB, args.timestamp));
         this.assetManagerEvent('LiquidationStarted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleStatusChange(AgentStatus.LIQUIDATION, args.timestamp));
         this.assetManagerEvent('FullLiquidationStarted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleStatusChange(AgentStatus.FULL_LIQUIDATION, args.timestamp));
         this.assetManagerEvent('LiquidationEnded').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleStatusChange(AgentStatus.NORMAL));
@@ -233,7 +232,6 @@ export class TrackedState {
             assetFtsoSymbol: data.assetFtsoSymbol,
             tokenFtsoSymbol: data.tokenFtsoSymbol,
             minCollateralRatioBIPS: toBN(data.minCollateralRatioBIPS),
-            ccbMinCollateralRatioBIPS: toBN(data.ccbMinCollateralRatioBIPS),
             safetyMinCollateralRatioBIPS: toBN(data.safetyMinCollateralRatioBIPS),
         };
         this.collaterals.add(collateral);
@@ -264,7 +262,7 @@ export class TrackedState {
     }
 
     async createAgentVaultWithCurrentState(address: string) {
-        const agentInfo = await this.getExtendedAgentInfo(address);
+        const agentInfo = await this.context.assetManager.getAgentInfo(address);
         const agent = this.createAgentVault({
             agentVault: address,
             owner: agentInfo.ownerManagementAddress,
@@ -280,9 +278,7 @@ export class TrackedState {
                 mintingPoolCollateralRatioBIPS: agentInfo.mintingPoolCollateralRatioBIPS,
                 buyFAssetByAgentFactorBIPS: agentInfo.buyFAssetByAgentFactorBIPS,
                 poolExitCollateralRatioBIPS: agentInfo.poolExitCollateralRatioBIPS,
-                poolTopupCollateralRatioBIPS: agentInfo.poolTopupCollateralRatioBIPS,
-                poolTopupTokenPriceFactorBIPS: agentInfo.poolTopupTokenPriceFactorBIPS,
-                handshakeType: agentInfo.handshakeType,
+                redemptionPoolFeeShareBIPS: agentInfo.redemptionPoolFeeShareBIPS,
             }
         });
         agent.initializeState(agentInfo);
@@ -310,13 +306,6 @@ export class TrackedState {
     }
 
     // helpers
-
-    async getExtendedAgentInfo(vaultAddress: string): Promise<ExtendedAgentInfo> {
-        return {
-            ...await this.context.assetManager.getAgentInfo(vaultAddress),
-            redemptionPoolFeeShareBIPS: await this.context.assetManager.getAgentSetting(vaultAddress, "redemptionPoolFeeShareBIPS"),
-        }
-    }
 
     assetManagerEvent<N extends AssetManagerEvents['name']>(event: N, filter?: Partial<ExtractedEventArgs<AssetManagerEvents, N>>) {
         const emitter = this.truffleEvents.event(this.context.assetManager, event, filter).immediate();

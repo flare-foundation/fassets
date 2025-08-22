@@ -16,10 +16,6 @@ import { ILogger } from "../utils/logging";
 import { Prices } from "./Prices";
 import { TrackedState } from "./TrackedState";
 
-export interface ExtendedAgentInfo extends AgentInfo {
-    redemptionPoolFeeShareBIPS: BN;
-}
-
 const MAX_UINT256 = toBN(1).shln(256).subn(1);
 
 export type InitialAgentData = EventArgs<AgentVaultCreated>;
@@ -38,14 +34,11 @@ export class TrackedAgentState {
         this.poolWNatCollateral = parent.collaterals.get(CollateralClass.POOL, data.creationData.poolWNatToken);
         this.feeBIPS = toBN(data.creationData.feeBIPS);
         this.poolFeeShareBIPS = toBN(data.creationData.poolFeeShareBIPS);
-        this.redemptionPoolFeeShareBIPS = BN_ZERO;  // always zero initially
+        this.redemptionPoolFeeShareBIPS = toBN(data.creationData.redemptionPoolFeeShareBIPS);
         this.mintingVaultCollateralRatioBIPS = toBN(data.creationData.mintingVaultCollateralRatioBIPS);
         this.mintingPoolCollateralRatioBIPS = toBN(data.creationData.mintingPoolCollateralRatioBIPS);
         this.buyFAssetByAgentFactorBIPS = toBN(data.creationData.buyFAssetByAgentFactorBIPS);
         this.poolExitCollateralRatioBIPS = toBN(data.creationData.poolExitCollateralRatioBIPS);
-        this.poolTopupCollateralRatioBIPS = toBN(data.creationData.poolTopupCollateralRatioBIPS);
-        this.poolTopupTokenPriceFactorBIPS = toBN(data.creationData.poolTopupTokenPriceFactorBIPS);
-        this.handshakeType = toBN(data.creationData.handshakeType);
     }
 
     // identifying addresses
@@ -65,9 +58,6 @@ export class TrackedAgentState {
     mintingPoolCollateralRatioBIPS: BN;
     buyFAssetByAgentFactorBIPS: BN;
     poolExitCollateralRatioBIPS: BN;
-    poolTopupCollateralRatioBIPS: BN;
-    poolTopupTokenPriceFactorBIPS: BN;
-    handshakeType: BN;
 
     // status
     status: AgentStatus = AgentStatus.NORMAL;
@@ -76,7 +66,6 @@ export class TrackedAgentState {
     // state
     totalVaultCollateralWei: BN = BN_ZERO;
     totalPoolCollateralNATWei: BN = BN_ZERO;
-    ccbStartTimestamp: BN = BN_ZERO;                // 0 - not in ccb/liquidation
     liquidationStartTimestamp: BN = BN_ZERO;        // 0 - not in liquidation
     announcedUnderlyingWithdrawalId: BN = BN_ZERO;  // 0 - not announced
     coreVaultReturnReservedUBA: BN = BN_ZERO;
@@ -95,8 +84,7 @@ export class TrackedAgentState {
     // calculated getters
 
     get requiredUnderlyingBalanceUBA() {
-        const backedUBA = this.mintedUBA.add(this.redeemingUBA);
-        return backedUBA.mul(toBN(this.parent.settings.minUnderlyingBackingBIPS)).divn(MAX_BIPS);
+        return this.mintedUBA.add(this.redeemingUBA);
     }
 
     get freeUnderlyingBalanceUBA() {
@@ -105,13 +93,12 @@ export class TrackedAgentState {
 
     // init
 
-    initializeState(agentInfo: ExtendedAgentInfo) {
+    initializeState(agentInfo: AgentInfo) {
         this.status = Number(agentInfo.status);
         this.publiclyAvailable = agentInfo.publiclyAvailable;
         this.redemptionPoolFeeShareBIPS = toBN(agentInfo.redemptionPoolFeeShareBIPS);
         this.totalVaultCollateralWei = toBN(agentInfo.totalVaultCollateralWei);
         this.totalPoolCollateralNATWei = toBN(agentInfo.totalPoolCollateralNATWei);
-        this.ccbStartTimestamp = toBN(agentInfo.ccbStartTimestamp);
         this.liquidationStartTimestamp = toBN(agentInfo.liquidationStartTimestamp);
         this.announcedUnderlyingWithdrawalId = toBN(agentInfo.announcedUnderlyingWithdrawalId);
         this.reservedUBA = toBN(agentInfo.reservedUBA);
@@ -136,7 +123,7 @@ export class TrackedAgentState {
 
     handleSettingChanged(name: string, value: BNish) {
         const settings = ["feeBIPS", "poolFeeShareBIPS", "redemptionPoolFeeShareBIPS", "mintingVaultCollateralRatioBIPS", "mintingPoolCollateralRatioBIPS",
-            "buyFAssetByAgentFactorBIPS", "poolExitCollateralRatioBIPS", "poolTopupCollateralRatioBIPS", "poolTopupTokenPriceFactorBIPS", "handshakeType"];
+            "buyFAssetByAgentFactorBIPS", "poolExitCollateralRatioBIPS"];
         if (!settings.includes(name)) return;
         this[name as AgentSetting] = toBN(value);
     }
@@ -260,10 +247,7 @@ export class TrackedAgentState {
     // handlers: status
 
     handleStatusChange(status: AgentStatus, timestamp?: BN): void {
-        if (timestamp && this.status === AgentStatus.NORMAL && status === AgentStatus.CCB) {
-            this.ccbStartTimestamp = timestamp;
-        }
-        if (timestamp && (this.status === AgentStatus.NORMAL || this.status === AgentStatus.CCB) && (status === AgentStatus.LIQUIDATION || status === AgentStatus.FULL_LIQUIDATION)) {
+        if (timestamp && this.status === AgentStatus.NORMAL && (status === AgentStatus.LIQUIDATION || status === AgentStatus.FULL_LIQUIDATION)) {
             this.liquidationStartTimestamp = timestamp;
         }
         this.status = status;
@@ -381,19 +365,10 @@ export class TrackedAgentState {
         return maxBN(ratio, ratioFromTrusted);
     }
 
-    private possibleLiquidationTransitionForCollateral(collateral: CollateralType, timestamp: BN) {
+    private possibleLiquidationTransitionForCollateral(collateral: CollateralType) {
         const cr = this.collateralRatioBIPS(collateral);
-        const settings = this.parent.settings;
         if (this.status === AgentStatus.NORMAL) {
-            if (cr.lt(toBN(collateral.ccbMinCollateralRatioBIPS))) {
-                return AgentStatus.LIQUIDATION;
-            } else if (cr.lt(toBN(collateral.minCollateralRatioBIPS))) {
-                return AgentStatus.CCB;
-            }
-        } else if (this.status === AgentStatus.CCB) {
-            if (cr.gte(toBN(collateral.minCollateralRatioBIPS))) {
-                return AgentStatus.NORMAL;
-            } else if (cr.lt(toBN(collateral.ccbMinCollateralRatioBIPS)) || timestamp.gte(this.ccbStartTimestamp.add(toBN(settings.ccbTimeSeconds)))) {
+            if (cr.lt(toBN(collateral.minCollateralRatioBIPS))) {
                 return AgentStatus.LIQUIDATION;
             }
         } else if (this.status === AgentStatus.LIQUIDATION) {
@@ -404,9 +379,9 @@ export class TrackedAgentState {
         return this.status;
     }
 
-    possibleLiquidationTransition(timestamp: BN) {
-        const vaultCollateralTransition = this.possibleLiquidationTransitionForCollateral(this.vaultCollateral, timestamp);
-        const poolTransition = this.possibleLiquidationTransitionForCollateral(this.poolWNatCollateral, timestamp);
+    possibleLiquidationTransition() {
+        const vaultCollateralTransition = this.possibleLiquidationTransitionForCollateral(this.vaultCollateral);
+        const poolTransition = this.possibleLiquidationTransitionForCollateral(this.poolWNatCollateral);
         // return the higher status (more severe)
         return vaultCollateralTransition >= poolTransition ? vaultCollateralTransition : poolTransition;
     }

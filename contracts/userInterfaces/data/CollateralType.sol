@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 library CollateralType {
@@ -44,11 +44,6 @@ library CollateralType {
 
         // Minimum collateral ratio for healthy agents.
         uint256 minCollateralRatioBIPS;
-
-        // Minimum collateral ratio for agent in CCB (Collateral call band).
-        // If the agent's collateral ratio is less than this, skip the CCB and go straight to liquidation.
-        // A bit smaller than minCollateralRatioBIPS.
-        uint256 ccbMinCollateralRatioBIPS;
 
         // Minimum collateral ratio required to get agent out of liquidation.
         // Will always be greater than minCollateralRatioBIPS.

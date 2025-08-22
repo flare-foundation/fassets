@@ -51,6 +51,9 @@
         "$schema": {
             "type": "string"
         },
+        "deleteAllOldMethods": {
+            "type": "boolean"
+        },
         "deleteMethods": {
             "items": {
                 "type": "string"

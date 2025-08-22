@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "../library/StateUpdater.sol";
-import "./AssetManagerBase.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 
 
 contract SystemStateManagementFacet is AssetManagerBase {
+    using SafeCast for uint256;
+
     /**
      * When `attached` is true, asset manager has been added to the asset manager controller.
      * Even though the asset manager controller address is set at the construction time, the manager may not
@@ -33,32 +36,21 @@ contract SystemStateManagementFacet is AssetManagerBase {
         external
         onlyAssetManagerController
     {
-        StateUpdater.pauseMinting();
+        AssetManagerState.State storage state = AssetManagerState.get();
+        if (state.mintingPausedAt == 0) {
+            state.mintingPausedAt = block.timestamp.toUint64();
+        }
     }
 
     /**
-     * If f-asset was not terminated yet, minting can continue.
+     * Minting can continue.
      * NOTE: may not be called directly - only through asset manager controller by governance.
      */
     function unpauseMinting()
         external
         onlyAssetManagerController
     {
-        StateUpdater.unpauseMinting();
-    }
-
-    /**
-     * When f-asset is terminated, no transfers can be made anymore.
-     * This is an extreme measure to be used only when the asset manager minting has been already paused
-     * for a long time but there still exist unredeemable f-assets. In such case, the f-asset contract is
-     * terminated and then agents can buy back the collateral at market rate (i.e. they burn market value
-     * of backed f-assets in collateral to release the rest of the collateral).
-     * NOTE: may not be called directly - only through asset manager controller by governance.
-     */
-    function terminate()
-        external
-        onlyAssetManagerController
-    {
-        StateUpdater.terminate();
+        AssetManagerState.State storage state = AssetManagerState.get();
+        state.mintingPausedAt = 0;
     }
 }

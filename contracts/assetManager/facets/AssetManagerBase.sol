@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "../../userInterfaces/IWhitelist.sol";
-import "../library/data/AssetManagerState.sol";
-import "../library/Globals.sol";
-import "../library/Agents.sol";
+import {Agents} from "../library/Agents.sol";
+import {Globals} from "../library/Globals.sol";
+import {AssetManagerState} from "../library/data/AssetManagerState.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 
 
 abstract contract AssetManagerBase {
+    error OnlyAssetManagerController();
+    error NotAttached();
+    error NotWhitelisted();
+    error EmergencyPauseActive();
+
     modifier onlyAssetManagerController {
         _checkOnlyAssetManagerController();
         _;
@@ -15,11 +20,6 @@ abstract contract AssetManagerBase {
 
     modifier onlyAttached {
         _checkOnlyAttached();
-        _;
-    }
-
-    modifier onlyWhitelistedSender {
-        _checkOnlyWhitelistedSender();
         _;
     }
 
@@ -35,22 +35,15 @@ abstract contract AssetManagerBase {
 
     function _checkOnlyAssetManagerController() private view {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        require(msg.sender == settings.assetManagerController, "only asset manager controller");
+        require(msg.sender == settings.assetManagerController, OnlyAssetManagerController());
     }
 
     function _checkOnlyAttached() private view {
-        require(AssetManagerState.get().attached, "not attached");
-    }
-
-    function _checkOnlyWhitelistedSender() private view {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        if (settings.whitelist != address(0)) {
-            require(IWhitelist(settings.whitelist).isWhitelisted(msg.sender), "not whitelisted");
-        }
+        require(AssetManagerState.get().attached, NotAttached());
     }
 
     function _checkEmergencyPauseNotActive() private view {
         AssetManagerState.State storage state = AssetManagerState.get();
-        require(state.emergencyPausedUntil <= block.timestamp, "emergency pause active");
+        require(state.emergencyPausedUntil <= block.timestamp, EmergencyPauseActive());
     }
 }

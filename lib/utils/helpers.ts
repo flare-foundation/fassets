@@ -8,9 +8,15 @@ export type Nullable<T> = T | null | undefined;
 
 export type Dict<T> = { [key: string]: T };
 
+export type AnyFunction<R = any> = (...args: any[]) => R;       // eslint-disable-line @typescript-eslint/no-explicit-any
+
+export type ConstructorFor<T> = { new(...args: any[]): T };    // eslint-disable-line @typescript-eslint/no-explicit-any
+
 export const BN_ZERO = Web3.utils.toBN(0);
 export const BN_ONE = Web3.utils.toBN(1);
 export const BN_TEN = Web3.utils.toBN(10);
+
+export const MAX_UINT256 = BN_ONE.shln(256).sub(BN_ONE);
 
 export const MAX_BIPS = 10_000;
 
@@ -18,6 +24,7 @@ export const MINUTES = 60;
 export const HOURS = 60 * MINUTES;
 export const DAYS = 24 * HOURS;
 export const WEEKS = 7 * DAYS;
+export const YEARS = 365 * DAYS;
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 export const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
@@ -68,7 +75,7 @@ export function isNotNull<T>(x: T): x is NonNullable<T> {
  * Returns guaranteed non-null value.
  */
 export function requireNotNull<T>(x: T, errorMessage?: string): NonNullable<T> {
-    if (x != null) return x as NonNullable<T>;
+    if (x != null) return x;
     throw new Error(errorMessage ?? "Value is null or undefined");
 }
 
@@ -77,7 +84,7 @@ export function requireNotNull<T>(x: T, errorMessage?: string): NonNullable<T> {
  * @param x number expressed in any reasonable type
  * @returns same number as BN
  */
-export function toBN(x: BN | number | string): BN {
+export function toBN(x: BNish): BN {
     if (BN.isBN(x)) return x;
     return Web3.utils.toBN(x);
 }
@@ -87,7 +94,7 @@ export function toBN(x: BN | number | string): BN {
  * @param x number expressed in any reasonable type
  * @returns same number as Number
  */
-export function toNumber(x: BN | number | string) {
+export function toNumber(x: BNish) {
     if (typeof x === 'number') return x;
     return Number(x);
 }
@@ -126,7 +133,7 @@ export function toWei(amount: number | string) {
  * Format large number in more readable format, using 'fixed-exponential' format, with 'e+18' suffix for very large numbers.
  * (This makes them easy to visually detect bigger/smaller numbers.)
  */
-export function formatBN(x: BN | string | number, maxDecimals: number = 3) {
+export function formatBN(x: BNish, maxDecimals: number = 3) {
     const xs = x.toString();
     if (xs.length >= 18) {
         const decpos = xs.length - 18;
@@ -171,7 +178,7 @@ export function mulDecimal(a: BN, b: number) {
 /**
  * Convert value to hex with 0x prefix and optional padding.
  */
-export function toHex(x: string | number | BN, padToBytes?: number) {
+export function toHex(x: BNish, padToBytes?: number) {
     if (padToBytes && padToBytes > 0) {
         return Web3.utils.leftPad(Web3.utils.toHex(x), padToBytes * 2);
     }
@@ -188,7 +195,7 @@ export function randomAddress() {
 /**
  * Convert object to subclass with type check.
  */
-export function checkedCast<S, T extends S>(obj: S, cls: new (...args: any[]) => T): T {
+export function checkedCast<S, T extends S>(obj: S, cls: ConstructorFor<T>): T {
     if (obj instanceof cls) return obj;
     throw new Error(`object not instance of ${cls.name}`);
 }
@@ -254,7 +261,7 @@ export function multimapAdd<K, V>(map: Map<K, Set<V>>, key: K, value: V) {
  * Remove a value from "multimap" - a map where there are several values for each key.
  */
 export function multimapDelete<K, V>(map: Map<K, Set<V>>, key: K, value: V) {
-    let set = map.get(key);
+    const set = map.get(key);
     if (set === undefined) return;
     set.delete(value);
     if (set.size === 0) {
@@ -285,7 +292,7 @@ export function reduce<T, R>(list: Iterable<T>, initialValue: R, operation: (a: 
  */
 export function sum<T>(list: Iterable<T>, elementValue: (x: T) => number): number;
 export function sum(list: Iterable<number>): number;
-export function sum<T>(list: Iterable<T>, elementValue: (x: T) => number = (x: any) => x) {
+export function sum<T>(list: Iterable<T>, elementValue: (x: T) => number = identity) {
     return reduce(list, 0, (a, x) => a + elementValue(x));
 }
 
@@ -294,7 +301,7 @@ export function sum<T>(list: Iterable<T>, elementValue: (x: T) => number = (x: a
  */
 export function sumBN<T>(list: Iterable<T>, elementValue: (x: T) => BN): BN;
 export function sumBN(list: Iterable<BN>): BN;
-export function sumBN<T>(list: Iterable<T>, elementValue: (x: T) => BN = (x: any) => x) {
+export function sumBN<T>(list: Iterable<T>, elementValue: (x: T) => BN = identity) {
     return reduce(list, BN_ZERO, (a, x) => a.add(elementValue(x)));
 }
 
@@ -325,7 +332,7 @@ export function minBN(first: BN, ...rest: BN[]) {
  */
 export class Future<T> {
     resolve!: (value: T | PromiseLike<T>) => void;
-    reject!: (error: any) => void;
+    reject!: (error: unknown) => void;
     promise = new Promise<T>((resolve, reject) => {
         this.resolve = resolve;
         this.reject = reject;
@@ -346,11 +353,11 @@ export function sorted<T, K>(list: Iterable<T>, comparisonKey: (e: T) => K = ide
     return array;
 }
 
-function identity(x: any) {
-    return x;
+function identity<T, R>(x: T): R {  // only actually used for T == R
+    return x as unknown as R;
 }
 
-function naturalCompare(x: any, y: any): number {
+function naturalCompare<T>(x: T, y: T): number {
     if (x < y) return -1;
     if (x > y) return 1;
     return 0;
@@ -382,22 +389,22 @@ export function fail(messageOrError: string | Error): never {
     throw messageOrError;
 }
 
-export function filterStackTrace(error: any) {
-    const stack = String(error.stack || error);
+export function filterStackTrace(error: unknown) {
+    const stack = String((error as Error)?.stack || error);
     let lines = stack.split('\n');
     lines = lines.filter(l => !l.startsWith('    at') || /\.(sol|ts):/.test(l));
     return lines.join('\n');
 }
 
-export function reportError(error: any) {
+export function reportError(error: unknown) {
     console.error(filterStackTrace(error));
 }
 
 // either (part of) error message or an error constructor
-export type SimpleErrorFilter = string | { new(...args: any[]): Error };
+export type SimpleErrorFilter = string | ConstructorFor<Error>;
 export type ErrorFilter = SimpleErrorFilter | { error: SimpleErrorFilter, when: boolean };
 
-function simpleErrorMatch(error: any, message: string, expectedError: SimpleErrorFilter) {
+function simpleErrorMatch(error: unknown, message: string, expectedError: SimpleErrorFilter) {
     if (typeof expectedError === 'string') {
         if (message.includes(expectedError)) return true;
     } else {
@@ -406,8 +413,8 @@ function simpleErrorMatch(error: any, message: string, expectedError: SimpleErro
     return false;
 }
 
-export function errorIncluded(error: any, expectedErrors: ErrorFilter[]) {
-    const message = String(error?.message ?? '');
+export function errorIncluded(error: unknown, expectedErrors: ErrorFilter[]) {
+    const message = String((error as Error)?.message ?? '');
     for (const expectedErr of expectedErrors) {
         const expectedErrMatches = typeof expectedErr === 'object' && 'when' in expectedErr
             ? expectedErr.when && simpleErrorMatch(error, message, expectedErr.error)
@@ -417,7 +424,7 @@ export function errorIncluded(error: any, expectedErrors: ErrorFilter[]) {
     return false;
 }
 
-export function expectErrors(error: any, expectedErrors: ErrorFilter[]): undefined {
+export function expectErrors(error: unknown, expectedErrors: ErrorFilter[]): undefined {
     if (errorIncluded(error, expectedErrors)) return;
     throw error;    // unexpected error
 }
@@ -436,17 +443,22 @@ export function exp10(n: BNish) {
     return BN_TEN.pow(toBN(n));
 }
 
-export function isBNLike(value: any) {
+export function isBNLike(value: unknown): value is BNish {
     return BN.isBN(value) || (typeof value === 'string' && /^\d+$/.test(value));
 }
+
+type DeepFormatOptions = {
+    allowNumericKeys?: boolean;
+    maxDecimals?: number;
+};
 
 /**
  * Some Web3 results are union of array and struct so console.log prints them as array.
  * This function converts it to struct nad also formats values.
  */
-export function deepFormat(value: any, options?: { allowNumericKeys?: boolean, maxDecimals?: number }): any {
+export function deepFormat(value: unknown, options?: DeepFormatOptions): unknown {
     const opts = { allowNumericKeys: false, maxDecimals: 3, ...options };
-    function isNumberLike(key: any) {
+    function isNumberLike(key: string | number) {
         return typeof key === 'number' || /^\d+$/.test(key);
     }
     if (isBNLike(value)) {
@@ -473,10 +485,10 @@ export function deepFormat(value: any, options?: { allowNumericKeys?: boolean, m
 /**
  * Print `name = value` pairs for a dict of format `{name: value, name: value, ...}`
  */
-export function trace(items: Record<string, any>) {
+export function trace(items: Record<string, unknown>, options?: DeepFormatOptions) {
     for (const [key, value] of Object.entries(items)) {
-        const serialize = typeof value === 'object' && [Array, Object].includes(value.constructor);
-        const valueS = serialize ? JSON.stringify(deepFormat(value)) : deepFormat(value);
+        const serialize = typeof value === 'object' && value != null && (value.constructor === Array || value.constructor === Object);
+        const valueS = serialize ? JSON.stringify(deepFormat(value, options)) : deepFormat(value, options);
         console.log(`${key} = ${valueS}`);
     }
 }
@@ -486,8 +498,8 @@ export function trace(items: Record<string, any>) {
  * @param inspectDepth the depth objects in console.log will be expanded
  */
 export function improveConsoleLog(inspectDepth: number = 10) {
-    function fixBNOutput(BN: any) {
-        BN.prototype[util.inspect.custom] = function () {
+    function fixBNOutput(BN: any) {                                 // eslint-disable-line @typescript-eslint/no-explicit-any
+        BN.prototype[util.inspect.custom] = function (this: BN) {   // eslint-disable-line @typescript-eslint/no-unsafe-member-access
             return `BN(${this.toString(10)})`;
         };
     }
@@ -496,7 +508,7 @@ export function improveConsoleLog(inspectDepth: number = 10) {
     util.inspect.defaultOptions.depth = inspectDepth;
 }
 
-type InterfaceDef = AbiItem[] | Truffle.Contract<any> | string;
+type InterfaceDef = AbiItem[] | Truffle.Contract<unknown> | string;
 
 /**
  * Get ERC-165 interface id from interface ABI.
@@ -506,6 +518,7 @@ export function erc165InterfaceId(mainInterface: InterfaceDef, inheritedInterfac
         if (Array.isArray(interfaceDef)) {
             return interfaceDef;
         } else if (typeof interfaceDef === "string") {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
             return contractMetadata(artifacts.require(interfaceDef as any)).abi;
         } else {
             return contractMetadata(interfaceDef).abi;
@@ -526,15 +539,18 @@ export function erc165InterfaceId(mainInterface: InterfaceDef, inheritedInterfac
     return '0x' + result.toString(16, 8);
 }
 
-export function contractMetadata(contract: Truffle.Contract<any>): { contractName: string, abi: AbiItem[] } {
+export function contractMetadata(contract: Truffle.Contract<unknown>): { contractName: string, abi: AbiItem[] } {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
     return (contract as any)._json;
 }
 
 /**
  * ABI encode method call, typesafe when used with typechain.
  */
-export function abiEncodeCall<I extends Truffle.ContractInstance>(instance: I, call: (inst: I) => any): string {
-    return call(instance.contract.methods).encodeABI();
+export function abiEncodeCall<I extends Truffle.ContractInstance>(instance: I, call: (inst: I) => Promise<unknown>): string {
+    // call in ContractInstance returns a promise, but in contract.methods it returns an object which contains (among others) encodeABI method, so the cast below is safe
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    return (call as any)(instance.contract.methods).encodeABI() as string;
 }
 
 /**

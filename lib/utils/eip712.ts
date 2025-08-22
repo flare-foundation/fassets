@@ -55,7 +55,7 @@ export function domainType(domain: EIP712Domain): EIP712DomainType {
 
 export function domainSeparator(domain: EIP712Domain) {
     return bufferToHexString(
-        TypedDataUtils.hashStruct('EIP712Domain', domain as any, { EIP712Domain: domainType(domain) }),
+        TypedDataUtils.hashStruct('EIP712Domain', domain as Record<string, unknown>, { EIP712Domain: domainType(domain) }),
     );
 }
 

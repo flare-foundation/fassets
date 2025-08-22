@@ -29,10 +29,6 @@ NOTE: only the owner of the pool's corresponding agent vault may call this metho
 
 **exitCollateralRatioBIPS** - Get the exit collateral ratio in BIPS This is the collateral ratio below which exiting the pool is not allowed
 
-**topupCollateralRatioBIPS** - Get the topup collateral ratio in BIPS. If the pool's collateral ratio sinks below this value, users are encouraged to buy collateral by making tokens have discount prices
-
-**topupTokenPriceFactorBIPS** - Get the topup token discount in BIPS. If the pool's collateral ratio sinks below topup collateral ratio, tokens are discounted by this factor
-
 **fAssetFeesOf** - Returns the f-asset fees belonging to this user. This is the amount of f-assets the user can withdraw by burning transferable pool tokens.
 
 **fAssetFeeDebtOf** - Returns the user's f-asset fee debt. This is the amount of f-assets the user has to pay to make all pool tokens transferable. The debt is created on entering the pool if the user doesn't provide the f-assets corresponding to the share of the f-asset fees already in the pool.

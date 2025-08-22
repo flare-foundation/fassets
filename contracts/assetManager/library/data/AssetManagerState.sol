@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "../../../userInterfaces/data/AssetManagerSettings.sol";
-import "./Agent.sol";
-import "./RedemptionQueue.sol";
-import "./PaymentConfirmations.sol";
-import "./UnderlyingAddressOwnership.sol";
-import "./CollateralReservation.sol";
-import "./Redemption.sol";
-import "./CollateralTypeInt.sol";
+import {RedemptionQueue} from "./RedemptionQueue.sol";
+import {PaymentConfirmations} from "./PaymentConfirmations.sol";
+import {UnderlyingAddressOwnership} from "./UnderlyingAddressOwnership.sol";
+import {CollateralReservation} from "./CollateralReservation.sol";
+import {Redemption} from "./Redemption.sol";
+import {CollateralTypeInt} from "./CollateralTypeInt.sol";
 
 
 library AssetManagerState {
@@ -36,7 +34,7 @@ library AssetManagerState {
         UnderlyingAddressOwnership.State underlyingAddressOwnership;
 
         // Type: mapping collateralReservationId => collateralReservation
-        mapping(uint64 => CollateralReservation.Data) crts;
+        mapping(uint256 => CollateralReservation.Data) crts;
 
         // redemption queue
         RedemptionQueue.State redemptionQueue;
@@ -68,7 +66,6 @@ library AssetManagerState {
 
         // If non-zero, minting is paused and has been paused at the time indicated by timestamp mintingPausedAt.
         // When asset manager is paused, no new mintings can be done, but redemptions still work.
-        // It is usually used when the asset manager is going to be terminated and upgraded afterwards.
         uint64 mintingPausedAt;
 
         // If non-zero, asset manager is paused and will be paused until the time indicated.

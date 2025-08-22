@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../interfaces/IPriceReader.sol";
-import "../../utils/lib/SafePct.sol";
-import "./data/AssetManagerState.sol";
-import "./Globals.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IPriceReader} from "../../ftso/interfaces/IPriceReader.sol";
+import {SafePct} from "../../utils/library/SafePct.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {Globals} from "./Globals.sol";
+import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+
 
 library Conversion {
     using SafePct for uint256;
@@ -83,15 +85,25 @@ library Conversion {
         return _valueUBA - (_valueUBA % settings.assetMintingGranularityUBA);
     }
 
+    function convertLotsToAMG(
+        uint256 _lots
+    )
+        internal view
+        returns (uint64)
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        return SafeCast.toUint64(_lots * settings.lotSizeAMG);
+    }
+
     function convertLotsToUBA(
-        uint64 _lots
+        uint256 _lots
     )
         internal view
         returns (uint256)
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        // safe multiplication - all values are 64 bit
-        return uint256(_lots) * settings.lotSizeAMG * settings.assetMintingGranularityUBA;
+        // this should not overflow - all values are 64 bit (except _lots which is limited by minted lots)
+        return _lots * settings.lotSizeAMG * settings.assetMintingGranularityUBA;
     }
 
     function convert(

@@ -1,19 +1,22 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "../interfaces/ICheckPointable.sol";
-import "../library/CheckPointHistory.sol";
-import "../library/CheckPointsByAddress.sol";
+import {IICheckPointable} from "../interfaces/IICheckPointable.sol";
+import {CheckPointHistory} from "../library/CheckPointHistory.sol";
+import {CheckPointsByAddress} from "../library/CheckPointsByAddress.sol";
 
 /**
  * @title Check Pointable ERC20 Behavior
  * @notice ERC20 behavior which adds balance check point features.
  **/
-abstract contract CheckPointable is ICheckPointable {
+abstract contract CheckPointable is IICheckPointable {
+    error CheckPointableReadingFromCleanedupBlock();
+    error OnlyCleanerContract();
+    error CleanupBlockNumberMustNeverDecrease();
+    error CleanupBlockMustBeInThePast();
+
     using CheckPointHistory for CheckPointHistory.CheckPointHistoryState;
     using CheckPointsByAddress for CheckPointsByAddress.CheckPointsByAddressState;
-    using SafeMath for uint256;
 
     // The number of history cleanup steps executed for every write operation.
     // It is more than 1 to make as certain as possible that all history gets cleaned eventually.
@@ -42,12 +45,12 @@ abstract contract CheckPointable is ICheckPointable {
     //   - total supply history when either `from` or `to` is zero
 
     modifier notBeforeCleanupBlock(uint256 _blockNumber) {
-        require(_blockNumber >= cleanupBlockNumber, "CheckPointable: reading from cleaned-up block");
+        require(_blockNumber >= cleanupBlockNumber, CheckPointableReadingFromCleanedupBlock());
         _;
     }
 
     modifier onlyCleaner {
-        require(msg.sender == cleanerContract, "Only cleaner contract");
+        require(msg.sender == cleanerContract, OnlyCleanerContract());
         _;
     }
 
@@ -71,10 +74,10 @@ abstract contract CheckPointable is ICheckPointable {
      * @param _amount The amount to burn.
      */
     function _burnForAtNow(address _owner, uint256 _amount) internal virtual {
-        uint256 newBalance = balanceOfAt(_owner, block.number).sub(_amount, "Burn too big for owner");
+        uint256 newBalance = balanceOfAt(_owner, block.number) - _amount;
         balanceHistory.writeValue(_owner, newBalance);
         balanceHistory.cleanupOldCheckpoints(_owner, CLEANUP_COUNT, cleanupBlockNumber);
-        totalSupply.writeValue(totalSupplyAt(block.number).sub(_amount, "Burn too big for total supply"));
+        totalSupply.writeValue(totalSupplyAt(block.number) - _amount);
         totalSupply.cleanupOldCheckpoints(CLEANUP_COUNT, cleanupBlockNumber);
     }
 
@@ -84,10 +87,10 @@ abstract contract CheckPointable is ICheckPointable {
      * @param _amount The amount to burn.
      */
     function _mintForAtNow(address _owner, uint256 _amount) internal virtual {
-        uint256 newBalance = balanceOfAt(_owner, block.number).add(_amount);
+        uint256 newBalance = balanceOfAt(_owner, block.number) + _amount;
         balanceHistory.writeValue(_owner, newBalance);
         balanceHistory.cleanupOldCheckpoints(_owner, CLEANUP_COUNT, cleanupBlockNumber);
-        totalSupply.writeValue(totalSupplyAt(block.number).add(_amount));
+        totalSupply.writeValue(totalSupplyAt(block.number) + _amount);
         totalSupply.cleanupOldCheckpoints(CLEANUP_COUNT, cleanupBlockNumber);
     }
 
@@ -120,8 +123,8 @@ abstract contract CheckPointable is ICheckPointable {
      * Set the cleanup block number.
      */
     function _setCleanupBlockNumber(uint256 _blockNumber) internal {
-        require(_blockNumber >= cleanupBlockNumber, "Cleanup block number must never decrease");
-        require(_blockNumber < block.number, "Cleanup block must be in the past");
+        require(_blockNumber >= cleanupBlockNumber, CleanupBlockNumberMustNeverDecrease());
+        require(_blockNumber < block.number, CleanupBlockMustBeInThePast());
         cleanupBlockNumber = _blockNumber;
     }
 

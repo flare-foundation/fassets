@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "./data/AssetManagerState.sol";
-import "./Conversion.sol";
-import "./Agents.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {AssetManagerState} from "./data/AssetManagerState.sol";
+import {Conversion} from "./Conversion.sol";
+import {RedemptionTicketInfo} from "../../userInterfaces/data/RedemptionTicketInfo.sol";
+import {RedemptionQueue} from "./data/RedemptionQueue.sol";
+import {Agent} from "./data/Agent.sol";
 
 
 library RedemptionQueueInfo {
     using SafeCast for uint256;
+
+    error InvalidTicketId();
 
     function redemptionQueue(uint256 _firstRedemptionTicketId, uint256 _pageSize)
         internal view
@@ -37,7 +41,7 @@ library RedemptionQueueInfo {
             // start from beginning
             ticketId = _agentVault == address(0) ? queue.firstTicketId : queue.agents[_agentVault].firstTicketId;
         }
-        require (ticketId == 0 || queue.tickets[ticketId].agentVault != address(0), "invalid ticket id");
+        require (ticketId == 0 || queue.tickets[ticketId].agentVault != address(0), InvalidTicketId());
         RedemptionTicketInfo.Data[] memory result = new RedemptionTicketInfo.Data[](_pageSize);
         uint256 count = 0;
         while (ticketId != 0 && count < _pageSize) {

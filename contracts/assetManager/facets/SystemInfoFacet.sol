@@ -1,13 +1,21 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../library/data/AssetManagerState.sol";
-import "../library/Globals.sol";
-import "../library/RedemptionQueueInfo.sol";
-import "../library/Redemptions.sol";
-import "../library/CollateralReservations.sol";
-import "./AssetManagerBase.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {AssetManagerBase} from "./AssetManagerBase.sol";
+import {AssetManagerState} from "../library/data/AssetManagerState.sol";
+import {Conversion} from "../library/Conversion.sol";
+import {RedemptionQueueInfo} from "../library/RedemptionQueueInfo.sol";
+import {Minting} from "../library/Minting.sol";
+import {Redemptions} from "../library/Redemptions.sol";
+import {Agent} from "../library/data/Agent.sol";
+import {CollateralReservation} from "../library/data/CollateralReservation.sol";
+import {PaymentReference} from "../library/data/PaymentReference.sol";
+import {Redemption} from "../library/data/Redemption.sol";
+import {CollateralReservationInfo} from "../../userInterfaces/data/CollateralReservationInfo.sol";
+import {RedemptionRequestInfo} from "../../userInterfaces/data/RedemptionRequestInfo.sol";
+import {RedemptionTicketInfo} from "../../userInterfaces/data/RedemptionTicketInfo.sol";
+
 
 contract SystemInfoFacet is AssetManagerBase {
     /**
@@ -27,16 +35,6 @@ contract SystemInfoFacet is AssetManagerBase {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         return state.mintingPausedAt != 0;
-    }
-
-    /**
-     * True if asset manager is terminated.
-     */
-    function terminated()
-        external view
-        returns (bool)
-    {
-        return Globals.getFAsset().terminated();
     }
 
     /**
@@ -84,7 +82,7 @@ contract SystemInfoFacet is AssetManagerBase {
         returns (CollateralReservationInfo.Data memory)
     {
         uint64 crtId = SafeCast.toUint64(_collateralReservationId);
-        CollateralReservation.Data storage crt = CollateralReservations.getCollateralReservation(crtId);
+        CollateralReservation.Data storage crt = Minting.getCollateralReservation(crtId, false);
         Agent.State storage agent = Agent.get(crt.agentVault);
         return CollateralReservationInfo.Data({
             collateralReservationId: crtId,
@@ -101,8 +99,7 @@ contract SystemInfoFacet is AssetManagerBase {
             lastUnderlyingTimestamp: crt.lastUnderlyingTimestamp,
             executor: crt.executor,
             executorFeeNatWei: crt.executorFeeNatGWei * Conversion.GWEI,
-            handshakeStartTimestamp: crt.handshakeStartTimestamp,
-            sourceAddressesRoot: crt.sourceAddressesRoot
+            status: _convertCollateralReservationStatus(crt.status)
         });
     }
 
@@ -113,12 +110,10 @@ contract SystemInfoFacet is AssetManagerBase {
         returns (RedemptionRequestInfo.Data memory)
     {
         uint64 requestId = SafeCast.toUint64(_redemptionRequestId);
-        Redemption.Request storage request = Redemptions.getRedemptionRequest(requestId);
-        RedemptionRequestInfo.Status status = request.status == Redemption.Status.ACTIVE ?
-                RedemptionRequestInfo.Status.ACTIVE : RedemptionRequestInfo.Status.DEFAULTED;
+        Redemption.Request storage request = Redemptions.getRedemptionRequest(requestId, false);
         return RedemptionRequestInfo.Data({
             redemptionRequestId: requestId,
-            status: status,
+            status: _convertRedemptionStatus(request.status),
             agentVault: request.agentVault,
             redeemer: request.redeemer,
             paymentAddress: request.redeemerUnderlyingAddressString,
@@ -133,9 +128,44 @@ contract SystemInfoFacet is AssetManagerBase {
             poolSelfClose: request.poolSelfClose,
             transferToCoreVault: request.transferToCoreVault,
             executor: request.executor,
-            executorFeeNatWei: request.executorFeeNatGWei * Conversion.GWEI,
-            rejectionTimestamp: request.rejectionTimestamp,
-            takeOverTimestamp: request.takeOverTimestamp
+            executorFeeNatWei: request.executorFeeNatGWei * Conversion.GWEI
         });
+    }
+
+    function _convertCollateralReservationStatus(CollateralReservation.Status _status)
+        private pure
+        returns (CollateralReservationInfo.Status)
+    {
+        if (_status == CollateralReservation.Status.ACTIVE) {
+            return CollateralReservationInfo.Status.ACTIVE;
+        } else if (_status == CollateralReservation.Status.SUCCESSFUL) {
+            return CollateralReservationInfo.Status.SUCCESSFUL;
+        } else if (_status == CollateralReservation.Status.DEFAULTED) {
+            return CollateralReservationInfo.Status.DEFAULTED;
+        } else {
+            assert(_status == CollateralReservation.Status.EXPIRED);
+            return CollateralReservationInfo.Status.EXPIRED;
+        }
+    }
+
+    function _convertRedemptionStatus(Redemption.Status _status)
+        private pure
+        returns (RedemptionRequestInfo.Status)
+    {
+        if (_status == Redemption.Status.ACTIVE) {
+            return RedemptionRequestInfo.Status.ACTIVE;
+        } else if (_status == Redemption.Status.DEFAULTED) {
+            return RedemptionRequestInfo.Status.DEFAULTED_UNCONFIRMED;
+        } else if (_status == Redemption.Status.SUCCESSFUL) {
+            return RedemptionRequestInfo.Status.SUCCESSFUL;
+        } else if (_status == Redemption.Status.FAILED) {
+            return RedemptionRequestInfo.Status.DEFAULTED_FAILED;
+        } else if (_status == Redemption.Status.BLOCKED) {
+            return RedemptionRequestInfo.Status.BLOCKED;
+        } else {
+            // the only possible status, since EMPTY is not allowed
+            assert(_status == Redemption.Status.REJECTED);
+            return RedemptionRequestInfo.Status.REJECTED;
+        }
     }
 }

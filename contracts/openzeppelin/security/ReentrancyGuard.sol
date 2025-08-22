@@ -3,10 +3,9 @@
 // OpenZeppelin Contracts (last updated v4.9.0) (security/ReentrancyGuard.sol)
 // Modified by FlareLabs to use diamond storage
 
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "../library/Reentrancy.sol";
-
+import {Reentrancy} from "../library/Reentrancy.sol";
 
 /**
  * @dev Contract module that helps prevent reentrant calls to a function.

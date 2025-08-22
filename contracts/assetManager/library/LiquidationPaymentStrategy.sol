@@ -1,17 +1,20 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.23;
+pragma solidity ^0.8.27;
 
-import "./data/AssetManagerState.sol";
-import "./Agents.sol";
-import "./CollateralTypes.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {Agents} from "./Agents.sol";
+import {CollateralTypes} from "./CollateralTypes.sol";
+import {Agent} from "./data/Agent.sol";
+import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {Globals} from "./Globals.sol";
 
 library LiquidationPaymentStrategy {
-    using Agent for Agent.State;
     using Agents for Agent.State;
     using CollateralTypes for CollateralTypeInt.Data;
 
     // Liquidation premium step (depends on time, but is capped by the current collateral ratio)
-    // assumed: agentStatus == LIQUIDATION/FULL_LIQUIDATION && liquidationPhase == LIQUIDATION
+    // assumed: agentStatus == LIQUIDATION/FULL_LIQUIDATION
     function currentLiquidationFactorBIPS(
         Agent.State storage _agent,
         uint256 _vaultCR,
@@ -29,7 +32,6 @@ library LiquidationPaymentStrategy {
         // its CR and pay more of the other. If both collaterals exceed CR, limit both to their CRs.
         _c1FactorBIPS = Math.min(settings.liquidationFactorVaultCollateralBIPS[step], factorBIPS);
         // prevent paying with invalid token (if there is enough of the other tokens)
-        // TODO: should we remove this - is it better to pay with invalidated vault collateral then with pool?
         CollateralTypeInt.Data storage vaultCollateral = _agent.getVaultCollateral();
         CollateralTypeInt.Data storage poolCollateral = _agent.getPoolCollateral();
         if (!vaultCollateral.isValid() && poolCollateral.isValid()) {
@@ -50,8 +52,8 @@ library LiquidationPaymentStrategy {
         }
     }
 
-    // Liquidation premium step (depends on time since CCB or liquidation was started)
-    // assumed: agentStatus == LIQUIDATION/FULL_LIQUIDATION && liquidationPhase == LIQUIDATION
+    // Liquidation premium step (depends on time since liquidation was started)
+    // assumed: agentStatus == LIQUIDATION/FULL_LIQUIDATION
     function _currentLiquidationStep(
         Agent.State storage _agent
     )
@@ -60,10 +62,7 @@ library LiquidationPaymentStrategy {
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // calculate premium step based on time since liquidation started
-        bool startedInCCB = _agent.status == Agent.Status.LIQUIDATION
-            && _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB;
-        uint256 ccbTime = startedInCCB ? settings.ccbTimeSeconds : 0;
-        uint256 liquidationStart = _agent.liquidationStartedAt + ccbTime;
+        uint256 liquidationStart = _agent.liquidationStartedAt;
         uint256 step = (block.timestamp - liquidationStart) / settings.liquidationStepSeconds;
         return Math.min(step, settings.liquidationCollateralFactorBIPS.length - 1);
     }

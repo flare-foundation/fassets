@@ -1,10 +1,12 @@
-import { expectRevert } from "@openzeppelin/test-helpers";
-import { CheckPointHistoryMockContract, CheckPointHistoryMockInstance } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/test-helpers";
+import { expectRevert } from "../../../../lib/test-utils/test-helpers";
+import { getTestFile } from "../../../../lib/test-utils/test-suite-helpers";
+import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
+import { abiEncodeCall } from "../../../../lib/utils/helpers";
+import { CheckPointHistoryMockInstance } from "../../../../typechain-truffle";
 
-const CheckPointHistoryMock = artifacts.require("CheckPointHistoryMock") as CheckPointHistoryMockContract;
+const CheckPointHistoryMock = artifacts.require("CheckPointHistoryMock");
 
-contract(`CheckPointHistory.sol; ${getTestFile(__filename)}`, async accounts => {
+contract(`CheckPointHistory.sol; ${getTestFile(__filename)}`, accounts => {
     // a fresh contract for each test
     let checkPointHistoryMock: CheckPointHistoryMockInstance;
 
@@ -18,8 +20,8 @@ contract(`CheckPointHistory.sol; ${getTestFile(__filename)}`, async accounts => 
         // Act
         await checkPointHistoryMock.writeValue(10);
         // Assert
-        let value = await checkPointHistoryMock.valueAtNow();
-        assert.equal(value as any, 10);
+        const value = await checkPointHistoryMock.valueAtNow();
+        assertWeb3Equal(value, 10);
     });
 
     it("Should store values at checkpoints", async () => {
@@ -33,26 +35,26 @@ contract(`CheckPointHistory.sol; ${getTestFile(__filename)}`, async accounts => 
         await checkPointHistoryMock.writeValue(5);
         b[3] = await web3.eth.getBlockNumber();
         // Act
-        let balanceAtBlock0 = await checkPointHistoryMock.valueAt(b[0]);
-        let balanceAtBlock1 = await checkPointHistoryMock.valueAt(b[1]);
-        let balanceAtBlock2 = await checkPointHistoryMock.valueAt(b[2]);
-        let balanceAtBlock3 = await checkPointHistoryMock.valueAt(b[3]);
+        const balanceAtBlock0 = await checkPointHistoryMock.valueAt(b[0]);
+        const balanceAtBlock1 = await checkPointHistoryMock.valueAt(b[1]);
+        const balanceAtBlock2 = await checkPointHistoryMock.valueAt(b[2]);
+        const balanceAtBlock3 = await checkPointHistoryMock.valueAt(b[3]);
         // Assert
-        assert.equal(balanceAtBlock0 as any, 0);
-        assert.equal(balanceAtBlock1 as any, 50);
-        assert.equal(balanceAtBlock2 as any, 10);
-        assert.equal(balanceAtBlock3 as any, 5);
+        assertWeb3Equal(balanceAtBlock0, 0);
+        assertWeb3Equal(balanceAtBlock1, 50);
+        assertWeb3Equal(balanceAtBlock2, 10);
+        assertWeb3Equal(balanceAtBlock3, 5);
     });
 
     it("Should perform O(log(n)) search on checkpoints", async () => {
         // Assemble
-        const b = [];
+        const b: number[] = [];
         for (let i = 0; i < 200; i++) {
             b[i] = await web3.eth.getBlockNumber();
             await checkPointHistoryMock.writeValue(i);
         }
         // Act
-        const valueAt = checkPointHistoryMock.contract.methods.valueAt(b[100]).encodeABI();
+        const valueAt = abiEncodeCall(checkPointHistoryMock, (cph) => cph.valueAt(b[100]));
         const gas = await web3.eth.estimateGas({ to: checkPointHistoryMock.address, data: valueAt });
         // Assert
         // This is actually 300000+ if checkpoints specifier is memory vs storage
@@ -73,7 +75,7 @@ contract(`CheckPointHistory.sol; ${getTestFile(__filename)}`, async accounts => 
         }
         // Assert
         for (let i = 0; i < 5; i++) {
-            await expectRevert(checkPointHistoryMock.valueAt(b[i]), "CheckPointHistory: reading from cleaned-up block");
+            await expectRevert.custom(checkPointHistoryMock.valueAt(b[i]), "CheckPointHistoryReadingFromCleanedupBlock", []);
         }
         for (let i = 5; i < 10; i++) {
             const value = await checkPointHistoryMock.valueAt(b[i]);
