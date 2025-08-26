@@ -3,14 +3,23 @@
     "name": "PriceReader",
     "contractName": "FtsoV2PriceStore.sol",
     "addresses": [
-      "0xC56bc4Bb0AC6AaB3538238F5Ec4aBe9381eb6259"
+      "0xC56bc4Bb0AC6AaB3538238F5Ec4aBe9381eb6259",
+      "0x3eF12dF4f91D6168b353B0Ae8195Cc8642D8a411"
     ]
   },
   {
     "name": "FtsoV2PriceStore",
     "contractName": "FtsoV2PriceStore.sol",
     "addresses": [
-      "0xC56bc4Bb0AC6AaB3538238F5Ec4aBe9381eb6259"
+      "0xC56bc4Bb0AC6AaB3538238F5Ec4aBe9381eb6259",
+      "0x3eF12dF4f91D6168b353B0Ae8195Cc8642D8a411"
+    ]
+  },
+  {
+    "name": "FtsoV2PriceStoreImplementation",
+    "contractName": "FtsoV2PriceStore.sol",
+    "addresses": [
+      "0x22A222B2C06874427B4Aa6aB3D23794dB5Eec6fA"
     ]
   }
 ]
