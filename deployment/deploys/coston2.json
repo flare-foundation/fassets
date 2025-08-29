@@ -1,15 +1,5 @@
 [
   {
-    "name": "FlareDaemon",
-    "contractName": "FlareDaemon.sol",
-    "address": "0x1000000000000000000000000000000000000002"
-  },
-  {
-    "name": "PriceSubmitter",
-    "contractName": "PriceSubmitter.sol",
-    "address": "0x9179aAB4C8b6Ac1402617eFa0fD130AbFa42c6e4"
-  },
-  {
     "name": "GovernanceSettings",
     "contractName": "GovernanceSettings.sol",
     "address": "0x1000000000000000000000000000000000000007"
@@ -20,24 +10,9 @@
     "address": "0x707C840D053f28DF75223C151fA7aFa6d7eB3354"
   },
   {
-    "name": "Supply",
-    "contractName": "Supply.sol",
-    "address": "0xdd1e652D6318c4Bceb7028851C5435a89C2A17fb"
-  },
-  {
-    "name": "FtsoRewardManager",
-    "contractName": "FtsoRewardManager.sol",
-    "address": "0x7A0bFB85387314d7F8C0FcCD9D9B74A76115c322"
-  },
-  {
     "name": "CleanupBlockNumberManager",
     "contractName": "CleanupBlockNumberManager.sol",
     "address": "0xC80D57cBDBaEd9a2540B9C1D51Ff03a916358e65"
-  },
-  {
-    "name": "FtsoRegistry",
-    "contractName": "FtsoRegistry.sol",
-    "address": "0x48Da21ce34966A64E267CeFb78012C0282D0Ac87"
   },
   {
     "name": "DistributionToDelegators",
@@ -45,19 +20,9 @@
     "address": "0xbd33bDFf04C357F7FC019E72D0504C24CF4Aa010"
   },
   {
-    "name": "IncentivePoolAllocation",
-    "contractName": "IncentivePoolAllocation.sol",
-    "address": "0xfaf3bDB0c455ef633A0B61E9424bcbC75FfaE29a"
-  },
-  {
-    "name": "IncentivePool",
-    "contractName": "IncentivePool.sol",
-    "address": "0x6892bDbBb14e1c9bD46Bf31E7BaC94d038fc82a6"
-  },
-  {
-    "name": "FtsoManager",
-    "contractName": "FtsoManager.sol",
-    "address": "0x2675cB89AE83f19cEF8600Eb0E9F2071EDBDf11A"
+    "name": "RewardManager",
+    "contractName": "RewardManager.sol",
+    "address": "0xB4f43E342c5c77e6fe060c0481Fe313Ff2503454"
   },
   {
     "name": "WNat",
@@ -73,11 +38,6 @@
     "name": "FlareAssetRegistry",
     "contractName": "FlareAssetRegistry.sol",
     "address": "0xC79E6Dc1817DddcB4206a0aDbb56832F476F4b67"
-  },
-  {
-    "name": "WNatRegistryProvider",
-    "contractName": "WNatRegistryProvider.sol",
-    "address": "0x8F438C5Fe273ac88085f5A7813b03cAfb3cAB129"
   },
   {
     "name": "FlareContractRegistry",
