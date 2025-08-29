@@ -60,6 +60,11 @@
     "address": "0x906507E0B64bcD494Db73bd0459d1C667e14B933"
   },
   {
+    "name": "testUSDT0",
+    "contractName": "FakeERC20.sol",
+    "address": "0x21709E63fC7F264F329e0826Ea82197694B82775"
+  },
+  {
     "name": "PriceReader",
     "contractName": "FtsoV2PriceStoreProxy.sol",
     "address": "0x94E33f519E256149752711245EAB2E1abb8c34A4"
@@ -82,8 +87,7 @@
   {
     "name": "AgentOwnerRegistry",
     "contractName": "AgentOwnerRegistryProxy.sol",
-    "address": "0xAF21eE9C49030e2dE9e8c2Ab7618082cc3d70b42",
-    "mustSwitchToProduction": true
+    "address": "0xAF21eE9C49030e2dE9e8c2Ab7618082cc3d70b42"
   },
   {
     "name": "AgentVaultProxyImplementation",

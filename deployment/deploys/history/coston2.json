@@ -24,7 +24,8 @@
     "name": "testUSDT0",
     "contractName": "FakeERC20.sol",
     "addresses": [
-      "0x6F6238Dc0e9Dfa7641589aAe00e1Fbe875Ca5F1B"
+      "0x6F6238Dc0e9Dfa7641589aAe00e1Fbe875Ca5F1B",
+      "0x21709E63fC7F264F329e0826Ea82197694B82775"
     ]
   },
   {
