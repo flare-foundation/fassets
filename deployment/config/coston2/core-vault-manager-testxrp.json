@@ -1,11 +1,11 @@
 {
     "$schema": "../core-vault-manager-parameters.schema.json",
     "assetManager": "AssetManager_FTestXRP",
-    "underlyingAddress": "rn2X3i1vtC2U2LE7cRkKZ2jnUqqSy4tWcq",
-    "initialSequenceNumber": 7424851,
-    "custodianAddress": "rD6EfgTBmTpUfzCmLtAJMJhDfqBFKfHUre",
-    "escrowAmount": "2500 000000",
+    "underlyingAddress": "rDhpmiPq4BVBDWMVdSrmkgt8thKyRzGV1p",
+    "initialSequenceNumber": 10167328,
+    "custodianAddress": "r3GhxcaM4f9BJXEu1JLRgDXZpHJw6ugkH4",
+    "escrowAmount": "10000 000000",
     "escrowEndTimeSeconds": 46800,
-    "minimalAmountLeft": "5000 000000",
+    "minimalAmountLeft": "15000 000000",
     "chainPaymentFee": "400"
 }

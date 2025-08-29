@@ -454,14 +454,16 @@
     "name": "CoreVaultManagerImplementation",
     "contractName": "CoreVaultManager.sol",
     "addresses": [
-      "0x76298183C2D4Ba0602348828Ff1b7Ee33c6B6c05"
+      "0x76298183C2D4Ba0602348828Ff1b7Ee33c6B6c05",
+      "0x77Da766eC3CfE9962051c3f99E62f5F80f21a498"
     ]
   },
   {
     "name": "CoreVaultManager_FTestXRP",
     "contractName": "CoreVaultManagerProxy.sol",
     "addresses": [
-      "0x11De168Bfe62425Af06cc82f3b19180DaB1e4E31"
+      "0x11De168Bfe62425Af06cc82f3b19180DaB1e4E31",
+      "0x4CB40b0dBfbF239eC60C9bE1496A6c1aA29e429b"
     ]
   },
   {

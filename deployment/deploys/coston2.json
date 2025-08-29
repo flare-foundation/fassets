@@ -127,14 +127,12 @@
   {
     "name": "AssetManagerController",
     "contractName": "AssetManagerControllerProxy.sol",
-    "address": "0x1C772F700308aF4c13897cc7b9c41EFfB82c50C0",
-    "mustSwitchToProduction": true
+    "address": "0x1C772F700308aF4c13897cc7b9c41EFfB82c50C0"
   },
   {
     "name": "AssetManager_FTestXRP",
     "contractName": "AssetManager.sol",
-    "address": "0xc1Ca88b937d0b528842F95d5731ffB586f4fbDFA",
-    "mustSwitchToProduction": true
+    "address": "0xc1Ca88b937d0b528842F95d5731ffB586f4fbDFA"
   },
   {
     "name": "FTestXRP",
@@ -300,5 +298,16 @@
     "name": "CoreVaultClientSettingsFacet",
     "contractName": "CoreVaultClientSettingsFacet.sol",
     "address": "0xbDcCb53d655f541902De8cf04e68B6E7cE2D9Fa0"
+  },
+  {
+    "name": "CoreVaultManagerImplementation",
+    "contractName": "CoreVaultManager.sol",
+    "address": "0x77Da766eC3CfE9962051c3f99E62f5F80f21a498"
+  },
+  {
+    "name": "CoreVaultManager_FTestXRP",
+    "contractName": "CoreVaultManagerProxy.sol",
+    "address": "0x4CB40b0dBfbF239eC60C9bE1496A6c1aA29e429b",
+    "mustSwitchToProduction": true
   }
 ]
