@@ -10,7 +10,7 @@ import path from "path";
 import 'solidity-coverage';
 import { FAssetContractStore } from "./deployment/lib/contracts";
 import { deployAssetManager, deployAssetManagerController, deployCoreVaultManager, redeployFacet, switchAllToProductionMode } from "./deployment/lib/deploy-asset-manager";
-import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory } from "./deployment/lib/deploy-asset-manager-dependencies";
+import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory, verifyAgentOwnerRegistry, verifyAgentVaultFactory, verifyCollateralPoolFactory, verifyCollateralPoolTokenFactory } from "./deployment/lib/deploy-asset-manager-dependencies";
 import { deployCuts } from "./deployment/lib/deploy-cuts";
 import { deployPriceReaderV2, verifyFtsoV2PriceStore } from "./deployment/lib/deploy-ftsov2-price-store";
 import { networkConfigName } from "./deployment/lib/deploy-utils";
@@ -38,7 +38,7 @@ task("deploy-price-reader-v2", "Deploy price reader v2.")
         await deployPriceReaderV2(hre, contracts);
     });
 
-task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
+task("deploy-asset-manager-dependencies", "Deploy some or all asset manager dependencies.")
     .addVariadicPositionalParam("contractNames", `Contract names to deploy`, [])
     .addFlag("all", "Deploy all dependencies (AgentOwnerRegistry, AgentVaultFactory, CollateralPoolFactory, CollateralPoolTokenFactory)")
     .setAction(async ({ contractNames, all }: {contractNames: string[], all: boolean }, hre) => {
@@ -122,6 +122,28 @@ task("redeploy-facet", "Redeploy a facet or proxy implementation and update cont
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await hre.run("compile");
         await redeployFacet(hre, contracts, implementationName);
+    });
+
+task("verify-asset-manager-dependencies", "Verify some or all asset manager dependencies.")
+    .addVariadicPositionalParam("contractNames", `Contract names to deploy`, [])
+    .addFlag("force", "re-verify partially verified proxy contract")
+    .addFlag("all", "Deploy all dependencies (AgentOwnerRegistry, AgentVaultFactory, CollateralPoolFactory, CollateralPoolTokenFactory)")
+    .setAction(async ({ contractNames, all, force }: { contractNames: string[], all: boolean, force: boolean }, hre) => {
+        const networkConfig = networkConfigName(hre);
+        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await hre.run("compile");
+        if (all || contractNames.includes('AgentOwnerRegistry')) {
+            await verifyAgentOwnerRegistry(hre, contracts, force);
+        }
+        if (all || contractNames.includes('AgentVaultFactory')) {
+            await verifyAgentVaultFactory(hre, contracts, force);
+        }
+        if (all || contractNames.includes('CollateralPoolFactory')) {
+            await verifyCollateralPoolFactory(hre, contracts, force);
+        }
+        if (all || contractNames.includes('CollateralPoolTokenFactory')) {
+            await verifyCollateralPoolTokenFactory(hre, contracts, force);
+        }
     });
 
 task("verify-asset-managers", "Verify deployed asset managers.")

@@ -1,6 +1,7 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { FAssetContractStore } from "./contracts";
 import { loadDeployAccounts, waitFinalize, ZERO_ADDRESS } from "./deploy-utils";
+import { verifyContract } from "./verify-fasset-contracts";
 
 
 export async function deployAgentOwnerRegistry(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
@@ -81,4 +82,25 @@ export async function deployCollateralPoolTokenFactory(hre: HardhatRuntimeEnviro
     contracts.add("CollateralPoolTokenFactory", "CollateralPoolTokenFactory.sol", collateralPoolTokenFactory.address);
 
     return collateralPoolTokenFactory.address;
+}
+
+export async function verifyAgentOwnerRegistry(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore, force: boolean) {
+    const { deployer } = loadDeployAccounts(hre);
+    await verifyContract(hre, "AgentOwnerRegistryImplementation", contracts);
+    await verifyContract(hre, "AgentOwnerRegistry", contracts, [contracts.getAddress("AgentOwnerRegistryImplementation"), contracts.GovernanceSettings.address, deployer], force);
+}
+
+export async function verifyAgentVaultFactory(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore, force: boolean) {
+    await verifyContract(hre, "AgentVaultProxyImplementation", contracts, [ZERO_ADDRESS]);
+    await verifyContract(hre, "AgentVaultFactory", contracts, [contracts.getAddress("AgentVaultProxyImplementation")], force);
+}
+
+export async function verifyCollateralPoolFactory(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore, force: boolean) {
+    await verifyContract(hre, "CollateralPoolProxyImplementation", contracts, [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, "0"]);
+    await verifyContract(hre, "CollateralPoolFactory", contracts, [contracts.getAddress("CollateralPoolProxyImplementation")], force);
+}
+
+export async function verifyCollateralPoolTokenFactory(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore, force: boolean) {
+    await verifyContract(hre, "CollateralPoolTokenProxyImplementation", contracts, [ZERO_ADDRESS, "", ""]);
+    await verifyContract(hre, "CollateralPoolTokenFactory", contracts, [contracts.getAddress("CollateralPoolTokenProxyImplementation")], force);
 }
