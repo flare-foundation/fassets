@@ -965,23 +965,23 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("can add and remove emergency pause sender", async () => {
             const sender = accounts[80];
             await expectRevert.custom(
-                assetManagerController.emergencyPause([assetManager.address], EmergencyPauseLevel.START_OPERATIONS, 10, { from: sender }),
+                assetManagerController.emergencyPauseStartOperations([assetManager.address], 10, { from: sender }),
                 "OnlyGovernanceOrEmergencyPauseSenders", []);
             // add sender
             await assetManagerController.addEmergencyPauseSender(sender, { from: governance });
-            await assetManagerController.emergencyPause([assetManager.address], EmergencyPauseLevel.START_OPERATIONS, 10, { from: sender });
+            await assetManagerController.emergencyPauseStartOperations([assetManager.address], 10, { from: sender });
             assert.isTrue(await assetManager.emergencyPaused());
             await time.deterministicIncrease(20);
             assert.isFalse(await assetManager.emergencyPaused());
             // remove sender
             await assetManagerController.removeEmergencyPauseSender(sender, { from: governance });
             await expectRevert.custom(
-                assetManagerController.emergencyPause([assetManager.address], EmergencyPauseLevel.START_OPERATIONS, 10, { from: sender }),
+                assetManagerController.emergencyPauseStartOperations([assetManager.address], 10, { from: sender }),
                 "OnlyGovernanceOrEmergencyPauseSenders", []);
         });
 
         it("governance can emergency pause", async () => {
-            await assetManagerController.emergencyPause([assetManager.address], EmergencyPauseLevel.START_OPERATIONS, 10, { from: governance });
+            await assetManagerController.emergencyPauseStartOperations([assetManager.address], 10, { from: governance });
             assert.isTrue(await assetManager.emergencyPaused());
         });
 

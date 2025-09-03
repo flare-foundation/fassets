@@ -55,13 +55,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // trigger pause
             // try perform minting
             const lots = 3;
-            await context.assetManagerController.emergencyPause([context.assetManager.address], EmergencyPauseLevel.START_OPERATIONS, 1 * HOURS, { from: emergencyAddress1 });
+            await context.assetManagerController.emergencyPauseStartOperations([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             await expectRevert.custom(minter.reserveCollateral(agent.vaultAddress, lots), "EmergencyPauseActive", []);
             // after one hour, collateral reservations should work again
             await time.deterministicIncrease(1 * HOURS);
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             // minting can be finished after pause
-            await context.assetManagerController.emergencyPause([context.assetManager.address], EmergencyPauseLevel.START_OPERATIONS, 1 * HOURS, { from: emergencyAddress1 });
+            await context.assetManagerController.emergencyPauseStartOperations([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
             // but transfers work
@@ -69,10 +69,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // pause stops redeem too
             await expectRevert.custom(redeemer.requestRedemption(lots), "EmergencyPauseActive", []);
             // manual unpause by setting duration to 0
-            await context.assetManagerController.emergencyPause([context.assetManager.address], EmergencyPauseLevel.START_OPERATIONS, 0, { from: emergencyAddress1 });
+            await context.assetManagerController.emergencyPauseStartOperations([context.assetManager.address], 0, { from: emergencyAddress1 });
             const [requests] = await redeemer.requestRedemption(lots);
             // redemption payments can be performed and confirmed in pause
-            await context.assetManagerController.emergencyPause([context.assetManager.address], EmergencyPauseLevel.START_OPERATIONS, 1 * HOURS, { from: emergencyAddress1 });
+            await context.assetManagerController.emergencyPauseStartOperations([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             await agent.performRedemptions(requests);
             // but self close is prevented
             await expectRevert.custom(agent.selfClose(10), "EmergencyPauseActive", []);
@@ -95,15 +95,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.priceStore.setCurrentPrice("NAT", 200, 0);
             await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 200, 0);
             //  pause stops liquidation
-            await context.assetManagerController.emergencyPause([context.assetManager.address], EmergencyPauseLevel.START_OPERATIONS, 1 * HOURS, { from: emergencyAddress1 });
+            await context.assetManagerController.emergencyPauseStartOperations([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             await expectRevert.custom(liquidator.startLiquidation(agent), "EmergencyPauseActive", []);
             await agent.checkAgentInfo({ status: AgentStatus.NORMAL }, "reset");
             // can start liquidation after unpause
-            await context.assetManagerController.emergencyPause([context.assetManager.address], EmergencyPauseLevel.START_OPERATIONS, 0, { from: emergencyAddress1 });
+            await context.assetManagerController.emergencyPauseStartOperations([context.assetManager.address], 0, { from: emergencyAddress1 });
             await liquidator.startLiquidation(agent);
             await agent.checkAgentInfo({ status: AgentStatus.LIQUIDATION });
             // cannot perform liquidation after pause
-            await context.assetManagerController.emergencyPause([context.assetManager.address], EmergencyPauseLevel.START_OPERATIONS, 1 * HOURS, { from: emergencyAddress1 });
+            await context.assetManagerController.emergencyPauseStartOperations([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             await expectRevert.custom(liquidator.liquidate(agent, context.convertLotsToUBA(1)), "EmergencyPauseActive", []);
             // can liquidate when pause expires
             await time.deterministicIncrease(1 * HOURS);
@@ -122,7 +122,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const lotSize = context.lotSize();
             await minter.performMinting(agent.vaultAddress, 3);
             // trigger pause
-            await context.assetManagerController.emergencyPause([context.assetManager.address], EmergencyPauseLevel.FULL_AND_TRANSFER, 1 * HOURS, { from: emergencyAddress1 });
+            await context.assetManagerController.emergencyPauseFullAndTransfer([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             // nothing works, including transfers
             await expectRevert.custom(minter.performMinting(agent.vaultAddress, 1), "EmergencyPauseActive", []);
             await expectRevert.custom(minter.transferFAsset(redeemer.address, lotSize), "EmergencyPauseOfTransfersActive", []);
@@ -130,10 +130,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await time.deterministicIncrease(1 * HOURS);
             await minter.transferFAsset(redeemer.address, lotSize);
             // another pause
-            await context.assetManagerController.emergencyPause([context.assetManager.address], EmergencyPauseLevel.FULL_AND_TRANSFER, 1 * HOURS, { from: emergencyAddress1 });
+            await context.assetManagerController.emergencyPauseFullAndTransfer([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             await expectRevert.custom(minter.transferFAsset(redeemer.address, lotSize), "EmergencyPauseOfTransfersActive", []);
             // manual unpause
-            await context.assetManagerController.emergencyPause([context.assetManager.address], EmergencyPauseLevel.NONE, 0, { from: emergencyAddress1 });
+            await context.assetManagerController.cancelEmergencyPause([context.assetManager.address], { from: emergencyAddress1 });
             await minter.transferFAsset(redeemer.address, lotSize);
         });
 
@@ -153,7 +153,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await minter.performMinting(agent.vaultAddress, 5);
             await minter.transferFAsset(redeemer.address, lotSize.muln(2));
             // trigger "start operations" pause
-            await context.assetManagerController.emergencyPause([context.assetManager.address], EmergencyPauseLevel.START_OPERATIONS, 1 * HOURS, { from: emergencyAddress1 });
+            await context.assetManagerController.emergencyPauseStartOperations([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             // cannot start mint or redeem
             await expectRevert.custom(minter.reserveCollateral(agent.vaultAddress, 1), "EmergencyPauseActive", []);
             await expectRevert.custom(redeemer.requestRedemption(1), "EmergencyPauseActive", []);
@@ -202,7 +202,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await agent.depositCollateralLotsAndMakeAvailable(20);
             await agent.collateralPool.enter({ from: userAddress1, value: toBNExp(100, 18) });
             // trigger "start operations" pause
-            await context.assetManagerController.emergencyPause([context.assetManager.address], EmergencyPauseLevel.START_OPERATIONS, 1 * HOURS, { from: emergencyAddress1 });
+            await context.assetManagerController.emergencyPauseStartOperations([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             // cannot enter pool
             await expectRevert.custom(agent.collateralPool.enter({ from: userAddress1 }), "EmergencyPauseActive", []);
             // cannot exit pool
@@ -248,7 +248,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const mintTx = await minter.performMintingPayment(crt);
             const redeemTx = await agent.performRedemptionPayment(rrq);
             // trigger "full" pause
-            await context.assetManagerController.emergencyPause([context.assetManager.address], EmergencyPauseLevel.FULL, 1 * HOURS, { from: emergencyAddress1 });
+            await context.assetManagerController.emergencyPauseFull([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             // cannot confirm, default or unstick minting
             await expectRevert.custom(minter.executeMinting(crt, mintTx), "EmergencyPauseActive", []);
             await expectRevert.custom(agent.mintingPaymentDefault(crt), "EmergencyPauseActive", []);

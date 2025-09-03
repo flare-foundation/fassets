@@ -27,6 +27,7 @@ import {IAddressUpdatable} from "../../flareSmartContracts/interfaces/IAddressUp
 import {IRedemptionTimeExtension} from "../../userInterfaces/IRedemptionTimeExtension.sol";
 import {GovernedBase} from "../../governance/implementation/GovernedBase.sol";
 
+
 contract AssetManagerController is
     UUPSUpgradeable,
     GovernedProxyImplementation,
@@ -641,14 +642,28 @@ contract AssetManagerController is
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Emergency pause
 
-    function emergencyPause(IIAssetManager[] memory _assetManagers, EmergencyPause.Level _level, uint256 _duration)
+    function emergencyPauseStartOperations(IIAssetManager[] memory _assetManagers, uint256 _duration)
         external
     {
-        bool byGovernance = msg.sender == governance();
-        require(byGovernance || emergencyPauseSenders.contains(msg.sender),
-            OnlyGovernanceOrEmergencyPauseSenders());
-        _callOnManagers(_assetManagers,
-            abi.encodeCall(IIAssetManager.emergencyPause, (_level, byGovernance, _duration)));
+        _emergencyPause(_assetManagers, EmergencyPause.Level.START_OPERATIONS, _duration);
+    }
+
+    function emergencyPauseFull(IIAssetManager[] memory _assetManagers, uint256 _duration)
+        external
+    {
+        _emergencyPause(_assetManagers, EmergencyPause.Level.FULL, _duration);
+    }
+
+    function emergencyPauseFullAndTransfer(IIAssetManager[] memory _assetManagers, uint256 _duration)
+        external
+    {
+        _emergencyPause(_assetManagers, EmergencyPause.Level.FULL_AND_TRANSFER, _duration);
+    }
+
+    function cancelEmergencyPause(IIAssetManager[] memory _assetManagers)
+        external
+    {
+        _emergencyPause(_assetManagers, EmergencyPause.Level.NONE, 0);
     }
 
     function addEmergencyPauseSender(address _address)
@@ -679,6 +694,16 @@ contract AssetManagerController is
     {
         _setValueOnManagers(_assetManagers,
             IISettingsManagement.setEmergencyPauseDurationResetAfterSeconds.selector, _value);
+    }
+
+    function _emergencyPause(IIAssetManager[] memory _assetManagers, EmergencyPause.Level _level, uint256 _duration)
+        private
+    {
+        bool byGovernance = msg.sender == governance();
+        require(byGovernance || emergencyPauseSenders.contains(msg.sender),
+            OnlyGovernanceOrEmergencyPauseSenders());
+        _callOnManagers(_assetManagers,
+            abi.encodeCall(IIAssetManager.emergencyPause, (_level, byGovernance, _duration)));
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
