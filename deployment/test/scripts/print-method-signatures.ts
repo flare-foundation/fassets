@@ -1,6 +1,7 @@
 import { globSync } from "glob";
 import { readFileSync } from "node:fs";
 import { runAsyncMain } from "../../lib/deploy-utils";
+import { Artifact } from "hardhat/types";
 
 function abiToString(abi: AbiItem) {
     const args = abi.inputs!.map(it => `${it.internalType} ${it.name}`);
@@ -11,9 +12,9 @@ runAsyncMain(async () => {
     const files = globSync('artifacts/!(build-info)/**/+([a-zA-Z0-9_]).json')
 
     for (const file of files) {
-        const artifact = JSON.parse(readFileSync(file, { encoding: "utf-8" }));
+        const artifact = JSON.parse(readFileSync(file, { encoding: "utf-8" })) as Artifact;
         if (artifact.bytecode === "0x") continue;   // interface
-        const contractName = artifact.contractName as string;
+        const contractName = artifact.contractName;
         for (const item of artifact.abi as AbiItem[]) {
             if (item.inputs) {
                 const sig = web3.eth.abi.encodeFunctionSignature(item);

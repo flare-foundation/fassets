@@ -3,7 +3,7 @@ import { TrackedAgentState } from "../state/TrackedAgentState";
 import { TrackedState } from "../state/TrackedState";
 import { EvmEventArgs } from "../utils/events/IEvmEvents";
 import { ScopedRunner } from "../utils/events/ScopedRunner";
-import { expectErrors, latestBlockTimestamp, toBN } from "../utils/helpers";
+import { expectErrors } from "../utils/helpers";
 import { ActorBase } from "./ActorBase";
 
 export class LiquidationTrigger extends ActorBase {
