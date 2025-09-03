@@ -58,6 +58,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
         uint256 _redemptionRequestId
     )
         external
+        notFullyEmergencyPaused
         nonReentrant
     {
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId, true);

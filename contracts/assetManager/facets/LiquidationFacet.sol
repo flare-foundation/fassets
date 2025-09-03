@@ -116,6 +116,7 @@ contract LiquidationFacet is AssetManagerBase, ReentrancyGuard {
         address _agentVault
     )
         external
+        notFullyEmergencyPaused
         nonReentrant
     {
         Agent.State storage agent = Agent.get(_agentVault);

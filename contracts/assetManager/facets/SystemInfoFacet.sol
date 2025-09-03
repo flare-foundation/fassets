@@ -21,7 +21,10 @@ contract SystemInfoFacet is AssetManagerBase {
     /**
      * When `controllerAttached` is true, asset manager has been added to the asset manager controller.
      */
-    function controllerAttached() external view  returns (bool) {
+    function controllerAttached()
+        external view
+        returns (bool)
+    {
         AssetManagerState.State storage state = AssetManagerState.get();
         return state.attached;
     }

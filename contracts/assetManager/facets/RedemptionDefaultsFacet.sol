@@ -46,6 +46,7 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         uint256 _redemptionRequestId
     )
         external
+        notFullyEmergencyPaused
         nonReentrant
     {
         require(!_proof.data.requestBody.checkSourceAddresses, SourceAddressesNotSupported());
@@ -99,6 +100,7 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         uint256 _redemptionRequestId
     )
         external
+        notFullyEmergencyPaused
         nonReentrant
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();

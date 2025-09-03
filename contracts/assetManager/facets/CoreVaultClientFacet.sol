@@ -165,6 +165,7 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
     )
         external
         onlyEnabled
+        notFullyEmergencyPaused
         nonReentrant
         onlyAgentVaultOwner(_agentVault)
     {
@@ -189,6 +190,7 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
     )
         external
         onlyEnabled
+        notFullyEmergencyPaused
         nonReentrant
         onlyAgentVaultOwner(_agentVault)
     {

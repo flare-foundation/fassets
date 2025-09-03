@@ -53,6 +53,7 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
         address _agentVault
     )
         external
+        notEmergencyPaused
         nonReentrant
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -107,6 +108,7 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
         address _agentVault
     )
         external
+        notEmergencyPaused
         nonReentrant
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -145,6 +147,7 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
         address _agentVault
     )
         external
+        notEmergencyPaused
         nonReentrant
     {
         AssetManagerState.State storage state = AssetManagerState.get();

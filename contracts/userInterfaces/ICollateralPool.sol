@@ -69,6 +69,7 @@ interface ICollateralPool {
     error TokenSupplyAfterExitTooLow();
     error CollateralAfterExitTooLow();
     error CannotDestroyPoolWithIssuedTokens();
+    error EmergencyPauseActive();
 
     /**
      * Enters the collateral pool by depositing NAT.

@@ -55,6 +55,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
         uint256 _valueNATWei
     )
         external
+        notEmergencyPaused
         onlyAgentVaultOwner(_agentVault)
         returns (uint256 _withdrawalAllowedAt)
     {
@@ -75,6 +76,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
         uint256 _valueNATWei
     )
         external
+        notEmergencyPaused
         onlyAgentVaultOwner(_agentVault)
         returns (uint256 _redemptionAllowedAt)
     {
@@ -91,6 +93,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
         uint256 _amountWei
     )
         external
+        notFullyEmergencyPaused
     {
         Agent.State storage agent = Agent.get(msg.sender);
         Collateral.Kind kind;
@@ -135,6 +138,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
         address _agentVault,
         IERC20 _token
     )
+        // no emergency pause check to allow change token / deposit collateral
         external
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -156,6 +160,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
         IERC20 _token
     )
         external
+        // no emergency pause check to allow changing collateral token
         onlyAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -183,6 +188,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
         address _agentVault
     )
         external
+        // no emergency pause check to allow changing collateral token
         onlyAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);

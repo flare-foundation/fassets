@@ -197,6 +197,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         uint256 _redemptionRequestId
     )
         external
+        notFullyEmergencyPaused
         nonReentrant
     {
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId, true);
@@ -274,6 +275,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         address _agentVault
     )
         external
+        notFullyEmergencyPaused
         nonReentrant
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();

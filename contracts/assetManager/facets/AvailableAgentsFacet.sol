@@ -37,6 +37,7 @@ contract AvailableAgentsFacet is AssetManagerBase {
         address _agentVault
     )
         external
+        notEmergencyPaused
         onlyAgentVaultOwner(_agentVault)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -64,6 +65,7 @@ contract AvailableAgentsFacet is AssetManagerBase {
         address _agentVault
     )
         external
+        notEmergencyPaused
         onlyAgentVaultOwner(_agentVault)
         returns (uint256 _exitAllowedAt)
     {
@@ -84,6 +86,7 @@ contract AvailableAgentsFacet is AssetManagerBase {
         address _agentVault
     )
         external
+        notFullyEmergencyPaused
         onlyAgentVaultOwner(_agentVault)
     {
         AssetManagerState.State storage state = AssetManagerState.get();

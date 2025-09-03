@@ -45,6 +45,7 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         uint256 _crtId
     )
         external
+        notFullyEmergencyPaused
         nonReentrant
     {
         CollateralReservation.Data storage crt = Minting.getCollateralReservation(_crtId, true);
@@ -92,6 +93,7 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         uint256 _crtId
     )
         external payable
+        notFullyEmergencyPaused
         nonReentrant
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();

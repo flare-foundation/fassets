@@ -59,6 +59,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
     )
         external
         onlyAttached
+        notEmergencyPaused
         returns (address _agentVault)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -124,6 +125,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         address _agentVault
     )
         external
+        notEmergencyPaused
         onlyAgentVaultOwner(_agentVault)
         returns (uint256 _destroyAllowedAt)
     {
@@ -159,6 +161,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         address payable _recipient
     )
         external
+        notFullyEmergencyPaused
         onlyAgentVaultOwner(_agentVault)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -198,6 +201,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
         address _agentVault
     )
         external
+        notEmergencyPaused
         onlyAgentVaultOwner(_agentVault)
     {
         _upgradeAgentVaultAndPool(_agentVault);

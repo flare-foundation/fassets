@@ -62,6 +62,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         uint256 _crtId
     )
         external
+        notFullyEmergencyPaused
         nonReentrant
     {
         CollateralReservation.Data storage crt = Minting.getCollateralReservation(_crtId, true);

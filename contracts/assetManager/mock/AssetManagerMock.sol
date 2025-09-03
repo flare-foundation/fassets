@@ -8,6 +8,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {IIFAsset} from "../../fassetToken/interfaces/IIFAsset.sol";
 import {Agent} from "../library/data/Agent.sol";
+import {EmergencyPause} from "../../userInterfaces/data/EmergencyPause.sol";
+
 
 contract AssetManagerMock {
     IWNat private wNat;
@@ -127,11 +129,18 @@ contract AssetManagerMock {
         return fasset;
     }
 
-    function transfersEmergencyPaused()
+    function emergencyPaused()
         external pure
         returns (bool)
     {
         return false;
+    }
+
+    function emergencyPauseLevel()
+        external pure
+        returns (EmergencyPause.Level)
+    {
+        return EmergencyPause.Level.NONE;
     }
 
     function getAgentMinPoolCollateralRatioBIPS(address /* _agentVault */) external view returns (uint256) {

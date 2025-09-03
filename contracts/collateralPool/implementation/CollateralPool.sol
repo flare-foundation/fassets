@@ -19,6 +19,7 @@ import {ICollateralPoolToken} from "../../userInterfaces/ICollateralPoolToken.so
 import {IRewardManager} from "@flarenetwork/flare-periphery-contracts/flare/IRewardManager.sol";
 import {IDistributionToDelegators} from "@flarenetwork/flare-periphery-contracts/flare/IDistributionToDelegators.sol";
 import {ICollateralPool} from "../../userInterfaces/ICollateralPool.sol";
+import {EmergencyPause} from "../../userInterfaces/data/EmergencyPause.sol";
 
 
 //slither-disable reentrancy    // all possible reentrancies guarded by nonReentrant
@@ -58,12 +59,17 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     uint256 public totalCollateral;
 
     modifier onlyAssetManager {
-        require(msg.sender == address(assetManager), OnlyAssetManager());
+        _checkOnlyAssetManager();
         _;
     }
 
     modifier onlyAgent {
-        require(isAgentVaultOwner(msg.sender), OnlyAgent());
+        _checkOnlyAgentVaultOwner();
+        _;
+    }
+
+    modifier notEmergencyPaused {
+        _checkEmergencyPauseNotActive();
         _;
     }
 
@@ -130,6 +136,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
     function enter()
         external payable
+        notEmergencyPaused
         nonReentrant
         returns (uint256, uint256)
     {
@@ -164,6 +171,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
     function exit(uint256 _tokenShare)
         external
+        notEmergencyPaused
         nonReentrant
         returns (uint256)
     {
@@ -179,6 +187,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
     function exitTo(uint256 _tokenShare, address payable _recipient)
         external
+        notEmergencyPaused
         nonReentrant
         returns (uint256)
     {
@@ -229,6 +238,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         address payable _executor
     )
         external payable
+        notEmergencyPaused
         nonReentrant
     {
         _selfCloseExitTo(_tokenShare, _redeemToCollateral, payable(msg.sender), _redeemerUnderlyingAddress, _executor);
@@ -257,6 +267,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         address payable _executor
     )
         external payable
+        notEmergencyPaused
         nonReentrant
     {
         require(_recipient != address(0) && _recipient != address(this) && _recipient != agentVault,
@@ -332,6 +343,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
      */
     function withdrawFees(uint256 _fAssets)
         external
+        notEmergencyPaused
         nonReentrant
     {
         _withdrawFeesTo(_fAssets, msg.sender);
@@ -345,6 +357,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
      */
     function withdrawFeesTo(uint256 _fAssets, address _recipient)
         external
+        notEmergencyPaused
         nonReentrant
     {
         _withdrawFeesTo(_fAssets, _recipient);
@@ -375,6 +388,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
      */
     function payFAssetFeeDebt(uint256 _fAssets)
         external
+        notEmergencyPaused
         nonReentrant
     {
         require(_fAssets != 0, ZeroFAssetDebtPayment());
@@ -802,19 +816,35 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     ////////////////////////////////////////////////////////////////////////////////////
     // Delegation of the pool's collateral and airdrop claiming (same as in AgentVault)
 
-    function delegate(address _to, uint256 _bips) external onlyAgent {
+    function delegate(address _to, uint256 _bips)
+        external
+        notEmergencyPaused
+        onlyAgent
+    {
         wNat.delegate(_to, _bips);
     }
 
-    function undelegateAll() external onlyAgent {
+    function undelegateAll()
+        external
+        notEmergencyPaused
+        onlyAgent
+    {
         wNat.undelegateAll();
     }
 
-    function delegateGovernance(address _to) external onlyAgent {
+    function delegateGovernance(address _to)
+        external
+        notEmergencyPaused
+        onlyAgent
+    {
         wNat.governanceVotePower().delegate(_to);
     }
 
-    function undelegateGovernance() external onlyAgent {
+    function undelegateGovernance()
+        external
+        notEmergencyPaused
+        onlyAgent
+    {
         wNat.governanceVotePower().undelegate();
     }
 
@@ -824,6 +854,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         IRewardManager.RewardClaimWithProof[] calldata _proofs
     )
         external
+        notEmergencyPaused
         onlyAgent
         nonReentrant
         returns (uint256)
@@ -843,6 +874,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         uint256 _month
     )
         external
+        notEmergencyPaused
         onlyAgent
         nonReentrant
         returns(uint256)
@@ -861,6 +893,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         IDistributionToDelegators _distribution
     )
         external
+        notEmergencyPaused
         onlyAgent
         nonReentrant
     {
@@ -885,14 +918,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // The rest
-
-    function isAgentVaultOwner(address _address)
-        internal view
-        returns (bool)
-    {
-        return assetManager.isAgentVaultOwner(agentVault, _address);
-    }
+    // ERC-165
 
     /**
      * Implementation of ERC-165 interface.
@@ -904,5 +930,20 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         return _interfaceId == type(IERC165).interfaceId
             || _interfaceId == type(ICollateralPool).interfaceId
             || _interfaceId == type(IICollateralPool).interfaceId;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // modifier implementation methods
+
+    function _checkOnlyAssetManager() private view {
+        require(msg.sender == address(assetManager), OnlyAssetManager());
+    }
+
+    function _checkOnlyAgentVaultOwner() private view {
+        require(assetManager.isAgentVaultOwner(agentVault, msg.sender), OnlyAgent());
+    }
+
+    function _checkEmergencyPauseNotActive() private view {
+        require(assetManager.emergencyPauseLevel() < EmergencyPause.Level.START_OPERATIONS, EmergencyPauseActive());
     }
 }

@@ -405,6 +405,12 @@ export class Agent extends AssetContextClient {
         return optionalEventArgs(res, "RedemptionDefault");
     }
 
+    async rejectInvalidRedemption(request: EventArgs<RedemptionRequested>) {
+        const proof = await this.context.attestationProvider.proveAddressValidity(request.paymentAddress);
+        const res = await this.context.assetManager.rejectInvalidRedemption(proof, request.requestId, { from: this.ownerWorkAddress });
+        return requiredEventArgs(res, "RedemptionRejected");
+    }
+
     async getRedemptionPaymentDefaultValue(lots: BNish, selfCloseExit: boolean = false): Promise<[BN, BN]> {
         const uba = this.context.convertLotsToUBA(lots);
         return await this.getRedemptionPaymentDefaultValueForUBA(uba, selfCloseExit);
@@ -534,7 +540,13 @@ export class Agent extends AssetContextClient {
 
     async confirmReturnFromCoreVault(txHash: string) {
         const proof = await this.attestationProvider.provePayment(txHash, null, this.underlyingAddress);
-        await this.assetManager.confirmReturnFromCoreVault(proof, this.vaultAddress, { from: this.ownerWorkAddress });
+        const res = await this.assetManager.confirmReturnFromCoreVault(proof, this.vaultAddress, { from: this.ownerWorkAddress });
+        return requiredEventArgs(res, "ReturnFromCoreVaultConfirmed");
+    }
+
+    async cancelReturnFromCoreVault() {
+        const res = await this.context.assetManager.cancelReturnFromCoreVault(this.vaultAddress, { from: this.ownerWorkAddress });
+        return requiredEventArgs(res, "ReturnFromCoreVaultCancelled");
     }
 
     async getCurrentVaultCollateralRatioBIPS() {
