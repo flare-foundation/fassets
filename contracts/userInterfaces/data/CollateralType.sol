@@ -22,7 +22,7 @@ library CollateralType {
         // Same as token.decimals(), when that exists.
         uint256 decimals;
 
-        // Token invalidation time. Must be 0 on creation.
+        // Token invalidation time. Should always be 0 since token invalidation is deprecated.
         uint256 validUntil;
 
         // When `true`, the FTSO with symbol `assetFtsoSymbol` returns asset price relative to this token

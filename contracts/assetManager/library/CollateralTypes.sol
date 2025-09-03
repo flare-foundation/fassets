@@ -120,13 +120,6 @@ library CollateralTypes {
         return index > 0;
     }
 
-    function isValid(CollateralTypeInt.Data storage _token)
-        internal view
-        returns (bool)
-    {
-        return _token.validUntil == 0 || _token.validUntil > block.timestamp;
-    }
-
     function _add(CollateralType.Data memory _data) private returns (uint256) {
         AssetManagerState.State storage state = AssetManagerState.get();
         // validation of collateralClass is done before call to _add
@@ -152,7 +145,7 @@ library CollateralTypes {
             token: _data.token,
             collateralClass: _data.collateralClass,
             decimals: _data.decimals.toUint8(),
-            validUntil: _data.validUntil.toUint64(),
+            __validUntil: 0, // no longer used
             directPricePair: _data.directPricePair,
             assetFtsoSymbol: _data.assetFtsoSymbol,
             tokenFtsoSymbol: _data.tokenFtsoSymbol,
@@ -182,7 +175,7 @@ library CollateralTypes {
             token: token.token,
             collateralClass: token.collateralClass,
             decimals: token.decimals,
-            validUntil: token.validUntil,
+            validUntil: token.__validUntil,
             directPricePair: token.directPricePair,
             assetFtsoSymbol: token.assetFtsoSymbol,
             tokenFtsoSymbol: token.tokenFtsoSymbol,

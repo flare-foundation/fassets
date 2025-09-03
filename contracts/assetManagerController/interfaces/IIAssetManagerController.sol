@@ -189,13 +189,6 @@ interface IIAssetManagerController is
         uint256 _safetyMinCollateralRatioBIPS
     ) external;
 
-    function deprecateCollateralType(
-        IIAssetManager[] memory _assetManagers,
-        CollateralType.Class _class,
-        IERC20 _token,
-        uint256 _invalidationTimeSec
-    ) external;
-
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Upgrade (second phase)
 

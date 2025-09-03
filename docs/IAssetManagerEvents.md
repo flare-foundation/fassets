@@ -81,5 +81,3 @@
 **CollateralTypeAdded** - New collateral token has been added.
 
 **CollateralRatiosChanged** - System defined collateral ratios for the token have changed (minimal and safety collateral ratio).
-
-**CollateralTypeDeprecated** - Collateral token has been marked as deprecated. After the timestamp `validUntil` passes, it will be considered invalid and the agents who haven't switched their collateral before will be liquidated.

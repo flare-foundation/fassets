@@ -13,7 +13,6 @@ import {AgentUpdates} from "../library/AgentUpdates.sol";
 import {Agent} from "../library/data/Agent.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 import {Collateral} from "../library/data/Collateral.sol";
-import {CollateralTypeInt} from "../library/data/CollateralTypeInt.sol";
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
@@ -148,34 +147,6 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
         if (agent.isCollateralToken(_token)) {
             Liquidation.endLiquidationIfHealthy(agent);
         }
-    }
-
-    /**
-     * If the current agent's vault collateral token gets deprecated, the agent must switch with this method.
-     * NOTE: may only be called by the agent vault owner.
-     * NOTE: at the time of switch, the agent must have enough of both collaterals in the vault.
-     */
-    function switchVaultCollateral(
-        address _agentVault,
-        IERC20 _token
-    )
-        external
-        // no emergency pause check to allow changing collateral token
-        onlyAgentVaultOwner(_agentVault)
-    {
-        Agent.State storage agent = Agent.get(_agentVault);
-        // check that old collateral is deprecated
-        // could work without this check, but would need timelock, otherwise there can be
-        // withdrawal without announcement by switching, withdrawing and switching back
-        CollateralTypeInt.Data storage currentCollateral = agent.getVaultCollateral();
-        require(currentCollateral.validUntil != 0, CollateralNotDeprecated());
-        // cannot switch if collateral withdrawal is announced
-        Agent.WithdrawalAnnouncement storage withdrawal = agent.withdrawalAnnouncement(Collateral.Kind.VAULT);
-        require(withdrawal.allowedAt == 0, CollateralWithdrawalAnnounced());
-        // set new collateral
-        agent.setVaultCollateral(_token);
-        emit IAssetManagerEvents.AgentCollateralTypeChanged(_agentVault,
-            uint8(CollateralType.Class.VAULT), address(_token));
     }
 
     /**

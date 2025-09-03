@@ -107,18 +107,6 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsMan
         uint256 _safetyMinCollateralRatioBIPS
     ) external;
 
-    /**
-     * Deprecate collateral type identified by `_collateralClass` and `_token`.
-     * After `_invalidationTimeSec` the collateral will become invalid and all the agents
-     * that still use it as collateral will be liquidated.
-     * NOTE: may not be called directly - only through asset manager controller by governance.
-     */
-    function deprecateCollateralType(
-        CollateralType.Class _collateralClass,
-        IERC20 _token,
-        uint256 _invalidationTimeSec
-    ) external;
-
     ////////////////////////////////////////////////////////////////////////////////////
     // Collateral pool redemptions
 

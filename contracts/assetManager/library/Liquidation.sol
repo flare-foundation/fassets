@@ -12,7 +12,6 @@ import {AgentCollateral} from "./AgentCollateral.sol";
 import {Agent} from "./data/Agent.sol";
 import {Collateral} from "./data/Collateral.sol";
 import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
-import {CollateralTypes} from "./CollateralTypes.sol";
 
 
 library Liquidation {
@@ -167,12 +166,7 @@ library Liquidation {
         private view
         returns (uint256)
     {
-        if (!CollateralTypes.isValid(collateral)) {
-            // A simple way to force agents still holding expired collateral tokens into liquidation is just to
-            // set fullCollateral for expired types to 0.
-            // This will also make sure all liquidation payments are in the other collateral type.
-            return 0;
-        } else if (_kind == Collateral.Kind.POOL) {
+        if (_kind == Collateral.Kind.POOL) {
             // Return tracked collateral amount in the pool.
             return _agent.collateralPool.totalCollateral();
         } else {

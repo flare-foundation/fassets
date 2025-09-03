@@ -34,8 +34,8 @@ library AgentUpdates {
         uint256 tokenIndex = CollateralTypes.getIndex(CollateralType.Class.VAULT, _token);
         CollateralTypeInt.Data storage collateral = state.collateralTokens[tokenIndex];
         assert(collateral.collateralClass == CollateralType.Class.VAULT);
-        // agent should never switch to a deprecated or already invalid collateral
-        require(collateral.validUntil == 0, CollateralDeprecated());
+        // agent should never use a deprecated or already invalid collateral
+        require(collateral.__validUntil == 0, CollateralDeprecated());
         // set the new index
         _agent.vaultCollateralIndex = tokenIndex.toUint16();
         // check there is enough collateral for current mintings

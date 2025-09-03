@@ -495,15 +495,6 @@ interface IAssetManagerEvents {
         uint256 safetyMinCollateralRatioBIPS);
 
     /**
-     * Collateral token has been marked as deprecated. After the timestamp `validUntil` passes, it will be
-     * considered invalid and the agents who haven't switched their collateral before will be liquidated.
-     */
-    event CollateralTypeDeprecated(
-        uint8 collateralClass,
-        address collateralToken,
-        uint256 validUntil);
-
-    /**
      * Emergency pause was triggered.
      */
     event EmergencyPauseTriggered(

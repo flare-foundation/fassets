@@ -127,10 +127,6 @@ export class TrackedState {
             collateral.minCollateralRatioBIPS = toBN(args.minCollateralRatioBIPS);
             collateral.safetyMinCollateralRatioBIPS = toBN(args.safetyMinCollateralRatioBIPS);
         });
-        this.assetManagerEvent('CollateralTypeDeprecated').subscribe(args => {
-            const collateral = this.collaterals.get(args.collateralClass, args.collateralToken);
-            collateral.validUntil = toBN(args.validUntil);
-        });
         // track price changes
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         this.truffleEvents.event(this.context.priceStore, 'PricesPublished').immediate().subscribe(async args => {

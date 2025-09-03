@@ -524,19 +524,6 @@ contract AssetManagerController is
                 (_class, _token, _minCollateralRatioBIPS, _safetyMinCollateralRatioBIPS)));
     }
 
-    function deprecateCollateralType(
-        IIAssetManager[] memory _assetManagers,
-        CollateralType.Class _class,
-        IERC20 _token,
-        uint256 _invalidationTimeSec
-    )
-        external
-        onlyImmediateGovernance
-    {
-        _callOnManagers(_assetManagers,
-            abi.encodeCall(IIAssetManager.deprecateCollateralType, (_class, _token, _invalidationTimeSec)));
-    }
-
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Upgrade (second phase)
 

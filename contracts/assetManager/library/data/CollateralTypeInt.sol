@@ -19,7 +19,7 @@ library CollateralTypeInt {
         // is still valid until this timestamp. After that time, the corresponding collateral is considered as
         // zero and the agents that haven't replaced it are liquidated.
         // When the invalidation has not been announced, this value is 0.
-        uint64 validUntil;
+        uint64 __validUntil;
         // When `true`, the FTSO with symbol `assetFtsoSymbol` returns asset price relative to this token
         // (such FTSO's will probably exist for major stablecoins).
         // When `false`, the FTSOs with symbols `assetFtsoSymbol` and `tokenFtsoSymbol` give asset and token

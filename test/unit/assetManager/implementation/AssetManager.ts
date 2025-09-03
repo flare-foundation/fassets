@@ -678,148 +678,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert.custom(res, "UnknownToken", []);
         });
 
-        it("should deprecate collateral token", async () => {
-            const tx = await assetManager.deprecateCollateralType(collaterals[0].collateralClass, collaterals[0].token,
-                settings.tokenInvalidationTimeMinSeconds, { from: assetManagerController });
-            expectEvent(tx, "CollateralTypeDeprecated");
-            const collateralType = await assetManager.getCollateralType(collaterals[0].collateralClass, collaterals[0].token);
-            assertWeb3Equal(collateralType.validUntil, (await time.latest()).add(toBN(settings.tokenInvalidationTimeMinSeconds)));
-        });
-
-        it("should get revert if deprecating the same token multiple times", async () => {
-            await assetManager.deprecateCollateralType(collaterals[0].collateralClass, collaterals[0].token,
-                settings.tokenInvalidationTimeMinSeconds, { from: assetManagerController });
-            //Wait and call deprecate again to trigger revert that token is not valid
-            await time.deterministicIncrease(settings.tokenInvalidationTimeMinSeconds);
-            const res = assetManager.deprecateCollateralType(collaterals[0].collateralClass, collaterals[0].token,
-                settings.tokenInvalidationTimeMinSeconds, { from: assetManagerController });
-            await expectRevert.custom(res, "TokenNotValid", []);
-        });
-
-        it("should switch vault collateral token", async () => {
-            const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
-            //deprecate token
-            const tx = await assetManager.deprecateCollateralType(collaterals[1].collateralClass, collaterals[1].token,
-                settings.tokenInvalidationTimeMinSeconds, { from: assetManagerController });
-            expectEvent(tx, "CollateralTypeDeprecated");
-            const collateralType = await assetManager.getCollateralType(collaterals[1].collateralClass, collaterals[1].token);
-            assertWeb3Equal(collateralType.validUntil, (await time.latest()).add(toBN(settings.tokenInvalidationTimeMinSeconds)));
-            const tx1 = await assetManager.switchVaultCollateral(agentVault.address,collaterals[2].token, { from: agentOwner1 });
-            expectEvent(tx1, "AgentCollateralTypeChanged");
-            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            assert.equal(agentInfo.vaultCollateralToken, collaterals[2].token);
-        });
-
-        it("should not switch vault collateral token if unknown token", async () => {
-            const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
-            //deprecate token
-            const tx = await assetManager.deprecateCollateralType(collaterals[1].collateralClass, collaterals[1].token,
-                settings.tokenInvalidationTimeMinSeconds, { from: assetManagerController });
-            expectEvent(tx, "CollateralTypeDeprecated");
-            const collateralType = await assetManager.getCollateralType(collaterals[1].collateralClass, collaterals[1].token);
-            assertWeb3Equal(collateralType.validUntil, (await time.latest()).add(toBN(settings.tokenInvalidationTimeMinSeconds)));
-            const unknownToken = accounts[12];
-            const tx1 = assetManager.switchVaultCollateral(agentVault.address,unknownToken, { from: agentOwner1 });
-            await expectRevert.custom(tx1, "UnknownToken", []);
-        });
-
         it("should not be able to add a deprecated collateral token", async () => {
             const ci = testChainInfo.eth;
             // create asset manager
             collaterals = createTestCollaterals(contracts, ci);
-            //Set token validUntil timestamp to some time in the past to make it deprecated
-            collaterals[1].validUntil = chain.currentTimestamp()-100;
+            // Set token validUntil timestamp to some time in the future to make it deprecated
+            collaterals[1].validUntil = chain.currentTimestamp() + 100;
             settings = createTestSettings(contracts, ci);
-            //Creating asset manager should revert because we are trying to add a vault collateral that is deprecated
+            // Creating asset manager should revert because we are trying to add a vault collateral that is deprecated
             const res = newAssetManagerQuick(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
             await expectRevert.custom(res, "CannotAddDeprecatedToken", []);
-        });
-
-        it("should not switch vault collateral token", async () => {
-            const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1, toWei(3e6), toWei(3e6));
-            await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(2));
-            await contracts.priceStore.setCurrentPrice(assetSymbol, toBNExp(5, 8), 0);
-            await contracts.priceStore.setCurrentPriceFromTrustedProviders(usdcSymbol, toBNExp(5, 8), 0);
-            //Can't switch vault collateral if it has not been deprecated
-            let res = assetManager.switchVaultCollateral(agentVault.address,collaterals[2].token, { from: agentOwner1 });
-            await expectRevert.custom(res, "CollateralNotDeprecated", []);
-            // Only agent owner can switch vault collateral
-            res = assetManager.switchVaultCollateral(agentVault.address,collaterals[2].token, { from: accounts[5] });
-            await expectRevert.custom(res, "OnlyAgentVaultOwner", []);
-            //deprecate token
-            const tx = await assetManager.deprecateCollateralType(collaterals[1].collateralClass, collaterals[1].token,
-                settings.tokenInvalidationTimeMinSeconds, { from: assetManagerController });
-            expectEvent(tx, "CollateralTypeDeprecated");
-            const collateralType = await assetManager.getCollateralType(collaterals[1].collateralClass, collaterals[1].token);
-            assertWeb3Equal(collateralType.validUntil, (await time.latest()).add(toBN(settings.tokenInvalidationTimeMinSeconds)));
-            //Wait until you can switch vault collateral token
-            await time.deterministicIncrease(settings.tokenInvalidationTimeMinSeconds);
-            //Deprecated token can't be switched to
-            res = assetManager.switchVaultCollateral(agentVault.address,collaterals[1].token, { from: agentOwner1 });
-            await expectRevert.custom(res, "CollateralDeprecated", []);
-            //Can't switch if CR too low
-            res = assetManager.switchVaultCollateral(agentVault.address,collaterals[2].token, { from: agentOwner1 });
-            await expectRevert.custom(res, "NotEnoughCollateral", []);
-        });
-
-        it("should not switch vault collateral token when withdrawal announced", async () => {
-            const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
-            await depositAgentCollaterals(agentVault, agentOwner1, toWei(1000), toWei(1000));
-            // announce
-            await assetManager.announceVaultCollateralWithdrawal(agentVault.address, toWei(1000), { from: agentOwner1 });
-            // deprecate collateral
-            const tx = await assetManager.deprecateCollateralType(collaterals[1].collateralClass, collaterals[1].token,
-                settings.tokenInvalidationTimeMinSeconds, { from: assetManagerController });
-            expectEvent(tx, "CollateralTypeDeprecated");
-            // should not work
-            await expectRevert.custom(assetManager.switchVaultCollateral(agentVault.address, collaterals[2].token, { from: agentOwner1 }),
-                "CollateralWithdrawalAnnounced", []);
-            // should work after withdrawal is cleared
-            await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 0, { from: agentOwner1 });
-            await assetManager.switchVaultCollateral(agentVault.address, collaterals[2].token, { from: agentOwner1 });
-        });
-
-        it("If agent doesn't switch vault collateral after deprecation and invalidation time, liquidator can start liquidation", async () => {
-            const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
-            await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(1));
-            const liquidator = accounts[83];
-            //deprecate token
-            const tx = await assetManager.deprecateCollateralType(collaterals[1].collateralClass, collaterals[1].token,
-                settings.tokenInvalidationTimeMinSeconds, { from: assetManagerController });
-            expectEvent(tx, "CollateralTypeDeprecated");
-            const collateralType = await assetManager.getCollateralType(collaterals[1].collateralClass, collaterals[1].token);
-            assertWeb3Equal(collateralType.validUntil, (await time.latest()).add(toBN(settings.tokenInvalidationTimeMinSeconds)));
-            // Should not be able to start liquidation before time passes
-            await expectRevert.custom(assetManager.startLiquidation(agentVault.address, { from: liquidator }), "LiquidationNotStarted", []);
-            //Wait until you can switch vault collateral token
-            await time.deterministicIncrease(settings.tokenInvalidationTimeMinSeconds);
-            await time.deterministicIncrease(settings.tokenInvalidationTimeMinSeconds);
-            await assetManager.startLiquidation(agentVault.address, { from: liquidator });
-            //Check for liquidation status
-            const info = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(info.status, 1);
-            //Deposit new vault collateral
-            await usdt.mintAmount(agentOwner1, toWei(3e8));
-            await usdt.approve(agentVault.address, toWei(3e8), { from: agentOwner1 });
-            await agentVault.depositCollateral(usdt.address, toWei(3e8), { from: agentOwner1 });
-            //Before switching, the agent is still in liquidation
-            const info1 = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(info1.status, 1);
-            //Agent switches the collateral
-            await assetManager.switchVaultCollateral(agentVault.address,collaterals[2].token, { from: agentOwner1 });
-            //Agent still has to call updateCollateral to get out of liquidation
-            const info2 = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(info2.status, 1);
-            //Random address can't call collateral deposited
-            const res = assetManager.updateCollateral(agentVault.address,usdt.address, { from: accounts[5] });
-            await expectRevert.custom(res, "OnlyAgentVaultOrPool", []);
-            const res1 = agentVault.updateCollateral(usdt.address, { from: accounts[5] });
-            await expectRevert.custom(res1, "OnlyOwner", []);
-            //Call collateral deposited from owner address to trigger liquidation end
-            await agentVault.updateCollateral(usdt.address, { from: agentOwner1 });
-            //Check that agent is out of liquidation
-            const info3 = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(info3.status, 0);
         });
 
         it("should set pool collateral token", async () => {
@@ -2159,12 +2027,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         it("random address shouldn't be able to add collateral ratios for token", async () => {
             const r = assetManager.setCollateralRatiosForToken(collaterals[0].collateralClass, collaterals[0].token,
                 toBIPS(1.5), toBIPS(1.6), { from: accounts[99] });
-            await expectRevert.custom(r, "OnlyAssetManagerController", []);
-        });
-
-        it("random address shouldn't be able to deprecate token", async () => {
-            const r = assetManager.deprecateCollateralType(collaterals[0].collateralClass, collaterals[0].token,
-                settings.tokenInvalidationTimeMinSeconds, { from: accounts[99] });
             await expectRevert.custom(r, "OnlyAssetManagerController", []);
         });
 

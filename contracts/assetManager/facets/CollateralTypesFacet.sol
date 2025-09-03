@@ -5,10 +5,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {CollateralTypes} from "../library/CollateralTypes.sol";
-import {Globals} from "../library/Globals.sol";
 import {SettingsUpdater} from "../library/SettingsUpdater.sol";
 import {CollateralTypeInt} from "../library/data/CollateralTypeInt.sol";
-import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
@@ -60,31 +58,6 @@ contract CollateralTypesFacet is AssetManagerBase {
         token.safetyMinCollateralRatioBIPS = _safetyMinCollateralRatioBIPS.toUint32();
         emit IAssetManagerEvents.CollateralRatiosChanged(uint8(_collateralClass), address(_token),
             _minCollateralRatioBIPS, _safetyMinCollateralRatioBIPS);
-    }
-
-    /**
-     * Deprecate collateral type identified by `_collateralClass` and `_token`.
-     * After `_invalidationTimeSec` the collateral will become invalid and all the agents
-     * that still use it as collateral will be liquidated.
-     * NOTE: may not be called directly - only through asset manager controller by governance.
-     */
-    function deprecateCollateralType(
-        CollateralType.Class _collateralClass,
-        IERC20 _token,
-        uint256 _invalidationTimeSec
-    )
-        external
-        onlyAssetManagerController
-    {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        CollateralTypeInt.Data storage token = CollateralTypes.get(_collateralClass, _token);
-        // validate
-        require(token.validUntil == 0 || token.validUntil > block.timestamp, TokenNotValid());
-        require(_invalidationTimeSec >= settings.tokenInvalidationTimeMinSeconds, DeprecationTimeToShort());
-        // update
-        uint256 validUntil = block.timestamp + _invalidationTimeSec;
-        token.validUntil = validUntil.toUint64();
-        emit IAssetManagerEvents.CollateralTypeDeprecated(uint8(_collateralClass), address(_token), validUntil);
     }
 
     /**

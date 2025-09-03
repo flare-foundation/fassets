@@ -1143,36 +1143,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const res2 = assetManagerController.addCollateralType([assetManager.address], newToken_invalidSafetyMinColRatio, { from: governance });
             await expectRevert.custom(res2, "InvalidCollateralRatios", []);
         });
-
-        it("should revert deprecating token", async () => {
-            const currentSettings = await assetManager.getSettings();
-            const invalidToken = {
-                ...collaterals[0],
-                token: accounts[81],
-                ftsoSymbol: "TOK",
-                minCollateralRatioBIPS: "20000",
-                safetyMinCollateralRatioBIPS: "21000",
-                collateralClass: 2,
-            };
-
-            const newToken = {
-                ...collaterals[0],
-                token: accounts[82],
-                ftsoSymbol: "TOK",
-                minCollateralRatioBIPS: "20000",
-                safetyMinCollateralRatioBIPS: "21000",
-                collateralClass: 2,
-            };
-            await assetManagerController.addCollateralType([assetManager.address], newToken, { from: governance });
-            await assetManagerController.addCollateralType([assetManager.address], invalidToken, { from: governance });
-            await assetManagerController.deprecateCollateralType([assetManager.address],2, invalidToken.token,currentSettings.tokenInvalidationTimeMinSeconds ,{ from: governance });
-            await time.deterministicIncrease(WEEKS);
-            const res = assetManagerController.deprecateCollateralType([assetManager.address],2, invalidToken.token,currentSettings.tokenInvalidationTimeMinSeconds ,{ from: governance });
-            await expectRevert.custom(res, "TokenNotValid", []);
-
-            const res2 = assetManagerController.deprecateCollateralType([assetManager.address],2, newToken.token,toBN(currentSettings.tokenInvalidationTimeMinSeconds).subn(1) ,{ from: governance });
-            await expectRevert.custom(res2, "DeprecationTimeToShort", []);
-        });
     });
 
     describe("proxy upgrade", () => {
@@ -1422,31 +1392,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 collateralClass: 2,
             };
             const res = assetManagerController.addCollateralType([assetManager.address], newToken, { from: accounts[12] });
-            await expectRevert.custom(res, "OnlyGovernance", []);
-        });
-
-        it("random address shouldn't be able to deprecate token", async () => {
-            const currentSettings = await assetManager.getSettings();
-            const invalidToken = {
-                ...collaterals[0],
-                token: accounts[81],
-                ftsoSymbol: "TOK",
-                minCollateralRatioBIPS: "20000",
-                safetyMinCollateralRatioBIPS: "21000",
-                collateralClass: 2,
-            };
-
-            const newToken = {
-                ...collaterals[0],
-                token: accounts[82],
-                ftsoSymbol: "TOK",
-                minCollateralRatioBIPS: "20000",
-                safetyMinCollateralRatioBIPS: "21000",
-                collateralClass: 2,
-            };
-            await assetManagerController.addCollateralType([assetManager.address], newToken, { from: governance });
-            await assetManagerController.addCollateralType([assetManager.address], invalidToken, { from: governance });
-            const res = assetManagerController.deprecateCollateralType([assetManager.address],2, invalidToken.token,currentSettings.tokenInvalidationTimeMinSeconds ,{ from: accounts[12] });
             await expectRevert.custom(res, "OnlyGovernance", []);
         });
     });
