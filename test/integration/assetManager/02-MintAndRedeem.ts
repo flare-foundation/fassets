@@ -926,5 +926,31 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         it("collateral reservation and redemption info revert if the id isn't valid", async () => {
             await expectRevert.custom(context.assetManager.collateralReservationInfo(100), "InvalidCrtId", []);
         });
+
+        it("changing poolFeeShare during minting should use cached version for paying minting and reservation fee to the pool", async () => {
+            const startBips = 1000;
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { poolFeeShareBIPS: startBips });
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(10));
+            await context.updateUnderlyingBlock();
+            await agent.depositCollateralLotsAndMakeAvailable(10);
+            const settingChange = await agent.announceAgentSettingUpdate("poolFeeShareBIPS", 0);
+            // start mint
+            const lots = 5;
+            const crFee = await minter.getCollateralReservationFee(lots);
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const tx = await minter.performMintingPayment(crt);
+            // execute update
+            await time.increaseTo(settingChange.validAt);
+            await agent.executeAgentSettingUpdate(settingChange);
+            // execute mint
+            const poolFeesBefore = await agent.collateralPool.totalFAssetFees();
+            const collateralBefore = await agent.collateralPool.totalCollateral();
+            const minted = await minter.executeMinting(crt, tx);
+            const poolFeesAfter = await agent.collateralPool.totalFAssetFees();
+            const collateralAfter = await agent.collateralPool.totalCollateral();
+            assertWeb3Equal(poolFeesAfter.sub(poolFeesBefore), minted.poolFeeUBA);
+            assertWeb3Equal(poolFeesAfter.sub(poolFeesBefore), minted.agentFeeUBA.add(minted.poolFeeUBA).muln(startBips).divn(MAX_BIPS));
+            assertWeb3Equal(collateralAfter.sub(collateralBefore), crFee.muln(startBips).divn(MAX_BIPS));
+        });
     });
 });

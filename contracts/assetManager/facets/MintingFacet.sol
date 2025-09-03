@@ -96,7 +96,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         // pay the executor if they executed the minting
         Minting.payOrBurnExecutorFee(crt);
         // share collateral reservation fee between the agent's vault and pool
-        Minting.distributeCollateralReservationFee(agent, crt.reservationFeeNatWei);
+        Minting.distributeCollateralReservationFee(agent, crt, crt.reservationFeeNatWei);
     }
 
     /**

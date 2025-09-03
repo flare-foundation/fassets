@@ -72,7 +72,7 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         // release agent's reserved collateral
         Minting.releaseCollateralReservation(crt, CollateralReservation.Status.DEFAULTED);
         // share collateral reservation fee between the agent's vault and pool
-        Minting.distributeCollateralReservationFee(agent, totalFee);
+        Minting.distributeCollateralReservationFee(agent, crt, totalFee);
     }
 
     /**

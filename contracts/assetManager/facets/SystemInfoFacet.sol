@@ -96,7 +96,7 @@ contract SystemInfoFacet is AssetManagerBase {
             valueUBA: Conversion.convertAmgToUBA(crt.valueAMG),
             mintingFeeUBA: crt.underlyingFeeUBA,
             reservationFeeNatWei: crt.reservationFeeNatWei,
-            poolFeeShareBIPS: crt.poolFeeShareBIPS > 0 ? crt.poolFeeShareBIPS - 1 : agent.poolFeeShareBIPS,
+            poolFeeShareBIPS: Minting.reservationPoolFeeShare(agent, crt),
             firstUnderlyingBlock: crt.firstUnderlyingBlock,
             lastUnderlyingBlock: crt.lastUnderlyingBlock,
             lastUnderlyingTimestamp: crt.lastUnderlyingTimestamp,

@@ -1,5 +1,5 @@
 import { AgentVaultInstance, CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
-import { CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/IIAssetManager";
+import { AgentSettingChangeAnnounced, CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/IIAssetManager";
 import { AgentInfo, AgentSetting, AgentSettings, AgentStatus, RedemptionTicketInfo } from "../../fasset/AssetManagerTypes";
 import { AssetManagerEvents } from "../../fasset/IAssetContext";
 import { PaymentReference } from "../../fasset/PaymentReference";
@@ -123,18 +123,29 @@ export class Agent extends AssetContextClient {
     }
 
     async changeSettings(changes: Partial<Record<AgentSetting, BNish>>) {
-        const validity: Array<[name: string, validAt: BN]> = [];
+        const announcements: EventArgs<AgentSettingChangeAnnounced>[] = [];
         for (const [name, value] of Object.entries(changes)) {
-            const res = await this.assetManager.announceAgentSettingUpdate(this.vaultAddress, name, value, { from: this.ownerWorkAddress });
-            const announcement = requiredEventArgs(res, 'AgentSettingChangeAnnounced');
-            validity.push([name, announcement.validAt]);
+            const announcement = await this.announceAgentSettingUpdate(name as AgentSetting, value);
+            announcements.push(announcement);
         }
-        validity.sort((v1, v2) => v1[1].cmp(v2[1]));
-        for (const [name, validAt] of validity) {
-            if (validAt.isZero()) continue;   // no execute needed
-            if (validAt.gt(await time.latest())) await time.increaseTo(validAt);
-            await this.assetManager.executeAgentSettingUpdate(this.vaultAddress, name, { from: this.ownerWorkAddress });
+        announcements.sort((a, b) => a.validAt.cmp(b.validAt));
+        for (const announcement of announcements) {
+            if (announcement.validAt.isZero()) continue;   // no execute needed
+            if (announcement.validAt.gt((await time.latest()))) {
+                await time.increaseTo(announcement.validAt);
+            }
+            await this.executeAgentSettingUpdate(announcement);
         }
+    }
+
+    async announceAgentSettingUpdate(name: AgentSetting, value: BNish) {
+        const res = await this.assetManager.announceAgentSettingUpdate(this.vaultAddress, name, value, { from: this.ownerWorkAddress });
+        return requiredEventArgs(res, 'AgentSettingChangeAnnounced');
+    }
+
+    async executeAgentSettingUpdate(announcement: EventArgs<AgentSettingChangeAnnounced>) {
+        const res = await this.assetManager.executeAgentSettingUpdate(this.vaultAddress, announcement.name, { from: this.ownerWorkAddress });
+        return requiredEventArgs(res, "AgentSettingChanged");
     }
 
     async depositVaultCollateral(amountTokenWei: BNish) {

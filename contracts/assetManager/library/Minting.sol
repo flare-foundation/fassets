@@ -21,12 +21,13 @@ library Minting {
 
     function distributeCollateralReservationFee(
         Agent.State storage _agent,
+        CollateralReservation.Data storage _crt,
         uint256 _fee
     )
         internal
     {
         if (_fee == 0) return;
-        uint256 poolFeeShare = _fee.mulBips(_agent.poolFeeShareBIPS);
+        uint256 poolFeeShare = _fee.mulBips(reservationPoolFeeShare(_agent, _crt));
         _agent.collateralPool.depositNat{value: poolFeeShare}();
         Transfers.depositWNat(Globals.getWNat(), Agents.getOwnerPayAddress(_agent), _fee - poolFeeShare);
     }
@@ -100,11 +101,20 @@ library Minting {
         internal view
         returns (uint256)
     {
+        return _calculatePoolFeeUBA(_crt.underlyingFeeUBA, reservationPoolFeeShare(_agent, _crt));
+    }
+
+    function reservationPoolFeeShare(
+        Agent.State storage _agent,
+        CollateralReservation.Data storage _crt
+    )
+        internal view
+        returns (uint16)
+    {
         // After an upgrade, poolFeeShareBIPS is stored in the collateral reservation.
         // To allow for backward compatibility, value 0 in this field indicates use of old _agent.poolFeeShareBIPS.
         uint16 storedPoolFeeShareBIPS = _crt.poolFeeShareBIPS;
-        uint16 poolFeeShareBIPS = storedPoolFeeShareBIPS > 0 ? storedPoolFeeShareBIPS - 1 : _agent.poolFeeShareBIPS;
-        return _calculatePoolFeeUBA(_crt.underlyingFeeUBA, poolFeeShareBIPS);
+        return storedPoolFeeShareBIPS > 0 ? storedPoolFeeShareBIPS - 1 : _agent.poolFeeShareBIPS;
     }
 
     function calculateCurrentPoolFeeUBA(
