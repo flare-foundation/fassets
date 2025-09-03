@@ -1,4 +1,4 @@
-import { AgentSettings, CollateralType, RedemptionRequestStatus } from "../../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, CollateralType, EmergencyPauseLevel, RedemptionRequestStatus } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { TestChainInfo, testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { impersonateContract, stopImpersonatingContract } from "../../../../lib/test-utils/contract-test-helpers";
@@ -824,7 +824,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
 
     it("should not redeem from agent if emergency paused", async () => {
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await assetManager.emergencyPause(false, 12 * 60, { from: assetManagerController });
+        await assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, false, 12 * 60, { from: assetManagerController });
         collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
         await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
         const rs = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, ZERO_ADDRESS, { from: collateralPool.address });
@@ -833,7 +833,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
 
     it("should not redeem from agent in collateral if emergency paused", async () => {
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await assetManager.emergencyPause(false, 12 * 60, { from: assetManagerController });
+        await assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, false, 12 * 60, { from: assetManagerController });
         collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
         await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
         const rs = assetManager.redeemFromAgentInCollateral(agentVault.address, redeemerAddress1, 0, { from: collateralPool.address });

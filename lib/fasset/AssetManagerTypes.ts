@@ -58,6 +58,13 @@ export enum RedemptionRequestStatus {
     REJECTED                // redemption request rejected due to invalid redeemer's address
 }
 
+export enum EmergencyPauseLevel {
+    NONE,               // Pause is not active.
+    START_OPERATIONS,   // Prevent starting mint, redeem, liquidation and core vault transfer/return.
+    FULL,               // Prevent everything from START_OPERATIONS, plus prevent finishing or defulating already started mints and redeems.
+    FULL_AND_TRANSFER   // Prevent everything from FULL, plus prevent FAsset transfers.
+}
+
 // explicit conversions
 
 export function collateralClass(value: BN | number | string) {

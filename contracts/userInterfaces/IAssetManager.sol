@@ -14,6 +14,7 @@ import {AvailableAgentInfo} from "./data/AvailableAgentInfo.sol";
 import {RedemptionTicketInfo} from "./data/RedemptionTicketInfo.sol";
 import {RedemptionRequestInfo} from "./data/RedemptionRequestInfo.sol";
 import {CollateralReservationInfo} from "./data/CollateralReservationInfo.sol";
+import {EmergencyPause} from "./data/EmergencyPause.sol";
 import {IAssetManagerEvents} from "./IAssetManagerEvents.sol";
 import {IAgentPing} from "./IAgentPing.sol";
 import {IRedemptionTimeExtension} from "./IRedemptionTimeExtension.sol";
@@ -114,26 +115,20 @@ interface IAssetManager is
         returns (bool);
 
     /**
+     * Emergency pause level defines which operations are paused:
+     * NONE - pause is not active,
+     * START_OPERATIONS - prevent starting mint, redeem, liquidation (start/liquidate) and core vault transfer/return,
+     * FULL - everything from START_OPERATIONS, plus prevent finishing or defulating already started mints and redeems,
+     * FULL_AND_TRANSFER - everything from FULL, plus prevent FAsset transfers.
+     */
+    function emergencyPauseLevel()
+        external view
+        returns (EmergencyPause.Level);
+
+    /**
      * The time when emergency pause mode will end automatically.
      */
     function emergencyPausedUntil()
-        external view
-        returns (uint256);
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    // Emergency pause transfers
-
-    /**
-     * If true, the system is in emergency pause mode and most operations (mint, redeem, liquidate) are disabled.
-     */
-    function transfersEmergencyPaused()
-        external view
-        returns (bool);
-
-    /**
-     * The time when emergency pause mode will end automatically.
-     */
-    function transfersEmergencyPausedUntil()
         external view
         returns (uint256);
 

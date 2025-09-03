@@ -1,5 +1,5 @@
 import { getStorageAt } from "@nomicfoundation/hardhat-network-helpers";
-import { AssetManagerSettings, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerSettings, CollateralType, EmergencyPauseLevel } from "../../../lib/fasset/AssetManagerTypes";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, waitForTimelock } from "../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
@@ -961,32 +961,27 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         // emergency pause
 
-        // reset
-        it("should reset emergency pause total duration", async () => {
-            await assetManagerController.resetEmergencyPauseTotalDuration([assetManager.address], { from: governance });
-        });
-
-        it("only governance can reset emergency pause total duration", async () => {
-            await expectRevert.custom(assetManagerController.resetEmergencyPauseTotalDuration([assetManager.address]), "OnlyGovernance", []);
-        });
-
         // emergency pause sender
         it("can add and remove emergency pause sender", async () => {
             const sender = accounts[80];
-            await expectRevert.custom(assetManagerController.emergencyPause([assetManager.address], 10, { from: sender }), "OnlyGovernanceOrEmergencyPauseSenders", []);
+            await expectRevert.custom(
+                assetManagerController.emergencyPause([assetManager.address], EmergencyPauseLevel.START_OPERATIONS, 10, { from: sender }),
+                "OnlyGovernanceOrEmergencyPauseSenders", []);
             // add sender
             await assetManagerController.addEmergencyPauseSender(sender, { from: governance });
-            await assetManagerController.emergencyPause([assetManager.address], 10, { from: sender });
+            await assetManagerController.emergencyPause([assetManager.address], EmergencyPauseLevel.START_OPERATIONS, 10, { from: sender });
             assert.isTrue(await assetManager.emergencyPaused());
             await time.deterministicIncrease(20);
             assert.isFalse(await assetManager.emergencyPaused());
             // remove sender
             await assetManagerController.removeEmergencyPauseSender(sender, { from: governance });
-            await expectRevert.custom(assetManagerController.emergencyPause([assetManager.address], 10, { from: sender }), "OnlyGovernanceOrEmergencyPauseSenders", []);
+            await expectRevert.custom(
+                assetManagerController.emergencyPause([assetManager.address], EmergencyPauseLevel.START_OPERATIONS, 10, { from: sender }),
+                "OnlyGovernanceOrEmergencyPauseSenders", []);
         });
 
-        it("governance set emergency pause", async () => {
-            await assetManagerController.emergencyPause([assetManager.address], 10, { from: governance });
+        it("governance can emergency pause", async () => {
+            await assetManagerController.emergencyPause([assetManager.address], EmergencyPauseLevel.START_OPERATIONS, 10, { from: governance });
             assert.isTrue(await assetManager.emergencyPaused());
         });
 
@@ -996,15 +991,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("only governance can remove emergency pause sender", async () => {
             await expectRevert.custom(assetManagerController.removeEmergencyPauseSender(accounts[80], { from: accounts[1] }), "OnlyGovernance", []);
-        });
-
-        it("governance sets emergency pause transfer", async () => {
-            await assetManagerController.emergencyPauseTransfers([assetManager.address], 10, { from: governance });
-            assert.isTrue(await assetManager.transfersEmergencyPaused());
-        });
-
-        it("only governance or emergency pause senders can set emergency pause transfer", async () => {
-            await expectRevert.custom(assetManagerController.emergencyPauseTransfers([assetManager.address], 10, { from: accounts[80] }), "OnlyGovernanceOrEmergencyPauseSenders", []);
         });
 
         // max emergency pause duration seconds

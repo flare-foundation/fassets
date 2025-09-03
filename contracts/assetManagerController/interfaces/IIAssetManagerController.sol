@@ -9,6 +9,7 @@ import {IUUPSUpgradeable} from "../../utils/interfaces/IUUPSUpgradeable.sol";
 import {IIAssetManager} from "../../assetManager/interfaces/IIAssetManager.sol";
 import {IGoverned} from "../../governance/interfaces/IGoverned.sol";
 import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
+import {EmergencyPause} from "../../userInterfaces/data/EmergencyPause.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
@@ -228,13 +229,7 @@ interface IIAssetManagerController is
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Emergency pause
 
-    function emergencyPause(IIAssetManager[] memory _assetManagers, uint256 _duration)
-        external;
-
-    function emergencyPauseTransfers(IIAssetManager[] memory _assetManagers, uint256 _duration)
-        external;
-
-    function resetEmergencyPauseTotalDuration(IIAssetManager[] memory _assetManagers)
+    function emergencyPause(IIAssetManager[] memory _assetManagers, EmergencyPause.Level _level, uint256 _duration)
         external;
 
     function addEmergencyPauseSender(address _address)

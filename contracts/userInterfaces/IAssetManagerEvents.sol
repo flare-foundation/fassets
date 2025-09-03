@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
+import {EmergencyPause} from "./data/EmergencyPause.sol";
+
 
 /**
  * All asset manager events.
@@ -505,6 +507,7 @@ interface IAssetManagerEvents {
      * Emergency pause was triggered.
      */
     event EmergencyPauseTriggered(
+        EmergencyPause.Level level,
         uint256 pausedUntil);
 
     /**

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+import {EmergencyPause} from "../../../userInterfaces/data/EmergencyPause.sol";
 import {RedemptionQueue} from "./RedemptionQueue.sol";
 import {PaymentConfirmations} from "./PaymentConfirmations.sol";
 import {UnderlyingAddressOwnership} from "./UnderlyingAddressOwnership.sol";
@@ -82,19 +83,9 @@ library AssetManagerState {
         // When emergency pause was triggered by governance, only governance can unpause.
         bool emergencyPausedByGovernance;
 
-        // If non-zero, asset manager is paused and will be paused until the time indicated.
-        // When asset manager is paused, all dangerous operations ar blocked (mintings, redemptions, etc.).
-        // It is an extreme measure, which can be used in case there is a dangerous hole in the system.
-        uint64 transfersEmergencyPausedUntil;
-
-        // When emergency pause is not done by governance, the total allowed pause is limited.
-        // So the caller must state the duration after which the pause will automatically end.
-        // When total pauses exceed the max allowed length, pausing is only allowed by the governance.
-        // An emergencyPause call by the governance optionally resets the total duration counter to 0.
-        uint64 transfersEmergencyPausedTotalDuration;
-
-        // When emergency pause was triggered by governance, only governance can unpause.
-        bool transfersEmergencyPausedByGovernance;
+        uint64 __transfersEmergencyPausedUntil;
+        uint64 __transfersEmergencyPausedTotalDuration;
+        bool __transfersEmergencyPausedByGovernance;
 
         // When true, asset manager has been added to the asset manager controller.
         // Even though the asset manager controller address is set at the construction time, the manager may not
@@ -104,6 +95,9 @@ library AssetManagerState {
         // Therefore creating agents and minting is disabled until the asset manager controller notifies
         // the asset manager that it has been added.
         bool attached;
+
+        // WHen emergency pause is active, indicates which operations have been paused.
+        EmergencyPause.Level emergencyPauseLevel;
     }
 
     // diamond state access to state and settings

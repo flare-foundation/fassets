@@ -16,6 +16,7 @@ import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare
 import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
 import {IUUPSUpgradeable} from "../../utils/interfaces/IUUPSUpgradeable.sol";
 import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
+import {EmergencyPause} from "../../userInterfaces/data/EmergencyPause.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IGoverned} from "../../governance/interfaces/IGoverned.sol";
 import {IAssetManagerController} from "../../userInterfaces/IAssetManagerController.sol";
@@ -640,34 +641,14 @@ contract AssetManagerController is
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Emergency pause
 
-    function emergencyPause(IIAssetManager[] memory _assetManagers, uint256 _duration)
+    function emergencyPause(IIAssetManager[] memory _assetManagers, EmergencyPause.Level _level, uint256 _duration)
         external
     {
         bool byGovernance = msg.sender == governance();
         require(byGovernance || emergencyPauseSenders.contains(msg.sender),
             OnlyGovernanceOrEmergencyPauseSenders());
         _callOnManagers(_assetManagers,
-            abi.encodeCall(IIAssetManager.emergencyPause, (byGovernance, _duration)));
-    }
-
-    function emergencyPauseTransfers(IIAssetManager[] memory _assetManagers, uint256 _duration)
-        external
-    {
-        bool byGovernance = msg.sender == governance();
-        require(byGovernance || emergencyPauseSenders.contains(msg.sender),
-            OnlyGovernanceOrEmergencyPauseSenders());
-        _callOnManagers(_assetManagers,
-            abi.encodeCall(IIAssetManager.emergencyPauseTransfers, (byGovernance, _duration)));
-    }
-
-    function resetEmergencyPauseTotalDuration(IIAssetManager[] memory _assetManagers)
-        external
-        onlyImmediateGovernance
-    {
-        _callOnManagers(_assetManagers,
-            abi.encodeCall(IIAssetManager.resetEmergencyPauseTotalDuration, ()));
-        _callOnManagers(_assetManagers,
-            abi.encodeCall(IIAssetManager.resetEmergencyPauseTransfersTotalDuration, ()));
+            abi.encodeCall(IIAssetManager.emergencyPause, (_level, byGovernance, _duration)));
     }
 
     function addEmergencyPauseSender(address _address)

@@ -12,6 +12,7 @@ import {IIFAsset} from "../interfaces/IIFAsset.sol";
 import {ERC20Permit} from "../../openzeppelin/token/ERC20Permit.sol";
 import {CheckPointable} from "./CheckPointable.sol";
 import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
+import {EmergencyPause} from "../../userInterfaces/data/EmergencyPause.sol";
 import {IICleanable} from "@flarenetwork/flare-periphery-contracts/flare/token/interfaces/IICleanable.sol";
 import {IFAsset} from "../../userInterfaces/IFAsset.sol";
 import {IICheckPointable} from "../interfaces/IICheckPointable.sol";
@@ -206,8 +207,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     {
         require(_from == address(0) || balanceOf(_from) >= _amount, FAssetBalanceTooLow());
         require(_from != _to, CannotTransferToSelf());
-        // mint and redeem are allowed on transfer pause, but not transfer
-        require(_from == address(0) || _to == address(0) || !IAssetManager(assetManager).transfersEmergencyPaused(),
+        require(IAssetManager(assetManager).emergencyPauseLevel() < EmergencyPause.Level.FULL_AND_TRANSFER,
             EmergencyPauseOfTransfersActive());
         // update balance history
         _updateBalanceHistoryAtTransfer(_from, _to, _amount);
