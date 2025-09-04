@@ -433,18 +433,6 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         emit SettingChanged("mintingCapAMG", _value);
     }
 
-    function setTokenInvalidationTimeMinSeconds(uint256 _value)
-        external
-        onlyAssetManagerController
-        rateLimited
-    {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        // validate
-        // update
-        settings.tokenInvalidationTimeMinSeconds = _value.toUint64();
-        emit SettingChanged("tokenInvalidationTimeMinSeconds", _value);
-    }
-
     function setVaultCollateralBuyForFlareFactorBIPS(uint256 _value)
         external
         onlyAssetManagerController

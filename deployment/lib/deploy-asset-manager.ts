@@ -257,7 +257,7 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         __buybackCollateralFactorBIPS: 0,
         vaultCollateralBuyForFlareFactorBIPS: parameters.vaultCollateralBuyForFlareFactorBIPS,
         minUpdateRepeatTimeSeconds: parameters.minUpdateRepeatTimeSeconds,
-        tokenInvalidationTimeMinSeconds: parameters.tokenInvalidationTimeMinSeconds,
+        __tokenInvalidationTimeMinSeconds: 0,
         agentExitAvailableTimelockSeconds: parameters.agentExitAvailableTimelockSeconds,
         agentFeeChangeTimelockSeconds: parameters.agentFeeChangeTimelockSeconds,
         agentMintingCRChangeTimelockSeconds: parameters.agentMintingCRChangeTimelockSeconds,

@@ -356,13 +356,6 @@ export interface AssetManagerParameters {
     minUpdateRepeatTimeSeconds: integer;
 
     /**
-     * Minimum time from the moment token is deprecated to when it becomes invalid and agents still using
-     * it as vault collateral get liquidated.
-     * @minimum 0
-     */
-    tokenInvalidationTimeMinSeconds: integer;
-
-    /**
      * Amount of seconds that have to pass between available list exit announcement and execution.
      * @minimum 0
      */

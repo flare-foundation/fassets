@@ -124,7 +124,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         agentExitAvailableTimelockSeconds: 10 * MINUTES,
         vaultCollateralBuyForFlareFactorBIPS: toBIPS(1.05),
         mintingPoolHoldingsRequiredBIPS: toBIPS("50%"),
-        tokenInvalidationTimeMinSeconds: 1 * DAYS,
+        __tokenInvalidationTimeMinSeconds: 0,
         collateralPoolTokenTimelockSeconds: 1 * HOURS,
         liquidationStepSeconds: 90,
         liquidationCollateralFactorBIPS: [toBIPS(1.2), toBIPS(1.6), toBIPS(2.0)],

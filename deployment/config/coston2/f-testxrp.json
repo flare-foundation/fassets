@@ -59,7 +59,6 @@
     "withdrawalWaitMinSeconds": 60,
     "vaultCollateralBuyForFlareFactorBIPS": 10000,
     "minUpdateRepeatTimeSeconds": 60,
-    "tokenInvalidationTimeMinSeconds": 86400,
     "agentExitAvailableTimelockSeconds": 60,
     "agentFeeChangeTimelockSeconds": 120,
     "agentMintingCRChangeTimelockSeconds": 120,

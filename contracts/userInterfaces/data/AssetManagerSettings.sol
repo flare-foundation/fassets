@@ -210,12 +210,12 @@ library AssetManagerSettings {
         // Shouldn't be much bigger than Flare data connector response time, so that payments can be confirmed without
         // extra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).
         // rate-limited
-        uint64 __announcedUnderlyingConfirmationMinSeconds;
+        uint64 __announcedUnderlyingConfirmationMinSeconds; // only storage placeholder
 
         // Minimum time from the moment token is deprecated to when it becomes invalid and agents still using
         // it as vault collateral get liquidated.
         // timelocked
-        uint64 tokenInvalidationTimeMinSeconds;
+        uint64 __tokenInvalidationTimeMinSeconds; // only storage placeholder
 
         // On some rare occasions (stuck minting), the agent has to unlock collateral.
         // For this, part of collateral corresponding to FTSO asset value is burned and the rest is released.

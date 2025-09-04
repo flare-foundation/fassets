@@ -15,9 +15,6 @@ import {SafePct} from "../../utils/library/SafePct.sol";
 contract CollateralTypesFacet is AssetManagerBase {
     using SafeCast for uint256;
 
-    error DeprecationTimeToShort();
-    error TokenNotValid();
-
     /**
      * Add new vault collateral type (new token type and initial collateral ratios).
      * NOTE: may not be called directly - only through asset manager controller by governance.

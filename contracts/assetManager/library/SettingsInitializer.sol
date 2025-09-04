@@ -91,9 +91,11 @@ library SettingsInitializer {
             _settings.liquidationFactorVaultCollateralBIPS);
         // removed settings
         require(_settings.__whitelist == address(0), MustBeZero());
+        require(_settings.__requireEOAAddressProof == false, MustBeZero());
         require(_settings.__ccbTimeSeconds == 0, MustBeZero());
         require(_settings.__announcedUnderlyingConfirmationMinSeconds == 0, MustBeZero());
         require(_settings.__buybackCollateralFactorBIPS == 0, MustBeZero());
+        require(_settings.__tokenInvalidationTimeMinSeconds == 0, MustBeZero());
         require(_settings.__minUnderlyingBackingBIPS == 0, MustBeZero());
         require(_settings.__redemptionDefaultFactorPoolBIPS == 0, MustBeZero());
         require(_settings.__cancelCollateralReservationAfterSeconds == 0, MustBeZero());

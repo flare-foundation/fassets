@@ -36,7 +36,6 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
     error WithdrawalValueTooHigh();
 
     error OnlyAgentVaultOrPool();
-    error CollateralNotDeprecated();
     error CollateralWithdrawalAnnounced();
     error FAssetNotTerminated();
 

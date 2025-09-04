@@ -890,6 +890,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert.custom(res13, "CannotBeZero", []);
         });
 
+        it("should validate settings - must be zero (__requireEOAAddressProof)", async () => {
+            const newSettings14 = createTestSettings(contracts, testChainInfo.eth);
+            newSettings14.__requireEOAAddressProof = true;
+            const res14 = newAssetManagerQuick(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings14, collaterals);
+            await expectRevert.custom(res14, "MustBeZero", []);
+        });
+
         it("should validate settings - cannot be zero (minUpdateRepeatTimeSeconds)", async () => {
             const newSettings15 = createTestSettings(contracts, testChainInfo.eth);
             newSettings15.minUpdateRepeatTimeSeconds = 0;
@@ -909,6 +916,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             newSettings17.withdrawalWaitMinSeconds = 0;
             const res17 = newAssetManagerQuick(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings17, collaterals);
             await expectRevert.custom(res17, "CannotBeZero", []);
+        });
+
+        it("should validate settings - must be zero (__tokenInvalidationTimeMinSeconds)", async () => {
+            const newSettings18 = createTestSettings(contracts, testChainInfo.eth);
+            newSettings18.__tokenInvalidationTimeMinSeconds = 1;
+            const res18 = newAssetManagerQuick(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings18, collaterals);
+            await expectRevert.custom(res18, "MustBeZero", []);
         });
 
         it("should validate settings - cannot be zero (lotSizeAMG)", async () => {
@@ -2358,11 +2372,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert.custom(promise, "OnlyAssetManagerController", []);
         });
 
-        it("should not setTokenInvalidationTimeMinSeconds if not from asset manager controller", async () => {
-            const promise = assetManager.setTokenInvalidationTimeMinSeconds(0);
-            await expectRevert.custom(promise, "OnlyAssetManagerController", []);
-        });
-
         it("should not setVaultCollateralBuyForFlareFactorBIPS if not from asset manager controller", async () => {
             const promise = assetManager.setVaultCollateralBuyForFlareFactorBIPS(0);
             await expectRevert.custom(promise, "OnlyAssetManagerController", []);
@@ -2718,18 +2727,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert.custom(promise, "TooCloseToPreviousUpdate", []);
             await time.deterministicIncrease(1);
             await assetManager.setMintingCapAmg(toBN(lotSize).addn(2), { from: assetManagerController });
-        });
-
-        it("should not setTokenInvalidationTimeMinSeconds if rate limited", async () => {
-            const oldValue = settings.tokenInvalidationTimeMinSeconds;
-            await assetManager.setTokenInvalidationTimeMinSeconds(toBN(oldValue).subn(1), { from: assetManagerController });
-            const minUpdateTime = settings.minUpdateRepeatTimeSeconds;
-            // skip time
-            await time.deterministicIncrease(toBN(minUpdateTime).subn(2));
-            const promise = assetManager.setTokenInvalidationTimeMinSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
-            await expectRevert.custom(promise, "TooCloseToPreviousUpdate", []);
-            await time.deterministicIncrease(1);
-            await assetManager.setTokenInvalidationTimeMinSeconds(toBN(oldValue).subn(2), { from: assetManagerController });
         });
 
         it("should not setVaultCollateralBuyForFlareFactorBIPS if rate limited", async () => {

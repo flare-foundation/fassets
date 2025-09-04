@@ -135,9 +135,6 @@ interface IIAssetManagerController is
     function setMintingCapAmg(IIAssetManager[] memory _assetManagers, uint256 _value)
         external;
 
-    function setTokenInvalidationTimeMinSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
-        external;
-
     function setVaultCollateralBuyForFlareFactorBIPS(IIAssetManager[] memory _assetManagers, uint256 _value)
         external;
 

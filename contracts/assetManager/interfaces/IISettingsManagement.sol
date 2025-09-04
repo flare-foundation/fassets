@@ -84,9 +84,6 @@ interface IISettingsManagement {
     function setMintingCapAmg(uint256 _value)
         external;
 
-    function setTokenInvalidationTimeMinSeconds(uint256 _value)
-        external;
-
     function setVaultCollateralBuyForFlareFactorBIPS(uint256 _value)
         external;
 

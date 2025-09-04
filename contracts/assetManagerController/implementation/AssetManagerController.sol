@@ -399,14 +399,6 @@ contract AssetManagerController is
             IISettingsManagement.setMintingCapAmg.selector, _value);
     }
 
-    function setTokenInvalidationTimeMinSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
-        external
-        onlyGovernance
-    {
-        _setValueOnManagers(_assetManagers,
-            IISettingsManagement.setTokenInvalidationTimeMinSeconds.selector, _value);
-    }
-
     function setVaultCollateralBuyForFlareFactorBIPS(IIAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyGovernance

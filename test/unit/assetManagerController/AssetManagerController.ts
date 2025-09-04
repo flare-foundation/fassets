@@ -736,14 +736,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert.custom(pr, "ValueTooSmall", []);
         });
 
-        it("should set token invalidation time min seconds after timelock", async () => {
-            const currentSettings = await assetManager.getSettings();
-            const tokenInvalidationTimeMinSeconds = DAYS;
-            const res = await assetManagerController.setTokenInvalidationTimeMinSeconds([assetManager.address], tokenInvalidationTimeMinSeconds, { from: governance });
-            const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
-            await expectEvent.inTransaction(timelock_info.tx, assetManager, "SettingChanged", { name: "tokenInvalidationTimeMinSeconds", value: toBN(tokenInvalidationTimeMinSeconds) });
-        });
-
         it("should revert setting VaultCollateral buy for flare factor BIPS when value is too low after timelock", async () => {
             const vaultCollateralBuyForFlareFactorBIPS_tooSmall = toBN(MAX_BIPS).divn(2);
             const res = assetManagerController.setVaultCollateralBuyForFlareFactorBIPS([assetManager.address], vaultCollateralBuyForFlareFactorBIPS_tooSmall, { from: governance });
