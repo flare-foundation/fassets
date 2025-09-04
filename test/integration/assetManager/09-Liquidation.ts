@@ -1491,5 +1491,56 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(vaultCollateralLiquidationReward1).sub(vaultCollateralLiquidationReward2));
         });
+
+        it("liquidation due to price change Test max maxLiquidationAmountUBA Back To safeCR Issue", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const liquidator = await Liquidator.create(context, liquidatorAddress1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            const fullPoolCollateral = toWei(3e8);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullPoolCollateral);
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 6;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, txHash);
+            const poolCRFee = await agent.poolCRFee(lots);
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            await agent.checkAgentInfo({
+                totalVaultCollateralWei: fullAgentCollateral,
+                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
+                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
+                reservedUBA: 0, redeemingUBA: 0
+            });
+            // price change , trusted provider with different price.
+            await context.priceStore.setCurrentPrice("NAT", 10, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 11, 0);
+            await context.priceStore.setCurrentPrice(context.chainInfo.symbol, toBNExp(10, 6), 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders(context.chainInfo.symbol, toBNExp(10, 6), 0);
+            // start liquidation
+            const liquidationStartTs = await liquidator.startLiquidation(agent);
+            const info1 = await agent.getAgentInfo();
+            assertWeb3Compare(info1.maxLiquidationAmountUBA, ">", context.convertLotsToUBA(1));
+            assertWeb3Compare(info1.maxLiquidationAmountUBA, "<", context.convertLotsToUBA(2));
+            // console.log("max lq:", deepFormat(info1.maxLiquidationAmountUBA));
+            // console.log("before liqudation poolCollateralRatioBIPS:", deepFormat(info1.poolCollateralRatioBIPS));
+            // liquidator "buys" f-assets
+            await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
+            // liquidate agent (totally)
+            // context.convertLotsToUBA(2) > info1.maxLiquidationAmountUBA
+            const liquidateMaxUBA1 = context.convertLotsToUBA(2);
+            const startBalanceLiquidator1NAT = await context.wNat.balanceOf(liquidator.address);
+            const startBalanceLiquidator1VaultCollateral = await agent.vaultCollateralToken().balanceOf(liquidator.address);
+            const [liquidatedUBA1, liquidationTimestamp1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA1);
+            //check CR after liquidation.
+            const info2 = await agent.getAgentInfo();
+            const { 0: poolCollateralTypes, 1: vaultCollateralTypes } = await context.assetManager.getCollateralTypes();
+            // console.log("pool's safetyMinCollateralRatioBIPS", toBN(poolCollateralTypes.safetyMinCollateralRatioBIPS).toString());
+            // console.log("after liqudation poolCollateralRatioBIPS:", info2.poolCollateralRatioBIPS);
+            assertWeb3Equal(info2.poolCollateralRatioBIPS, poolCollateralTypes.safetyMinCollateralRatioBIPS);
+        });
     });
 });

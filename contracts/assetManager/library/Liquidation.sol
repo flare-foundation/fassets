@@ -96,7 +96,7 @@ library Liquidation {
             _collateralDataWithTrusted(_agent, _collateralKind);
         uint256 ratio = AgentCollateral.collateralRatioBIPS(_data, _agent);
         uint256 ratioTrusted = AgentCollateral.collateralRatioBIPS(_trustedData, _agent);
-        _amgToTokenWeiPrice = _data.amgToTokenWeiPrice;
+        _amgToTokenWeiPrice = Math.min(_data.amgToTokenWeiPrice, _trustedData.amgToTokenWeiPrice);
         _collateralRatioBIPS = Math.max(ratio, ratioTrusted);
     }
 
