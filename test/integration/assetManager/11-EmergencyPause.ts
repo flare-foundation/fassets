@@ -198,6 +198,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // cannot manage dust or tickets
             await expectRevert.custom(context.assetManager.convertDustToTicket(agent.vaultAddress), "EmergencyPauseActive", []);
             await expectRevert.custom(context.assetManager.consolidateSmallTickets(0), "EmergencyPauseActive", []);
+            // cannot upgrade vault/pool by agent
+            await expectRevert.custom(context.assetManager.upgradeAgentVaultAndPool(agent.vaultAddress, { from: agent.ownerWorkAddress }), "EmergencyPauseActive", []);
         });
 
         it("try all collateral pool operations blocked by 'start operations' pause", async () => {

@@ -2920,8 +2920,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     })
 
     describe("emergency pause", () => {
-        async function triggerPauseAndCheck(byGovernance: boolean, duration: number, opts: { expectedEnd?: BN, expectedDuration?: number } = {}) {
-            const response = await assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, byGovernance, duration, { from: assetManagerController });
+        async function triggerPauseAndCheck(byGovernance: boolean, duration: number, opts: { expectedEnd?: BN, expectedDuration?: number, level?: EmergencyPauseLevel } = {}) {
+            const level = opts.level ?? EmergencyPauseLevel.START_OPERATIONS;
+            const response = await assetManager.emergencyPause(level, byGovernance, duration, { from: assetManagerController });
             const pauseTime = await time.latest();
             const expectedPauseEnd = opts.expectedEnd ?? pauseTime.addn(opts.expectedDuration ?? duration);
             const allowedError = 5; // allow 5s error if clock jumps between two commands
@@ -2930,6 +2931,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // check simple
             assert.isTrue(await assetManager.emergencyPaused());
             assertWeb3Equal(await assetManager.emergencyPausedUntil(), event.args.pausedUntil);
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), level);
             return [pauseTime, toBN(event.args.pausedUntil)];
         }
 
@@ -3021,17 +3023,17 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await triggerPauseAndCheck(false, 30 * HOURS, { expectedDuration: 24 * HOURS });
         });
 
-        it("others cannot pause/unpause when governance pause is active", async () => {
+        it("others cannot unpause or lower pause level when governance pause is active", async () => {
             // governance pause
-            const [time1, expectedEnd1] = await triggerPauseAndCheck(true, 4 * HOURS, { expectedDuration: 4 * HOURS });
+            const [time1, expectedEnd1] = await triggerPauseAndCheck(true, 4 * HOURS, { level: EmergencyPauseLevel.FULL, expectedDuration: 4 * HOURS });
             // wait a bit, pause still active
             await time.deterministicIncrease(2 * HOURS);
             assert.isTrue(await assetManager.emergencyPaused());
             // try to unpause
             await expectRevert.custom(assetManager.emergencyPause(EmergencyPauseLevel.NONE, false, 0, { from: assetManagerController }), "PausedByGovernance", []);
-            await expectRevert.custom(assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, false, 0, { from: assetManagerController }), "PausedByGovernance", []);
-            // try to increase pause
-            await expectRevert.custom(assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, false, 12 * HOURS, { from: assetManagerController }), "PausedByGovernance", []);
+            await expectRevert.custom(assetManager.emergencyPause(EmergencyPauseLevel.FULL, false, 0, { from: assetManagerController }), "PausedByGovernance", []);
+            // try to decrease pause level
+            await expectRevert.custom(assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, false, 4 * HOURS, { from: assetManagerController }), "PausedByGovernance", []);
             // still the same pause
             assert.isTrue(await assetManager.emergencyPaused());
             assertWeb3Equal(await assetManager.emergencyPausedUntil(), expectedEnd1);
@@ -3039,6 +3041,32 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, true, 0, { from: assetManagerController });
             assert.isFalse(await assetManager.emergencyPaused());
             assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
+        });
+
+        it("others can increase pause level when governance pause is active, but cannot lower the duration", async () => {
+            // governance pause
+            const [time1, expectedEnd1] = await triggerPauseAndCheck(true, 4 * HOURS, { level: EmergencyPauseLevel.FULL, expectedDuration: 4 * HOURS });
+            //
+            await assetManager.emergencyPause(EmergencyPauseLevel.FULL_AND_TRANSFER, false, 1 * HOURS, { from: assetManagerController });
+            // still paused, but level has changed
+            assert.isTrue(await assetManager.emergencyPaused());
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL_AND_TRANSFER);
+            // but the time didn't decrease
+            assertWeb3Equal(await assetManager.emergencyPausedUntil(), expectedEnd1);
+        });
+
+        it("others can increase pause duration / end time when governance pause is active", async () => {
+            // governance pause
+            const [time1, expectedEnd1] = await triggerPauseAndCheck(true, 4 * HOURS, { level: EmergencyPauseLevel.FULL, expectedDuration: 4 * HOURS });
+            // wait a bit, pause still active
+            await time.deterministicIncrease(2 * HOURS);
+            // increase end time by others
+            await assetManager.emergencyPause(EmergencyPauseLevel.FULL, false, 3 * HOURS, { from: assetManagerController });
+            // still paused
+            assert.isTrue(await assetManager.emergencyPaused());
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL);
+            // and the end time has increased (by 2 + 3 - 4 = 1 hours)
+            assertApproximatelyEqual(await assetManager.emergencyPausedUntil(), expectedEnd1.addn(1 * HOURS), "absolute", 10);
         });
     });
 });

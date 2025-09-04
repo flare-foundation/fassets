@@ -22,9 +22,14 @@ contract EmergencyPauseFacet is AssetManagerBase, IAssetManagerEvents {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         bool pausedAtStart = _paused();
-        // only governance can modify/end pause that was started by governance
+        // when governance started pause, 3rd party triggers are limited to increasing the pause
         if (pausedAtStart && state.emergencyPausedByGovernance && !_byGovernance) {
-            revert PausedByGovernance();
+            // 3rd party can only increase pause level and should not end pause
+            require(_level >= state.emergencyPauseLevel && _duration > 0, PausedByGovernance());
+            // If the 3rd party pause would end sooner than governance's, ignore the new duration.
+            // In this case we don't revert but rather update duration, because we expect
+            // emergency pause trigger bots to set fixed duration and we don't want to block them.
+            _duration = Math.max(_duration, state.emergencyPausedUntil - block.timestamp);
         }
         // reset total pause duration if enough time elapsed since the last pause ended
         AssetManagerSettings.Data storage settings = Globals.getSettings();
@@ -36,15 +41,11 @@ contract EmergencyPauseFacet is AssetManagerBase, IAssetManagerEvents {
             _duration = 0;
         }
         // limit total pause duration to settings.maxEmergencyPauseDurationSeconds
-        uint256 currentPauseEndTime = Math.max(state.emergencyPausedUntil, block.timestamp);
-        uint256 projectedStartTime =
-            Math.min(currentPauseEndTime - state.emergencyPausedTotalDuration, block.timestamp);
-        uint256 maxEndTime = projectedStartTime + settings.maxEmergencyPauseDurationSeconds;
-        uint256 endTime = Math.min(block.timestamp + _duration, maxEndTime);
+        (uint256 endTime, uint256 totalDuration) = _calcPauseEndTime(_duration);
         state.emergencyPausedUntil = endTime.toUint64();
-        state.emergencyPausedTotalDuration = (endTime - projectedStartTime).toUint64();
+        state.emergencyPausedTotalDuration = totalDuration.toUint64();
         state.emergencyPauseLevel = _level;
-        state.emergencyPausedByGovernance = _byGovernance;
+        state.emergencyPausedByGovernance = _byGovernance || (pausedAtStart && state.emergencyPausedByGovernance);
         // emit event
         if (_paused()) {
             emit EmergencyPauseTriggered(_level, state.emergencyPausedUntil);
@@ -96,5 +97,16 @@ contract EmergencyPauseFacet is AssetManagerBase, IAssetManagerEvents {
     function _pauseLevel() private view returns (EmergencyPause.Level) {
         AssetManagerState.State storage state = AssetManagerState.get();
         return state.emergencyPausedUntil > block.timestamp ? state.emergencyPauseLevel : EmergencyPause.Level.NONE;
+    }
+
+    function _calcPauseEndTime(uint256 _duration) private view returns (uint256 _endTime, uint256 _totalDuration) {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        uint256 currentPauseEndTime = Math.max(state.emergencyPausedUntil, block.timestamp);
+        uint256 projectedStartTime =
+            Math.min(currentPauseEndTime - state.emergencyPausedTotalDuration, block.timestamp);
+        uint256 maxEndTime = projectedStartTime + settings.maxEmergencyPauseDurationSeconds;
+        _endTime = Math.min(block.timestamp + _duration, maxEndTime);
+        _totalDuration = _endTime - projectedStartTime;
     }
 }
