@@ -296,5 +296,16 @@
     "name": "CoreVaultClientSettingsFacet",
     "contractName": "CoreVaultClientSettingsFacet.sol",
     "address": "0x91A6222BCd936Aa214ae9379d1ea03BD34021267"
+  },
+  {
+    "name": "CoreVaultManagerImplementation",
+    "contractName": "CoreVaultManager.sol",
+    "address": "0xd0c2B1Bf49120577629dcE1a4f1Ffdc45da0b21d"
+  },
+  {
+    "name": "CoreVaultManager_FXRP",
+    "contractName": "CoreVaultManagerProxy.sol",
+    "address": "0x6c8d96dEfE4cbEE05FA969Fc0Ac436d94Fc21784",
+    "mustSwitchToProduction": true
   }
 ]

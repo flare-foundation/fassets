@@ -322,5 +322,19 @@
     "addresses": [
       "0xAd552A648C74D49E10027AB8a618A3ad4901c5bE"
     ]
+  },
+  {
+    "name": "CoreVaultManagerImplementation",
+    "contractName": "CoreVaultManager.sol",
+    "addresses": [
+      "0xd0c2B1Bf49120577629dcE1a4f1Ffdc45da0b21d"
+    ]
+  },
+  {
+    "name": "CoreVaultManager_FXRP",
+    "contractName": "CoreVaultManagerProxy.sol",
+    "addresses": [
+      "0x6c8d96dEfE4cbEE05FA969Fc0Ac436d94Fc21784"
+    ]
   }
 ]
