@@ -14,7 +14,7 @@
         "decimals": 18,
         "directPricePair": false,
         "assetFtsoSymbol": "XRP",
-        "tokenFtsoSymbol": "SGB",
+        "tokenFtsoSymbol": "FLR",
         "minCollateralRatioBIPS": 15000,
         "safetyMinCollateralRatioBIPS": 16000
     },

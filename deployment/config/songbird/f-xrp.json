@@ -29,7 +29,7 @@
             "safetyMinCollateralRatioBIPS": 13000
         }
     ],
-    "mintingCap": "750 000 000000",
+    "mintingCap": "1 750 000 000000",
     "lotSize": "10 000000",
     "collateralReservationFeeBIPS": 50,
     "mintingPoolHoldingsRequiredBIPS": 5000,
