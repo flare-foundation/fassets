@@ -35,6 +35,11 @@
     "address": "0x1D80c49BbBCd1C0911346656B529DF9E5c2F783d"
   },
   {
+    "name": "USDT0",
+    "contractName": "TetherTokenOFTExtension.sol",
+    "address": "0xe7cd86e13AC4309349F30B3435a9d337750fC82D"
+  },
+  {
     "name": "FlareAssetRegistry",
     "contractName": "FlareAssetRegistry.sol",
     "address": "0x9a039B2677EDD9cbfAf65AF080b08749c6b59487"
@@ -73,5 +78,46 @@
     "name": "FtsoV2PriceStoreImplementation",
     "contractName": "FtsoV2PriceStore.sol",
     "address": "0x22A222B2C06874427B4Aa6aB3D23794dB5Eec6fA"
+  },
+  {
+    "name": "AgentOwnerRegistryImplementation",
+    "contractName": "AgentOwnerRegistry.sol",
+    "address": "0xbF4c69FfEF24180D393C6f1B9d8e06E9796e1779"
+  },
+  {
+    "name": "AgentOwnerRegistry",
+    "contractName": "AgentOwnerRegistryProxy.sol",
+    "address": "0xD2593336C6C4Bfd261FEEf0A23F113cD7d018fa2",
+    "mustSwitchToProduction": true
+  },
+  {
+    "name": "AgentVaultProxyImplementation",
+    "contractName": "AgentVault.sol",
+    "address": "0xeE37bC1E2386518B45fbC857ADd428057711a2a1"
+  },
+  {
+    "name": "AgentVaultFactory",
+    "contractName": "AgentVaultFactory.sol",
+    "address": "0x9981ba3e58D0ed6f428DfeCd006b74edE8828Da1"
+  },
+  {
+    "name": "CollateralPoolProxyImplementation",
+    "contractName": "CollateralPool.sol",
+    "address": "0x747bF230e4CC9dba11393f5e76736Fff714B3721"
+  },
+  {
+    "name": "CollateralPoolFactory",
+    "contractName": "CollateralPoolFactory.sol",
+    "address": "0xAd827adC055E44e9e2c9ba45a75D8974E14AC2b6"
+  },
+  {
+    "name": "CollateralPoolTokenProxyImplementation",
+    "contractName": "CollateralPoolToken.sol",
+    "address": "0xF8BF4F4Ab3f9a6962c556B48E15058eD36Df6301"
+  },
+  {
+    "name": "CollateralPoolTokenFactory",
+    "contractName": "CollateralPoolTokenFactory.sol",
+    "address": "0x200ce0F39bCd717ACCd22CAe33C4daEeEE0b19a5"
   }
 ]
