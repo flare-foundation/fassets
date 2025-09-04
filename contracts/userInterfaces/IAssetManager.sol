@@ -817,7 +817,7 @@ interface IAssetManager is
         returns (RedemptionTicketInfo.Data[] memory _queue, uint256 _nextRedemptionTicketId);
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Dust
+    // Dust and small ticket management
 
     /**
      * Due to the minting pool fees or after a lot size change by the governance,
@@ -833,6 +833,22 @@ interface IAssetManager is
      */
     function convertDustToTicket(
         address _agentVault
+    ) external;
+
+    /**
+     * If lot size is increased, there may be many tickets less than one lot in the queue.
+     * In extreme cases, this could prevent redemptions, if there weren't any tickets above 1 lot
+     * among the first `maxRedeemedTickets` tickets.
+     * To fix this, call this method. It converts small tickets to dust and when the dust exceeds one lot
+     * adds it to the ticket.
+     * Since the method just cleans the redemption queue it can be called by anybody.
+     * @param _firstTicketId if nonzero, the ticket id of starting ticket; if zero, the starting ticket will
+     *   be the redemption queue's first ticket id.
+     *   When the method finishes, it emits RedemptionTicketsConsolidated event with the nextTicketId
+     *   parameter. If it is nonzero, the method should be invoked again with this value as _firstTicketId.
+     */
+    function consolidateSmallTickets(
+        uint256 _firstTicketId
     ) external;
 
     ////////////////////////////////////////////////////////////////////////////////////

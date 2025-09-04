@@ -195,6 +195,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert.custom(agent.confirmTopupPayment(topupTx), "EmergencyPauseActive", []);
             // cannot announce underlying withdrawal
             await expectRevert.custom(agent.announceUnderlyingWithdrawal(), "EmergencyPauseActive", []);
+            // cannot manage dust or tickets
+            await expectRevert.custom(context.assetManager.convertDustToTicket(agent.vaultAddress), "EmergencyPauseActive", []);
+            await expectRevert.custom(context.assetManager.consolidateSmallTickets(0), "EmergencyPauseActive", []);
         });
 
         it("try all collateral pool operations blocked by 'start operations' pause", async () => {

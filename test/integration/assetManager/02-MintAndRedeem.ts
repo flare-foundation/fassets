@@ -770,6 +770,52 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(requests[0].valueUBA, context.lotSize());
         });
 
+        it("redemption after large lot size increase may require ticket consolidation", async () => {
+            const fullAgentCollateral = toWei(3e8);
+            const agents: Agent[] = [];
+            for (let i = 0; i < 5; i++) {
+                const agent = await Agent.createTest(context, agentOwner1, `${underlyingAgent1}_${i}`);
+                await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+                agents.push(agent);
+            }
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
+            // mint 1 lot (50 times)
+            for (let i = 0; i < 10; i++) {
+                for (const agent of agents) {
+                    await minter.performMinting(agent.vaultAddress, 1);
+                }
+            }
+            // increase lot size by factor of 10
+            await context.setLotSizeAmg(toBN(context.settings.lotSizeAMG).muln(10));
+            // redemptions should fail, because in the first 20 tickets there is not 1 lot by any single agent
+            await expectRevert.custom(redeemer.requestRedemption(1), "RedeemZeroLots", []);
+            // consolidate tickets (anyone can call)
+            let count = 0;
+            let firstTicketId = BN_ZERO;
+            do {
+                const res = await context.assetManager.consolidateSmallTickets(firstTicketId, { from: accounts[9] });
+                const args = requiredEventArgs(res, "RedemptionTicketsConsolidated");
+                if (!firstTicketId.eq(BN_ZERO)) {
+                    assertWeb3Equal(args.firstTicketId, firstTicketId);
+                }
+                firstTicketId = args.nextTicketId;
+                if (++count >= 10) break;
+            } while (!firstTicketId.eq(BN_ZERO));
+            assert.equal(count, 3); // 3 calls of consolidateSmallTickets should be needed to go through the whole redemption queue
+            // now redemptions should work
+            const [requests] = await redeemer.requestRedemption(5);
+            assert.equal(requests.length, 5);
+            assertWeb3Equal(requests[0].valueUBA, context.lotSize());
+        });
+
+        it("ticket consolidation should revert if passed invalid ticket id", async () => {
+            // any nonzero ticket id is invalid on empty queue
+            await expectRevert.custom(context.assetManager.consolidateSmallTickets(11), "InvalidTicketId", []);
+            // but it should work with id 0, even on empty queue
+            await context.assetManager.consolidateSmallTickets(0);
+        });
+
         it("non-public agent can add 'always allowed minter' and that one doesn't pay CR fee", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));

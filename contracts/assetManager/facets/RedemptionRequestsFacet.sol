@@ -36,6 +36,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     error InvalidRedemptionStatus();
     error RedemptionOfZero();
     error RedeemZeroLots();
+    error InvalidTicketId();
 
     /**
      * Redeem (up to) `_lots` lots of f-assets. The corresponding amount of the f-assets belonging
@@ -72,14 +73,11 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         });
         uint256 redeemedLots = 0;
         for (uint256 i = 0; i < maxRedeemedTickets && redeemedLots < _lots; i++) {
-            // redemption queue empty?
-            if (AssetManagerState.get().redemptionQueue.firstTicketId == 0) {
-                require(redeemedLots != 0, RedeemZeroLots());
-                break;
-            }
-            // each loop, firstTicketId will change since we delete the first ticket
-            redeemedLots += _redeemFirstTicket(_lots - redeemedLots, redemptionList);
+            (bool queueEmpty, uint256 ticketRedeemedLots) = _redeemFirstTicket(_lots - redeemedLots, redemptionList);
+            if (queueEmpty) break;
+            redeemedLots += ticketRedeemedLots;
         }
+        require(redeemedLots != 0, RedeemZeroLots());
         uint256 executorFeeNatGWei = msg.value / Conversion.GWEI;
         for (uint256 i = 0; i < redemptionList.length; i++) {
             // distribute executor fee over redemption request with at most 1 gwei leftover
@@ -275,7 +273,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         address _agentVault
     )
         external
-        notFullyEmergencyPaused
+        notEmergencyPaused
         nonReentrant
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
@@ -289,23 +287,60 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         }
     }
 
+    /**
+     * If lot size is increased, there may be many tickets less than one lot in the queue.
+     * In extreme cases, this could prevent redemptions, if there weren't any tickets above 1 lot
+     * among the first `maxRedeemedTickets` tickets.
+     * To fix this, call this method. It converts small tickets to dust and when the dust exceeds one lot
+     * adds it to the ticket.
+     * Since the method just cleans the redemption queue it can be called by anybody.
+     * @param _firstTicketId if nonzero, the ticket id of starting ticket; if zero, the starting ticket will
+     *   be the redemption queue's first ticket id.
+     *   When the method finishes, it emits RedemptionTicketsConsolidated event with the nextTicketId
+     *   parameter. If it is nonzero, the method should be invoked again with this value as _firstTicketId.
+     */
+    function consolidateSmallTickets(
+        uint256 _firstTicketId
+    )
+        external
+        notEmergencyPaused
+        nonReentrant
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        uint256 maxRedeemedTickets = Globals.getSettings().maxRedeemedTickets;
+        uint64 firstTicketId = _firstTicketId != 0 ? _firstTicketId.toUint64() : state.redemptionQueue.firstTicketId;
+        uint64 ticketId = firstTicketId;
+        for (uint256 i = 0; i < maxRedeemedTickets; i++) {
+            if (ticketId == 0) break;   // end of queue
+            RedemptionQueue.Ticket storage ticket = state.redemptionQueue.getTicket(ticketId);
+            // in the first run of the loop, we must validate that passed _firstTicketId is valid
+            require(i > 0 || ticket.agentVault != address(0), InvalidTicketId());
+            uint64 nextTicketId = ticket.next;
+            // this will convert small tickets to dust or consume some dust to actually increase the ticket
+            Redemptions.removeFromTicket(ticketId, 0);
+            ticketId = nextTicketId;
+        }
+        emit IAssetManagerEvents.RedemptionTicketsConsolidated(firstTicketId, ticketId);
+    }
+
     function _redeemFirstTicket(
         uint256 _lots,
         RedemptionRequests.AgentRedemptionList memory _list
     )
         private
-        returns (uint256 _redeemedLots)
+        returns (bool _queueEmpty, uint256 _redeemedLots)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint64 ticketId = state.redemptionQueue.firstTicketId;
         if (ticketId == 0) {
-            return 0;    // empty redemption queue
+            return (true, 0);    // empty redemption queue
         }
         RedemptionQueue.Ticket storage ticket = state.redemptionQueue.getTicket(ticketId);
         address agentVault = ticket.agentVault;
         Agent.State storage agent = Agent.get(agentVault);
         uint256 maxRedeemLots = (ticket.valueAMG + agent.dustAMG) / settings.lotSizeAMG;
+        _queueEmpty = false;
         _redeemedLots = Math.min(_lots, maxRedeemLots);
         if (_redeemedLots > 0) {
             uint64 redeemedAMG = Conversion.convertLotsToAMG(_redeemedLots);

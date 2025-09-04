@@ -319,6 +319,15 @@ interface IAssetManagerEvents {
         uint256 indexed redemptionTicketId);
 
     /**
+     * Method `consolidateSmallTickets` has finished.
+     * @param firstTicketId first handled ticket id (different from the method param _firstTicketId if it was 0).
+     * @param nextTicketId the first remaining (not handled) ticket id, or 0 if the end of queue was reached.
+     */
+    event RedemptionTicketsConsolidated(
+        uint256 firstTicketId,
+        uint256 nextTicketId);
+
+    /**
      * Due to lot size change, some dust was created for this agent during
      * redemption. Value `dustUBA` is the new amount of dust. Dust cannot be directly redeemed,
      * but it can be self-closed or liquidated and if it accumulates to more than 1 lot,
