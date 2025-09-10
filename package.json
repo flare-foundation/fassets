@@ -59,6 +59,7 @@
     "---------DEPLOY---SCRIPTS---COSTON": "",
     "coston": "yarn hardhat --network coston",
     "coston-staging": "env DEPLOY_PROFILE=coston yarn hardhat --network coston",
+    "coston-qa": "env DEPLOY_PROFILE=coston-qa yarn hardhat --network coston",
     "deploy-mock-stablecoins-coston": "yarn coston-staging run deployment/test/scripts/mock-deploy-stablecoins.ts",
     "deploy-price-reader-v2-coston": "yarn coston-staging deploy-price-reader-v2",
     "deploy-dependencies-coston": "yarn coston-staging deploy-asset-manager-dependencies",
