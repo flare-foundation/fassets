@@ -51,6 +51,12 @@
         "$schema": {
             "type": "string"
         },
+        "autoDeleteMethodsNotInInterface": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
         "deleteAllOldMethods": {
             "type": "boolean"
         },

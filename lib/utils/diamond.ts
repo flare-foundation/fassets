@@ -80,17 +80,8 @@ export class DiamondSelectors {
         return this.filter(sel => !removeSelectors.has(sel));
     }
 
-    removeExisting(existing: DiamondSelectors) {
+    removeUnchanged(existing: DiamondSelectors) {
         return this.filter(sel => this.selectorMap.get(sel) !== existing.selectorMap.get(sel));
-    }
-
-    // the delete selectors require facet address to be zero
-    toDeleteSelectors() {
-        const selectorMap = new Map<string, string>();
-        for (const sig of this.selectorMap.keys()) {
-            selectorMap.set(sig, ZERO_ADDRESS)
-        }
-        return new DiamondSelectors(selectorMap);
     }
 
     createCuts(addedOrUpdated: DiamondSelectors, deleted?: DiamondSelectors) {
@@ -104,8 +95,9 @@ export class DiamondSelectors {
         for (const [facetAddress, facetSelectors] of replaceSelectors.facets()) {
             result.push({ action: FacetCutAction.Replace, facetAddress: facetAddress, functionSelectors: facetSelectors });
         }
-        for (const [facetAddress, facetSelectors] of removeSelectors.facets()) {
-            result.push({ action: FacetCutAction.Remove, facetAddress: facetAddress, functionSelectors: facetSelectors });
+        if (removeSelectors.selectorMap.size > 0) {
+            // in Remove action, facet address must be 0, otherwise diamondCut reverts
+            result.push({ action: FacetCutAction.Remove, facetAddress: ZERO_ADDRESS, functionSelectors: removeSelectors.selectors });
         }
         return result;
     }

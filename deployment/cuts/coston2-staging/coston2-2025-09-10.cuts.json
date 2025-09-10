@@ -1,7 +1,7 @@
 {
     "$schema": "../diamond-cuts.schema.json",
     "diamond": ["AssetManager_FTestXRP"],
-    "deleteAllOldMethods": true,
+    "autoDeleteMethodsNotInInterface": ["IIAssetManager"],
     "facets": [
         {
             "contract": "CoreVaultClientFacet",
@@ -109,10 +109,6 @@
         },
         {
             "contract": "EmergencyPauseFacet",
-            "exposedInterfaces": ["IIAssetManager"]
-        },
-        {
-            "contract": "EmergencyPauseTransfersFacet",
             "exposedInterfaces": ["IIAssetManager"]
         },
         {

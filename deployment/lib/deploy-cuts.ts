@@ -31,12 +31,11 @@ export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contra
     const diamondLoupeInstance = await IDiamondLoupe.at(diamondAddress);
     const deployedSelectors = await DiamondSelectors.fromLoupe(diamondLoupeInstance);
     // create cuts
-    const newSelectorsPossiblyExisting = await createNewSelectors(hre, contracts, cuts.facets, deployer);
-    const newSelectors = newSelectorsPossiblyExisting.removeExisting(deployedSelectors);
-    const deletedSelectors = cuts.deleteAllOldMethods
-        ? deployedSelectors.remove(newSelectorsPossiblyExisting).toDeleteSelectors()
-        : createDeletedSelectors(deployedSelectors, cuts.deleteMethods ?? []);
-    const diamondCuts = deployedSelectors.createCuts(newSelectors, deletedSelectors);
+    const newSelectors = await createNewSelectors(hre, contracts, cuts.facets, deployer);
+    const addedAndUpdatedSelectors = newSelectors.removeUnchanged(deployedSelectors);
+    const deletedSelectors = createDeleteSelectors(hre, cuts, deployedSelectors, newSelectors);
+    printSelectorList("Deleted selectors", deletedSelectors, contracts);
+    const diamondCuts = deployedSelectors.createCuts(addedAndUpdatedSelectors, deletedSelectors);
     // create init
     const [initAddress, initCalldata] = await createInitCall(hre, contracts, cuts.init, deployer);
     // perform or print cuts
@@ -62,6 +61,28 @@ export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contra
         console.log(params[0].name, JSON.stringify(resultToTuple(web3.eth.abi.decodeParameter(params[0], web3.eth.abi.encodeParameter(params[0], diamondCuts)))));
         console.log(params[1].name, initAddress);
         console.log(params[2].name, initCalldata);
+    }
+}
+
+function printSelectorList(prompt: string, selectors: DiamondSelectors, contracts: ContractStore) {
+    const selectorInfos = Array.from(selectors.selectorMap)
+        .map(([selector, address]) => {
+            const contract = contracts.findByAddress(address) ?? contracts.findByAddressInHistory(address);
+            return contract ? `${contract.name}.${selector}` : `<${address}>.${selector}`;
+        });
+    if (selectorInfos.length > 0) {
+        console.log(`${prompt}:\n    ${selectorInfos.join("\n    ")}`);
+    }
+}
+
+function createDeleteSelectors(hre: HardhatRuntimeEnvironment, cuts: SingleDiamondCuts, deployedSelectors: DiamondSelectors, newSelectors: DiamondSelectors) {
+    if (cuts.deleteAllOldMethods) {
+        return deployedSelectors.remove(newSelectors);
+    } else if (cuts.autoDeleteMethodsNotInInterface) {
+        const interfaceSelectors = createSelectorsForInterfaces(hre, cuts.autoDeleteMethodsNotInInterface);
+        return deployedSelectors.remove(interfaceSelectors);
+    } else {
+        return createSelectorsForDeletedMethods(deployedSelectors, cuts.deleteMethods ?? []);
     }
 }
 
@@ -103,17 +124,22 @@ async function createFacetSelectors(hre: HardhatRuntimeEnvironment, contracts: C
     const methodFilter = facet.methods && ((abi: AbiItem) => facet.methods!.includes(abi.name!));
     let facetSelectors = DiamondSelectors.fromABI(instance, methodFilter);
     if (facet.exposedInterfaces) {
-        let filterSelectors = new DiamondSelectors();
-        for (const name of facet.exposedInterfaces) {
-            const abi = hre.artifacts.readArtifactSync(name).abi as AbiItem[];
-            filterSelectors = filterSelectors.merge(DiamondSelectors.fromABI({ address: ZERO_ADDRESS, abi })); // address doesn't matter for restrict
-        }
+        const filterSelectors = createSelectorsForInterfaces(hre, facet.exposedInterfaces);
         facetSelectors = facetSelectors.restrict(filterSelectors);
     }
     return facetSelectors;
 }
 
-function createDeletedSelectors(deployedSelectors: DiamondSelectors, deleteMethods: string[]) {
+function createSelectorsForInterfaces(hre: HardhatRuntimeEnvironment, interfaces: string[], address: string = ZERO_ADDRESS) {
+    let selectors = new DiamondSelectors();
+    for (const name of interfaces) {
+        const abi = hre.artifacts.readArtifactSync(name).abi as AbiItem[];
+        selectors = selectors.merge(DiamondSelectors.fromABI({ address, abi })); // address doesn't matter for restrict
+    }
+    return selectors;
+}
+
+function createSelectorsForDeletedMethods(deployedSelectors: DiamondSelectors, deleteMethods: string[]) {
     const selectorMap: Map<string, string> = new Map();
     for (const methodSig of deleteMethods) {
         const selector = toSelector(methodSig);
@@ -121,7 +147,7 @@ function createDeletedSelectors(deployedSelectors: DiamondSelectors, deleteMetho
         if (facet == null) {
             throw new Error(`Unknown method to delete '${methodSig}'`);
         }
-        selectorMap.set(selector, ZERO_ADDRESS);    // diamondCut operation requires 0 facet address for deleted methods
+        selectorMap.set(selector, facet);
     }
     return new DiamondSelectors(selectorMap);
 }
