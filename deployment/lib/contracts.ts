@@ -41,25 +41,35 @@ export class ContractStore {
     constructor(
         public readonly filename: string,
         public autosave: boolean,
-        public readonly historyFilename: string = ContractStore.historyDefaultFilename(filename),
+        public readonly historyFilename: string | null = ContractStore.historyDefaultFilename(filename),
     ) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const list: Contract[] = existsSync(filename) ? JSON.parse(readFileSync(filename).toString()) : [];
-        this.map = ContractStore.listToMap(list, filename);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const historyList: ContractHistory[] = existsSync(historyFilename) ? JSON.parse(readFileSync(historyFilename).toString()) : [];
-        this.history = ContractStore.listToMap(historyList, historyFilename);
+        this.map = ContractStore.loadListAsMap(filename);
+        this.history = historyFilename != null ? ContractStore.loadListAsMap(historyFilename) : new Map<string, ContractHistory>();
     }
 
     public static historyDefaultFilename(filename: string) {
-        return join(dirname(filename), "history", basename(filename));
+        const name = basename(filename);
+        // remove suffix from profile name
+        const historyName = name.replace(/^(\w+)(-.+)?\.json$/, (_, n) => `${n}.json`);
+        return join(dirname(filename), "history", historyName);
+    }
+
+    public static loadListAsMap<T extends { name: string }>(filename: string) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const list: T[] = existsSync(filename) ? JSON.parse(readFileSync(filename).toString()) : [];
+        return ContractStore.listToMap(list, filename);
+    }
+
+    public static saveMapAsList<T>(filename: string, map: Map<string, T>) {
+        const list = Array.from(map.values());
+        writeFileSync(filename, JSON.stringify(list, null, 2));
     }
 
     public static listToMap<T extends { name: string }>(list: T[], filename: string) {
         const map: Map<string, T> = new Map();
         for (const item of list) {
             if (map.has(item.name)) {
-                throw new Error(`Duplicate constract "${item.name}" in ${filename}`);
+                throw new Error(`Duplicate contract "${item.name}" in ${filename}`);
             }
             map.set(item.name, item);
         }
@@ -116,13 +126,11 @@ export class ContractStore {
         return Array.from(this.map.values());
     }
 
-    public historyList() {
-        return Array.from(this.history.values());
-    }
-
     public save() {
-        writeFileSync(this.filename, JSON.stringify(this.list(), null, 2));
-        writeFileSync(this.historyFilename, JSON.stringify(this.historyList(), null, 2));
+        ContractStore.saveMapAsList(this.filename, this.map);
+        if (this.historyFilename != null) {
+            ContractStore.saveMapAsList(this.historyFilename, this.history);
+        }
     }
 }
 

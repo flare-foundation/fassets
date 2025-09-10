@@ -61,7 +61,10 @@ export function deployProfileName() {
 
 export function loadCurrentDeployContracts(autosave: boolean) {
     const deployProfile = deployProfileName();
-    return new FAssetContractStore(`deployment/deploys/${deployProfile}.json`, autosave);
+    const contractsFile = `deployment/deploys/${deployProfile}.json`;
+    // user profiles are private and should not be added to history
+    const historyFilename = deployProfile.includes("-user") ? null : FAssetContractStore.historyDefaultFilename(contractsFile);
+    return new FAssetContractStore(contractsFile, autosave, historyFilename);
 }
 
 export function currentDeployConfigDir() {
