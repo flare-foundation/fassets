@@ -675,6 +675,13 @@ contract AssetManagerController is
             IISettingsManagement.setEmergencyPauseDurationResetAfterSeconds.selector, _value);
     }
 
+    function getEmergencyPauseSenders()
+        external view
+        returns (address[] memory)
+    {
+        return emergencyPauseSenders.values();
+    }
+
     function _emergencyPause(IIAssetManager[] memory _assetManagers, EmergencyPause.Level _level, uint256 _duration)
         private
     {

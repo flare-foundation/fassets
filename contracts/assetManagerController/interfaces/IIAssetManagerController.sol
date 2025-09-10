@@ -240,4 +240,8 @@ interface IIAssetManagerController is
 
     function setEmergencyPauseDurationResetAfterSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
         external;
+
+    function getEmergencyPauseSenders()
+        external view
+        returns (address[] memory);
 }

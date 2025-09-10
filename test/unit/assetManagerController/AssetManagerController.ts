@@ -7,7 +7,7 @@ import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/Moc
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestSettings } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
-import { assertWeb3Equal, web3ResultStruct } from "../../../lib/test-utils/web3assertions";
+import { assertWeb3Equal, assertWeb3SetEqual, web3ResultStruct } from "../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, ZERO_ADDRESS, abiEncodeCall, erc165InterfaceId, randomAddress, toBN, toStringExp } from "../../../lib/utils/helpers";
@@ -970,6 +970,24 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert.custom(
                 assetManagerController.emergencyPauseStartOperations([assetManager.address], 10, { from: sender }),
                 "OnlyGovernanceOrEmergencyPauseSenders", []);
+        });
+
+        it("can have multiple emergency pause senders", async () => {
+            const sender1 = accounts[80];
+            const sender2 = accounts[81];
+            const sender3 = accounts[82];
+            // add senders
+            await assetManagerController.addEmergencyPauseSender(sender1, { from: governance });
+            await assetManagerController.addEmergencyPauseSender(sender2, { from: governance });
+            await assetManagerController.addEmergencyPauseSender(sender3, { from: governance });
+            const allSenders = await assetManagerController.getEmergencyPauseSenders();
+            assert.equal(allSenders.length, 3);
+            assertWeb3SetEqual(allSenders, [sender1, sender2, sender3]);
+            // remove middle sender
+            await assetManagerController.removeEmergencyPauseSender(sender2, { from: governance });
+            const senders = await assetManagerController.getEmergencyPauseSenders();
+            assert.equal(senders.length, 2);
+            assertWeb3SetEqual(senders, [sender1, sender3]);
         });
 
         it("governance can emergency pause", async () => {
