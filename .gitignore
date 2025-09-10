@@ -58,6 +58,8 @@ nul
 ## Test deploys info
 deployment/deploys/hardhat*.json
 deployment/deploys/history/hardhat*.json
+deployment/config/*-user*
+deployment/deploys/**/*-user*.json
 
 ## .env
 .env

@@ -50,9 +50,19 @@ export function abiEncodeCall<I extends Truffle.ContractInstance>(instance: I, c
     return (call as any)(instance.contract.methods).encodeABI() as string;
 }
 
-// we use hardhat.json for network with name 'local'
 export function networkConfigName(hre: HardhatRuntimeEnvironment) {
-    return hre.network.name === 'local' ? 'hardhat' : hre.network.name;
+    const networkName = hre.network.name;
+    if (['flare', 'songbird', 'coston', 'coston2'].includes(networkName)) {
+        const profile = requiredEnvironmentVariable("DEPLOY_PROFILE");
+        if (profile === 'public') {
+            return networkName; // public (production / open beta) deploy is without suffix
+        }
+        return `${networkName}-${profile}`;
+    } else if (networkName === 'local') {
+        return 'hardhat';       // hardhat network on localhost
+    } else {
+        throw new Error(`Unknown network '${networkName}'`);
+    }
 }
 
 function sleep(ms: number) {
