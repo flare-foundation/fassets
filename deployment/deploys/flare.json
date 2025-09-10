@@ -302,7 +302,6 @@
   {
     "name": "CoreVaultManager_FXRP",
     "contractName": "CoreVaultManagerProxy.sol",
-    "address": "0x6c8d96dEfE4cbEE05FA969Fc0Ac436d94Fc21784",
-    "mustSwitchToProduction": true
+    "address": "0x6c8d96dEfE4cbEE05FA969Fc0Ac436d94Fc21784"
   }
 ]
