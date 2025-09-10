@@ -1,7 +1,7 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { readFileSync } from 'node:fs';
 import { FAssetContractStore } from "./contracts";
-import { encodeContractNames, loadDeployAccounts, networkConfigName, truffleContractMetadata } from './deploy-utils';
+import { currentDeployConfigDir, encodeContractNames, loadDeployAccounts, truffleContractMetadata } from './deploy-utils';
 import { verifyContract } from './verify-fasset-contracts';
 
 interface FtsoV2PriceStoreParameters {
@@ -24,7 +24,7 @@ export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contra
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const { deployer } = loadDeployAccounts(hre);
-    const parameters = readFtsoV2Parameters(hre);
+    const parameters = readFtsoV2Parameters();
 
     const FtsoV2PriceStore = artifacts.require(parameters.contractName as "FtsoV2PriceStore");
     const FtsoV2PriceStoreProxy = artifacts.require("FtsoV2PriceStoreProxy");
@@ -71,14 +71,13 @@ export function encodeFeedIds(feedIds: IFeedId[]): string[] {
     return result;
 }
 
-function readFtsoV2Parameters(hre: HardhatRuntimeEnvironment): FtsoV2PriceStoreParameters {
-    const networkConfig = networkConfigName(hre);
-    const paramFileName = `deployment/config/${networkConfig}/ftsov2.json`;
+function readFtsoV2Parameters(): FtsoV2PriceStoreParameters {
+    const paramFileName = `${currentDeployConfigDir()}/ftsov2.json`;
     return JSON.parse(readFileSync(paramFileName, { encoding: "ascii" })) as FtsoV2PriceStoreParameters;
 }
 
 export async function verifyFtsoV2PriceStore(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
-    const parameters = readFtsoV2Parameters(hre);
+    const parameters = readFtsoV2Parameters();
     const { deployer } = loadDeployAccounts(hre);
     await verifyContract(hre, "FtsoV2PriceStoreImplementation", contracts, []);
     await verifyContract(hre, "FtsoV2PriceStore", contracts,

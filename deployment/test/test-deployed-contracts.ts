@@ -1,30 +1,28 @@
 import hre from "hardhat";
-import { requiredEventArgs } from "../../lib/utils/events/truffle";
-import { getTestFile, itSkipIf } from "../../lib/test-utils/test-suite-helpers";
+import { MockChain } from "../../lib/test-utils/fasset/MockChain";
+import { MockFlareDataConnectorClient } from "../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { createTestAgent } from "../../lib/test-utils/test-settings";
+import { getTestFile, itIf } from "../../lib/test-utils/test-suite-helpers";
+import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
+import { SourceId } from "../../lib/underlying-chain/SourceId";
+import { requiredEventArgs } from "../../lib/utils/events/truffle";
+import { latestBlockTimestamp, toBN, toBNExp } from "../../lib/utils/helpers";
 import { AgentOwnerRegistryInstance, IAssetManagerControllerInstance } from "../../typechain-truffle";
 import { FAssetContractStore } from "../lib/contracts";
-import { loadDeployAccounts, networkConfigName, requiredEnvironmentVariable } from "../lib/deploy-utils";
-import { SourceId } from "../../lib/underlying-chain/SourceId";
-import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
-import { MockFlareDataConnectorClient } from "../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { MockChain } from "../../lib/test-utils/fasset/MockChain";
-import { latestBlockTimestamp, toBN, toBNExp } from "../../lib/utils/helpers";
+import { loadCurrentDeployContracts, loadDeployAccounts, requiredEnvironmentVariable, runningOnHardhatNetwork } from "../lib/deploy-utils";
 
 const IAssetManagerController = artifacts.require('IAssetManagerController');
 const IIAssetManager = artifacts.require('IIAssetManager');
 const AgentOwnerRegistry = artifacts.require('AgentOwnerRegistry');
 
 contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, accounts => {
-    const networkConfig = networkConfigName(hre);
-
     let contracts: FAssetContractStore;
 
     let assetManagerController: IAssetManagerControllerInstance;
     let agentOwnerRegistry: AgentOwnerRegistryInstance;
 
     before(async () => {
-        contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, false);
+        contracts = loadCurrentDeployContracts(false);
         assetManagerController = await IAssetManagerController.at(contracts.AssetManagerController!.address);
         agentOwnerRegistry = await AgentOwnerRegistry.at(contracts.AgentOwnerRegistry!.address);
     });
@@ -87,7 +85,7 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, ac
         'DOGE': ['FtsoDoge', 5, 0.05],
     };
 
-    itSkipIf(networkConfig !== 'hardhat')("Can create an agent on all managers", async () => {
+    itIf(runningOnHardhatNetwork(hre))("Can create an agent on all managers", async () => {
         const { deployer } = loadDeployAccounts(hre);
         const managers = await assetManagerController.getAssetManagers();
         const owner = requiredEnvironmentVariable('TEST_AGENT_OWNER');

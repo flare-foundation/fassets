@@ -24,6 +24,6 @@ export function loadFixtureCopyVars<T>(fixture: () => Promise<T>): Promise<T> {
  * Conditionally execute tests.
  * @param condition if true, the test will run
  */
-export function itSkipIf(condition: boolean) {
-    return condition ? it.skip : it;
+export function itIf(condition: boolean) {
+    return condition ? it : it.skip;
 }

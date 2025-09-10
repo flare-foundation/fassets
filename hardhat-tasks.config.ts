@@ -8,12 +8,11 @@ import "hardhat-gas-reporter";
 import { task } from "hardhat/config";
 import path from "path";
 import 'solidity-coverage';
-import { FAssetContractStore } from "./deployment/lib/contracts";
 import { deployAssetManager, deployAssetManagerController, deployCoreVaultManager, redeployFacet, switchAllToProductionMode } from "./deployment/lib/deploy-asset-manager";
 import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory, verifyAgentOwnerRegistry, verifyAgentVaultFactory, verifyCollateralPoolFactory, verifyCollateralPoolTokenFactory } from "./deployment/lib/deploy-asset-manager-dependencies";
 import { deployCuts } from "./deployment/lib/deploy-cuts";
 import { deployPriceReaderV2, verifyFtsoV2PriceStore } from "./deployment/lib/deploy-ftsov2-price-store";
-import { networkConfigName } from "./deployment/lib/deploy-utils";
+import { currentDeployConfigDir, loadCurrentDeployContracts } from "./deployment/lib/deploy-utils";
 import { linkContracts } from "./deployment/lib/link-contracts";
 import { verifyAllAssetManagerFacets, verifyAssetManager, verifyAssetManagerController, verifyContract, verifyCoreVaultManager } from "./deployment/lib/verify-fasset-contracts";
 import "./type-extensions";
@@ -32,8 +31,7 @@ task("link-contracts", "Link contracts with external libraries")
 
 task("deploy-price-reader-v2", "Deploy price reader v2.")
     .setAction(async ({}, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        const contracts = loadCurrentDeployContracts(true);
         await hre.run("compile");
         await deployPriceReaderV2(hre, contracts);
     });
@@ -42,8 +40,7 @@ task("deploy-asset-manager-dependencies", "Deploy some or all asset manager depe
     .addVariadicPositionalParam("contractNames", `Contract names to deploy`, [])
     .addFlag("all", "Deploy all dependencies (AgentOwnerRegistry, AgentVaultFactory, CollateralPoolFactory, CollateralPoolTokenFactory)")
     .setAction(async ({ contractNames, all }: {contractNames: string[], all: boolean }, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        const contracts = loadCurrentDeployContracts(true);
         await hre.run("compile");
         if (all || contractNames.includes('AgentOwnerRegistry')) {
             const address = await deployAgentOwnerRegistry(hre, contracts);
@@ -72,9 +69,8 @@ task("deploy-asset-managers", "Deploy some or all asset managers. Optionally als
         deployController: boolean,
         all: boolean
     }, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
-        const managerParameterFiles = await getManagerFiles(all, `deployment/config/${networkConfig}`, managers);
+        const contracts = loadCurrentDeployContracts(true);
+        const managerParameterFiles = await getManagerFiles(all, currentDeployConfigDir(), managers);
         await hre.run("compile");
         // optionally run the deploy together with controller
         if (deployController) {
@@ -93,8 +89,7 @@ task("deploy-core-vault-manager", "Deploy core vault manager for one fasset.")
         parametersFile: string,
         set: boolean
     }, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        const contracts = loadCurrentDeployContracts(true);
         await hre.run("compile");
         await deployCoreVaultManager(hre, contracts, parametersFile, set);
     });
@@ -108,8 +103,7 @@ task("verify-contract", "Verify a contract in contracts.json.")
         contract: string,
         constructorArgs: string[]
     }, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        const contracts = loadCurrentDeployContracts(true);
         await verifyContract(hre, contract, contracts, constructorArgs, force);
     });
 
@@ -118,8 +112,7 @@ task("redeploy-facet", "Redeploy a facet or proxy implementation and update cont
     .setAction(async ({ implementationName }: {
         implementationName: string
     }, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        const contracts = loadCurrentDeployContracts(true);
         await hre.run("compile");
         await redeployFacet(hre, contracts, implementationName);
     });
@@ -129,8 +122,7 @@ task("verify-asset-manager-dependencies", "Verify some or all asset manager depe
     .addFlag("force", "re-verify partially verified proxy contract")
     .addFlag("all", "Deploy all dependencies (AgentOwnerRegistry, AgentVaultFactory, CollateralPoolFactory, CollateralPoolTokenFactory)")
     .setAction(async ({ contractNames, all, force }: { contractNames: string[], all: boolean, force: boolean }, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        const contracts = loadCurrentDeployContracts(true);
         await hre.run("compile");
         if (all || contractNames.includes('AgentOwnerRegistry')) {
             await verifyAgentOwnerRegistry(hre, contracts, force);
@@ -153,9 +145,8 @@ task("verify-asset-managers", "Verify deployed asset managers.")
         managers: string[],
         all: boolean
     }, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
-        const managerParameterFiles = await getManagerFiles(all, `deployment/config/${networkConfig}`, managers);
+        const contracts = loadCurrentDeployContracts(true);
+        const managerParameterFiles = await getManagerFiles(all, currentDeployConfigDir(), managers);
         for (const paramFile of managerParameterFiles) {
             await verifyAssetManager(hre, paramFile, contracts);
         }
@@ -163,22 +154,19 @@ task("verify-asset-managers", "Verify deployed asset managers.")
 
 task("verify-asset-manager-controller", "Verify deployed asset manager controller.")
     .setAction(async ({}, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        const contracts = loadCurrentDeployContracts(true);
         await verifyAssetManagerController(hre, contracts);
     });
 
 task("verify-price-reader-v2", "Verify deployed price reader v2.")
     .setAction(async ({}, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        const contracts = loadCurrentDeployContracts(true);
         await verifyFtsoV2PriceStore(hre, contracts);
     });
 
 task("verify-asset-manager-facets", "Verify all asset manager facets.")
     .setAction(async ({ }, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        const contracts = loadCurrentDeployContracts(true);
         await verifyAllAssetManagerFacets(hre, contracts);
     });
 
@@ -187,16 +175,14 @@ task("verify-core-vault-manager", "Verify core vault manager for one fasset.")
     .setAction(async ({ parametersFile }: {
         parametersFile: string
     }, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        const contracts = loadCurrentDeployContracts(true);
         await hre.run("compile");
         await verifyCoreVaultManager(hre, contracts, parametersFile);
     });
 
 task("switch-to-production", "Switch all deployed files to production mode.")
     .setAction(async ({}, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        const contracts = loadCurrentDeployContracts(true);
         await switchAllToProductionMode(hre, contracts);
     });
 
@@ -207,8 +193,7 @@ task("diamond-cut", "Create diamond cut defined by JSON file.")
         json: string,
         execute: boolean
     }, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        const contracts = loadCurrentDeployContracts(true);
         await hre.run("compile");
         await deployCuts(hre, contracts, json, { execute: execute, verbose: true });
     });

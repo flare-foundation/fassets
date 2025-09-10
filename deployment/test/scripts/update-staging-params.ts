@@ -1,14 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import hre from "hardhat";
-import { runAsyncMain } from "../../lib/deploy-utils";
-import { FAssetContractStore } from "../../lib/contracts";
-import { loadDeployAccounts, networkConfigName, waitFinalize } from "../../lib/deploy-utils";
+import { loadCurrentDeployContracts, loadDeployAccounts, runAsyncMain, waitFinalize } from "../../lib/deploy-utils";
 
 const AssetManager = artifacts.require("IIAssetManager");
 
 runAsyncMain(async () => {
-    const networkConfig = networkConfigName(hre);
-    const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, false);
+    const contracts = loadCurrentDeployContracts(false);
     const { deployer } = loadDeployAccounts(hre);
 
     const managerNames = ["AssetManager_FTestBTC", "AssetManager_FTestDOGE", "AssetManager_FTestXRP", "AssetManager_FSimCoinX"];

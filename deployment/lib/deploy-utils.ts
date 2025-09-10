@@ -1,5 +1,6 @@
 import Web3 from "web3";
 import { Artifact, HardhatRuntimeEnvironment } from "hardhat/types";
+import { FAssetContractStore } from "./contracts";
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -50,19 +51,22 @@ export function abiEncodeCall<I extends Truffle.ContractInstance>(instance: I, c
     return (call as any)(instance.contract.methods).encodeABI() as string;
 }
 
-export function networkConfigName(hre: HardhatRuntimeEnvironment) {
-    const networkName = hre.network.name;
-    if (['flare', 'songbird', 'coston', 'coston2'].includes(networkName)) {
-        const profile = requiredEnvironmentVariable("DEPLOY_PROFILE");
-        if (profile === 'public') {
-            return networkName; // public (production / open beta) deploy is without suffix
-        }
-        return `${networkName}-${profile}`;
-    } else if (networkName === 'local') {
-        return 'hardhat';       // hardhat network on localhost
-    } else {
-        throw new Error(`Unknown network '${networkName}'`);
-    }
+export function runningOnHardhatNetwork(hre: HardhatRuntimeEnvironment) {
+    return hre.network.name === 'local' || hre.network.name === 'hardhat';
+}
+
+export function deployProfileName() {
+    return requiredEnvironmentVariable("DEPLOY_PROFILE");
+}
+
+export function loadCurrentDeployContracts(autosave: boolean) {
+    const deployProfile = deployProfileName();
+    return new FAssetContractStore(`deployment/deploys/${deployProfile}.json`, autosave);
+}
+
+export function currentDeployConfigDir() {
+    const deployProfile = deployProfileName();
+    return `deployment/config/${deployProfile}`;
 }
 
 function sleep(ms: number) {
@@ -77,7 +81,7 @@ export const waitFinalizeDefaults: WaitFinalizeOptions = { extraBlocks: 0, retri
  * to have the transaction confirmed.
  */
 export async function waitFinalize<T>(hre: HardhatRuntimeEnvironment, address: string, func: () => Promise<T>, options: WaitFinalizeOptions = waitFinalizeDefaults) {
-    if (hre.network.name === 'local' || hre.network.name === 'hardhat') {
+    if (runningOnHardhatNetwork(hre)) {
         return await func();
     }
     const nonce = await hre.web3.eth.getTransactionCount(address);

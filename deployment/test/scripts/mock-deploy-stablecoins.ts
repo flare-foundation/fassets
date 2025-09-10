@@ -1,14 +1,12 @@
 import hre from "hardhat";
-import { runAsyncMain } from "../../lib/deploy-utils";
 import { FAssetContractStore } from "../../lib/contracts";
-import { loadDeployAccounts, networkConfigName } from "../../lib/deploy-utils";
+import { loadCurrentDeployContracts, loadDeployAccounts, runAsyncMain } from "../../lib/deploy-utils";
 
 const FakeERC20 = artifacts.require('FakeERC20');
 
 // only use when deploying on full flare deploy on hardhat local network (i.e. `deploy_local_hardhat_commands` was run in flare-smart-contracts project)
 runAsyncMain(async () => {
-    const network = networkConfigName(hre);
-    const contracts = new FAssetContractStore(`deployment/deploys/${network}.json`, true);
+    const contracts = loadCurrentDeployContracts(true);
     await deployStablecoin(contracts, "Test USDCoin", "testUSDC", 6);
     await deployStablecoin(contracts, "Test Tether", "testUSDT", 6);
     await deployStablecoin(contracts, "Test Ether", "testETH", 18);
