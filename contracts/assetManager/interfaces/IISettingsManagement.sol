@@ -39,7 +39,7 @@ interface IISettingsManagement {
     function setTimeForPayment(uint256 _underlyingBlocks, uint256 _underlyingSeconds)
         external;
 
-    function setPaymentChallengeReward(uint256 _rewardNATWei, uint256 _rewardBIPS)
+    function setPaymentChallengeReward(uint256 _rewardUSD5, uint256 _rewardBIPS)
         external;
 
     function setMinUpdateRepeatTimeSeconds(uint256 _value)

@@ -293,14 +293,14 @@ contract AssetManagerController is
 
     function setPaymentChallengeReward(
         IIAssetManager[] memory _assetManagers,
-        uint256 _rewardVaultCollateralWei,
+        uint256 _rewardVaultCollateralUSD5,
         uint256 _rewardBIPS
     )
         external
         onlyImmediateGovernance
     {
         _callOnManagers(_assetManagers,
-            abi.encodeCall(IISettingsManagement.setPaymentChallengeReward, (_rewardVaultCollateralWei, _rewardBIPS)));
+            abi.encodeCall(IISettingsManagement.setPaymentChallengeReward, (_rewardVaultCollateralUSD5, _rewardBIPS)));
     }
 
     function setMaxTrustedPriceAgeSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)

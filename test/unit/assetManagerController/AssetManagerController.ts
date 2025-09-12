@@ -154,11 +154,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should revert setting payment challenge reward when increase or decrease is too big", async () => {
-            const paymentChallengeRewardUSD5 = toStringExp(100, 18);
+            const paymentChallengeRewardUSD5 = toStringExp(450, 5);
             const paymentChallengeRewardBIPS = 100;
             await assetManagerController.setPaymentChallengeReward([assetManager.address], paymentChallengeRewardUSD5, paymentChallengeRewardBIPS, { from: governance });
 
-            const val = toStringExp(100, 18);
+            const val = toStringExp(100, 5);
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             const paymentChallengeRewardUSD5_big = (toBN(newSettings.paymentChallengeRewardUSD5).muln(5).add(toBN(val)));
             const paymentChallengeRewardUSD5_small = toBN(newSettings.paymentChallengeRewardUSD5).divn(5);

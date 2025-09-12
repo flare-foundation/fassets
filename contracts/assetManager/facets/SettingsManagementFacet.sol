@@ -206,21 +206,21 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         emit SettingChanged("underlyingSecondsForPayment", _underlyingSeconds);
     }
 
-    function setPaymentChallengeReward(uint256 _rewardNATWei, uint256 _rewardBIPS)
+    function setPaymentChallengeReward(uint256 _rewardUSD5, uint256 _rewardBIPS)
         external
         onlyAssetManagerController
         rateLimited
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
-        require(_rewardNATWei <= (settings.paymentChallengeRewardUSD5 * 4) + 100 ether, IncreaseTooBig());
-        require(_rewardNATWei >= (settings.paymentChallengeRewardUSD5) / 4, DecreaseTooBig());
+        require(_rewardUSD5 <= (settings.paymentChallengeRewardUSD5 * 4) + 100e5, IncreaseTooBig());
+        require(_rewardUSD5 >= (settings.paymentChallengeRewardUSD5) / 4, DecreaseTooBig());
         require(_rewardBIPS <= (settings.paymentChallengeRewardBIPS * 4) + 100, IncreaseTooBig());
         require(_rewardBIPS >= (settings.paymentChallengeRewardBIPS) / 4, DecreaseTooBig());
         // update
-        settings.paymentChallengeRewardUSD5 = _rewardNATWei.toUint128();
+        settings.paymentChallengeRewardUSD5 = _rewardUSD5.toUint128();
         settings.paymentChallengeRewardBIPS = _rewardBIPS.toUint16();
-        emit SettingChanged("paymentChallengeRewardUSD5", _rewardNATWei);
+        emit SettingChanged("paymentChallengeRewardUSD5", _rewardUSD5);
         emit SettingChanged("paymentChallengeRewardBIPS", _rewardBIPS);
     }
 

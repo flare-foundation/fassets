@@ -95,7 +95,7 @@ interface IIAssetManagerController is
 
     function setPaymentChallengeReward(
         IIAssetManager[] memory _assetManagers,
-        uint256 _rewardVaultCollateralWei,
+        uint256 _rewardVaultCollateralUSD5,
         uint256 _rewardBIPS
     ) external;
 
