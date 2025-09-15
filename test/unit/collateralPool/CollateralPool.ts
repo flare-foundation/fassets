@@ -934,16 +934,21 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await fAsset.approve(collateralPool.address, ETH(100));
             // user enters the pool
             await collateralPool.enter({ value: ETH(100), from: accounts[0] });
-            // agent can only redeem 1 f-asset at a time
-            await assetManager.setMaxRedemptionFromAgent(ETH(1));
             // user wants to redeem all tokens, which means he would need to take all 100 f-assets out of circulation
             const exitCRBIPS = await collateralPool.exitCollateralRatioBIPS();
             const natToGetCRToExitCR = await getNatRequiredToGetPoolCRBelow(exitCRBIPS.toNumber() / MAX_BIPS);
             console.log("natToGetCRToExitCR", natToGetCRToExitCR.toString());
             // try self close exit
             const userTokens = await collateralPoolToken.balanceOf(accounts[0]);
+            const fassetRequired = await collateralPool.fAssetRequiredForSelfCloseExit(userTokens);
+            assertEqualBN(fassetRequired, ETH(100));
+            // agent can only redeem 99 f-asset at a time - it should fail
+            await assetManager.setMaxRedemptionFromAgent(ETH(99));
             const promise = collateralPool.selfCloseExit(userTokens, true, "", ZERO_ADDRESS);
             await expectRevert.custom(promise, "RedemptionRequiresClosingTooManyTickets", []);
+            // but if agent can redeem exactly 100, it should work
+            await assetManager.setMaxRedemptionFromAgent(ETH(100));
+            await collateralPool.selfCloseExit(userTokens, true, "", ZERO_ADDRESS);
         });
 
         it("should self-close exit and collect fees with recipient", async () => {
