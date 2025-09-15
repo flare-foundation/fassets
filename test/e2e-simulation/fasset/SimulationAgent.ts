@@ -293,7 +293,7 @@ export class SimulationAgent extends SimulationActor {
         if (lots.eqn(0)) return;
         const request = await this.agent.requestReturnFromCoreVault(lots)
             .catch(e => scope.exitOnExpectedError(e, ["DestinationNotAllowed", "InvalidAgentStatus",
-                "ReturnFromCoreVaultAlreadyRequested", "NotEnoughFreeCollateral", "NotEnoughAvailableOnCoreVault"]));
+                "ReturnFromCoreVaultAlreadyRequested", "NotEnoughFreeCollateral", "InsufficientFunds"]));
         this.comment(`Return from core vault started, paymentReference=${request.paymentReference}.`);
         const paymentEvt = await this.chainEvents.transactionEvent({ reference: request.paymentReference, to: this.agent.underlyingAddress }).wait(scope);
         await this.context.waitForUnderlyingTransactionFinalization(scope, paymentEvt.hash);

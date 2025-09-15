@@ -36,7 +36,6 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
     error InvalidAgentStatus();
     error InvalidPaymentReference();
     error NoActiveReturnRequest();
-    error NotEnoughAvailableOnCoreVault();
     error NotEnoughFreeCollateral();
     error NotEnoughUnderlying();
     error NothingMinted();
@@ -137,8 +136,6 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
         require(_lots > 0, CannotReturnZeroLots());
         require(agent.status == Agent.Status.NORMAL, InvalidAgentStatus());
         require(collateralData.freeCollateralLotsOptionalFee(agent, false) >= _lots, NotEnoughFreeCollateral());
-        uint256 availableLots = CoreVaultClient.coreVaultAmountLots();
-        require(_lots <= availableLots, NotEnoughAvailableOnCoreVault());
         // create new request id
         state.newTransferFromCoreVaultId += PaymentReference.randomizedIdSkip();
         uint64 requestId = state.newTransferFromCoreVaultId;
@@ -245,8 +242,9 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
         nonReentrant
     {
         CoreVaultClient.State storage state = CoreVaultClient.getState();
+        // reduce minimumRedeemLots when the total amount on CV is lower than minimumRedeemLots,
+        // otherwise redemptions won't be able to clear the CV
         uint256 availableLots = CoreVaultClient.coreVaultAmountLots();
-        require(_lots <= availableLots, NotEnoughAvailableOnCoreVault());
         uint256 minimumRedeemLots = Math.min(state.minimumRedeemLots, availableLots);
         require(_lots >= minimumRedeemLots, RequestedAmountTooSmall());
         // burn the senders fassets

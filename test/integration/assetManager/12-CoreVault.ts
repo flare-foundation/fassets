@@ -519,7 +519,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             "CannotReturnZeroLots", []);
         // requested redeem amount cannot be more than total available amount on core vault
         await expectRevert.custom(context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 20, { from: agent2.ownerWorkAddress }),
-            "NotEnoughAvailableOnCoreVault", []);
+            "InsufficientFunds", []);
     });
 
     it("should not request return from core vault if return already requested", async () => {
@@ -701,7 +701,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // make agent available
         await agent.depositCollateralLotsAndMakeAvailable(100);
         // mint
-        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        const [minted] = await minter.performMinting(agent.vaultAddress, 20);
         await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
         // agent requests transfer for some backing to core vault
         const transferAmount = context.lotSize().muln(10);
@@ -719,7 +719,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             "RequestedAmountTooSmall", []);
         // requested redeem amount cannot be more than total available amount on core vault
         await expectRevert.custom(context.assetManager.redeemFromCoreVault(11, redeemer.underlyingAddress, { from: redeemer.address }),
-            "NotEnoughAvailableOnCoreVault", []);
+            "InsufficientFunds", []);
     });
 
     it("modify core vault settings", async () => {
@@ -1211,5 +1211,48 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         await time.deterministicIncrease(context.settings.confirmationByOthersAfterSeconds);
         await expectRevert.custom(context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: challenger.address }), "InvalidRequestId", []);
         await expectRevert.custom(challenger.illegalPaymentChallenge(agent, txHash), "ChallengeTransactionAlreadyConfirmed", [])
+    });
+
+    it("46081 (fixed) - available lots checking before fee deduction will result in unnecessary revert", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000000));
+        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        // allow CV manager addresses
+        await coreVaultManager.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
+        // make agent available
+        await agent.depositCollateralLotsAndMakeAvailable(101);
+        // mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 101);
+        await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
+        // agent requests transfer for some backing to core vault
+        const transferAmount = context.convertLotsToUBA(100);
+        await agent.transferToCoreVault(transferAmount);
+        // redeemer requests direct redemption from CV
+        // because CV only has 100 lots, this would fail with InsufficientFunds() if the fee wasn't deducted before check
+        await context.assetManager.redeemFromCoreVault(101, redeemer.underlyingAddress, { from: redeemer.address });
+    });
+
+    it("47033 (fixed) - multiple redemptions from same address may appear as if there is not enough funds for fee", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000000));
+        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+        await context.assetManager.setCoreVaultRedemptionFeeBIPS(0, { from: governance });
+        const { 3: cvFee } = await coreVaultManager.getSettings();
+        await prefundCoreVault(minter.underlyingAddress, cvFee);
+        // allow CV manager addresses
+        await coreVaultManager.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
+        // make agent available
+        await agent.depositCollateralLotsAndMakeAvailable(20);
+        // mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 20);
+        await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
+        // agent requests transfer for some backing to core vault
+        const transferAmount = context.convertLotsToUBA(20);
+        await agent.transferToCoreVault(transferAmount);
+        // redeemer requests direct redemption from CV
+        // because CV only has 20 lots, this would fail with InsufficientFunds() if the redemptions weren't caoalesced
+        await context.assetManager.redeemFromCoreVault(10, redeemer.underlyingAddress, { from: redeemer.address });
+        await context.assetManager.redeemFromCoreVault(10, redeemer.underlyingAddress, { from: redeemer.address });
     });
 });
