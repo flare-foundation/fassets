@@ -4,6 +4,7 @@ import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
+import { calculateReceivedNat } from "../../../lib/test-utils/eth";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectRevert, time } from "../../../lib/test-utils/test-helpers";
@@ -285,5 +286,45 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(reservedCollateral));
         });
+
+        it("should unstick minting even if price changed so much that there is not enough collateral", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            await agent.depositCollateralLotsAndMakeAvailable(2);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            // expire a minting
+            const crt = await minter.reserveCollateral(agent.vaultAddress, 1);
+            const crt2 = await minter.reserveCollateral(agent.vaultAddress, 1);
+            context.skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
+            // descrease vault collateral price by factor 4 - now there won't be enough vault collateral
+            const { 0: price } = await context.priceStore.getPrice("USDC");
+            await context.priceStore.setCurrentPrice("USDC", price.divn(4), 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("USDC", price.divn(4), 0);
+            //
+            const info0 = await agent.getAgentInfo();
+            // prepare for unstick
+            const proof = await context.attestationProvider.proveConfirmedBlockHeightExists(Number(context.settings.attestationWindowSeconds));
+            const agentCollateral = await agent.getAgentCollateral();
+            const burnNats = agentCollateral.pool.convertUBAToTokenWei(crt.valueUBA)
+                .mul(toBN(context.settings.vaultCollateralBuyForFlareFactorBIPS)).divn(MAX_BIPS);
+            // unstick first minting
+            const ownerVaultCBefore = await context.usdc.balanceOf(agent.ownerWorkAddress);
+            const res1 = await context.assetManager.unstickMinting(proof, crt.collateralReservationId, { from: agent.ownerWorkAddress, value: burnNats });
+            const burnedNats1 = (await calculateReceivedNat(res1, agent.ownerWorkAddress)).neg();
+            const ownerVaultCAfter = await context.usdc.balanceOf(agent.ownerWorkAddress);
+            // calculate what should be returned and what burned
+            const returnedVaultC = ownerVaultCAfter.sub(ownerVaultCBefore);
+            const shouldBurnNats1 = returnedVaultC
+                .mul(agentCollateral.pool.amgPrice.amgToTokenWei)
+                .div(agentCollateral.vault.amgPrice.amgToTokenWei)
+                .mul(toBN(context.settings.vaultCollateralBuyForFlareFactorBIPS)).divn(MAX_BIPS);
+            // check
+            assertWeb3Equal(burnedNats1, shouldBurnNats1);
+            assertWeb3Equal(returnedVaultC, toBN(info0.totalVaultCollateralWei).divn(2)); // half is burned on first unstick
+            // unstick second minting
+            await context.assetManager.unstickMinting(proof, crt2.collateralReservationId, { from: agent.ownerWorkAddress, value: burnNats });
+            const info2 = await agent.getAgentInfo();
+            assertWeb3Equal(info2.totalVaultCollateralWei, 0);  // now everything is burned
+        });
+
     });
 });
