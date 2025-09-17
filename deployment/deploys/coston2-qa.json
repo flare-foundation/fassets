@@ -154,12 +154,12 @@
   {
     "name": "CollateralPoolProxyImplementation",
     "contractName": "CollateralPool.sol",
-    "address": "0xB8a8F4179e0Dbc1d60554EC7cc54089Dc0dfE21b"
+    "address": "0x6C42962c5071F4Ff39127A3903cd3DA033022F2A"
   },
   {
     "name": "CollateralPoolFactory",
     "contractName": "CollateralPoolFactory.sol",
-    "address": "0x08B0Db2A479B53Ca9A2Fa37b81f0A615386d00c5"
+    "address": "0xD914602a1EEA4277bF7aE9bfD13e3B5c1fD407e8"
   },
   {
     "name": "CollateralPoolTokenProxyImplementation",
@@ -174,7 +174,7 @@
   {
     "name": "AssetManagerControllerImplementation",
     "contractName": "AssetManagerController.sol",
-    "address": "0x3D75f15D8D72f54352c04ac4e1EeE1aE5467698E"
+    "address": "0x303A505803E8Be46ea8c8e5896359397C48E4878"
   },
   {
     "name": "AssetManagerController",
@@ -285,7 +285,7 @@
   {
     "name": "SettingsManagementFacet",
     "contractName": "SettingsManagementFacet.sol",
-    "address": "0xd39d7bfD37491B0bad20D691468457D72273a799"
+    "address": "0x3Bf28A47Fac4F659BC3EADE674E61d715c24BBA8"
   },
   {
     "name": "AgentVaultAndPoolSupportFacet",
@@ -352,7 +352,7 @@
   {
     "name": "CoreVaultClientFacet",
     "contractName": "CoreVaultClientFacet.sol",
-    "address": "0x48E7F15bE16714A2Bb0ea5DAdeECEC9a4fa57355"
+    "address": "0xD4642b3C13a97EAFF5e037A2e91E12D334C4FaA5"
   },
   {
     "name": "CoreVaultClientSettingsFacet",
@@ -362,6 +362,6 @@
   {
     "name": "MintingDefaultsFacet",
     "contractName": "MintingDefaultsFacet.sol",
-    "address": "0xBBe0Ea8D3c67bfaf57B307e5404f17d94F1dFd9f"
+    "address": "0x35B76936026bed88ac8cD579322B7866e4369Fe2"
   }
 ]

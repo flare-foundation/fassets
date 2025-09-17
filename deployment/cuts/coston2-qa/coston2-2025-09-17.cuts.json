@@ -1,0 +1,18 @@
+{
+    "$schema": "../diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FTestXRP"],
+    "facets": [
+        {
+            "contract": "CoreVaultClientFacet",
+            "exposedInterfaces": ["ICoreVaultClient"]
+        },
+        {
+            "contract": "MintingDefaultsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "SettingsManagementFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        }
+    ]
+}
