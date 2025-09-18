@@ -950,123 +950,9 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const res = assetManagerController.setRedemptionPaymentExtensionSeconds([assetManager.address], redemptionPaymentExtensionSeconds_new, { from: accounts[12] });
             await expectRevert.custom(res, "OnlyGovernance", []);
         });
+    });
 
-        // emergency pause
-
-        // emergency pause sender
-        it("can add and remove emergency pause sender", async () => {
-            const sender = accounts[80];
-            await expectRevert.custom(
-                assetManagerController.emergencyPauseStartOperations([assetManager.address], 10, { from: sender }),
-                "OnlyGovernanceOrEmergencyPauseSenders", []);
-            // add sender
-            await assetManagerController.addEmergencyPauseSender(sender, { from: governance });
-            await assetManagerController.emergencyPauseStartOperations([assetManager.address], 10, { from: sender });
-            assert.isTrue(await assetManager.emergencyPaused());
-            await time.deterministicIncrease(20);
-            assert.isFalse(await assetManager.emergencyPaused());
-            // remove sender
-            await assetManagerController.removeEmergencyPauseSender(sender, { from: governance });
-            await expectRevert.custom(
-                assetManagerController.emergencyPauseStartOperations([assetManager.address], 10, { from: sender }),
-                "OnlyGovernanceOrEmergencyPauseSenders", []);
-        });
-
-        it("can have multiple emergency pause senders", async () => {
-            const sender1 = accounts[80];
-            const sender2 = accounts[81];
-            const sender3 = accounts[82];
-            // add senders
-            await assetManagerController.addEmergencyPauseSender(sender1, { from: governance });
-            await assetManagerController.addEmergencyPauseSender(sender2, { from: governance });
-            await assetManagerController.addEmergencyPauseSender(sender3, { from: governance });
-            const allSenders = await assetManagerController.getEmergencyPauseSenders();
-            assert.equal(allSenders.length, 3);
-            assertWeb3SetEqual(allSenders, [sender1, sender2, sender3]);
-            // remove middle sender
-            await assetManagerController.removeEmergencyPauseSender(sender2, { from: governance });
-            const senders = await assetManagerController.getEmergencyPauseSenders();
-            assert.equal(senders.length, 2);
-            assertWeb3SetEqual(senders, [sender1, sender3]);
-        });
-
-        it("governance can emergency pause", async () => {
-            await assetManagerController.emergencyPauseStartOperations([assetManager.address], 10, { from: governance });
-            assert.isTrue(await assetManager.emergencyPaused());
-        });
-
-        it("only governance can add emergency pause sender", async () => {
-            await expectRevert.custom(assetManagerController.addEmergencyPauseSender(accounts[80], { from: accounts[1] }), "OnlyGovernance", []);
-        });
-
-        it("only governance can remove emergency pause sender", async () => {
-            await expectRevert.custom(assetManagerController.removeEmergencyPauseSender(accounts[80], { from: accounts[1] }), "OnlyGovernance", []);
-        });
-
-        // max emergency pause duration seconds
-        it("should set max emergency pause duration seconds", async () => {
-            const currentSettings = await assetManager.getSettings();
-            const maxEmergencyPauseDurationSeconds_new = toBN(currentSettings.maxEmergencyPauseDurationSeconds).muln(2);
-            const resT = await assetManagerController.setMaxEmergencyPauseDurationSeconds([assetManager.address], maxEmergencyPauseDurationSeconds_new, { from: governance });
-            const res = await waitForTimelock(resT, assetManagerController, updateExecutor);
-            await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "maxEmergencyPauseDurationSeconds", value: toBN(maxEmergencyPauseDurationSeconds_new) });
-        });
-
-        it("should not set max emergency pause duration seconds if not from governance", async () => {
-            const currentSettings = await assetManager.getSettings();
-            const maxEmergencyPauseDurationSeconds_new = toBN(currentSettings.maxEmergencyPauseDurationSeconds).muln(2);
-            const res = assetManagerController.setMaxEmergencyPauseDurationSeconds([assetManager.address], maxEmergencyPauseDurationSeconds_new, { from: accounts[12] });
-            await expectRevert.custom(res, "OnlyGovernance", []);
-        });
-
-        it("should not set max emergency pause duration seconds if increase is too big", async () => {
-            const currentSettings = await assetManager.getSettings();
-            const maxEmergencyPauseDurationSeconds_new = toBN(currentSettings.maxEmergencyPauseDurationSeconds).muln(5).addn(2 * MINUTES);
-            const resT = assetManagerController.setMaxEmergencyPauseDurationSeconds([assetManager.address], maxEmergencyPauseDurationSeconds_new, { from: governance });
-            const res = waitForTimelock(resT, assetManagerController, updateExecutor);
-            await expectRevert.custom(res, "IncreaseTooBig", []);
-        });
-
-        it("should not set max emergency pause duration seconds if decrease is too big", async () => {
-            const currentSettings = await assetManager.getSettings();
-            const maxEmergencyPauseDurationSeconds_new = toBN(currentSettings.maxEmergencyPauseDurationSeconds).divn(5);
-            const resT = assetManagerController.setMaxEmergencyPauseDurationSeconds([assetManager.address], maxEmergencyPauseDurationSeconds_new, { from: governance });
-            const res = waitForTimelock(resT, assetManagerController, updateExecutor);
-            await expectRevert.custom(res, "DecreaseTooBig", []);
-        });
-
-        // emergency pause duration reset after seconds
-        it("should set emergency pause duration reset after seconds", async () => {
-            const currentSettings = await assetManager.getSettings();
-            const emergencyPauseDurationResetAfterSeconds_new = toBN(currentSettings.emergencyPauseDurationResetAfterSeconds).muln(2);
-            const resT = await assetManagerController.setEmergencyPauseDurationResetAfterSeconds([assetManager.address], emergencyPauseDurationResetAfterSeconds_new, { from: governance });
-            const res = await waitForTimelock(resT, assetManagerController, updateExecutor);
-            await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "emergencyPauseDurationResetAfterSeconds", value: toBN(emergencyPauseDurationResetAfterSeconds_new) });
-        });
-
-        it("should not emergency pause duration reset after seconds seconds if not from governance", async () => {
-            const currentSettings = await assetManager.getSettings();
-            const emergencyPauseDurationResetAfterSeconds_new = toBN(currentSettings.emergencyPauseDurationResetAfterSeconds).muln(2);
-            const res = assetManagerController.setEmergencyPauseDurationResetAfterSeconds([assetManager.address], emergencyPauseDurationResetAfterSeconds_new, { from: accounts[12] });
-            await expectRevert.custom(res, "OnlyGovernance", []);
-        });
-
-        it("should not set emergency pause duration reset after seconds if increase is too big", async () => {
-            const currentSettings = await assetManager.getSettings();
-            const emergencyPauseDurationResetAfterSeconds_new = toBN(currentSettings.emergencyPauseDurationResetAfterSeconds).muln(5).addn(2 * HOURS);
-            const resT = assetManagerController.setEmergencyPauseDurationResetAfterSeconds([assetManager.address], emergencyPauseDurationResetAfterSeconds_new, { from: governance });
-            const res = waitForTimelock(resT, assetManagerController, updateExecutor);
-            await expectRevert.custom(res, "IncreaseTooBig", []);
-        });
-
-        it("should not set emergency pause duration reset after seconds if decrease is too big", async () => {
-            const currentSettings = await assetManager.getSettings();
-            const emergencyPauseDurationResetAfterSeconds_new = toBN(currentSettings.emergencyPauseDurationResetAfterSeconds).divn(5);
-            const resT = assetManagerController.setEmergencyPauseDurationResetAfterSeconds([assetManager.address], emergencyPauseDurationResetAfterSeconds_new, { from: governance });
-            const res = waitForTimelock(resT, assetManagerController, updateExecutor);
-            await expectRevert.custom(res, "DecreaseTooBig", []);
-        });
-
+    describe("manage collateral tokens", () => {
         // collateral tokens
 
         it("should add Collateral token", async () => {
@@ -1246,6 +1132,166 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const promise = assetManagerController.unpauseMinting([assetManager.address], { from: accounts[0] })
             await expectRevert.custom(promise, "OnlyGovernance", []);
             assert.isTrue(await assetManager.mintingPaused());
+        });
+    });
+
+    describe("trigger and manage emergency pause", () => {
+        it("can start pause at any level", async () => {
+            await assetManagerController.emergencyPauseStartOperations([assetManager.address], 1 * HOURS, { from: governance })
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.START_OPERATIONS);
+            await assetManagerController.emergencyPauseFull([assetManager.address], 1 * HOURS, { from: governance })
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL);
+            await assetManagerController.emergencyPauseFullAndTransfer([assetManager.address], 1 * HOURS, { from: governance })
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL_AND_TRANSFER);
+        });
+
+        it("can cancel own pause", async () => {
+            await assetManagerController.emergencyPauseStartOperations([assetManager.address], 1 * HOURS, { from: governance })
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.START_OPERATIONS);
+            await assetManagerController.cancelEmergencyPause([assetManager.address], { from: governance })
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.NONE);
+        });
+
+        // emergency pause sender
+        it("can add and remove emergency pause sender", async () => {
+            const sender = accounts[80];
+            await expectRevert.custom(
+                assetManagerController.emergencyPauseStartOperations([assetManager.address], 10, { from: sender }),
+                "OnlyGovernanceOrEmergencyPauseSenders", []);
+            // add sender
+            await assetManagerController.addEmergencyPauseSender(sender, { from: governance });
+            await assetManagerController.emergencyPauseStartOperations([assetManager.address], 10, { from: sender });
+            assert.isTrue(await assetManager.emergencyPaused());
+            await time.deterministicIncrease(20);
+            assert.isFalse(await assetManager.emergencyPaused());
+            // remove sender
+            await assetManagerController.removeEmergencyPauseSender(sender, { from: governance });
+            await expectRevert.custom(
+                assetManagerController.emergencyPauseStartOperations([assetManager.address], 10, { from: sender }),
+                "OnlyGovernanceOrEmergencyPauseSenders", []);
+        });
+
+        it("can have multiple emergency pause senders", async () => {
+            const sender1 = accounts[80];
+            const sender2 = accounts[81];
+            const sender3 = accounts[82];
+            // add senders
+            await assetManagerController.addEmergencyPauseSender(sender1, { from: governance });
+            await assetManagerController.addEmergencyPauseSender(sender2, { from: governance });
+            await assetManagerController.addEmergencyPauseSender(sender3, { from: governance });
+            const allSenders = await assetManagerController.getEmergencyPauseSenders();
+            assert.equal(allSenders.length, 3);
+            assertWeb3SetEqual(allSenders, [sender1, sender2, sender3]);
+            // remove middle sender
+            await assetManagerController.removeEmergencyPauseSender(sender2, { from: governance });
+            const senders = await assetManagerController.getEmergencyPauseSenders();
+            assert.equal(senders.length, 2);
+            assertWeb3SetEqual(senders, [sender1, sender3]);
+        });
+
+        it("governance can emergency pause", async () => {
+            await assetManagerController.emergencyPauseStartOperations([assetManager.address], 10, { from: governance });
+            assert.isTrue(await assetManager.emergencyPaused());
+        });
+
+        it("only governance can add emergency pause sender", async () => {
+            await expectRevert.custom(assetManagerController.addEmergencyPauseSender(accounts[80], { from: accounts[1] }), "OnlyGovernance", []);
+        });
+
+        it("only governance can remove emergency pause sender", async () => {
+            await expectRevert.custom(assetManagerController.removeEmergencyPauseSender(accounts[80], { from: accounts[1] }), "OnlyGovernance", []);
+        });
+
+        it("governance can cancel other's pauses", async () => {
+            const sender1 = accounts[80];
+            await assetManagerController.addEmergencyPauseSender(sender1, { from: governance });
+            await assetManagerController.emergencyPauseStartOperations([assetManager.address], 1 * HOURS, { from: governance })
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.START_OPERATIONS);
+            await assetManagerController.emergencyPauseFull([assetManager.address], 1 * HOURS, { from: sender1 })
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL);
+            await assetManagerController.cancelExternalEmergencyPause([assetManager.address], { from: governance })
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.START_OPERATIONS);
+        });
+
+        // reset total duration by governance
+        it("should reset emergency pause total duration", async () => {
+            const sender1 = accounts[80];
+            await assetManagerController.addEmergencyPauseSender(sender1, { from: governance });
+            await assetManagerController.emergencyPauseFull([assetManager.address], 1 * HOURS, { from: sender1 })
+            const { 2: totalDuration0 } = await assetManager.emergencyPauseDetails();
+            assertWeb3Equal(totalDuration0, 1 * HOURS);
+            //
+            await assetManagerController.resetEmergencyPauseTotalDuration([assetManager.address], { from: governance });
+            const { 2: totalDuration } = await assetManager.emergencyPauseDetails();
+            assertWeb3Equal(totalDuration, 0);
+        });
+
+        it("only governance can reset emergency pause total duration", async () => {
+            await expectRevert.custom(assetManagerController.resetEmergencyPauseTotalDuration([assetManager.address]), "OnlyGovernance", []);
+        });
+
+        // max emergency pause duration seconds
+        it("should set max emergency pause duration seconds", async () => {
+            const currentSettings = await assetManager.getSettings();
+            const maxEmergencyPauseDurationSeconds_new = toBN(currentSettings.maxEmergencyPauseDurationSeconds).muln(2);
+            const resT = await assetManagerController.setMaxEmergencyPauseDurationSeconds([assetManager.address], maxEmergencyPauseDurationSeconds_new, { from: governance });
+            const res = await waitForTimelock(resT, assetManagerController, updateExecutor);
+            await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "maxEmergencyPauseDurationSeconds", value: toBN(maxEmergencyPauseDurationSeconds_new) });
+        });
+
+        it("should not set max emergency pause duration seconds if not from governance", async () => {
+            const currentSettings = await assetManager.getSettings();
+            const maxEmergencyPauseDurationSeconds_new = toBN(currentSettings.maxEmergencyPauseDurationSeconds).muln(2);
+            const res = assetManagerController.setMaxEmergencyPauseDurationSeconds([assetManager.address], maxEmergencyPauseDurationSeconds_new, { from: accounts[12] });
+            await expectRevert.custom(res, "OnlyGovernance", []);
+        });
+
+        it("should not set max emergency pause duration seconds if increase is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            const maxEmergencyPauseDurationSeconds_new = toBN(currentSettings.maxEmergencyPauseDurationSeconds).muln(5).addn(2 * MINUTES);
+            const resT = assetManagerController.setMaxEmergencyPauseDurationSeconds([assetManager.address], maxEmergencyPauseDurationSeconds_new, { from: governance });
+            const res = waitForTimelock(resT, assetManagerController, updateExecutor);
+            await expectRevert.custom(res, "IncreaseTooBig", []);
+        });
+
+        it("should not set max emergency pause duration seconds if decrease is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            const maxEmergencyPauseDurationSeconds_new = toBN(currentSettings.maxEmergencyPauseDurationSeconds).divn(5);
+            const resT = assetManagerController.setMaxEmergencyPauseDurationSeconds([assetManager.address], maxEmergencyPauseDurationSeconds_new, { from: governance });
+            const res = waitForTimelock(resT, assetManagerController, updateExecutor);
+            await expectRevert.custom(res, "DecreaseTooBig", []);
+        });
+
+        // emergency pause duration reset after seconds
+        it("should set emergency pause duration reset after seconds", async () => {
+            const currentSettings = await assetManager.getSettings();
+            const emergencyPauseDurationResetAfterSeconds_new = toBN(currentSettings.emergencyPauseDurationResetAfterSeconds).muln(2);
+            const resT = await assetManagerController.setEmergencyPauseDurationResetAfterSeconds([assetManager.address], emergencyPauseDurationResetAfterSeconds_new, { from: governance });
+            const res = await waitForTimelock(resT, assetManagerController, updateExecutor);
+            await expectEvent.inTransaction(res.tx, assetManager, "SettingChanged", { name: "emergencyPauseDurationResetAfterSeconds", value: toBN(emergencyPauseDurationResetAfterSeconds_new) });
+        });
+
+        it("should not emergency pause duration reset after seconds seconds if not from governance", async () => {
+            const currentSettings = await assetManager.getSettings();
+            const emergencyPauseDurationResetAfterSeconds_new = toBN(currentSettings.emergencyPauseDurationResetAfterSeconds).muln(2);
+            const res = assetManagerController.setEmergencyPauseDurationResetAfterSeconds([assetManager.address], emergencyPauseDurationResetAfterSeconds_new, { from: accounts[12] });
+            await expectRevert.custom(res, "OnlyGovernance", []);
+        });
+
+        it("should not set emergency pause duration reset after seconds if increase is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            const emergencyPauseDurationResetAfterSeconds_new = toBN(currentSettings.emergencyPauseDurationResetAfterSeconds).muln(5).addn(2 * HOURS);
+            const resT = assetManagerController.setEmergencyPauseDurationResetAfterSeconds([assetManager.address], emergencyPauseDurationResetAfterSeconds_new, { from: governance });
+            const res = waitForTimelock(resT, assetManagerController, updateExecutor);
+            await expectRevert.custom(res, "IncreaseTooBig", []);
+        });
+
+        it("should not set emergency pause duration reset after seconds if decrease is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            const emergencyPauseDurationResetAfterSeconds_new = toBN(currentSettings.emergencyPauseDurationResetAfterSeconds).divn(5);
+            const resT = assetManagerController.setEmergencyPauseDurationResetAfterSeconds([assetManager.address], emergencyPauseDurationResetAfterSeconds_new, { from: governance });
+            const res = waitForTimelock(resT, assetManagerController, updateExecutor);
+            await expectRevert.custom(res, "DecreaseTooBig", []);
         });
     });
 

@@ -42,6 +42,13 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsMan
         external;
 
     /**
+     * Reset total duration of 3rd party pauses, so that they can trigger pause again.
+     * Otherwise, the total duration is automatically reset emergencyPauseDurationResetAfterSeconds after last pause.
+     */
+    function resetEmergencyPauseTotalDuration()
+        external;
+
+    /**
      * Emergency pause details, useful for monitors.
      */
     function emergencyPauseDetails()
@@ -50,7 +57,8 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsMan
             EmergencyPause.Level _level,
             uint256 _pausedUntil,
             uint256 _totalPauseDuration,
-            bool _pausedByGovernance
+            EmergencyPause.Level _governanceLevel,
+            uint256 _governancePausedUntil
         );
 
     ////////////////////////////////////////////////////////////////////////////////////

@@ -6,6 +6,7 @@ import {Globals} from "../library/Globals.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {EmergencyPause} from "../../userInterfaces/data/EmergencyPause.sol";
+import {EffectiveEmergencyPause} from "../library/EffectiveEmergencyPause.sol";
 
 
 abstract contract AssetManagerBase {
@@ -49,8 +50,7 @@ abstract contract AssetManagerBase {
     }
 
     function _checkEmergencyPauseNotActive(EmergencyPause.Level _leastLevel) private view {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        bool paused = state.emergencyPausedUntil > block.timestamp && state.emergencyPauseLevel >= _leastLevel;
+        bool paused = EffectiveEmergencyPause.level() >= _leastLevel;
         require(!paused, EmergencyPauseActive());
     }
 }

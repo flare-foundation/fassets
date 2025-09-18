@@ -74,14 +74,14 @@ library AssetManagerState {
         // It is an extreme measure, which can be used in case there is a dangerous hole in the system.
         uint64 emergencyPausedUntil;
 
-        // When emergency pause is not done by governance, the total allowed pause is limited.
+        // The total allowed pause by non-governance triggers is limited.
         // So the caller must state the duration after which the pause will automatically end.
         // When total pauses exceed the max allowed length, pausing is only allowed by the governance.
         // An emergencyPause call by the governance optionally resets the total duration counter to 0.
         uint64 emergencyPausedTotalDuration;
 
         // When emergency pause was triggered by governance, only governance can unpause.
-        bool emergencyPausedByGovernance;
+        bool __emergencyPausedByGovernance;
 
         uint64 __transfersEmergencyPausedUntil;
         uint64 __transfersEmergencyPausedTotalDuration;
@@ -96,8 +96,14 @@ library AssetManagerState {
         // the asset manager that it has been added.
         bool attached;
 
-        // WHen emergency pause is active, indicates which operations have been paused.
+        // When emergency pause is active, indicates which operations have been paused.
         EmergencyPause.Level emergencyPauseLevel;
+
+        // There are two independent emergency pauses: one by governance and one by other pause senders.
+        // The effective pause level is the higher of both.
+        // Unlike pause by external senders, governance pause doesn't have a maximum duration.
+        EmergencyPause.Level governanceEmergencyPauseLevel;
+        uint64 governanceEmergencyPausedUntil;
     }
 
     // diamond state access to state and settings

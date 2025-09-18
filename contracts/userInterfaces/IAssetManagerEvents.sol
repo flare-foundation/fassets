@@ -507,22 +507,13 @@ interface IAssetManagerEvents {
      * Emergency pause was triggered.
      */
     event EmergencyPauseTriggered(
+        bool governancePause,
         EmergencyPause.Level level,
         uint256 pausedUntil);
 
     /**
      * Emergency pause was canceled.
      */
-    event EmergencyPauseCanceled();
-
-    /**
-     * Emergency pause transfers was triggered.
-     */
-    event EmergencyPauseTransfersTriggered(
-        uint256 pausedUntil);
-
-    /**
-     * Emergency pause transfers was canceled.
-     */
-    event EmergencyPauseTransfersCanceled();
+    event EmergencyPauseCanceled(
+        bool governancePause);
 }

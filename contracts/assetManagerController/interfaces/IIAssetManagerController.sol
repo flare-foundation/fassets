@@ -229,6 +229,12 @@ interface IIAssetManagerController is
     function cancelEmergencyPause(IIAssetManager[] memory _assetManagers)
         external;
 
+    function cancelExternalEmergencyPause(IIAssetManager[] memory _assetManagers)
+        external;
+
+    function resetEmergencyPauseTotalDuration(IIAssetManager[] memory _assetManagers)
+        external;
+
     function addEmergencyPauseSender(address _address)
         external;
 

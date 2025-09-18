@@ -645,6 +645,23 @@ contract AssetManagerController is
         _emergencyPause(_assetManagers, EmergencyPause.Level.NONE, 0);
     }
 
+    // cancel pause triggered by non-governance pause senders
+    function cancelExternalEmergencyPause(IIAssetManager[] memory _assetManagers)
+        external
+        onlyImmediateGovernance
+    {
+        _callOnManagers(_assetManagers,
+            abi.encodeCall(IIAssetManager.emergencyPause, (EmergencyPause.Level.NONE, false, 0)));
+    }
+
+    function resetEmergencyPauseTotalDuration(IIAssetManager[] memory _assetManagers)
+        external
+        onlyImmediateGovernance
+    {
+        _callOnManagers(_assetManagers,
+            abi.encodeCall(IIAssetManager.resetEmergencyPauseTotalDuration, ()));
+    }
+
     function addEmergencyPauseSender(address _address)
         external
         onlyImmediateGovernance
