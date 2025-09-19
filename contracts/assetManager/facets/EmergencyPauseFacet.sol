@@ -15,16 +15,14 @@ import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol"
 contract EmergencyPauseFacet is AssetManagerBase, IAssetManagerEvents {
     using SafeCast for uint256;
 
+    error InconsistentLevelAndDuration();
+
     function emergencyPause(EmergencyPause.Level _level, bool _governancePause, uint256 _duration)
         external
         onlyAssetManagerController
     {
-        // If pause is disabled, set both level to NONE and duration to 0.
-        // For external pause senders, this prevents using up the total allowed duration.
-        if (_level == EmergencyPause.Level.NONE || _duration == 0) {
-            _level = EmergencyPause.Level.NONE;
-            _duration = 0;
-        }
+        // either _level=NONE or _duration=0 cancels pause - require that either both cancel pause or neither
+        require((_level == EmergencyPause.Level.NONE) == (_duration == 0), InconsistentLevelAndDuration());
         if (_governancePause) {
             _governanceEmergencyPause(_level, _duration);
         } else {
@@ -84,7 +82,7 @@ contract EmergencyPauseFacet is AssetManagerBase, IAssetManagerEvents {
         uint256 endTime = block.timestamp + _duration;
         state.governanceEmergencyPausedUntil = endTime.toUint64();
         state.governanceEmergencyPauseLevel = _level;
-        _emitPauseEvent(true, EffectiveEmergencyPause.governanceLevel(), endTime);
+        _emitPauseEvent();
     }
 
     function _externalEmergencyPause(EmergencyPause.Level _level, uint256 _duration) private {
@@ -99,14 +97,17 @@ contract EmergencyPauseFacet is AssetManagerBase, IAssetManagerEvents {
         state.emergencyPausedUntil = endTime.toUint64();
         state.emergencyPausedTotalDuration = totalDuration.toUint64();
         state.emergencyPauseLevel = _level;
-        _emitPauseEvent(false, EffectiveEmergencyPause.externalLevel(), endTime);
+        _emitPauseEvent();
     }
 
-    function _emitPauseEvent(bool _governancePause, EmergencyPause.Level _level, uint256 _endTime) private {
-        if (_level != EmergencyPause.Level.NONE) {
-            emit EmergencyPauseTriggered(_governancePause, _level, _endTime);
+    function _emitPauseEvent() private {
+        EmergencyPause.Level externalLevel = EffectiveEmergencyPause.externalLevel();
+        EmergencyPause.Level governanceLevel = EffectiveEmergencyPause.governanceLevel();
+        if (externalLevel != EmergencyPause.Level.NONE || governanceLevel != EmergencyPause.Level.NONE) {
+            emit EmergencyPauseTriggered(externalLevel, EffectiveEmergencyPause.externalEndTime(),
+                governanceLevel, EffectiveEmergencyPause.governanceEndTime());
         } else {
-            emit EmergencyPauseCanceled(_governancePause);
+            emit EmergencyPauseCanceled();
         }
     }
 

@@ -15,7 +15,7 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { deepCopy } from "../../../../lib/utils/deepCopy";
 import { DiamondCut } from "../../../../lib/utils/diamond";
 import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, WEEKS, ZERO_ADDRESS, abiEncodeCall, contractMetadata, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, WEEKS, ZERO_ADDRESS, abiEncodeCall, contractMetadata, erc165InterfaceId, maxBN, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentVaultInstance, AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../../typechain-truffle";
 
@@ -2927,16 +2927,24 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const expectedPauseEnd = opts.expectedEnd ?? pauseTime.addn(opts.expectedDuration ?? duration);
             const allowedError = 5; // allow 5s error if clock jumps between two commands
             const event = findRequiredEvent(response, "EmergencyPauseTriggered");
-            assertWeb3Equal(event.args.level, level);
-            assertWeb3Equal(event.args.governancePause, byGovernance);
-            assertApproximatelyEqual(event.args.pausedUntil, expectedPauseEnd, "absolute", allowedError);
+            if (byGovernance) {
+                assertWeb3Equal(event.args.governanceLevel, level);
+                assertApproximatelyEqual(event.args.governancePausedUntil, expectedPauseEnd, "absolute", allowedError);
+            } else {
+                assertWeb3Equal(event.args.externalLevel, level);
+                assertApproximatelyEqual(event.args.externalPausedUntil, expectedPauseEnd, "absolute", allowedError);
+            }
             // check simple
+            const effectiveLevel = Math.max(Number(event.args.governanceLevel), Number(event.args.externalLevel)) as EmergencyPauseLevel;
+            const effectivePausedUntil = maxBN(event.args.governancePausedUntil, event.args.externalPausedUntil);
+            assertWeb3Equal(await assetManager.emergencyPausedUntil(), effectivePausedUntil);
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), effectiveLevel);
             if (opts.checkEffective) {
                 assert.isTrue(await assetManager.emergencyPaused());
-                assertWeb3Equal(await assetManager.emergencyPausedUntil(), event.args.pausedUntil);
-                assertWeb3Equal(await assetManager.emergencyPauseLevel(), level);
+                assertWeb3Equal(effectiveLevel, level);
+                assertApproximatelyEqual(effectivePausedUntil, expectedPauseEnd, "absolute", allowedError);
             }
-            return [pauseTime, toBN(event.args.pausedUntil)];
+            return [pauseTime, expectedPauseEnd];
         }
 
         it("only asset manager controller can pause", async () => {
@@ -3019,7 +3027,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
         });
 
-        it("pausing with 0 time unpauses", async () => {
+        it("pausing with 0 time and level NONE unpauses", async () => {
             // pause by 12 hours first
             const [time1, expectedEnd1] = await triggerPauseAndCheck(false, 12 * HOURS);
             // after 1 hour pause should still be on
@@ -3027,7 +3035,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isTrue(await assetManager.emergencyPaused());
             assertWeb3Equal(await assetManager.emergencyPausedUntil(), expectedEnd1);
             // unpause
-            await assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, false, 0, { from: assetManagerController });
+            await assetManager.emergencyPause(EmergencyPauseLevel.NONE, false, 0, { from: assetManagerController });
             assert.isFalse(await assetManager.emergencyPaused());
             assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
             // now there should be approx. 1 hours spent
@@ -3035,7 +3043,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.approximately(Number(emergencyPausedTotalDuration2), 1 * HOURS, 10);
         });
 
-        it("pausing with level NONE unpauses", async () => {
+        it("arguments that trigger unpause must be consistent - either both level is NONE and time is 0 or neither", async () => {
             // pause by 12 hours first
             const [time1, expectedEnd1] = await triggerPauseAndCheck(false, 12 * HOURS);
             // after 1 hour pause should still be on
@@ -3043,12 +3051,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isTrue(await assetManager.emergencyPaused());
             assertWeb3Equal(await assetManager.emergencyPausedUntil(), expectedEnd1);
             // unpause
-            await assetManager.emergencyPause(EmergencyPauseLevel.NONE, false, 12 * HOURS, { from: assetManagerController });
-            assert.isFalse(await assetManager.emergencyPaused());
-            assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
-            // now there should be approx. 1 hours spent
-            const { 2: emergencyPausedTotalDuration2 } = await assetManager.emergencyPauseDetails();
-            assert.approximately(Number(emergencyPausedTotalDuration2), 1 * HOURS, 10);
+            await expectRevert.custom(assetManager.emergencyPause(EmergencyPauseLevel.NONE, false, 12 * HOURS, { from: assetManagerController }),
+                "InconsistentLevelAndDuration", []);
+            await expectRevert.custom(assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, false, 0, { from: assetManagerController }),
+                "InconsistentLevelAndDuration", []);
         });
 
         it("total emergency pauses by 3rd party are limited", async () => {
@@ -3099,18 +3105,18 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // wait a bit, pause still active
             await time.deterministicIncrease(2 * HOURS);
             assert.isTrue(await assetManager.emergencyPaused());
-            // try to unpause
-            await assetManager.emergencyPause(EmergencyPauseLevel.NONE, false, 0, { from: assetManagerController });
-            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL);
             // try to decrease pause level
             await assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, false, 2 * HOURS, { from: assetManagerController });
             assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL);
             // try to lower time
-            await assetManager.emergencyPause(EmergencyPauseLevel.FULL, false, 0, { from: assetManagerController });
+            await assetManager.emergencyPause(EmergencyPauseLevel.FULL, false, 1 * HOURS, { from: assetManagerController });
             assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL);
             assertWeb3Equal(await assetManager.emergencyPausedUntil(), endTime1);
+            // try to unpause
+            await assetManager.emergencyPause(EmergencyPauseLevel.NONE, false, 0, { from: assetManagerController });
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL);
             // governance can unpause
-            await assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, true, 0, { from: assetManagerController });
+            await assetManager.emergencyPause(EmergencyPauseLevel.NONE, true, 0, { from: assetManagerController });
             assert.isFalse(await assetManager.emergencyPaused());
             assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
             assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.NONE);

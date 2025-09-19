@@ -68,8 +68,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
             // pause stops redeem too
             await expectRevert.custom(redeemer.requestRedemption(lots), "EmergencyPauseActive", []);
-            // manual unpause by setting duration to 0
-            await context.assetManagerController.emergencyPauseStartOperations([context.assetManager.address], 0, { from: emergencyAddress1 });
+            // manual unpause
+            await context.assetManagerController.cancelEmergencyPause([context.assetManager.address], { from: emergencyAddress1 });
             const [requests] = await redeemer.requestRedemption(lots);
             // redemption payments can be performed and confirmed in pause
             await context.assetManagerController.emergencyPauseStartOperations([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
@@ -99,7 +99,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert.custom(liquidator.startLiquidation(agent), "EmergencyPauseActive", []);
             await agent.checkAgentInfo({ status: AgentStatus.NORMAL }, "reset");
             // can start liquidation after unpause
-            await context.assetManagerController.emergencyPauseStartOperations([context.assetManager.address], 0, { from: emergencyAddress1 });
+            await context.assetManagerController.cancelEmergencyPause([context.assetManager.address], { from: emergencyAddress1 });
             await liquidator.startLiquidation(agent);
             await agent.checkAgentInfo({ status: AgentStatus.LIQUIDATION });
             // cannot perform liquidation after pause
