@@ -273,6 +273,15 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const res = agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner2 });
             await expectRevert.custom(res, "WorkAddressInUse", []);
         });
+
+        it("should not allow setting (other) agent's management address as work address", async () => {
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner2, "Agent 2", "Agent 2 description", "Agent 2 icon url", "Agent 2 tou url", { from: governance });
+            const res = agentOwnerRegistry.setWorkAddress(agentOwner1, { from: agentOwner2 });
+            await expectRevert.custom(res, "CannotUseAManagementAddressAsWorkAddress", []);
+            const res2 = agentOwnerRegistry.setWorkAddress(agentOwner2, { from: agentOwner2 });
+            await expectRevert.custom(res2, "CannotUseAManagementAddressAsWorkAddress", []);
+        });
     });
 
     describe("Agent owner data", () => {

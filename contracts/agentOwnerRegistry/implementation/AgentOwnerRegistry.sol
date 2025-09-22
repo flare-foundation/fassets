@@ -13,6 +13,7 @@ contract AgentOwnerRegistry is GovernedUUPSProxyImplementation, IERC165, IAgentO
 
     error AddressZero();
     error OnlyGovernanceOrManager();
+    error CannotUseAManagementAddressAsWorkAddress();
 
     /**
      * When nonzero, this is the address that can perform whitelisting operations
@@ -82,6 +83,7 @@ contract AgentOwnerRegistry is GovernedUUPSProxyImplementation, IERC165, IAgentO
         external
     {
         require(isWhitelisted(msg.sender), AgentNotWhitelisted());
+        require(!isWhitelisted(_ownerWorkAddress), CannotUseAManagementAddressAsWorkAddress());
         require(_ownerWorkAddress == address(0) || workToMgmtAddress[_ownerWorkAddress] == address(0),
                WorkAddressInUse());
         // delete old work to management mapping
