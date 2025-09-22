@@ -7,6 +7,7 @@ import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettin
 import {IAgentOwnerRegistry} from "../../userInterfaces/IAgentOwnerRegistry.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
+import {IIAssetManagerController} from "../../assetManagerController/interfaces/IIAssetManagerController.sol";
 
 
 // global state helpers
@@ -62,5 +63,11 @@ library Globals {
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         return settings.burnAddress;
+    }
+
+    function isGovernanceOrExecutor(address _address) internal view returns (bool) {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        IIAssetManagerController controller = IIAssetManagerController(settings.assetManagerController);
+        return _address == controller.governance() || controller.isExecutor(_address);
     }
 }

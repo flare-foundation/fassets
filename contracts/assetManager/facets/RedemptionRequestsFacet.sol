@@ -37,6 +37,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     error RedemptionOfZero();
     error RedeemZeroLots();
     error InvalidTicketId();
+    error OnlyGovernanceOrExecutor();
 
     /**
      * Redeem (up to) `_lots` lots of f-assets. The corresponding amount of the f-assets belonging
@@ -307,6 +308,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         nonReentrant
     {
         AssetManagerState.State storage state = AssetManagerState.get();
+        require(Globals.isGovernanceOrExecutor(msg.sender), OnlyGovernanceOrExecutor());
         uint256 maxRedeemedTickets = Globals.getSettings().maxRedeemedTickets;
         uint64 firstTicketId = _firstTicketId != 0 ? _firstTicketId.toUint64() : state.redemptionQueue.firstTicketId;
         uint64 ticketId = firstTicketId;

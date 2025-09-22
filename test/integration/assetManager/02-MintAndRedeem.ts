@@ -8,6 +8,7 @@ import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { Approximation } from "../../../lib/test-utils/approximation";
 import { impersonateContract, stopImpersonatingContract } from "../../../lib/test-utils/contract-test-helpers";
+import { waitForTimelock } from "../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
@@ -794,7 +795,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             let count = 0;
             let firstTicketId = BN_ZERO;
             do {
-                const res = await context.assetManager.consolidateSmallTickets(firstTicketId, { from: accounts[9] });
+                const res = await context.assetManager.consolidateSmallTickets(firstTicketId, { from: governance });
                 const args = requiredEventArgs(res, "RedemptionTicketsConsolidated");
                 if (!firstTicketId.eq(BN_ZERO)) {
                     assertWeb3Equal(args.firstTicketId, firstTicketId);
@@ -811,9 +812,21 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
         it("ticket consolidation should revert if passed invalid ticket id", async () => {
             // any nonzero ticket id is invalid on empty queue
-            await expectRevert.custom(context.assetManager.consolidateSmallTickets(11), "InvalidTicketId", []);
+            await expectRevert.custom(context.assetManager.consolidateSmallTickets(11, { from: governance }), "InvalidTicketId", []);
             // but it should work with id 0, even on empty queue
-            await context.assetManager.consolidateSmallTickets(0);
+            await context.assetManager.consolidateSmallTickets(0, { from: governance });
+        });
+
+        it("ticket consolidation must be called by the governance or executor", async () => {
+            const executor = accounts[18];
+            await waitForTimelock(context.common.governanceSettings.setExecutors([executor], { from: governance }), context.common.governanceSettings, governance);
+            assert.notEqual(governance, executor);
+            // should work from governance
+            await context.assetManager.consolidateSmallTickets(0, { from: governance });
+            // should work from executor
+            await context.assetManager.consolidateSmallTickets(0, { from: executor });
+            // should not work from other addresses
+            await expectRevert.custom(context.assetManager.consolidateSmallTickets(0, { from: accounts[19] }), "OnlyGovernanceOrExecutor", []);
         });
 
         it("non-public agent can add 'always allowed minter' and that one doesn't pay CR fee", async () => {
