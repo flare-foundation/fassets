@@ -146,7 +146,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.underlyingAmount(10000));
             const redeemer = await Redeemer.create(context, userAddress2, underlyingUser2);
             const liquidator = await Liquidator.create(context, userAddress2);
-            const challenger = await Challenger.create(context, userAddress2);
             mockChain.mine(10);
             await context.updateUnderlyingBlock();
             const lotSize = context.lotSize();
@@ -162,12 +161,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // cannot liquidate
             await expectRevert.custom(liquidator.startLiquidation(agent), "EmergencyPauseActive", []);
             await expectRevert.custom(liquidator.liquidate(agent, lotSize), "EmergencyPauseActive", []);
-            // cannot challenge
-            const tx1 = await agent.performPayment(redeemer.underlyingAddress, lotSize, null);
-            const tx2 = await agent.performPayment(redeemer.underlyingAddress, lotSize, null);
-            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1), "EmergencyPauseActive", []);
-            await expectRevert.custom(challenger.doublePaymentChallenge(agent, tx1, tx2), "EmergencyPauseActive", []);
-            await expectRevert.custom(challenger.freeBalanceNegativeChallenge(agent, [tx1, tx2]), "EmergencyPauseActive", []);
             // cannot announce enter available
             await expectRevert.custom(agent.announceExitAvailable(), "EmergencyPauseActive", []);
             // cannot exit available
@@ -236,6 +229,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await agent.depositCollateralLotsAndMakeAvailable(20);
             const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.underlyingAmount(10000));
             const redeemer = await Redeemer.create(context, userAddress2, underlyingUser2);
+            const challenger = await Challenger.create(context, userAddress2);
             mockChain.mine(10);
             await context.updateUnderlyingBlock();
             const lotSize = context.lotSize();
@@ -279,6 +273,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // cannot confirm or cancel underlying withdrawal
             await expectRevert.custom(agent.confirmUnderlyingWithdrawal(undWithdr, redeemTx), "EmergencyPauseActive", []);
             await expectRevert.custom(agent.cancelUnderlyingWithdrawal(undWithdr), "EmergencyPauseActive", []);
+            // cannot challenge
+            const tx1 = await agent.performPayment(redeemer.underlyingAddress, lotSize, null);
+            const tx2 = await agent.performPayment(redeemer.underlyingAddress, lotSize, null);
+            await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1), "EmergencyPauseActive", []);
+            await expectRevert.custom(challenger.doublePaymentChallenge(agent, tx1, tx2), "EmergencyPauseActive", []);
+            await expectRevert.custom(challenger.freeBalanceNegativeChallenge(agent, [tx1, tx2]), "EmergencyPauseActive", []);
         });
     });
 });
