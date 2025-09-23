@@ -29,7 +29,7 @@
             "safetyMinCollateralRatioBIPS": 13000
         }
     ],
-    "mintingCap": "2 000 000 000000",
+    "mintingCap": "5 000 000 000000",
     "lotSize": "10 000000",
     "collateralReservationFeeBIPS": 1,
     "mintingPoolHoldingsRequiredBIPS": 5000,
@@ -39,7 +39,7 @@
     "underlyingBlocksForPayment": 225,
     "underlyingSecondsForPayment": 900,
     "averageBlockTimeMS": 4000,
-    "attestationWindowSeconds": 86400,
+    "attestationWindowSeconds": 864000,
     "redemptionPaymentExtensionSeconds": 45,
     "confirmationByOthersAfterSeconds": 21600,
     "confirmationByOthersRewardUSD5": "5 00000",
