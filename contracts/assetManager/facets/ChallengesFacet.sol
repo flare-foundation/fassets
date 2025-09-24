@@ -75,10 +75,13 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
                 Redemption.Request storage redemption = state.redemptionRequests[redemptionId];
                 // Redemption must be for the correct agent, must not be rejected and
                 // only statuses ACTIVE and DEFAULTED mean that redemption is still missing a payment proof.
-                // We do not check for timestamp of the payment, because on UTXO chains legal payments can be
+                // Payments must not be made before the current underlying block when redemption was requested.
+                // We do not check that the payment is not too late, because on UTXO chains legal payments can be
                 // delayed by arbitrary time due to high fees and cannot be canceled, which could lead to
                 // unnecessary full liquidations.
-                bool redemptionActive = redemption.agentVault == _agentVault && Redemptions.isOpen(redemption);
+                bool redemptionActive = redemption.agentVault == _agentVault
+                    && Redemptions.isOpen(redemption)
+                    && _payment.data.responseBody.blockNumber >= redemption.firstUnderlyingBlock;
                 require(!redemptionActive, MatchingRedemptionActive());
             }
             if (PaymentReference.isValid(paymentReference, PaymentReference.ANNOUNCED_WITHDRAWAL)) {

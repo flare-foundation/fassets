@@ -206,6 +206,21 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             await expectRevert.custom(res, "MatchingAnnouncedPaymentActive", []);
         });
 
+        it("should succeed challenging illegal payment - payment too old for matching redemption", async () => {
+            await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+            const request = await mintAndRedeem(agentVault, chain, underlyingMinterAddress, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
+            const paymentAmt = request.valueUBA.sub(request.feeUBA);
+            let txHash!: string;
+            chain.modifyMinedBlock(Number(request.firstUnderlyingBlock) - 1, block => {
+                const tx = wallet.createTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
+                block.transactions.push(tx);
+                txHash = tx.hash;
+            });
+            const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
+            const res = await assetManager.illegalPaymentChallenge(proof, agentVault.address, { from: challengerAddress });
+            expectEvent(res, "IllegalPaymentConfirmed");
+        });
+
     });
 
     describe("double payment challenge", () => {
