@@ -67,6 +67,8 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
     const fAssetContract = contracts.getRequired(parameters.fAssetSymbol);
 
+    await verifyContract(hre, "FAssetImplementation", contracts);
+
     await hre.run("verify:verify", {
         address: fAsset.address,
         constructorArguments: [fAssetContract.address, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetName, parameters.assetSymbol, parameters.assetDecimals],

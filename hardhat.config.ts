@@ -13,6 +13,7 @@ import { HardhatNetworkAccountUserConfig } from "hardhat/types";
 import path from "path";
 import 'solidity-coverage';
 import "./type-extensions";
+import type { EtherscanConfig } from "@nomicfoundation/hardhat-verify/types";
 // Importing standalone simple library to surpass warnings in mock contracts and in mock contract imports
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-require-imports
 const intercept = require('intercept-stdout');
@@ -62,6 +63,92 @@ function readAccounts(network: string) {
     testAccounts = testAccounts.filter(x => x.privateKey !== deployerPK);
     return [...deployerAccounts, ...testAccounts];
 }
+
+const flareExplorerApiUrls: Partial<EtherscanConfig> = {
+    apiKey: {
+        songbird: '0000',
+        flare: '0000',
+        coston: '0000',
+        coston2: '0000',
+    },
+    customChains: [
+        {
+            network: "songbird",
+            chainId: 19,
+            urls: {
+                apiURL: "https://songbird-explorer.flare.network/api",
+                browserURL: "https://songbird-explorer.flare.network"
+            }
+        },
+        {
+            network: "flare",
+            chainId: 14,
+            urls: {
+                apiURL: "https://flare-explorer.flare.network/api",
+                browserURL: "https://flare-explorer.flare.network"
+            }
+        },
+        {
+            network: "coston",
+            chainId: 16,
+            urls: {
+                apiURL: "https://coston-explorer.flare.network/api",
+                browserURL: "https://coston-explorer.flare.network/"
+            }
+        },
+        {
+            network: "coston2",
+            chainId: 114,
+            urls: {
+                apiURL: "https://coston2-explorer.flare.network/api",
+                browserURL: "https://coston2-explorer.flare.network"
+            }
+        },
+    ]
+};
+
+const flarescanApiUrls: Partial<EtherscanConfig> = {
+    apiKey: {
+        songbird: '0000',
+        flare: '0000',
+        coston: '0000',
+        coston2: '0000',
+    },
+    customChains: [
+        {
+            network: "songbird",
+            chainId: 19,
+            urls: {
+                apiURL: "https://api.routescan.io/v2/network/mainnet/evm/19/etherscan/api",
+                browserURL: "https://songbird.flarescan.com"
+            }
+        },
+        {
+            network: "flare",
+            chainId: 14,
+            urls: {
+                apiURL: "https://api.routescan.io/v2/network/mainnet/evm/14/etherscan/api",
+                browserURL: "https://mainnet.flarescan.com"
+            }
+        },
+        {
+            network: "coston",
+            chainId: 16,
+            urls: {
+                apiURL: "https://api.routescan.io/v2/network/mainnet/evm/16/etherscan/api",
+                browserURL: "https://coston.testnet.flarescan.com/"
+            }
+        },
+        {
+            network: "coston2",
+            chainId: 114,
+            urls: {
+                apiURL: "https://api.routescan.io/v2/network/mainnet/evm/114/etherscan/api",
+                browserURL: "https://coston2.testnet.flarescan.com/"
+            }
+        },
+    ]
+};
 
 const config: HardhatUserConfig = {
     defaultNetwork: "hardhat",
@@ -150,48 +237,7 @@ const config: HardhatUserConfig = {
         showTimeSpent: true,
         outputFile: ".gas-report.txt"
     },
-    etherscan: {
-        apiKey: {
-            songbird: '0000',
-            flare: '0000',
-            coston: '0000',
-            coston2: '0000',
-        },
-        customChains: [
-            {
-                network: "songbird",
-                chainId: 19,
-                urls: {
-                    apiURL: "https://songbird-explorer.flare.network/api",
-                    browserURL: "https://songbird-explorer.flare.network"
-                }
-            },
-            {
-                network: "flare",
-                chainId: 14,
-                urls: {
-                    apiURL: "https://flare-explorer.flare.network/api",
-                    browserURL: "https://flare-explorer.flare.network"
-                }
-            },
-            {
-                network: "coston",
-                chainId: 16,
-                urls: {
-                    apiURL: "https://coston-explorer.flare.network/api",
-                    browserURL: "https://coston-explorer.flare.network/"
-                }
-            },
-            {
-                network: "coston2",
-                chainId: 114,
-                urls: {
-                    apiURL: "https://coston2-explorer.flare.network/api",
-                    browserURL: "https://coston2-explorer.flare.network"
-                }
-            },
-        ]
-    },
+    etherscan: process.env.EXPLORER_API === "flarescan" ? flarescanApiUrls : flareExplorerApiUrls,
     sourcify: {
         enabled: false
     }
