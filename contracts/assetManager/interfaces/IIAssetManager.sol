@@ -93,6 +93,17 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsMan
         uint256 _end
     ) external;
 
+    /**
+     * When current pool collateral token contract (WNat) is replaced by the method setPoolWNatCollateralType,
+     * pools don't switch automatically. Instead, the agent must call this method that swaps old WNat tokens for
+     * new ones and sets it for use by the pool.
+     * NOTE: may only be called by the agent vault owner.
+     */
+    function upgradeWNatContract(
+        uint256 _start,
+        uint256 _end
+    ) external;
+
     ////////////////////////////////////////////////////////////////////////////////////
     // Collateral type management
 

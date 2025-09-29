@@ -119,7 +119,7 @@ contract(`AuditV2.ts; ${getTestFile(__filename)}; FAsset V2 audit tests`, accoun
         await context.assetManager.updateSystemContracts(context.assetManagerController.address, newWNAT.address,
             { from: context.assetManagerController.address });
         await stopImpersonatingContract(context.assetManagerController.address);
-        const res = await context.assetManager.upgradeWNatContract(agent.vaultAddress, { from: agentOwner1 });
+        const res = await context.assetManager.upgradeWNatContract(0, 1, { from: governance });
         // agent can't redeem collateral pool tokens because it reverts
         // as withdraws from WNat1 and the Pool sends WNat2
         await selfCloseAndRedeemCollateralPoolTokensRevert(agent, fullAgentCollateral);

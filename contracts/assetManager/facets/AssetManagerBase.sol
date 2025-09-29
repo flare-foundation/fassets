@@ -7,6 +7,7 @@ import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {EmergencyPause} from "../../userInterfaces/data/EmergencyPause.sol";
 import {EffectiveEmergencyPause} from "../library/EffectiveEmergencyPause.sol";
+import {IGoverned} from "../../governance/interfaces/IGoverned.sol";
 
 
 abstract contract AssetManagerBase {
@@ -14,6 +15,7 @@ abstract contract AssetManagerBase {
     error NotAttached();
     error NotWhitelisted();
     error EmergencyPauseActive();
+    error OnlyImmediateGovernanceOrExecutor();
 
     modifier onlyAssetManagerController {
         _checkOnlyAssetManagerController();
@@ -40,6 +42,11 @@ abstract contract AssetManagerBase {
         _;
     }
 
+    modifier onlyImmediateGovernanceOrExecutor() {
+        _checkOnlyImmediateGovernanceOrExecutor();
+        _;
+    }
+
     function _checkOnlyAssetManagerController() private view {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         require(msg.sender == settings.assetManagerController, OnlyAssetManagerController());
@@ -52,5 +59,14 @@ abstract contract AssetManagerBase {
     function _checkEmergencyPauseNotActive(EmergencyPause.Level _leastLevel) private view {
         bool paused = EffectiveEmergencyPause.level() >= _leastLevel;
         require(!paused, EmergencyPauseActive());
+    }
+
+    function _checkOnlyImmediateGovernanceOrExecutor() private view{
+        require(_isGovernanceOrExecutor(msg.sender), OnlyImmediateGovernanceOrExecutor());
+    }
+
+    function _isGovernanceOrExecutor(address _address) internal view returns (bool) {
+        IGoverned thisGoverned = IGoverned(address(this));
+        return _address == thisGoverned.governance() || thisGoverned.isExecutor(_address);
     }
 }

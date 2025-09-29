@@ -826,7 +826,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // should work from executor
             await context.assetManager.consolidateSmallTickets(0, { from: executor });
             // should not work from other addresses
-            await expectRevert.custom(context.assetManager.consolidateSmallTickets(0, { from: accounts[19] }), "OnlyGovernanceOrExecutor", []);
+            await expectRevert.custom(context.assetManager.consolidateSmallTickets(0, { from: accounts[19] }), "OnlyImmediateGovernanceOrExecutor", []);
         });
 
         it("non-public agent can add 'always allowed minter' and that one doesn't pay CR fee", async () => {

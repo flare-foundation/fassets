@@ -155,11 +155,22 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
      * NOTE: may only be called by the agent vault owner.
      */
     function upgradeWNatContract(
-        address _agentVault
+        uint256 _start,
+        uint256 _end
     )
         external
-        // no emergency pause check to allow changing collateral token
-        onlyAgentVaultOwner(_agentVault)
+        onlyImmediateGovernanceOrExecutor
+    {
+        (address[] memory agentVaults,) = Agents.getAllAgents(_start, _end);
+        for (uint256 i = 0; i < agentVaults.length; i++) {
+            _upgradeWNatContract(agentVaults[i]);
+        }
+    }
+
+    function _upgradeWNatContract(
+        address _agentVault
+    )
+        private
     {
         Agent.State storage agent = Agent.get(_agentVault);
         AssetManagerState.State storage state = AssetManagerState.get();

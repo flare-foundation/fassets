@@ -235,7 +235,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci);
-        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol, {
+            governanceSettings: contracts.governanceSettings
+        });
         assetSymbol = ci.symbol;
         return { contracts, diamondCuts, assetManagerInit, wNat, usdc, assetSymbol, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
     }
@@ -701,13 +703,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
             const newWnat = await ERC20Mock.new("Wrapped NAT", "WNAT");
             //Calling upgrade before updating contract won't do anything (just a branch test)
-            await assetManager.upgradeWNatContract(agentVault.address, {from: agentOwner1});
+            const res0 = await assetManager.upgradeWNatContract(0, 1, {from: governance});
+            expectEvent.notEmitted(res0, "AgentCollateralTypeChanged");
             //Update wnat contract
             await assetManager.updateSystemContracts(assetManagerController, newWnat.address, { from: assetManagerController });
             //Random address shouldn't be able to upgrade wNat contract
-            const tx = assetManager.upgradeWNatContract(agentVault.address, {from: accounts[5]});
-            await expectRevert.custom(tx, "OnlyAgentVaultOwner", []);
-            const res = await assetManager.upgradeWNatContract(agentVault.address, {from: agentOwner1});
+            const tx = assetManager.upgradeWNatContract(0, 1, {from: accounts[5]});
+            await expectRevert.custom(tx, "OnlyImmediateGovernanceOrExecutor", []);
+            const res = await assetManager.upgradeWNatContract(0, 1, {from: governance});
             expectEvent(res, "AgentCollateralTypeChanged");
             const eventArgs = requiredEventArgs(res, 'AgentCollateralTypeChanged');
             assert.equal(Number(eventArgs.collateralClass), CollateralClass.POOL);

@@ -64,10 +64,4 @@ library Globals {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         return settings.burnAddress;
     }
-
-    function isGovernanceOrExecutor(address _address) internal view returns (bool) {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        IIAssetManagerController controller = IIAssetManagerController(settings.assetManagerController);
-        return _address == controller.governance() || controller.isExecutor(_address);
-    }
 }
