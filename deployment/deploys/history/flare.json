@@ -170,7 +170,8 @@
     "contractName": "RedemptionRequestsFacet.sol",
     "addresses": [
       "0x24bdD83564e57BABEec05CeEE15ef508d1cFb7A2",
-      "0x941C918c00bBB85b3A39Fb09B22B31158BB4E87E"
+      "0x941C918c00bBB85b3A39Fb09B22B31158BB4E87E",
+      "0x60bC2Cfa7804feFd4015583a3ab48E4aC4eE5357"
     ]
   },
   {
@@ -202,7 +203,8 @@
     "contractName": "ChallengesFacet.sol",
     "addresses": [
       "0x26AA04befB1818E43EF6de33CE62402553bAbD80",
-      "0x1751AcE67BdEC380e4DE7342C43d070447D0F782"
+      "0x1751AcE67BdEC380e4DE7342C43d070447D0F782",
+      "0x9753121b7cC78c694F1825D6ec31C3dE956D9787"
     ]
   },
   {
@@ -250,7 +252,8 @@
     "contractName": "AgentCollateralFacet.sol",
     "addresses": [
       "0x7Cb72eE58153adCE4e54E057f68A5aB0Bc492453",
-      "0x25bF377358513A47359e97755372b8BAd22e4459"
+      "0x25bF377358513A47359e97755372b8BAd22e4459",
+      "0xaDF891fD38a7B8e6093B01ae1Cd15Cde8d9f25d2"
     ]
   },
   {

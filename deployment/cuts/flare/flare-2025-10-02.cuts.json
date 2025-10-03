@@ -1,0 +1,19 @@
+{
+    "$schema": "../diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FXRP"],
+    "autoDeleteMethodsNotInInterface": ["IIAssetManager"],
+    "facets": [
+        {
+            "contract": "AgentCollateralFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "ChallengesFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionRequestsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        }
+    ]
+}

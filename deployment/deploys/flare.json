@@ -187,7 +187,7 @@
   {
     "name": "RedemptionRequestsFacet",
     "contractName": "RedemptionRequestsFacet.sol",
-    "address": "0x941C918c00bBB85b3A39Fb09B22B31158BB4E87E"
+    "address": "0x60bC2Cfa7804feFd4015583a3ab48E4aC4eE5357"
   },
   {
     "name": "RedemptionConfirmationsFacet",
@@ -207,7 +207,7 @@
   {
     "name": "ChallengesFacet",
     "contractName": "ChallengesFacet.sol",
-    "address": "0x1751AcE67BdEC380e4DE7342C43d070447D0F782"
+    "address": "0x9753121b7cC78c694F1825D6ec31C3dE956D9787"
   },
   {
     "name": "UnderlyingBalanceFacet",
@@ -237,7 +237,7 @@
   {
     "name": "AgentCollateralFacet",
     "contractName": "AgentCollateralFacet.sol",
-    "address": "0x25bF377358513A47359e97755372b8BAd22e4459"
+    "address": "0xaDF891fD38a7B8e6093B01ae1Cd15Cde8d9f25d2"
   },
   {
     "name": "SettingsReaderFacet",
