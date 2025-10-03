@@ -108,3 +108,27 @@ yarn slither
 <!-- # run tests -->
 <!-- docker run --rm local/fasset yarn test -->
 <!-- ``` -->
+
+## Review scope and audits
+
+When reviewing the code, either as part of bug bounty program, audit competition or regular code review, please consider the following scope:
+
+agentOwnerRegistry/**/*
+agentVault/**/*
+assetManager/**/*
+assetManagerController/**/*
+collateralPool/**/*
+coreVaultManager/**/*
+diamond/**/*
+fassetToken/**/*
+flareSmartContracts/**/*
+ftso/**/*
+governance/**/*
+userInterfaces/**/*
+utils/**/*
+
+To review the parameters used in deployments refer to deployment folder. Specifically:
+
+deployment/deploys/**/*
+
+Previous audit reports can be found in the [audit](./audit) folder.
