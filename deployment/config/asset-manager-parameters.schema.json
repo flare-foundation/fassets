@@ -176,6 +176,10 @@
             "description": "The fee charged for direct redemption from the core vault.",
             "type": "integer"
         },
+        "coreVaultTransferDefaultPenaltyBIPS": {
+            "description": "Penalty paid in vault collateral for defaulting on underlying payment in transfer to core vault.\nThe penalty is intended to discourage blocking operations like liquidation by creating unpaid\ntransfers to core vault.",
+            "type": "integer"
+        },
         "coreVaultTransferTimeExtensionSeconds": {
             "description": "Extra time that transfer to core vault redemption payments get compared\nto ordinary redemptions.",
             "type": "integer"
@@ -346,6 +350,7 @@
         "coreVaultMinimumRedeemLots",
         "coreVaultNativeAddress",
         "coreVaultRedemptionFeeBIPS",
+        "coreVaultTransferDefaultPenaltyBIPS",
         "coreVaultTransferTimeExtensionSeconds",
         "diamondCutMinTimelockSeconds",
         "emergencyPauseDurationResetAfterSeconds",

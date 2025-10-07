@@ -428,6 +428,13 @@ export interface AssetManagerParameters {
     coreVaultTransferTimeExtensionSeconds: integer;
 
     /**
+     * Penalty paid in vault collateral for defaulting on underlying payment in transfer to core vault.
+     * The penalty is intended to discourage blocking operations like liquidation by creating unpaid
+     * transfers to core vault.
+     */
+    coreVaultTransferDefaultPenaltyBIPS: integer;
+
+    /**
      * The minimum amount that has to be left on agent's underlying address after the transfer to the core vault,
      * to make sure that the agent stays redeemable.
      *

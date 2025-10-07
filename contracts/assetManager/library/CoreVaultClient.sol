@@ -23,6 +23,7 @@ library CoreVaultClient {
     using SafePct for uint256;
     using SafeCast for int256;
     using Agent for Agent.State;
+    using AgentCollateral for Collateral.Data;
 
     error CoreVaultNotEnabled();
 
@@ -31,7 +32,7 @@ library CoreVaultClient {
         IICoreVaultManager coreVaultManager;
         uint64 transferTimeExtensionSeconds;
         address payable nativeAddress;
-        uint16 __transferFeeBIPS; // only storage placeholder
+        uint16 transferDefaultPenaltyBIPS;
         uint16 redemptionFeeBIPS;
         uint16 minimumAmountLeftBIPS;
         uint64 minimumRedeemLots;
@@ -89,6 +90,21 @@ library CoreVaultClient {
         _agent.reservedAMG -= _agent.returnFromCoreVaultReservedAMG;
         _agent.activeReturnFromCoreVaultId = 0;
         _agent.returnFromCoreVaultReservedAMG = 0;
+    }
+
+    function transferToCoreVaultDefaultPenalty(
+        Agent.State storage _agent,
+        Redemption.Request storage _request
+    )
+        internal view
+        returns (uint256)
+    {
+        State storage state = getState();
+        Collateral.Data memory cdVault = AgentCollateral.agentVaultCollateralData(_agent);
+        uint256 maxVaultRedemptionCollateralWei = cdVault.maxRedemptionCollateral(_agent, _request.valueAMG);
+        uint256 penaltyAmount = Conversion.convertAmgToTokenWei(_request.valueAMG, cdVault.amgToTokenWeiPrice)
+                .mulBips(state.transferDefaultPenaltyBIPS);
+        return Math.min(penaltyAmount, maxVaultRedemptionCollateralWei);
     }
 
     function maximumTransferToCoreVaultAMG(

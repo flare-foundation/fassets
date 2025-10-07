@@ -7,7 +7,6 @@ import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettin
 import {IAgentOwnerRegistry} from "../../userInterfaces/IAgentOwnerRegistry.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {CollateralTypeInt} from "./data/CollateralTypeInt.sol";
-import {IIAssetManagerController} from "../../assetManagerController/interfaces/IIAssetManagerController.sol";
 
 
 // global state helpers

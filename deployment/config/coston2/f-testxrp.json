@@ -71,6 +71,7 @@
     "redemptionPaymentExtensionSeconds": 30,
     "coreVaultNativeAddress": "0xfeC5BF0a64963E6b2EbA8153235E40f9e5a8c8Ae",
     "coreVaultTransferTimeExtensionSeconds": 7200,
+    "coreVaultTransferDefaultPenaltyBIPS": 10,
     "coreVaultMinimumAmountLeftBIPS": 2000,
     "coreVaultRedemptionFeeBIPS": 0,
     "coreVaultMinimumRedeemLots": 10

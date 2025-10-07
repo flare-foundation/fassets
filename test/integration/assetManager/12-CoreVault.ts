@@ -230,7 +230,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         await expectRevert.custom(res, "TooLittleMintingLeftAfterTransfer", []);
     });
 
-    it("should default transfer to core vault - by agent", async () => {
+    it("should default transfer to core vault - by agent (with penalty)", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
@@ -262,7 +262,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // skip until the payment time passes
         context.skipToExpiration(rdreqs[0].lastUnderlyingBlock, rdreqs[0].lastUnderlyingTimestamp);
         // agent defaults transfer request
+        const cvNativeBalanceBefore = await context.usdc.balanceOf(context.initSettings.coreVaultNativeAddress);
         await agent.transferToCoreVaultDefault(rdreqs[0]);
+        const cvNativeBalanceAfter = await context.usdc.balanceOf(context.initSettings.coreVaultNativeAddress);
+        // core vault native address gets some fee
+        const agc = await agent.getAgentCollateral();
+        const expectedPenalty = agc.vault.convertUBAToTokenWei(transferAmount).mul(toBN(context.initSettings.coreVaultTransferDefaultPenaltyBIPS)).divn(MAX_BIPS);
+        assert.isTrue(cvNativeBalanceAfter.sub(cvNativeBalanceBefore).gt(toBN(1e6)));
+        assertWeb3Equal(cvNativeBalanceAfter.sub(cvNativeBalanceBefore), expectedPenalty);
         // agent now has full backing left
         await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: totalMintedAmount, redeemingUBA: 0 });
         // redemption queue now has two tickets of 5 lots (and 1 by agent2)
@@ -275,6 +282,42 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const redemptionRes = await context.assetManager.redeem(11, redeemer.underlyingAddress, ZERO_ADDRESS, { from: redeemer.address });
         expectEvent(redemptionRes, "RedemptionRequested", { agentVault: agent.vaultAddress, valueUBA: minted.mintedAmountUBA });
         expectEvent.notEmitted(redemptionRes, "RedemptionRequestIncomplete");
+    });
+
+    it("should default transfer to core vault - by agent (penalty set to 0)", async () => {
+        await context.assetManager.setCoreVaultTransferDefaultPenaltyBIPS(0, { from: governance });
+        //
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        // make agent available
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        // mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        // update time
+        await context.updateUnderlyingBlock();
+        const { 0: currentBlock, 1: currentTimestamp } = await context.assetManager.currentUnderlyingBlock();
+        // agent requests transfer for half backing to core vault
+        const totalMintedAmount = toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA));
+        const transferAmount = context.lotSize().muln(5);
+        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
+        const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
+        assertWeb3Equal(rdreqs.length, 1);
+        // agent now has approx half backing in redeeming state
+        const expectRemainingMinted = totalMintedAmount.sub(transferAmount);
+        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: expectRemainingMinted, redeemingUBA: transferAmount });
+        // time for payment is longer than normal
+        const expectedPaymentTime = currentTimestamp.add(toBN(context.settings.underlyingSecondsForPayment).add(toBN(context.initSettings.coreVaultTransferTimeExtensionSeconds)));
+        assert.isTrue(toBN(rdreqs[0].lastUnderlyingTimestamp).gte(expectedPaymentTime));
+        // cannot default immediatelly
+        await expectRevert(agent.transferToCoreVaultDefault(rdreqs[0]), "overflow block not found");
+        // skip until the payment time passes
+        context.skipToExpiration(rdreqs[0].lastUnderlyingBlock, rdreqs[0].lastUnderlyingTimestamp);
+        // agent defaults transfer request
+        const cvNativeBalanceBefore = await context.usdc.balanceOf(context.initSettings.coreVaultNativeAddress);
+        await agent.transferToCoreVaultDefault(rdreqs[0]);
+        const cvNativeBalanceAfter = await context.usdc.balanceOf(context.initSettings.coreVaultNativeAddress);
+        // core vault native address gets some fee
+        assertWeb3Equal(cvNativeBalanceAfter, cvNativeBalanceBefore);
     });
 
     it("should default transfer to core vault - by others", async () => {
@@ -736,6 +779,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         res = await context.assetManager.setCoreVaultTransferTimeExtensionSeconds(1800, { from: context.governance });
         expectEvent(res, "SettingChanged", { name: "coreVaultTransferTimeExtensionSeconds", value: "1800" })
         assertWeb3Equal(await context.assetManager.getCoreVaultTransferTimeExtensionSeconds(), 1800);
+        // update transfer default penalty
+        res = await context.assetManager.setCoreVaultTransferDefaultPenaltyBIPS(211, { from: context.governance });
+        expectEvent(res, "SettingChanged", { name: "coreVaultTransferDefaultPenaltyBIPS", value: "211" })
+        assertWeb3Equal(await context.assetManager.getCoreVaultTransferDefaultPenaltyBIPS(), 211);
         // update minimum amount left after transfer to vault
         res = await context.assetManager.setCoreVaultMinimumAmountLeftBIPS(1234, { from: context.governance });
         expectEvent(res, "SettingChanged", { name: "coreVaultMinimumAmountLeftBIPS", value: "1234" })
@@ -752,6 +799,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
     it("revert if modifying core vault settings with invalid values", async () => {
         await expectRevert.custom(context.assetManager.setCoreVaultManager(ZERO_ADDRESS, { from: context.governance }), "CannotDisable", []);
+        await expectRevert.custom(context.assetManager.setCoreVaultTransferDefaultPenaltyBIPS(MAX_BIPS + 1, { from: context.governance }), "BipsValueTooHigh", []);
         await expectRevert.custom(context.assetManager.setCoreVaultRedemptionFeeBIPS(MAX_BIPS + 1, { from: context.governance }), "BipsValueTooHigh", []);
         await expectRevert.custom(context.assetManager.setCoreVaultMinimumAmountLeftBIPS(MAX_BIPS + 1, { from: context.governance }), "BipsValueTooHigh", []);
     });
@@ -767,6 +815,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         await expectRevert.custom(context.assetManager.setCoreVaultManager(accounts[31]), "OnlyGovernance", []);
         await expectRevert.custom(context.assetManager.setCoreVaultNativeAddress(accounts[32]), "OnlyGovernance", []);
         await expectRevert.custom(context.assetManager.setCoreVaultTransferTimeExtensionSeconds(1800), "OnlyGovernance", []);
+        await expectRevert.custom(context.assetManager.setCoreVaultTransferDefaultPenaltyBIPS(211), "OnlyGovernance", []);
         await expectRevert.custom(context.assetManager.setCoreVaultRedemptionFeeBIPS(211), "OnlyGovernance", []);
         await expectRevert.custom(context.assetManager.setCoreVaultMinimumAmountLeftBIPS(1000), "OnlyGovernance", []);
         await expectRevert.custom(context.assetManager.setCoreVaultMinimumRedeemLots(3), "OnlyGovernance", []);
@@ -787,6 +836,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         //
         timelocked = await executeTimelockedGovernanceCall(context.assetManager,
             (governance) => context.assetManager.setCoreVaultTransferTimeExtensionSeconds(1800, { from: governance }));
+        assert.equal(timelocked, false);
+        //
+        timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+            (governance) => context.assetManager.setCoreVaultTransferDefaultPenaltyBIPS(211, { from: governance }));
         assert.equal(timelocked, false);
         //
         timelocked = await executeTimelockedGovernanceCall(context.assetManager,

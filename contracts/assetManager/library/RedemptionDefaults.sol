@@ -51,10 +51,15 @@ library RedemptionDefaults {
             emit IAssetManagerEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _redemptionRequestId,
                 _request.underlyingValueUBA, paidC1Wei, paidPoolWei);
         } else {
+            uint256 penaltyC1Wei = CoreVaultClient.transferToCoreVaultDefaultPenalty(_agent, _request);
+            if (penaltyC1Wei > 0) {
+                // pay penalty from vault (redeemer is always core vault's native address)
+                AgentPayout.tryPayoutFromVault(_agent, _request.redeemer, penaltyC1Wei);
+            }
             // default can be handled as ordinary default by bots, but nothing is paid out - instead
             // FAssets are re-minted (which can be detected in trackers by TransferToCoreVaultDefaulted event)
             emit IAssetManagerEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _redemptionRequestId,
-                _request.underlyingValueUBA, 0, 0);
+                _request.underlyingValueUBA, penaltyC1Wei, 0);
             // core vault transfer default - re-create tickets
             CoreVaultClient.cancelTransferToCoreVault(_agent, _request, _redemptionRequestId);
         }

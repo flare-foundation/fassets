@@ -269,6 +269,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // add CoreVaultClient settings
             resInitSettings.coreVaultNativeAddress = await assetManager.getCoreVaultNativeAddress();
             resInitSettings.coreVaultTransferTimeExtensionSeconds = await assetManager.getCoreVaultTransferTimeExtensionSeconds();
+            resInitSettings.coreVaultTransferDefaultPenaltyBIPS = await assetManager.getCoreVaultTransferDefaultPenaltyBIPS();
             resInitSettings.coreVaultRedemptionFeeBIPS = await assetManager.getCoreVaultRedemptionFeeBIPS();
             resInitSettings.coreVaultMinimumAmountLeftBIPS = await assetManager.getCoreVaultMinimumAmountLeftBIPS();
             resInitSettings.coreVaultMinimumRedeemLots = await assetManager.getCoreVaultMinimumRedeemLots();

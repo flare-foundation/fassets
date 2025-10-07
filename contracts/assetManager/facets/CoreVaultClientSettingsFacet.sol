@@ -33,6 +33,7 @@ contract CoreVaultClientSettingsFacet is AssetManagerBase, GovernedProxyImplemen
         IICoreVaultManager _coreVaultManager,
         address payable _nativeAddress,
         uint256 _transferTimeExtensionSeconds,
+        uint256 _transferDefaultPenaltyBIPS,
         uint256 _redemptionFeeBIPS,
         uint256 _minimumAmountLeftBIPS,
         uint256 _minimumRedeemLots
@@ -49,6 +50,7 @@ contract CoreVaultClientSettingsFacet is AssetManagerBase, GovernedProxyImplemen
         state.coreVaultManager = _coreVaultManager;
         state.nativeAddress = _nativeAddress;
         state.transferTimeExtensionSeconds = _transferTimeExtensionSeconds.toUint64();
+        state.transferDefaultPenaltyBIPS = _transferDefaultPenaltyBIPS.toUint16();
         state.redemptionFeeBIPS = _redemptionFeeBIPS.toUint16();
         state.minimumAmountLeftBIPS = _minimumAmountLeftBIPS.toUint16();
         state.minimumRedeemLots = _minimumRedeemLots.toUint64();
@@ -110,6 +112,18 @@ contract CoreVaultClientSettingsFacet is AssetManagerBase, GovernedProxyImplemen
             _transferTimeExtensionSeconds);
     }
 
+    function setCoreVaultTransferDefaultPenaltyBIPS(
+        uint256 _transferDefaultPenaltyBIPS
+    )
+        external
+        onlyImmediateGovernance
+    {
+        require(_transferDefaultPenaltyBIPS <= SafePct.MAX_BIPS, BipsValueTooHigh());
+        CoreVaultClient.State storage state = CoreVaultClient.getState();
+        state.transferDefaultPenaltyBIPS = _transferDefaultPenaltyBIPS.toUint16();
+        emit IAssetManagerEvents.SettingChanged("coreVaultTransferDefaultPenaltyBIPS", _transferDefaultPenaltyBIPS);
+    }
+
     function setCoreVaultRedemptionFeeBIPS(
         uint256 _redemptionFeeBIPS
     )
@@ -167,6 +181,14 @@ contract CoreVaultClientSettingsFacet is AssetManagerBase, GovernedProxyImplemen
     {
         CoreVaultClient.State storage state = CoreVaultClient.getState();
         return state.transferTimeExtensionSeconds;
+    }
+
+    function getCoreVaultTransferDefaultPenaltyBIPS()
+        external view
+        returns (uint256)
+    {
+        CoreVaultClient.State storage state = CoreVaultClient.getState();
+        return state.transferDefaultPenaltyBIPS;
     }
 
     function getCoreVaultRedemptionFeeBIPS()

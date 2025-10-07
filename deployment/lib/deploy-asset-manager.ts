@@ -101,7 +101,7 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
                 contract: "CoreVaultClientSettingsFacet",
                 method: "initCoreVaultFacet",
                 args: [ZERO_ADDRESS, parameters.coreVaultNativeAddress,
-                    parameters.coreVaultTransferTimeExtensionSeconds, parameters.coreVaultRedemptionFeeBIPS,
+                    parameters.coreVaultTransferTimeExtensionSeconds, parameters.coreVaultTransferDefaultPenaltyBIPS, parameters.coreVaultRedemptionFeeBIPS,
                     parameters.coreVaultMinimumAmountLeftBIPS, parameters.coreVaultMinimumRedeemLots]
             },
         },

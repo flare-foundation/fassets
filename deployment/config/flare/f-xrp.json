@@ -71,6 +71,7 @@
     "emergencyPauseDurationResetAfterSeconds": 604800,
     "coreVaultNativeAddress": "0x000000000000000000000000000000000000dEaD",
     "coreVaultTransferTimeExtensionSeconds": 7200,
+    "coreVaultTransferDefaultPenaltyBIPS": 10,
     "coreVaultMinimumAmountLeftBIPS": 1500,
     "coreVaultRedemptionFeeBIPS": 0,
     "coreVaultMinimumRedeemLots": 1000

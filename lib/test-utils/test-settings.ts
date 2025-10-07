@@ -141,6 +141,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         __rejectedRedemptionDefaultFactorPoolBIPS: 0,
         coreVaultNativeAddress: "0xfa3BdC8709226Da0dA13A4d904c8b66f16c3c8BA",     // one of test accounts [9]
         coreVaultTransferTimeExtensionSeconds: 2 * HOURS,
+        coreVaultTransferDefaultPenaltyBIPS: toBIPS("0.1%"),
         coreVaultRedemptionFeeBIPS: toBIPS("1%"),
         coreVaultMinimumAmountLeftBIPS: 0,
         coreVaultMinimumRedeemLots: 10,

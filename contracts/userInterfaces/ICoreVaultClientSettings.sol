@@ -14,6 +14,9 @@ interface ICoreVaultClientSettings {
     function setCoreVaultTransferTimeExtensionSeconds(uint256 _transferTimeExtensionSeconds)
         external;
 
+    function setCoreVaultTransferDefaultPenaltyBIPS(uint256 _transferDefaultPenaltyBIPS)
+        external;
+
     function setCoreVaultRedemptionFeeBIPS(uint256 _redemptionFeeBIPS)
         external;
 
@@ -32,6 +35,10 @@ interface ICoreVaultClientSettings {
         returns (address);
 
     function getCoreVaultTransferTimeExtensionSeconds()
+        external view
+        returns (uint256);
+
+    function getCoreVaultTransferDefaultPenaltyBIPS()
         external view
         returns (uint256);
 
