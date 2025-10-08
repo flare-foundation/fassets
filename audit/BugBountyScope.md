@@ -1,4 +1,4 @@
-## Bug Bounty Scope
+# Bug Bounty Scope
 
 ## Flare Deployment
 
@@ -49,3 +49,54 @@
 | UnderlyingBalanceFacet                 | [0x0F320b434B6A0A891189b67c533Dc8691a439daB](https://flare-explorer.flare.network/address/0x0F320b434B6A0A891189b67c533Dc8691a439daB?tab=contract_code) |
 | UnderlyingTimekeepingFacet             | [0x62c1064D38c4a198A4e549f79a353F8490FcE595](https://flare-explorer.flare.network/address/0x62c1064D38c4a198A4e549f79a353F8490FcE595?tab=contract_code) |
 
+## Songbird Deployment
+
+| Asset                                  | Address                                                                                                                                                    |
+|:---------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| AgentAlwaysAllowedMintersFacet         | [0x8004669FBf5cB50F12319eE0ac28E49ddF5b0EC3](https://songbird-explorer.flare.network/address/0x8004669FBf5cB50F12319eE0ac28E49ddF5b0EC3?tab=contract_code) |
+| AgentCollateralFacet                   | [0x696C207e4227ECAec853d9030F2188e527107185](https://songbird-explorer.flare.network/address/0x696C207e4227ECAec853d9030F2188e527107185?tab=contract_code) |
+| AgentInfoFacet                         | [0x7DEEF479A2b845c3C23Fcde3E712DC0aDf8b1D0a](https://songbird-explorer.flare.network/address/0x7DEEF479A2b845c3C23Fcde3E712DC0aDf8b1D0a?tab=contract_code) |
+| AgentOwnerRegistry                     | [0x7b514cE1E3733b94342e0550831d601926088380](https://songbird-explorer.flare.network/address/0x7b514cE1E3733b94342e0550831d601926088380?tab=contract_code) |
+| AgentOwnerRegistryImplementation       | [0x305Ee0C2A0D039F2FFe2B544aDd9B48d7B97D935](https://songbird-explorer.flare.network/address/0x305Ee0C2A0D039F2FFe2B544aDd9B48d7B97D935?tab=contract_code) |
+| AgentPingFacet                         | [0xF5821254Ea25600f0aa59026Ceedd61099ACb63A](https://songbird-explorer.flare.network/address/0xF5821254Ea25600f0aa59026Ceedd61099ACb63A?tab=contract_code) |
+| AgentSettingsFacet                     | [0xe6B9a60D05d8B7579D7d5F99b6721DA5a6Ce8a37](https://songbird-explorer.flare.network/address/0xe6B9a60D05d8B7579D7d5F99b6721DA5a6Ce8a37?tab=contract_code) |
+| AgentVaultAndPoolSupportFacet          | [0x2E17Ca992e375A819eaBDD5B30D9EB5B05C12571](https://songbird-explorer.flare.network/address/0x2E17Ca992e375A819eaBDD5B30D9EB5B05C12571?tab=contract_code) |
+| AgentVaultFactory                      | [0x97Ed9b2Ff94aA990A58Aa493aE988096e65Ea0D5](https://songbird-explorer.flare.network/address/0x97Ed9b2Ff94aA990A58Aa493aE988096e65Ea0D5?tab=contract_code) |
+| AgentVaultManagementFacet              | [0xA66CE42c98dEd730a35f04ECe0fAE99bD79aDA74](https://songbird-explorer.flare.network/address/0xA66CE42c98dEd730a35f04ECe0fAE99bD79aDA74?tab=contract_code) |
+| AgentVaultProxyImplementation          | [0x1C7D0085D35F630938f939F812Ce5d2Ff3aeB6a7](https://songbird-explorer.flare.network/address/0x1C7D0085D35F630938f939F812Ce5d2Ff3aeB6a7?tab=contract_code) |
+| AssetManagerDiamondCutFacet            | [0xe7a5530cD2a459aD3bECA2c2Ed13d96FA0d5255a](https://songbird-explorer.flare.network/address/0xe7a5530cD2a459aD3bECA2c2Ed13d96FA0d5255a?tab=contract_code) |
+| AssetManagerInit                       | [0xD5a79Ee4F36fdd0355a7AE87D2fc9cF591EAe117](https://songbird-explorer.flare.network/address/0xD5a79Ee4F36fdd0355a7AE87D2fc9cF591EAe117?tab=contract_code) |
+| AssetManagerController                 | [0x04025BBf6Be30d6cB6ad412c2958c712c6B2BCbA](https://songbird-explorer.flare.network/address/0x04025BBf6Be30d6cB6ad412c2958c712c6B2BCbA?tab=contract_code) |
+| AssetManagerControllerImplementation   | [0xcd5Be357131c9DEa0E23C539c7A3f02D47aA3cb9](https://songbird-explorer.flare.network/address/0xcd5Be357131c9DEa0E23C539c7A3f02D47aA3cb9?tab=contract_code) |
+| AssetManager_FXRP                      | [0x299d678f67e7ADD4efdf295Ebe0E92FCb4f75C4c](https://songbird-explorer.flare.network/address/0x299d678f67e7ADD4efdf295Ebe0E92FCb4f75C4c?tab=contract_code) |
+| AvailableAgentsFacet                   | [0xaF7A88A0BE32816eE7A6666327A5dA011834F742](https://songbird-explorer.flare.network/address/0xaF7A88A0BE32816eE7A6666327A5dA011834F742?tab=contract_code) |
+| ChallengesFacet                        | [0x46F82f40FBE2D6907b12522C47a930898B3B8c4d](https://songbird-explorer.flare.network/address/0x46F82f40FBE2D6907b12522C47a930898B3B8c4d?tab=contract_code) |
+| CollateralPoolFactory                  | [0x226EBB5677AA51711ACFE6c9961862ADaCF313fE](https://songbird-explorer.flare.network/address/0x226EBB5677AA51711ACFE6c9961862ADaCF313fE?tab=contract_code) |
+| CollateralPoolProxyImplementation      | [0x299E4bA1A3b5CcEda85962A118e57D82AE85AEa7](https://songbird-explorer.flare.network/address/0x299E4bA1A3b5CcEda85962A118e57D82AE85AEa7?tab=contract_code) |
+| CollateralPoolTokenFactory             | [0x8772FC50AE518c20a6a723ac9Dc7f7C03F872fa4](https://songbird-explorer.flare.network/address/0x8772FC50AE518c20a6a723ac9Dc7f7C03F872fa4?tab=contract_code) |
+| CollateralPoolTokenProxyImplementation | [0x25bdf17305361b17b5b097D393C3704C3eD007E3](https://songbird-explorer.flare.network/address/0x25bdf17305361b17b5b097D393C3704C3eD007E3?tab=contract_code) |
+| CollateralReservationsFacet            | [0xa94956aFE3564c0eD8d7d5AC2917550F890e55d1](https://songbird-explorer.flare.network/address/0xa94956aFE3564c0eD8d7d5AC2917550F890e55d1?tab=contract_code) |
+| CollateralTypesFacet                   | [0x1001A671cC2e7c068D58ED76CFF562000D544cdf](https://songbird-explorer.flare.network/address/0x1001A671cC2e7c068D58ED76CFF562000D544cdf?tab=contract_code) |
+| CoreVaultClientFacet                   | [0xd82A03a42bA87782Bd5CF5972660139D00910F0a](https://songbird-explorer.flare.network/address/0xd82A03a42bA87782Bd5CF5972660139D00910F0a?tab=contract_code) |
+| CoreVaultClientSettingsFacet           | [0x0E14D50c105F2f47E9e280fd44643D051ACa9009](https://songbird-explorer.flare.network/address/0x0E14D50c105F2f47E9e280fd44643D051ACa9009?tab=contract_code) |
+| CoreVaultManagerImplementation         | [0xDD3404dF1d865bd4121062F7a12f97E2b2fee277](https://songbird-explorer.flare.network/address/0xDD3404dF1d865bd4121062F7a12f97E2b2fee277?tab=contract_code) |
+| CoreVaultManager_FXRP                  | [0x0CdF65f6de5FFFf9B39252d0296EcE2530770b5a](https://songbird-explorer.flare.network/address/0x0CdF65f6de5FFFf9B39252d0296EcE2530770b5a?tab=contract_code) |
+| DiamondLoupeFacet                      | [0xCef81a7C73E1a148AB451cEC597F653447F52F5D](https://songbird-explorer.flare.network/address/0xCef81a7C73E1a148AB451cEC597F653447F52F5D?tab=contract_code) |
+| EmergencyPauseFacet                    | [0xe57E62f3ECEe3355cF3D3296d8Ff6bECDd6eD963](https://songbird-explorer.flare.network/address/0xe57E62f3ECEe3355cF3D3296d8Ff6bECDd6eD963?tab=contract_code) |
+| EmergencyPauseTransfersFacet           | [0x5020e91c296bCFBE0852075E3a3A448fb80A3d2A](https://songbird-explorer.flare.network/address/0x5020e91c296bCFBE0852075E3a3A448fb80A3d2A?tab=contract_code) |
+| FAssetImplementation                   | [0x079F2EA8FD288F8b600f17054347ab231e81720A](https://songbird-explorer.flare.network/address/0x079F2EA8FD288F8b600f17054347ab231e81720A?tab=contract_code) |
+| FXRP                                   | [0xF9a84f4ec903F4EaB117A9c1098BeC078BA7027d](https://songbird-explorer.flare.network/address/0xF9a84f4ec903F4EaB117A9c1098BeC078BA7027d?tab=contract_code) |
+| LiquidationFacet                       | [0x76d07b96AE416051444C234A09bdcb4375b6A53B](https://songbird-explorer.flare.network/address/0x76d07b96AE416051444C234A09bdcb4375b6A53B?tab=contract_code) |
+| MintingDefaultsFacet                   | [0xaA6D3273C868bEC21D24C805da75329A9458B901](https://songbird-explorer.flare.network/address/0xaA6D3273C868bEC21D24C805da75329A9458B901?tab=contract_code) |
+| MintingFacet                           | [0xE10Bcc6522E212E655A67Ce59C2cb1E8985B9AFa](https://songbird-explorer.flare.network/address/0xE10Bcc6522E212E655A67Ce59C2cb1E8985B9AFa?tab=contract_code) |
+| PriceReader                            | [0x9D99A8BadD16A22fB3E9C6e17DF90b3b72838B2d](https://songbird-explorer.flare.network/address/0x9D99A8BadD16A22fB3E9C6e17DF90b3b72838B2d?tab=contract_code) |
+| RedemptionConfirmationsFacet           | [0x788D63E92C2a94EfbCEbb98d862917633337a169](https://songbird-explorer.flare.network/address/0x788D63E92C2a94EfbCEbb98d862917633337a169?tab=contract_code) |
+| RedemptionDefaultsFacet                | [0x36d33C6C4EB033e4B552461BA6f089264966cA4f](https://songbird-explorer.flare.network/address/0x36d33C6C4EB033e4B552461BA6f089264966cA4f?tab=contract_code) |
+| RedemptionRequestsFacet                | [0x3C7864589373b263cDA73590a42511710d866663](https://songbird-explorer.flare.network/address/0x3C7864589373b263cDA73590a42511710d866663?tab=contract_code) |
+| RedemptionTimeExtensionFacet           | [0x08B5c3C541bF671395E9962f1B646A0B478d8BfE](https://songbird-explorer.flare.network/address/0x08B5c3C541bF671395E9962f1B646A0B478d8BfE?tab=contract_code) |
+| SettingsManagementFacet                | [0x789E0E4665363B6166ed21337D51F9c772660cE8](https://songbird-explorer.flare.network/address/0x789E0E4665363B6166ed21337D51F9c772660cE8?tab=contract_code) |
+| SettingsReaderFacet                    | [0x8a0a323A5D438670e20a450f4115d3Bf18cD72E7](https://songbird-explorer.flare.network/address/0x8a0a323A5D438670e20a450f4115d3Bf18cD72E7?tab=contract_code) |
+| SystemInfoFacet                        | [0x5e29E6171573cF45ac31109dc74920FcB0653Af1](https://songbird-explorer.flare.network/address/0x5e29E6171573cF45ac31109dc74920FcB0653Af1?tab=contract_code) |
+| SystemStateManagementFacet             | [0x9589F27A0CdB5e2e40c192dC8EFE400FCb032f03](https://songbird-explorer.flare.network/address/0x9589F27A0CdB5e2e40c192dC8EFE400FCb032f03?tab=contract_code) |
+| UnderlyingBalanceFacet                 | [0x06D78c82FCaa2559BF9B89195Ee2583d9B1945D5](https://songbird-explorer.flare.network/address/0x06D78c82FCaa2559BF9B89195Ee2583d9B1945D5?tab=contract_code) |
+| UnderlyingTimekeepingFacet             | [0x5122330c6C3a08E5d1F0F84e27747307aaA24794](https://songbird-explorer.flare.network/address/0x5122330c6C3a08E5d1F0F84e27747307aaA24794?tab=contract_code) |
