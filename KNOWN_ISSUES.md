@@ -33,3 +33,9 @@ can round to zero. This may cause the `collateralRatioBIPS` to reset to 100%, re
 A malicious agent could front-run another agent attempting to set their work address by registering that address first. Since a work address can only be associated with one agent at a time, this blocks the legitimate agent from setting it.
 
 **Risk Assessment:** Because agents must be whitelisted, the likelihood of this attack occurring is considered very low.
+
+### 5. Triggering Core Vault Instructions Runs out of Gas
+
+The `CoreVaultManager` contract can hit block gas limit when executing `triggerInstructions`.
+
+**Risk Assessment:** The size of allowed destination addresses will be kept low, at about 5-10.
