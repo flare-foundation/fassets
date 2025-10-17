@@ -1,16 +1,17 @@
 import { CollateralReservationStatus } from "../../../lib/fasset/AssetManagerTypes";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { calculateReceivedNat } from "../../../lib/test-utils/eth";
-import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
+import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
-import { BN_ZERO, DAYS, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
+import { BN_ZERO, checkedCast, DAYS, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
     const governance = accounts[10];
@@ -49,7 +50,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         mockFlareDataConnectorClient = context.flareDataConnectorClient as MockFlareDataConnectorClient;
     });
 
-    describe("simple scenarios - minting failures", () => {
+    describe("simple scenarios - minting default", () => {
         it("mint defaults - no underlying payment", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -131,7 +132,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);
         });
+    });
 
+    describe("simple scenarios - unstick minting", () => {
         it("mint unstick - no underlying payment", async () => {
             mockFlareDataConnectorClient.queryWindowSeconds = 300;
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
@@ -325,6 +328,164 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const info2 = await agent.getAgentInfo();
             assertWeb3Equal(info2.totalVaultCollateralWei, 0);  // now everything is burned
         });
+    });
 
+    describe("simple scenarios - confirm closed minting payment", () => {
+        let agent: Agent;
+        let minter: Minter;
+
+        beforeEach(async () => {
+            agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            await agent.depositCollateralLotsAndMakeAvailable(10);
+            minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmountLots(10));
+            mockChain.mine(3);
+            await context.updateUnderlyingBlock();
+        });
+
+        it("should confirm late payment after minting default and make it free underlying", async () => {
+            const crt = await minter.reserveCollateral(agent.vaultAddress, 5);
+            // perform late payment
+            context.skipToExpiration(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
+            const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+            const tx = await minter.performMintingPayment(crt);
+            // cannot confirm closed minting payment when minting is still active (even if the payment time has expired)
+            await expectRevert.custom(agent.confirmClosedMintingPayment(crt, tx), "InvalidCollateralReservationStatus", []);
+            // payment was too late, so the agent can default
+            await agent.mintingPaymentDefault(crt);
+            // payment was done, but isn't recorded
+            await agent.checkAgentInfo({
+                freeUnderlyingBalanceUBA: 0,
+                actualUnderlyingBalance: paymentAmount
+            });
+            // now the agent can confirm late payment and make it free underlying
+            const res = await agent.confirmClosedMintingPayment(crt, tx);
+            // check
+            assertWeb3Equal(res.depositedUBA, paymentAmount);
+            await agent.checkAgentInfo({
+                freeUnderlyingBalanceUBA: paymentAmount,
+                actualUnderlyingBalance: paymentAmount,
+            });
+        });
+
+        it("should confirm too small payment after minting default and make it free underlying", async () => {
+            const crt = await minter.reserveCollateral(agent.vaultAddress, 5);
+            // perform too small payment (missing minting fee)
+            const paymentAmount = crt.valueUBA;
+            const tx = await minter.performPayment(crt.paymentAddress, paymentAmount, crt.paymentReference);
+            // cannot confirm closed minting payment when minting is still active
+            await expectRevert.custom(agent.confirmClosedMintingPayment(crt, tx), "InvalidCollateralReservationStatus", []);
+            // payment was too small, so the agent can default after the time expires
+            context.skipToExpiration(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
+            await agent.mintingPaymentDefault(crt);
+            // now the agent can confirm late payment and make it free underlying
+            const res = await agent.confirmClosedMintingPayment(crt, tx);
+            // check
+            assertWeb3Equal(res.depositedUBA, paymentAmount);
+            await agent.checkAgentInfo({
+                freeUnderlyingBalanceUBA: paymentAmount,
+                actualUnderlyingBalance: paymentAmount,
+            });
+        });
+
+        it("should confirm duplicate payment even if the minting was executed successfuly", async () => {
+            const crt = await minter.reserveCollateral(agent.vaultAddress, 5);
+            // perform two payments by accident
+            const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+            const tx1 = await minter.performMintingPayment(crt);
+            const tx2 = await minter.performMintingPayment(crt);
+            // cannot confirm closed minting payment when minting is still active
+            await expectRevert.custom(agent.confirmClosedMintingPayment(crt, tx1), "InvalidCollateralReservationStatus", []);
+            await expectRevert.custom(agent.confirmClosedMintingPayment(crt, tx2), "InvalidCollateralReservationStatus", []);
+            // any of the payments is ok and it can be executed
+            const minted = await minter.executeMinting(crt, tx1);
+            // check before confirmong second transaction
+            await agent.checkAgentInfo({
+                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
+                requiredUnderlyingBalanceUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
+                actualUnderlyingBalance: paymentAmount.muln(2),
+            }, "reset");
+            // agent cannot confirm the payment that was used for executing minting
+            await expectRevert.custom(agent.confirmClosedMintingPayment(crt, tx1), "PaymentAlreadyConfirmed", []);
+            // ... but can confirm the second payment
+            const res = await agent.confirmClosedMintingPayment(crt, tx2);
+            // check
+            assertWeb3Equal(res.depositedUBA, paymentAmount);
+            await agent.checkAgentInfo({
+                freeUnderlyingBalanceUBA: paymentAmount.add(minted.agentFeeUBA),
+                requiredUnderlyingBalanceUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
+                actualUnderlyingBalance: paymentAmount.muln(2),
+            }, "reset");
+        });
+
+        it("only agent can confirm closed minting payment", async () => {
+            const executor = accounts[35];
+            const crt = await minter.reserveCollateral(agent.vaultAddress, 5, executor, 100);
+            // perform late payment
+            context.skipToExpiration(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
+            const tx = await minter.performMintingPayment(crt);
+            await agent.mintingPaymentDefault(crt);
+            // it fails for minter or executor (or any other address)
+            const proof = await context.attestationProvider.provePayment(tx, null, crt.paymentAddress);
+            await expectRevert.custom(context.assetManager.confirmClosedMintingPayment(proof, crt.collateralReservationId, { from: minter.address }),
+                "OnlyAgentVaultOwner", []);
+            await expectRevert.custom(context.assetManager.confirmClosedMintingPayment(proof, crt.collateralReservationId, { from: executor }),
+                "OnlyAgentVaultOwner", []);
+            // it works for agent
+            await agent.confirmClosedMintingPayment(crt, tx);
+        });
+
+        it("closed minting payment cannot be confirmed twice", async () => {
+            const crt = await minter.reserveCollateral(agent.vaultAddress, 5);
+            // perform late payment
+            context.skipToExpiration(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
+            const tx = await minter.performMintingPayment(crt);
+            await agent.mintingPaymentDefault(crt);
+            // confirming it first time works
+            await agent.confirmClosedMintingPayment(crt, tx);
+            // the second time fails
+            await expectRevert.custom(agent.confirmClosedMintingPayment(crt, tx), "PaymentAlreadyConfirmed", []);
+        });
+
+        it("closed minting payment needs correct payment reference", async () => {
+            const crt = await minter.reserveCollateral(agent.vaultAddress, 5);
+            // perform payment with wrong reference
+            const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+            const tx = await minter.performPayment(crt.paymentAddress, paymentAmount, PaymentReference.minting(crt.collateralReservationId.addn(1)));
+            // can default, because payment doesn't have correct reference
+            context.skipToExpiration(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
+            await agent.mintingPaymentDefault(crt);
+            // but cannot confirm this payment for this closed minting
+            await expectRevert.custom(agent.confirmClosedMintingPayment(crt, tx), "InvalidMintingReference", []);
+        });
+
+        it("closed minting payment needs to be made to the agent vault's underlying address", async () => {
+            const crt = await minter.reserveCollateral(agent.vaultAddress, 5);
+            // perform payment with wrong target address
+            const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+            const tx = await minter.performPayment(underlyingAgent2, paymentAmount, crt.paymentReference);
+            // can default, because payment isn;t to the agent's address
+            context.skipToExpiration(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
+            await agent.mintingPaymentDefault(crt);
+            // but cannot confirm this payment for this closed minting
+            const proof = await context.attestationProvider.provePayment(tx, null, underlyingAgent2);
+            await expectRevert.custom(context.assetManager.confirmClosedMintingPayment(proof, crt.collateralReservationId, { from: agent.ownerWorkAddress }),
+                "NotMintingAgentsAddress", []);
+        });
+
+        it("closed minting payment cannot be too old", async () => {
+            const crt = await minter.reserveCollateral(agent.vaultAddress, 5);
+            // simulate performing payment before first payment block
+            const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+            const wallet = checkedCast(minter.wallet, MockChainWallet);
+            const tx = wallet.createTransaction(minter.underlyingAddress, crt.paymentAddress, paymentAmount, crt.paymentReference);
+            mockChain.modifyMinedBlock(Number(crt.firstUnderlyingBlock) - 1, block => { block.transactions.push(tx); });
+            // cannot execute the payment because it is too old
+            await expectRevert.custom(minter.executeMinting(crt, tx.hash), "MintingPaymentTooOld", []);
+            // can default, because payment is too old
+            context.skipToExpiration(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
+            await agent.mintingPaymentDefault(crt);
+            // but cannot confirm this payment for this closed minting
+            await expectRevert.custom(agent.confirmClosedMintingPayment(crt, tx.hash), "MintingPaymentTooOld", []);
+        });
     });
 });

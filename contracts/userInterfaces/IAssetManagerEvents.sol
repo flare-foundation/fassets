@@ -165,6 +165,15 @@ interface IAssetManagerEvents {
         uint256 reservedAmountUBA);
 
     /**
+     * Emitted when a late or too small payment for an already defaulted or expired minting is confirmed.
+     * It is equivalent to agent performing underlying topup.
+     */
+    event ConfirmedClosedMintingPayment(
+        address indexed agentVault,
+        bytes32 transactionHash,
+        uint256 depositedUBA);
+
+    /**
      * Agent performed self minting, either by executing selfMint with underlying deposit or
      * by executing mintFromFreeUnderlying (in this case, `mintFromFreeUnderlying` is true and
      * `depositedAmountUBA` is zero).

@@ -81,6 +81,10 @@ export class AssetContext implements IAssetContext {
         return toBNExp(value, this.chainInfo.decimals);
     }
 
+    underlyingAmountLots(value: number) {
+        return toBNExp(value, this.chainInfo.decimals).mul(this.lotSize());
+    }
+
     async refreshSettings() {
         this.settings = await this.assetManager.getSettings();
     }

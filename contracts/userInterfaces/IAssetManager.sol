@@ -607,6 +607,25 @@ interface IAssetManager is
     ) external;
 
     /**
+     * The minter can make several mistakes in the underlying payment:
+     * - the payment is too late and is already defaulted before executing
+     * - the payment is too small so executeMinting reverts
+     * - the payment is performed twice
+     * In all of these cases the paid amount ends up on the agent vault's underlying account, but it is not
+     * confirmed and therefore the agent cannot withdraw it without triggering full liquidation (of course
+     * the agent can legally withdraw it once the vault is closed).
+     * This method enables the agent to confirm such payments, converting the deposited amount to agent's
+     * free underlying.
+     * NOTE: may only be called by the agent vault owner.
+     * @param _payment proof of the underlying payment (must have correct payment reference)
+     * @param _collateralReservationId collateral reservation id
+     */
+    function confirmClosedMintingPayment(
+        IPayment.Proof calldata _payment,
+        uint256 _collateralReservationId
+    ) external;
+
+    /**
      * If a collateral reservation request exists for more than 24 hours, payment or non-payment proof are no longer
      * available. In this case the agent can call this method, which burns reserved collateral at market price
      * and releases the remaining collateral (CRF is also burned).

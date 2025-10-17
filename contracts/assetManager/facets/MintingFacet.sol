@@ -35,6 +35,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
     error FreeUnderlyingBalanceToSmall();
     error InvalidMintingReference();
     error InvalidSelfMintReference();
+    error InvalidCollateralReservationStatus();
     error MintingPaused();
     error MintingPaymentTooOld();
     error MintingPaymentTooSmall();
@@ -97,6 +98,57 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         Minting.payOrBurnExecutorFee(crt);
         // share collateral reservation fee between the agent's vault and pool
         Minting.distributeCollateralReservationFee(agent, crt, crt.reservationFeeNatWei);
+    }
+
+    /**
+     * The minter can make several mistakes in the underlying payment:
+     * - the payment is too late and is already defaulted before executing
+     * - the payment is too small so executeMinting reverts
+     * - the payment is performed twice
+     * In all of these cases the paid amount ends up on the agent vault's underlying account, but it is not
+     * confirmed and therefore the agent cannot withdraw it without triggering full liquidation (of course
+     * the agent can legally withdraw it once the vault is closed).
+     * This method enables the agent to confirm such payments, converting the deposited amount to agent's
+     * free underlying.
+     * NOTE: may only be called by the agent vault owner.
+     * @param _payment proof of the underlying payment (must have correct payment reference)
+     * @param _crtId collateral reservation id
+     */
+    function confirmClosedMintingPayment(
+        IPayment.Proof calldata _payment,
+        uint256 _crtId
+    )
+        external
+        notFullyEmergencyPaused
+        nonReentrant
+    {
+        CollateralReservation.Data storage crt = Minting.getCollateralReservation(_crtId, false);
+        Agent.State storage agent = Agent.get(crt.agentVault);
+        // verify transaction
+        TransactionAttestation.verifyPaymentSuccess(_payment);
+        // only agent can present proof once the payment is defaulted
+        Agents.requireAgentVaultOwner(agent);
+        require(_payment.data.responseBody.standardPaymentReference == PaymentReference.minting(_crtId),
+            InvalidMintingReference());
+        require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
+            NotMintingAgentsAddress());
+        // we do not allow payments before the underlying block at requests, because the payer should have guessed
+        // the payment reference, which is good for nothing except attack attempts
+        require(_payment.data.responseBody.blockNumber >= crt.firstUnderlyingBlock,
+            MintingPaymentTooOld());
+        // only closed (not ACTIVE) minting payments can be confirmed in this way -
+        // ACTIVE minting payments should be confirmed by executeMinting
+        require(crt.status != CollateralReservation.Status.ACTIVE, InvalidCollateralReservationStatus());
+        // mark payment confirmed, which also checks that it hasn't been confirmed already
+        AssetManagerState.get().paymentConfirmations.confirmIncomingPayment(_payment);
+        // preform underlying balance topup
+        uint256 amountUBA = SafeCast.toUint256(_payment.data.responseBody.receivedAmount);
+        UnderlyingBalance.increaseBalance(agent, amountUBA.toUint128());
+        // update underlying block
+        UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
+        // notify
+        emit IAssetManagerEvents.ConfirmedClosedMintingPayment(agent.vaultAddress(),
+            _payment.data.requestBody.transactionId, amountUBA);
     }
 
     /**

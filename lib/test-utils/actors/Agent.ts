@@ -478,6 +478,12 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'MintingPaymentDefault');
     }
 
+    async confirmClosedMintingPayment(crt: EventArgs<CollateralReserved>, transactionHash: string) {
+        const proof = await this.attestationProvider.provePayment(transactionHash, null, crt.paymentAddress);
+        const res = await this.assetManager.confirmClosedMintingPayment(proof, crt.collateralReservationId, { from: this.ownerWorkAddress });
+        return requiredEventArgs(res, 'ConfirmedClosedMintingPayment');
+    }
+
     async vaultCollateralToNatBurned(burnedWei: BNish): Promise<BN> {
         const vaultCollateralPrice = await this.context.getCollateralPrice(this.vaultCollateral())
         const burnedUBA = vaultCollateralPrice.convertTokenWeiToUBA(burnedWei);
