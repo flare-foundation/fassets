@@ -307,10 +307,15 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
     }
 
     async function timeInfo() {
-        return `block=${await time.latestBlock()} timestamp=${await latestBlockTimestamp() - startTimestamp}  ` +
-               `underlyingBlock=${chain.blockHeight()} underlyingTimestamp=${chain.lastBlockTimestamp() - startTimestamp}  ` +
-               `skew=${await latestBlockTimestamp() - chain.lastBlockTimestamp()}  ` +
-               `realTime=${(currentRealTime() - startTimestamp).toFixed(3)}`;
+        const flareBlock = await time.latestBlock();
+        const flareTimestamp = await latestBlockTimestamp();
+        const chainBlock = chain.blockHeight();
+        const chainTimestamp = chain.lastBlockTimestamp();
+        const realTime = currentRealTime();
+        return `block=${flareBlock} timestamp=${flareTimestamp} (+${flareTimestamp - startTimestamp})  ` +
+               `underlyingBlock=${chainBlock} underlyingTimestamp=${chainTimestamp} (+${chainTimestamp - startTimestamp})  ` +
+               `skew=${flareTimestamp - chainTimestamp}  ` +
+               `realTime=${(realTime - startTimestamp).toFixed(3)}`;
     }
 
     async function refreshAvailableAgents() {

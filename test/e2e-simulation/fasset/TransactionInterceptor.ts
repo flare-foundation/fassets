@@ -162,7 +162,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             if (!name) continue;   // constructor or fallback/receive function
             // view/pure function?
             if (!this.interceptViewMethods && item.constant) continue;
-            if (item.type === 'event') continue;
+            if (item.type === 'event' || item.type as string === 'error') continue;
             // check method
             const method = contractObject[name];
             if (method == null) {
@@ -181,7 +181,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             }
             // instrument call
             // const boundMethod = method.bind(contractObject);
-            contractObject[name] = (...args: unknown[]) => this.callMethod(contract, name, method, args, item);
+            contractObject[name] = async (...args: unknown[]) => await this.callMethod(contract, name, method, args, item);
             // copy subkeys from method (call, sendTransaction, estimateGas)
             for (const key of subkeys) {
                 contractObject[name][key] = (method)[key];
@@ -190,46 +190,40 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
     }
     /* eslint-enable */
 
-    private callMethod(contract: Truffle.ContractInstance, name: string, originalMethod: AnyFunction, args: unknown[], methodAbi: AbiItem) {
+    private async callMethod(contract: Truffle.ContractInstance, name: string, originalMethod: AnyFunction, args: unknown[], methodAbi: AbiItem) {
         const txLog: string[] = [];
         const callStartTime = currentRealTime();
         // log method call
         const fmtArgs = args.map(arg => this.eventDecoder.formatArg(arg)).join(', ');
         txLog.push(`${this.eventDecoder.formatAddress(contract.address)}.${name}(${fmtArgs})   [AT(rt)=${(callStartTime - this.startRealTime).toFixed(3)}]`);
         // call method, fixing it for manual mining mode
-        const promise = this.miningMode === 'auto' || methodAbi.constant
-            ? this.directCall(originalMethod, args, methodAbi, txLog)
-            : this.instrumentedCall(originalMethod, args, methodAbi);
-        // handle success/failure
-        const decodePromise = promise
-            .then((result: Truffle.TransactionResponse<Truffle.AnyEvent> | TransactionReceipt | null) => {
-                const receipt = this.getTransactionReceipt(result);
-                if (receipt != null) {
-                    this.handleMethodSuccess(contract, name, txLog, callStartTime, receipt);
-                } else {
-                    this.handleViewMethodSuccess(contract, name, txLog, callStartTime, result);
-                }
-            })
-            .catch((e: unknown) => {
-                txLog.push(`    !!! ${e}`);
-                this.increaseErrorCount(e);
-            })
-            .finally(() => {
-                if (this.logger != null) {
-                    this.log(txLog.join('\n'));
-                }
-            });
-        this.handledPromises.push(decodePromise);
-        // and return the same promise, to be used as without interceptor
-        return promise;
+        try {
+            const result = this.miningMode === 'auto' || methodAbi.constant
+                ? await this.directCall(originalMethod, args, methodAbi, txLog)
+                : await this.instrumentedCall(originalMethod, args, methodAbi);
+            const receipt = this.getTransactionReceipt(result as Truffle.TransactionResponse<Truffle.AnyEvent> | TransactionReceipt | null);
+            if (receipt != null) {
+                this.handleMethodSuccess(contract, name, txLog, callStartTime, receipt);
+            } else {
+                this.handleViewMethodSuccess(contract, name, txLog, callStartTime, result);
+            }
+            return result;
+        } catch (error) {
+            txLog.push(`    !!! ${error}`);
+            this.increaseErrorCount(error);
+            throw error;
+        } finally {
+            if (this.logger != null) {
+                this.log(txLog.join('\n'));
+            }
+        }
     }
 
-    private async directCall(originalMethod: AnyFunction, args: unknown[], methodAbi: AbiItem, txLog: string[]) {
+    private async directCall(originalMethod: AnyFunction, args: unknown[], methodAbi: AbiItem, txLog: string[]): Promise<unknown> {
         if (this.lock && !methodAbi.constant) {
             await this.lock.acquire("execute");
         }
         try {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
             return await originalMethod(...args);
         } finally {
             if (this.lock && !methodAbi.constant) {
@@ -238,7 +232,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
         }
     }
 
-    private async instrumentedCall(originalMethod: AnyFunction<unknown>, args: unknown[], methodAbi: AbiItem) {
+    private async instrumentedCall(originalMethod: AnyFunction<unknown>, args: unknown[], methodAbi: AbiItem): Promise<unknown> {
         const inputLen = methodAbi.inputs?.length ?? 0;
         const options = (args[inputLen] ?? {}) as Truffle.TransactionDetails;
         const from = options.from ?? this.defaultAccount;

@@ -1,16 +1,16 @@
 import { AgentSetting, AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { isVaultCollateral } from "../../../lib/state/CollateralIndexedList";
+import { SparseArray } from "../../../lib/test-utils/SparseMatrix";
+import { Agent, AgentCreateOptions } from "../../../lib/test-utils/actors/Agent";
+import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
+import { coinFlip, randomBN, randomChoice, randomInt } from "../../../lib/test-utils/simulation-utils";
 import { TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EventScope, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, MAX_BIPS, checkedCast, formatBN, minBN, sleep, toBN, toWei } from "../../../lib/utils/helpers";
 import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
-import { Agent, AgentCreateOptions } from "../../../lib/test-utils/actors/Agent";
-import { SparseArray } from "../../../lib/test-utils/SparseMatrix";
-import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
-import { coinFlip, randomBN, randomChoice, randomInt } from "../../../lib/test-utils/simulation-utils";
 import { SimulationActor } from "./SimulationActor";
 import { SimulationRunner } from "./SimulationRunner";
 
@@ -264,10 +264,11 @@ export class SimulationAgent extends SimulationActor {
     }
 
     async changeSetting(scope: EventScope, name: AgentSetting, value: BN) {
-        const res = await this.context.assetManager.announceAgentSettingUpdate(this.agent.vaultAddress, name, value, { from: this.ownerWorkAddress });
+        const agent = this.agent;   // save in case agent is destroyed and re-created
+        const res = await this.context.assetManager.announceAgentSettingUpdate(agent.vaultAddress, name, value, { from: this.ownerWorkAddress });
         const announcement = requiredEventArgs(res, 'AgentSettingChangeAnnounced');
         await this.timeline.flareTimestamp(announcement.validAt).wait(scope);
-        await this.context.assetManager.executeAgentSettingUpdate(this.agent.vaultAddress, name, { from: this.ownerWorkAddress });
+        await this.context.assetManager.executeAgentSettingUpdate(agent.vaultAddress, name, { from: this.ownerWorkAddress });
     }
 
     checkForFullLiquidationEnd(): void {
@@ -278,26 +279,28 @@ export class SimulationAgent extends SimulationActor {
     }
 
     async transferToCoreVault(scope: EventScope) {
-        const agentState = this.agentState(this.agent);
+        const agent = this.agent;   // save in case agent is destroyed and re-created
+        const agentState = this.agentState(agent);
         const mintedLots = agentState.mintedUBA.div(this.context.lotSize());
         const transferLots = randomBN(mintedLots.divn(2), mintedLots.addn(1));
         if (transferLots.eqn(0)) return;
         const transferAmount = transferLots.mul(this.context.lotSize());
-        await this.agent.startTransferToCoreVault(transferAmount)
+        await agent.startTransferToCoreVault(transferAmount)
             .catch(e => scope.exitOnExpectedError(e, ["InvalidAgentStatus", "TransferAlreadyActive", "TooLittleMintingLeftAfterTransfer"]));
     }
 
     async returnFromCoreVault(scope: EventScope) {
-        const info = await this.agent.getAgentInfo();
+        const agent = this.agent;   // save in case agent is destroyed and re-created
+        const info = await agent.getAgentInfo();
         const lots = randomBN(toBN(info.freeCollateralLots));
         if (lots.eqn(0)) return;
-        const request = await this.agent.requestReturnFromCoreVault(lots)
+        const request = await agent.requestReturnFromCoreVault(lots)
             .catch(e => scope.exitOnExpectedError(e, ["DestinationNotAllowed", "InvalidAgentStatus",
                 "ReturnFromCoreVaultAlreadyRequested", "NotEnoughFreeCollateral", "InsufficientFunds"]));
         this.comment(`Return from core vault started, paymentReference=${request.paymentReference}.`);
-        const paymentEvt = await this.chainEvents.transactionEvent({ reference: request.paymentReference, to: this.agent.underlyingAddress }).wait(scope);
+        const paymentEvt = await this.chainEvents.transactionEvent({ reference: request.paymentReference, to: agent.underlyingAddress }).wait(scope);
         await this.context.waitForUnderlyingTransactionFinalization(scope, paymentEvt.hash);
-        await this.agent.confirmReturnFromCoreVault(paymentEvt.hash);
+        await agent.confirmReturnFromCoreVault(paymentEvt.hash);
         this.comment(`Return from core vault successful, paymentReference=${request.paymentReference}.`);
     }
 
