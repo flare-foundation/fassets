@@ -252,6 +252,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert.custom(minter.executeMinting(crt, mintTx), "EmergencyPauseActive", []);
             await expectRevert.custom(agent.mintingPaymentDefault(crt), "EmergencyPauseActive", []);
             await expectRevert.custom(agent.unstickMinting(crt), "EmergencyPauseActive", []);
+            await expectRevert.custom(agent.confirmClosedMintingPayment(crt, mintTx), "EmergencyPauseActive", []);
             // cannot confirm, default or reject redemption
             await expectRevert.custom(agent.confirmActiveRedemptionPayment(rrq, redeemTx), "EmergencyPauseActive", []);
             await expectRevert.custom(redeemer.redemptionPaymentDefault(rrq), "EmergencyPauseActive", []);
