@@ -1001,14 +1001,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should validate settings - other validators (collateralReservationFeeBIPS)", async () => {
             const newSettings0 = createTestSettings(contracts, testChainInfo.eth);
-            newSettings0.collateralReservationFeeBIPS = 10001;
+            newSettings0.collateralReservationFeeBIPS = 10000;
             const res0 = newAssetManagerQuick(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings0, collaterals);
             await expectRevert.custom(res0, "BipsValueTooHigh", []);
         });
 
         it("should validate settings - other validators (redemptionFeeBIPS)", async () => {
             const newSettings1 = createTestSettings(contracts, testChainInfo.eth);
-            newSettings1.redemptionFeeBIPS = 10001;
+            newSettings1.redemptionFeeBIPS = 10000;
             const res1 = newAssetManagerQuick(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings1, collaterals);
             await expectRevert.custom(res1, "BipsValueTooHigh", []);
         });

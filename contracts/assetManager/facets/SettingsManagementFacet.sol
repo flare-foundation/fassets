@@ -279,7 +279,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
         require(_value > 0, CannotBeZero());
-        require(_value <= SafePct.MAX_BIPS, BipsValueTooHigh());
+        require(_value < SafePct.MAX_BIPS, BipsValueTooHigh());
         require(_value <= settings.collateralReservationFeeBIPS * 4, FeeIncreaseTooBig());
         require(_value >= settings.collateralReservationFeeBIPS / 4, FeeDecreaseTooBig());
         // update
@@ -295,7 +295,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
         require(_value > 0, CannotBeZero());
-        require(_value <= SafePct.MAX_BIPS, BipsValueTooHigh());
+        require(_value < SafePct.MAX_BIPS, BipsValueTooHigh());
         require(_value <= settings.redemptionFeeBIPS * 4, FeeIncreaseTooBig());
         require(_value >= settings.redemptionFeeBIPS / 4, FeeDecreaseTooBig());
         // update

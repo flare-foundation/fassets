@@ -259,7 +259,8 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         // Resulting `closedWithFeeUBA` will be less than or equal to `_amountUBA` since `closedUBA <= toCloseUBA`
         // and the two inverse `mulDiv`s can only make value smaller due to rounding down.
         // Therefore, the sender should have enough fassets for the burn (the sender is expected to hold
-        // _amountUBA fassets for selfClose to work).
+        // `_amountUBA` fassets for selfClose to work).
+        // Note also that `factorMul` cannot be 0, since `redemptionFeeBIPS < MAX_BIPS`.
         uint256 closedWithFeeUBA = closedUBA.mulDiv(factorDiv, factorMul);
         // Burn sender's self-closed assets plus pool fee
         Redemptions.burnFAssets(msg.sender, closedWithFeeUBA);

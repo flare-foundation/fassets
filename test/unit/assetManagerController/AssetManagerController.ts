@@ -222,7 +222,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const currentSettings = await assetManager.getSettings();
             const collateralReservationFeeBIPS_big = toBN(currentSettings.collateralReservationFeeBIPS).muln(5);
             const collateralReservationFeeBIPS_small = toBN(currentSettings.collateralReservationFeeBIPS).divn(5);
-            const collateralReservationFeeBIPS_too_high = toBN(MAX_BIPS).addn(1);
+            const collateralReservationFeeBIPS_too_high = toBN(MAX_BIPS);
             const res_big = assetManagerController.setCollateralReservationFeeBips([assetManager.address], collateralReservationFeeBIPS_big, { from: governance });
             const res_small = assetManagerController.setCollateralReservationFeeBips([assetManager.address], collateralReservationFeeBIPS_small, { from: governance });
             const res_too_high = assetManagerController.setCollateralReservationFeeBips([assetManager.address], collateralReservationFeeBIPS_too_high, { from: governance });
@@ -244,7 +244,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const currentSettings = await assetManager.getSettings();
             const redemptionFeeBIPS_big = toBN(currentSettings.redemptionFeeBIPS).muln(5);
             const redemptionFeeBIPS_small = toBN(currentSettings.redemptionFeeBIPS).divn(5);
-            const redemptionFeeBIPS_too_high = toBN(MAX_BIPS).addn(1);
+            const redemptionFeeBIPS_too_high = toBN(MAX_BIPS);
             const res_big = assetManagerController.setRedemptionFeeBips([assetManager.address], redemptionFeeBIPS_big, { from: governance });
             const res_small = assetManagerController.setRedemptionFeeBips([assetManager.address], redemptionFeeBIPS_small, { from: governance });
             const res_too_high = assetManagerController.setRedemptionFeeBips([assetManager.address], redemptionFeeBIPS_too_high, { from: governance });
