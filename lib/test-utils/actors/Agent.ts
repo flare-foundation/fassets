@@ -211,19 +211,28 @@ export class Agent extends AssetContextClient {
         assert.equal(args.agentVault, this.vaultAddress);
     }
 
-    async exitAndDestroy(expectedCollateral?: BNish) {
+    async exitAndDestroy(expectedCollateral?: BNish, selfClosePoolFees: boolean = true) {
         // exit available
         await this.exitAvailable();
         // withdraw pool fees
         const poolFeeBalance = await this.poolFeeBalance();
         const ownerFAssetBalance = await this.fAsset.balanceOf(this.ownerWorkAddress);
-        if (poolFeeBalance.gt(BN_ZERO)) await this.withdrawPoolFees(poolFeeBalance);
+        if (poolFeeBalance.gt(BN_ZERO)) {
+            await this.withdrawPoolFees(poolFeeBalance);
+        }
         const ownerFAssetBalanceAfter = await this.fAsset.balanceOf(this.ownerWorkAddress);
         // check that we received exactly the agent vault's fees in fasset
         assertWeb3Equal(await this.poolFeeBalance(), 0);
         assertWeb3Equal(ownerFAssetBalanceAfter.sub(ownerFAssetBalance), poolFeeBalance);
-        // self close all received pool fees - otherwise we cannot withdraw all pool collateral
-        if (poolFeeBalance.gt(BN_ZERO)) await this.selfClose(poolFeeBalance);
+        // minimize backing by self-closing the agent's pool fees
+        if (selfClosePoolFees) {
+            // set redemption pool fee share to 0, so that self-closing won't re-create fassets
+            await this.changeSettings({ redemptionPoolFeeShareBIPS: 0 });
+            // self close all received pool fees - otherwise we cannot withdraw all pool collateral
+            if (poolFeeBalance.gt(BN_ZERO)) {
+                await this.selfClose(poolFeeBalance);
+            }
+        }
         // nothing must be minted now
         const info = await this.getAgentInfo();
         if (toBN(info.mintedUBA).gt(BN_ZERO)) {

@@ -322,6 +322,8 @@ export class SimulationAgent extends SimulationActor {
             await agent.exitAvailable(false)
                 .catch(e => scope.handleExpectedErrors(e, { continue: ['agent not available'] }));
         }
+        // set redemption pool fee share to 0, so that the agent can totally self-close
+        await this.changeSetting(scope, "redemptionPoolFeeShareBIPS", BN_ZERO);
         // pull out fees
         const poolFeeBalance = await agent.poolFeeBalance();
         if (poolFeeBalance.gt(BN_ZERO)) {

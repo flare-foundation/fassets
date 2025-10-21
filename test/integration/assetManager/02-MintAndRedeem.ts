@@ -6,7 +6,7 @@ import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
-import { Approximation } from "../../../lib/test-utils/approximation";
+import { Approximation, assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
 import { impersonateContract, stopImpersonatingContract } from "../../../lib/test-utils/contract-test-helpers";
 import { waitForTimelock } from "../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
@@ -14,7 +14,7 @@ import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-he
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3DeepEqual, assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BN_ZERO, MAX_BIPS, sumBN, toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { BN_ZERO, divRoundUp, MAX_BIPS, sumBN, toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { ERC20MockInstance } from "../../../typechain-truffle";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
@@ -909,6 +909,77 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(poolBalanceAfter.sub(poolBalanceBefore), poolRedemptionFee);
             await agent.checkAgentInfo({ mintedUBA: toBN(minted.poolFeeUBA).add(poolRedemptionFee), redeemingUBA: 0 });
         });
+
+        for (const redemptionPoolFeeShareBIPS of [3000, 4321, 0]) {
+            it(`when agent sets non-zero redemption pool fee share, some fassets are minted to pool on self-close [redemptionPoolFeeShareBIPS=${redemptionPoolFeeShareBIPS}]`, async () => {
+                const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+                const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+                const fullAgentCollateral = toWei(3e8);
+                await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+                // set non-zero pool fee share
+                await agent.changeSettings({ redemptionPoolFeeShareBIPS });
+                // mint
+                const lots = 10;
+                const [minted] = await minter.performMinting(agent.vaultAddress, lots);
+                await agent.checkAgentInfo({ mintedUBA: toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA)) });
+                // self-close
+                const selfCloseAmount = minted.mintedAmountUBA;
+                await minter.transferFAsset(agent.ownerWorkAddress, selfCloseAmount);
+                const poolBalanceBefore = await context.fAsset.balanceOf(agent.collateralPool.address);
+                const trackedPoolBalanceBefore = await agent.collateralPool.totalFAssetFees();
+                const [_, selfClosedUBA] = await agent.selfClose(selfCloseAmount);
+                const poolBalanceAfter = await context.fAsset.balanceOf(agent.collateralPool.address);
+                const trackedPoolBalanceAfter = await agent.collateralPool.totalFAssetFees();
+                const poolRedemptionFee = selfCloseAmount.mul(toBN(context.settings.redemptionFeeBIPS)).divn(MAX_BIPS)
+                    .muln(redemptionPoolFeeShareBIPS).divn(MAX_BIPS);
+                assertWeb3Equal(selfClosedUBA, selfCloseAmount.sub(poolRedemptionFee));
+                assertWeb3Equal(poolBalanceAfter.sub(poolBalanceBefore), poolRedemptionFee);
+                assertWeb3Equal(trackedPoolBalanceAfter.sub(trackedPoolBalanceBefore), poolRedemptionFee);
+                await agent.checkAgentInfo({ mintedUBA: toBN(minted.poolFeeUBA).add(poolRedemptionFee) });
+                // agent can close vault by setting redemption pool fee share to 0 (done in exitAndDestroy)
+                await agent.exitAndDestroy();
+            });
+        }
+
+        for (const redemptionPoolFeeShareBIPS of [3000, 4321, 0]) {
+            it(`agent can close all backing by providing enough fassets (closed amount plus fee) on self-close [redemptionPoolFeeShareBIPS=${redemptionPoolFeeShareBIPS}]`, async () => {
+                const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+                await agent.depositCollateralLotsAndMakeAvailable(10);
+                const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
+                await agent2.depositCollateralLotsAndMakeAvailable(10);
+                const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+                // set non-zero pool fee share
+                await agent.changeSettings({ redemptionPoolFeeShareBIPS });
+                // mint
+                const lots = 10;
+                const [minted] = await minter.performMinting(agent.vaultAddress, lots);
+                const [minted2] = await minter.performMinting(agent2.vaultAddress, lots);
+                await agent.checkAgentInfo({ mintedUBA: toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA)) });
+                // calculate the required amount for self-close
+                const info = await agent.getAgentInfo();
+                const maxBipsSq = toBN(MAX_BIPS).muln(MAX_BIPS);
+                const selfCloseAmount = divRoundUp(toBN(info.mintedUBA).mul(maxBipsSq),
+                    maxBipsSq.sub(toBN(context.settings.redemptionFeeBIPS).muln(redemptionPoolFeeShareBIPS)));
+                await minter.transferFAsset(agent.ownerWorkAddress, selfCloseAmount);
+                const ownerBalanceBefore = await context.fAsset.balanceOf(agent.ownerWorkAddress);
+                const poolBalanceBefore = await context.fAsset.balanceOf(agent.collateralPool.address);
+                const trackedPoolBalanceBefore = await agent.collateralPool.totalFAssetFees();
+                const [_, selfClosedUBA] = await agent.selfClose(selfCloseAmount);
+                const ownerBalanceAfter = await context.fAsset.balanceOf(agent.ownerWorkAddress);
+                const poolBalanceAfter = await context.fAsset.balanceOf(agent.collateralPool.address);
+                const trackedPoolBalanceAfter = await agent.collateralPool.totalFAssetFees();
+                const poolRedemptionFee = selfCloseAmount.mul(toBN(context.settings.redemptionFeeBIPS)).divn(MAX_BIPS)
+                    .muln(redemptionPoolFeeShareBIPS).divn(MAX_BIPS);
+                assertApproximatelyEqual(selfClosedUBA, selfCloseAmount.sub(poolRedemptionFee), "absolute", 5);
+                assert.isTrue(ownerBalanceBefore.sub(ownerBalanceAfter).lte(selfCloseAmount));  // make sure we don't fail due to lack of funds on last decimal place
+                assertApproximatelyEqual(ownerBalanceBefore.sub(ownerBalanceAfter), selfCloseAmount, "absolute", 5);
+                assertWeb3Equal(poolBalanceAfter.sub(poolBalanceBefore), poolRedemptionFee);
+                assertWeb3Equal(trackedPoolBalanceAfter.sub(trackedPoolBalanceBefore), poolRedemptionFee);
+                await agent.checkAgentInfo({ mintedUBA: 0 });
+                // agent can close vault without self-closing pool fees
+                await agent.exitAndDestroy(undefined, false);
+            });
+        }
 
         it("revert when adding and removing allowed minter for agent from wrong address", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);

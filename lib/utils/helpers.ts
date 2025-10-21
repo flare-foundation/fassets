@@ -176,6 +176,13 @@ export function mulDecimal(a: BN, b: number) {
 }
 
 /**
+ * Calculates a/b rounded up. Requires b > 0.
+ */
+export function divRoundUp(a: BN, b: BN) {
+    return a.add(b).subn(1).div(b);
+}
+
+/**
  * Convert value to hex with 0x prefix and optional padding.
  */
 export function toHex(x: BNish, padToBytes?: number) {

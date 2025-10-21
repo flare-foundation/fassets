@@ -248,10 +248,27 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     {
         Agent.State storage agent = Agent.get(_agentVault);
         require(_amountUBA != 0, SelfCloseOfZero());
-        uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true);
-        // burn the self-closed assets
-        Redemptions.burnFAssets(msg.sender, closedUBA);
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        // calculate the amount that can be closed so that there is still enough left for the pool fee
+        uint256 factorDiv = SafePct.MAX_BIPS * SafePct.MAX_BIPS;
+        uint256 factorMul = factorDiv - uint256(settings.redemptionFeeBIPS) * agent.redemptionPoolFeeShareBIPS;
+        uint256 toCloseUBA = _amountUBA.mulDiv(factorMul, factorDiv);
+        // close the agent's backing
+        (, uint256 closedUBA) = Redemptions.closeTickets(agent, Conversion.convertUBAToAmg(toCloseUBA), true);
+        // Calculate the `closedUBA` with added fee by reversing the operation in calculating `toCloseUBA`.
+        // Resulting `closedWithFeeUBA` will be less than or equal to `_amountUBA` since `closedUBA <= toCloseUBA`
+        // and the two inverse `mulDiv`s can only make value smaller due to rounding down.
+        // Therefore, the sender should have enough fassets for the burn (the sender is expected to hold
+        // _amountUBA fassets for selfClose to work).
+        uint256 closedWithFeeUBA = closedUBA.mulDiv(factorDiv, factorMul);
+        // Burn sender's self-closed assets plus pool fee
+        Redemptions.burnFAssets(msg.sender, closedWithFeeUBA);
+        // Mint pool fee to the pool (could transfer fassets from sender to the pool instead, but that would require
+        // the sender to approve ERC20 transaction, which isn't needed by burning and then minting).
+        // Note that agent's backing does not need to increase, because in `burnFAssets` the fee was burned along
+        // with the closed backing amount.
+        Globals.getFAsset().mint(address(agent.collateralPool), closedWithFeeUBA - closedUBA);
+        agent.collateralPool.fAssetFeeDeposited(closedWithFeeUBA - closedUBA);
         // try to pull agent out of liquidation
         Liquidation.endLiquidationIfHealthy(agent);
         // send event
