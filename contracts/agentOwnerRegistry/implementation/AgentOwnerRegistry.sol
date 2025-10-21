@@ -14,6 +14,7 @@ contract AgentOwnerRegistry is GovernedUUPSProxyImplementation, IERC165, IAgentO
     error AddressZero();
     error OnlyGovernanceOrManager();
     error CannotUseAManagementAddressAsWorkAddress();
+    error CannotRegisterAWorkAddressAsManagementAddress();
 
     /**
      * When nonzero, this is the address that can perform whitelisting operations
@@ -199,7 +200,7 @@ contract AgentOwnerRegistry is GovernedUUPSProxyImplementation, IERC165, IAgentO
      * Get the (unique) work address for the given management address.
      */
     function getWorkAddress(address _managementAddress)
-        external view override
+        public view override
         returns (address)
     {
         return mgmtToWorkAddress[_managementAddress];
@@ -209,18 +210,22 @@ contract AgentOwnerRegistry is GovernedUUPSProxyImplementation, IERC165, IAgentO
      * Get the (unique) management address for the given work address.
      */
     function getManagementAddress(address _workAddress)
-        external view override
+        public view override
         returns (address)
     {
         return workToMgmtAddress[_workAddress];
     }
 
-    function isWhitelisted(address _address) public view override returns (bool) {
+    function isWhitelisted(address _address)
+        public view override
+        returns (bool)
+    {
         return whitelist[_address];
     }
 
     function _addAddressToWhitelist(address _address) internal {
         require(_address != address(0), AddressZero());
+        require(getManagementAddress(_address) == address(0), CannotRegisterAWorkAddressAsManagementAddress());
         if (whitelist[_address]) return;
         whitelist[_address] = true;
         emit Whitelisted(_address);
