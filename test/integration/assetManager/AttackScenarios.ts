@@ -736,7 +736,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         await agent.depositCollateralLotsAndMakeAvailable(20, 1);
         await agent.changeSettings({ feeBIPS: 10000, poolFeeShareBIPS: 10000 });
-        await agent.selfMint(context.convertLotsToUBA(20), 10);
+        await agent.selfMint(10, context.convertLotsToUBA(20));
         const info = await agent.getAgentInfo();
         // ATTACK result:
         // assert.isTrue(toBN(info.vaultCollateralRatioBIPS).ltn(MAX_BIPS));

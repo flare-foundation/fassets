@@ -517,8 +517,9 @@ export class Agent extends AssetContextClient {
         await this.assetManager.unstickMinting(proof, crt.collateralReservationId, { from: this.ownerWorkAddress, value: unstickMintingCost });
     }
 
-    async selfMint(amountUBA: BNish, lots: BNish) {
+    async selfMint(lots: BNish, amountUBA?: BNish) {
         if (!(this.context.chain instanceof MockChain)) assert.fail("only for mock chains");
+        amountUBA ??= this.context.convertLotsToUBA(lots);
         const randomAddr = randomAddress();
         const poolFeeUBA = toBN(amountUBA).mul(toBN(this.settings.feeBIPS)).divn(MAX_BIPS).mul(toBN(this.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
         const depositUBA = toBN(amountUBA).add(poolFeeUBA);

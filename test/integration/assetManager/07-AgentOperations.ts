@@ -224,7 +224,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // existing minting can be executed, new minting is not possible
             const minted2 = await agent.executeMinting(crt2, tx2Hash, minter2);
             await expectRevert.custom(minter1.reserveCollateral(agent.vaultAddress, lots1), "MintingPaused", []);
-            await expectRevert.custom(agent.selfMint(context.convertLotsToUBA(lots1), lots1), "MintingPaused", []);
+            await expectRevert.custom(agent.selfMint(lots1), "MintingPaused", []);
             // agent and redeemer "buys" f-assets
             await context.fAsset.transfer(agent.ownerWorkAddress, minted1.mintedAmountUBA, { from: minter1.address });
             await context.fAsset.transfer(redeemer.address, minted2.mintedAmountUBA, { from: minter2.address });

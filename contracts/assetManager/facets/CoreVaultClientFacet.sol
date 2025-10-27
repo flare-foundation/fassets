@@ -19,6 +19,7 @@ import {RedemptionRequests} from "../library/RedemptionRequests.sol";
 import {UnderlyingBalance} from "../library/UnderlyingBalance.sol";
 import {Collateral} from "../library/data/Collateral.sol";
 import {PaymentConfirmations} from "../library/data/PaymentConfirmations.sol";
+import {Agents} from "../library/Agents.sol";
 import {AgentBacking} from "../library/AgentBacking.sol";
 import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {TransactionAttestation} from "../library/TransactionAttestation.sol";
@@ -130,6 +131,7 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
         onlyAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
+        Agents.requireWhitelistedAgentVaultOwner(agent);
         CoreVaultClient.State storage state = CoreVaultClient.getState();
         require(agent.activeReturnFromCoreVaultId == 0, ReturnFromCoreVaultAlreadyRequested());
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);

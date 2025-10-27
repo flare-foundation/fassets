@@ -617,7 +617,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // perform self-minting
             const lots = 3;
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
-            const minted = await agent.selfMint(context.convertLotsToUBA(lots), lots);
+            const minted = await agent.selfMint(lots);
             assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             await agent.checkAgentInfo({ mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA) });
             // perform self close
@@ -1081,6 +1081,40 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(poolFeesAfter.sub(poolFeesBefore), minted.poolFeeUBA);
             assertWeb3Equal(poolFeesAfter.sub(poolFeesBefore), minted.agentFeeUBA.add(minted.poolFeeUBA).muln(startBips).divn(MAX_BIPS));
             assertWeb3Equal(collateralAfter.sub(collateralBefore), crFee.muln(startBips).divn(MAX_BIPS));
+        });
+    });
+
+    describe("mint and redeem limitations", () => {
+        it("should not mint or request return from cv if the agent is de-whitelisted", async () => {
+            const managementAddress = accounts[25];
+            const workAddress = accounts[26];
+            await Agent.changeWorkAddress(context, managementAddress, workAddress);
+            // create actors
+            const agent = await Agent.createTest(context, workAddress, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
+            await agent.depositCollateralLotsAndMakeAvailable(10);
+            // enable cv
+            await context.assignCoreVaultManager();
+            await context.coreVaultManager!.addAllowedDestinationAddresses([agent.underlyingAddress], { from: governance });
+            // agent is whitelisted - can mint, self-mint, etc.
+            await minter.performMinting(agent.vaultAddress, 2);
+            await agent.selfMint(2);
+            const topupTx = await agent.performTopupPayment(context.convertLotsToUBA(4));
+            await agent.confirmTopupPayment(topupTx);
+            await agent.mintFromFreeUnderlying(2);
+            // de-whitelist agent
+            await context.agentOwnerRegistry.revokeAddress(managementAddress, { from: governance });
+            // can still redeem, self close and transfer to CV
+            const [reqs] = await redeemer.requestRedemption(2);
+            await agent.performRedemptions(reqs);
+            await agent.selfClose(context.convertLotsToUBA(2));
+            await agent.transferToCoreVault(context.convertLotsToUBA(2));
+            // but cannot mint, self-mint or return from cv
+            await expectRevert.custom(minter.reserveCollateral(agent.vaultAddress, 2), "AgentNotWhitelisted", []);
+            await expectRevert.custom(agent.selfMint(2), "AgentNotWhitelisted", []);
+            await expectRevert.custom(agent.mintFromFreeUnderlying(2), "AgentNotWhitelisted", []);
+            await expectRevert.custom(agent.requestReturnFromCoreVault(1), "AgentNotWhitelisted", []);
         });
     });
 });
