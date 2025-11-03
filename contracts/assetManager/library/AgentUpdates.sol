@@ -35,6 +35,7 @@ library AgentUpdates {
         CollateralTypeInt.Data storage collateral = state.collateralTokens[tokenIndex];
         assert(collateral.collateralClass == CollateralType.Class.VAULT);
         // agent should never use a deprecated or already invalid collateral
+        // (this check is only necessary for backward compatibility with old deploys)
         require(collateral.__validUntil == 0, CollateralDeprecated());
         // set the new index
         _agent.vaultCollateralIndex = tokenIndex.toUint16();

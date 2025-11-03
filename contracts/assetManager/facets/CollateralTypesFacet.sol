@@ -71,7 +71,7 @@ contract CollateralTypesFacet is AssetManagerBase {
     }
 
     /**
-     * Get the list of all available and deprecated tokens used for collateral.
+     * Get the list of all available tokens used for collateral.
      */
     function getCollateralTypes()
         external view
