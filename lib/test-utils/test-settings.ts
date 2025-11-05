@@ -338,7 +338,7 @@ export async function createMockFtsoV2PriceStore(governanceSettingsAddress: stri
         symbolArr.push(ci.symbol);
         decimalsArr.push(5);
     }
-    await priceStore.updateSettings(feedIdArr, symbolArr, decimalsArr, 50, { from: initialGovernance });
+    await priceStore.updateSettings(feedIdArr, symbolArr, decimalsArr, 50, 5000, { from: initialGovernance });
     // init prices
     async function setInitPrice(symbol: string, price: number | string) {
         const decimals = requireNotNull(decimalsArr[symbolArr.indexOf(symbol)]);

@@ -192,7 +192,7 @@ contract FtsoV2PriceStoreTest is Test {
             trustedDecimals[i] = int8(bound(decimalSeeds[i], -18, 18)); // Common decimal range
         }
         vm.prank(governance);
-        ftsoV2PriceStore.updateSettings(feedIds, symbols, trustedDecimals, 500);
+        ftsoV2PriceStore.updateSettings(feedIds, symbols, trustedDecimals, 500, 0);
     }
 
 
