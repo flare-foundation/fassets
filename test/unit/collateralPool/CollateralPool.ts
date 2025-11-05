@@ -1,6 +1,6 @@
 import BN from "bn.js";
 import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
-import { impersonateContract, transferWithSuicide } from "../../../lib/test-utils/contract-test-helpers";
+import { impersonateContract, stopImpersonatingContract, transferWithSuicide } from "../../../lib/test-utils/contract-test-helpers";
 import { calcGasCost, calculateReceivedNat } from "../../../lib/test-utils/eth";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestContracts } from "../../../lib/test-utils/test-settings";
@@ -34,9 +34,7 @@ function mulBips(x: BN, bips: number) {
 const BN_ZERO = new BN(0);
 const BN_ONE = new BN(1);
 
-enum TokenExitType { MAXIMIZE_FEE_WITHDRAWAL, MINIMIZE_FEE_DEBT, KEEP_RATIO };
-const ONE_ETH = new BN("1000000000000000000");
-const ETH = (x: number | BN | string) => ONE_ETH.mul(new BN(x));
+const ETH = (x: number | BN | string) => toBNExp(String(x), 18);
 
 const ERC20Mock = artifacts.require("ERC20Mock");
 const AgentVaultMock = artifacts.require("AgentVaultMock");
@@ -582,6 +580,33 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(freeFassetsAfter, debtFassets);
         });
 
+        it.only("should not enter if nat balance to token supply is too small", async () => {
+            const user1 = accounts[50];
+            const user2 = accounts[51];
+            await collateralPool.enter({ value: ETH(1), from: user1 });
+            //Mint collateral pool tokens to increase total supply
+            await impersonateContract(assetManager.address, ETH(1), accounts[0]);
+            await collateralPool.payout(accounts[20], ETH(1).subn(1), 0, { from: assetManager.address });
+            await stopImpersonatingContract(assetManager.address);
+            console.log(`balance=${await wNat.balanceOf(collateralPool.address)} tracked=${await collateralPool.totalCollateral()} tokensSupply=${await collateralPoolToken.totalSupply()}`);
+            await collateralPool.enter({ value: ETH(1), from: user2 });
+            console.log(`tokens1=${await collateralPoolToken.balanceOf(user1)} tokens2=${await collateralPoolToken.balanceOf(user2)}`);
+            console.log(`balance=${await wNat.balanceOf(collateralPool.address)} tracked=${await collateralPool.totalCollateral()} tokensSupply=${await collateralPoolToken.totalSupply()}`);
+        });
+
+        it.only("should not enter if token supply to nat balance is too small", async () => {
+            const user1 = accounts[50];
+            const user2 = accounts[51];
+            await collateralPool.enter({ value: ETH(10), from: user1 });
+            //Mint collateral pool tokens to increase total supply
+            await impersonateContract(collateralPool.address, ETH(1), accounts[0]);
+            await collateralPoolToken.burn(user1, ETH(10).subn(1), true, { from: collateralPool.address });
+            await stopImpersonatingContract(collateralPool.address);
+            console.log(`balance=${await wNat.balanceOf(collateralPool.address)} tracked=${await collateralPool.totalCollateral()} tokensSupply=${await collateralPoolToken.totalSupply()}`);
+            await collateralPool.enter({ value: ETH(5), from: user2 });
+            console.log(`tokens1=${await collateralPoolToken.balanceOf(user1)} tokens2=${await collateralPoolToken.balanceOf(user2)}`);
+            console.log(`balance=${await wNat.balanceOf(collateralPool.address)} tracked=${await collateralPool.totalCollateral()} tokensSupply=${await collateralPoolToken.totalSupply()}`);
+        });
     });
 
     describe("exiting collateral pool", () => {
