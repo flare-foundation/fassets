@@ -9,6 +9,7 @@
     ],
     "trustedProvidersThreshold": 2,
     "maxSpreadBIPS": 100,
+    "minTurnoutBIPS": 5000,
     "feeds": [
         { "feedId": "FLR/USD", "symbol": "FLR", "feedDecimals": 6 },
         { "feedId": "BTC/USD", "symbol": "BTC", "feedDecimals": 2 },

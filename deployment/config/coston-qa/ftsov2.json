@@ -5,6 +5,7 @@
     "trustedProviders": ["0xaec76c9b8fa7e13699e7dffbf7abfae5e943f1c1"],
     "trustedProvidersThreshold": 1,
     "maxSpreadBIPS": 50,
+    "minTurnoutBIPS": 5000,
     "feeds": [
         { "feedId": "SGB/USD", "symbol": "CFLR", "feedDecimals": 7 },
         { "feedId": "BTC/USD", "symbol": "testBTC", "feedDecimals": 2 },
