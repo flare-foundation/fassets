@@ -690,7 +690,8 @@
     "name": "FtsoV2PriceStoreImplementation",
     "contractName": "FtsoV2PriceStore.sol",
     "addresses": [
-      "0x399493A129d35a473373E3567becCAcC74e5F36D"
+      "0x399493A129d35a473373E3567becCAcC74e5F36D",
+      "0xc87F6183C4B4548C4CbF888738458d99Bcf8B348"
     ]
   },
   {

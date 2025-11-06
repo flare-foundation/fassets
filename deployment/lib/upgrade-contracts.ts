@@ -4,7 +4,7 @@ import { ContractStore, FAssetContractStore } from "./contracts";
 import { deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory } from "./deploy-asset-manager-dependencies";
 import { deployFacet } from "./deploy-asset-manager-facets";
 import { DeployScriptEnvironment } from "./deploy-scripts";
-import { getProxyImplementationAddress } from "./deploy-utils";
+import { abiEncodeCall, getProxyImplementationAddress } from "./deploy-utils";
 
 export async function upgradeAssetManagerController({ hre, artifacts, contracts, deployer }: DeployScriptEnvironment, execute: boolean) {
     const AssetManagerController = artifacts.require("AssetManagerController");
@@ -107,16 +107,40 @@ export async function upgradeGovernedProxy({ hre, artifacts, contracts, deployer
 
     const newImplAddress = await deployFacet(hre, implementationName, contracts, deployer, implementationContract);
 
-    if (execute && !(await proxy.productionMode())) {
+    if (await shouldExecute(execute, proxy)) {
         await proxy.upgradeTo(newImplAddress, { from: deployer });
         console.log(`${implementationContract} at ${proxy.address} upgraded to ${await getProxyImplementationAddress(hre, proxy.address)}`);
     } else {
         console.log(`EXECUTE: ${implementationContract}(${proxy.address}).upgradeTo(${newImplAddress})`);
+        const abidata = abiEncodeCall(proxy, (proxy) => proxy.upgradeTo(newImplAddress));
+        console.log(`    abi: ${abidata}`);
     }
 }
 
-async function shouldExecute(execute: boolean, assetManagerController: AssetManagerControllerInstance) {
-    const productionMode = await assetManagerController.productionMode();
+type IProductionMode = { productionMode(): Promise<boolean> };
+
+type TruffleResponse = Truffle.TransactionResponse<Truffle.AnyEvent>;
+
+type TruffleMethod<A extends unknown[], R = TruffleResponse> = (...args: [...A, Truffle.TransactionDetails?]) => Promise<R>;
+
+type TruffleMethodParameters<T, R = unknown> = T extends TruffleMethod<infer P, R> ? P : never;
+
+export async function performGovernanceCall<C extends Truffle.ContractInstance, M extends keyof C>(
+    { deployer }: DeployScriptEnvironment,
+    contractName: string, instance: C & IProductionMode, method: M, args: TruffleMethodParameters<C[M], TruffleResponse>, execute: boolean
+) {
+    if (await shouldExecute(execute, instance)) {
+        const res = await (instance[method] as TruffleMethod<typeof args>)(...args, { from: deployer });
+        console.log(`Transaction ${res.tx} executed on contract ${contractName} at ${instance.address}`);
+    } else {
+        console.log(`EXECUTE: ${contractName}(${instance.address}).${String(method)}(${args.map(a => JSON.stringify(a)).join(", ")})`);
+        const abidata = abiEncodeCall(instance, (inst) => (inst[method] as (...a: typeof args) => Promise<void>)(...args));
+        console.log(`    abi: ${abidata}`);
+    }
+}
+
+async function shouldExecute(execute: boolean, contract: IProductionMode) {
+    const productionMode = await contract.productionMode();
     return execute && !productionMode;
 }
 
