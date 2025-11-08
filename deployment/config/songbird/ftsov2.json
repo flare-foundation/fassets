@@ -9,6 +9,7 @@
     ],
     "trustedProvidersThreshold": 2,
     "maxSpreadBIPS": 100,
+    "minTurnoutBIPS": 5000,
     "feeds": [
         { "feedId": "SGB/USD", "symbol": "SGB", "feedDecimals": 7 },
         { "feedId": "USDX/USD", "symbol": "USDX", "feedDecimals": 5 },
