@@ -61,24 +61,25 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
     }
 
     /**
-     * Agent is going to withdraw `_valueNATWei` amount of collateral from agent vault.
-     * This has to be announced and agent must then wait `withdrawalWaitMinSeconds` time.
-     * After that time, agent can call withdraw(_valueNATWei) on agent vault.
+     * Agent is going to withdraw `_valuePoolTokenWei` of pool tokens from the agent vault
+     * and redeem them for NAT from the collateral pool.
+     * This has to be announced and the agent must then wait `withdrawalWaitMinSeconds`.
+     * After that time, the agent can call redeemCollateralPoolTokens(_valuePoolTokenWei) on agent vault.
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
-     * @param _valueNATWei the amount to be withdrawn
+     * @param _valuePoolTokenWei the amount to be withdrawn
      * @return _redemptionAllowedAt the timestamp when the redemption can be made
      */
     function announceAgentPoolTokenRedemption(
         address _agentVault,
-        uint256 _valueNATWei
+        uint256 _valuePoolTokenWei
     )
         external
         notEmergencyPaused
         onlyAgentVaultOwner(_agentVault)
         returns (uint256 _redemptionAllowedAt)
     {
-        return _announceWithdrawal(Collateral.Kind.AGENT_POOL, _agentVault, _valueNATWei);
+        return _announceWithdrawal(Collateral.Kind.AGENT_POOL, _agentVault, _valuePoolTokenWei);
     }
 
     /**

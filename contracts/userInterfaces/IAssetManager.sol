@@ -304,17 +304,18 @@ interface IAssetManager is
         returns (uint256 _withdrawalAllowedAt);
 
     /**
-     * The agent is going to redeem `_valueWei` collateral pool tokens in the agent vault.
-     * This has to be announced and the agent must then wait `withdrawalWaitMinSeconds` time.
-     * After that time, the agent can call `redeemCollateralPoolTokens(_valueNATWei)` on the agent vault.
+     * Agent is going to withdraw `_valuePoolTokenWei` of pool tokens from the agent vault
+     * and redeem them for NAT from the collateral pool.
+     * This has to be announced and the agent must then wait `withdrawalWaitMinSeconds`.
+     * After that time, the agent can call redeemCollateralPoolTokens(_valuePoolTokenWei) on agent vault.
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
-     * @param _valueNATWei the amount to be withdrawn
+     * @param _valuePoolTokenWei the amount to be withdrawn
      * @return _redemptionAllowedAt the timestamp when the redemption can be made
      */
     function announceAgentPoolTokenRedemption(
         address _agentVault,
-        uint256 _valueNATWei
+        uint256 _valuePoolTokenWei
     ) external
         returns (uint256 _redemptionAllowedAt);
 
