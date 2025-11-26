@@ -269,8 +269,10 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         // the sender to approve ERC20 transaction, which isn't needed by burning and then minting).
         // Note that agent's backing does not need to increase, because in `burnFAssets` the fee was burned along
         // with the closed backing amount.
-        Globals.getFAsset().mint(address(agent.collateralPool), closedWithFeeUBA - closedUBA);
-        agent.collateralPool.fAssetFeeDeposited(closedWithFeeUBA - closedUBA);
+        if (closedWithFeeUBA > closedUBA) {
+            Globals.getFAsset().mint(address(agent.collateralPool), closedWithFeeUBA - closedUBA);
+            agent.collateralPool.fAssetFeeDeposited(closedWithFeeUBA - closedUBA);
+        }
         // try to pull agent out of liquidation
         Liquidation.endLiquidationIfHealthy(agent);
         // send event
