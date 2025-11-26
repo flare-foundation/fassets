@@ -255,6 +255,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         uint256 toCloseUBA = _amountUBA.mulDiv(factorMul, factorDiv);
         // close the agent's backing
         (, uint256 closedUBA) = Redemptions.closeTickets(agent, Conversion.convertUBAToAmg(toCloseUBA), true);
+        require(closedUBA != 0, SelfCloseOfZero());
         // Calculate the `closedUBA` with added fee by reversing the operation in calculating `toCloseUBA`.
         // Resulting `closedWithFeeUBA` will be less than or equal to `_amountUBA` since `closedUBA <= toCloseUBA`
         // and the two inverse `mulDiv`s can only make value smaller due to rounding down.
