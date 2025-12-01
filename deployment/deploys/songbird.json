@@ -172,12 +172,12 @@
   {
     "name": "MintingFacet",
     "contractName": "MintingFacet.sol",
-    "address": "0x4B7e20341E680d1387c8AdEaB426d3f1d64aeC6a"
+    "address": "0x579639A00972D43cA44c6765025B393F7B8430dD"
   },
   {
     "name": "RedemptionRequestsFacet",
     "contractName": "RedemptionRequestsFacet.sol",
-    "address": "0x6C153F4E28e46C3e9Ab37D37081298209cBFf860"
+    "address": "0xB0140E31863c28DFDd41CeB0fB06a764167cbE71"
   },
   {
     "name": "RedemptionConfirmationsFacet",
@@ -237,7 +237,7 @@
   {
     "name": "SettingsManagementFacet",
     "contractName": "SettingsManagementFacet.sol",
-    "address": "0x187a230EcAF1Da47784B7A7EEB0A155e05e65Fd1"
+    "address": "0x86Ddc61d1978cd15d7EDb6319085D264A2DB6375"
   },
   {
     "name": "AgentVaultAndPoolSupportFacet",
