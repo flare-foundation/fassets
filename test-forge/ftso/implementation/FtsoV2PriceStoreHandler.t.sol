@@ -49,7 +49,7 @@ contract FtsoV2PriceStoreHandler is Test {
 
         // initialize feeds
         vm.prank(governance);
-        ftsoV2PriceStore.updateSettings(fixedFeedIds, fixedSymbols, fixedTrustedDecimals, 1000);
+        ftsoV2PriceStore.updateSettings(fixedFeedIds, fixedSymbols, fixedTrustedDecimals, 1000, 0);
     }
 
     function submitTrustedPrices(

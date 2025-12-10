@@ -1,4 +1,5 @@
 import { AssetManagerSettings } from "../../lib/fasset/AssetManagerTypes";
+import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import { AssetManagerControllerInstance } from "../../typechain-truffle";
 import { ContractStore, FAssetContractStore } from "./contracts";
 import { deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory } from "./deploy-asset-manager-dependencies";
@@ -16,7 +17,7 @@ export async function upgradeAssetManagerController({ hre, artifacts, contracts,
         await assetManagerController.upgradeTo(newAssetManagerControllerImplAddress, { from: deployer });
         console.log(`AssetManagerController upgraded to ${await getProxyImplementationAddress(hre, assetManagerController.address)}`);
     } else {
-        console.log(`EXECUTE: AssetManagerController(${assetManagerController.address}).upgradeTo(${newAssetManagerControllerImplAddress})`);
+        printExecuteData("AssetManagerController", assetManagerController, "upgradeTo", [newAssetManagerControllerImplAddress]);
     }
 }
 
@@ -31,7 +32,7 @@ export async function upgradeAgentVaultFactory({ hre, artifacts, contracts, depl
         await assetManagerController.setAgentVaultFactory(assetManagers, newAgentVaultFactoryAddress, { from: deployer });
         await printUpgradedContracts(contracts, "AgentVaultFactory", assetManagers, s => s.agentVaultFactory);
     } else {
-        console.log(`EXECUTE: AssetManagerController(${assetManagerController.address}).setAgentVaultFactory([${assetManagers.join(", ")}], ${newAgentVaultFactoryAddress})`);
+        printExecuteData("AssetManagerController", assetManagerController, "setAgentVaultFactory", [assetManagers, newAgentVaultFactoryAddress]);
     }
 }
 
@@ -46,7 +47,7 @@ export async function upgradeCollateralPoolFactory({ hre, artifacts, contracts, 
         await assetManagerController.setCollateralPoolFactory(assetManagers, newCollateralPoolFactoryAddress, { from: deployer });
         await printUpgradedContracts(contracts, "CollateralPoolFactory", assetManagers, s => s.collateralPoolFactory);
     } else {
-        console.log(`EXECUTE: AssetManagerController(${assetManagerController.address}).setCollateralPoolFactory([${assetManagers.join(", ")}], ${newCollateralPoolFactoryAddress})`);
+        printExecuteData("AssetManagerController", assetManagerController, "setCollateralPoolFactory", [assetManagers, newCollateralPoolFactoryAddress]);
     }
 }
 
@@ -61,7 +62,7 @@ export async function upgradeCollateralPoolTokenFactory({ hre, artifacts, contra
         await assetManagerController.setCollateralPoolTokenFactory(assetManagers, newCollateralPoolTokenFactoryAddress, { from: deployer });
         await printUpgradedContracts(contracts, "CollateralPoolTokenFactory", assetManagers, s => s.collateralPoolTokenFactory);
     } else {
-        console.log(`EXECUTE: AssetManagerController(${assetManagerController.address}).setCollateralPoolTokenFactory([${assetManagers.join(", ")}], ${newCollateralPoolTokenFactoryAddress})`);
+        printExecuteData("AssetManagerController", assetManagerController, "setCollateralPoolTokenFactory", [assetManagers, newCollateralPoolTokenFactoryAddress]);
     }
 }
 
@@ -76,7 +77,7 @@ export async function upgradeFAsset({ hre, artifacts, contracts, deployer }: Dep
         await assetManagerController.upgradeFAssetImplementation(assetManagers, newFAssetImplAddress, "0x");
         await printUpgradedContracts(contracts, "FAsset", assetManagers, async s => await getProxyImplementationAddress(hre, s.fAsset));
     } else {
-        console.log(`EXECUTE: AssetManagerController(${assetManagerController.address}).upgradeFAssetImplementation([${assetManagers.join(", ")}], ${newFAssetImplAddress}, "0x")`);
+        printExecuteData("AssetManagerController", assetManagerController, "upgradeFAssetImplementation", [assetManagers, newFAssetImplAddress, "0x"]);
     }
 }
 
@@ -89,7 +90,7 @@ export async function upgradeAgentVaultsAndPools({ artifacts, contracts }: Deplo
     const IIAssetManager = artifacts.require("IIAssetManager");
     for (const addr of assetManagers) {
         const am = await IIAssetManager.at(addr);
-        const {1: count} = await am.getAllAgents(0, 0); // just to get the count of agents
+        const { 1: count } = await am.getAllAgents(0, 0); // just to get the count of agents
         maxAgentsCount = Math.max(maxAgentsCount, count.toNumber());
     }
 
@@ -97,7 +98,7 @@ export async function upgradeAgentVaultsAndPools({ artifacts, contracts }: Deplo
         await assetManagerController.upgradeAgentVaultsAndPools(assetManagers, 0, maxAgentsCount);
         console.log("AgentVault, CollateralPool and CollateralPoolToken contracts upgraded for all agents on all asset managers.");
     } else {
-        console.log(`EXECUTE: AssetManagerController(${assetManagerController.address}).upgradeAgentVaultsAndPools([${assetManagers.join(", ")}], 0, ${maxAgentsCount})`);
+        printExecuteData("AssetManagerController", assetManagerController, "upgradeAgentVaultsAndPools", [assetManagers, 0, maxAgentsCount]);
     }
 }
 
@@ -107,16 +108,56 @@ export async function upgradeGovernedProxy({ hre, artifacts, contracts, deployer
 
     const newImplAddress = await deployFacet(hre, implementationName, contracts, deployer, implementationContract);
 
-    if (execute && !(await proxy.productionMode())) {
+    if (await shouldExecute(execute, proxy)) {
         await proxy.upgradeTo(newImplAddress, { from: deployer });
         console.log(`${implementationContract} at ${proxy.address} upgraded to ${await getProxyImplementationAddress(hre, proxy.address)}`);
     } else {
-        console.log(`EXECUTE: ${implementationContract}(${proxy.address}).upgradeTo(${newImplAddress})`);
+        const instance = await requireUnchecked(artifacts, contractName).at(proxy.address);
+        printExecuteDataUnchecked(implementationContract, instance, "upgradeTo", [newImplAddress]);
     }
 }
 
-async function shouldExecute(execute: boolean, assetManagerController: AssetManagerControllerInstance) {
-    const productionMode = await assetManagerController.productionMode();
+interface IGovernedRead {
+    governance(): Promise<string>;
+    productionMode(): Promise<boolean>;
+};
+
+type TruffleResponse = Truffle.TransactionResponse<Truffle.AnyEvent>;
+
+type TruffleMethod<A extends unknown[], R = TruffleResponse> = (...args: [...A, Truffle.TransactionDetails?]) => Promise<R>;
+
+type TruffleMethodParameters<T, R = unknown> = T extends TruffleMethod<infer P, R> ? P : never;
+
+export async function performGovernanceCall<C extends Truffle.ContractInstance & IGovernedRead, M extends keyof C & string>(
+    { deployer }: DeployScriptEnvironment, contractName: string, instance: C, method: M, args: TruffleMethodParameters<C[M], TruffleResponse>, execute: boolean
+) {
+    if (await shouldExecute(execute, instance)) {
+        const res = await (instance[method] as TruffleMethod<typeof args>)(...args, { from: deployer });
+        console.log(`Transaction ${res.tx} executed on contract ${contractName} at ${instance.address}`);
+    } else {
+        printExecuteDataUnchecked(contractName, instance, method, args);
+    }
+}
+
+function printExecuteData<C extends Truffle.ContractInstance, M extends keyof C & string>(contractName: string, instance: C, method: M, args: TruffleMethodParameters<C[M]>) {
+    printExecuteDataUnchecked(contractName, instance, method, args);
+}
+
+function printExecuteDataUnchecked(contractName: string, instance: Truffle.ContractInstance, method: string, args: unknown[]) {
+    const methodAbi = instance.abi.find(it => it.type === "function" && it.name === method)!;
+    const formattedParams = methodAbi.inputs!.map((param, index) => `${param.name} = ${JSON.stringify(web3DeepNormalize(args[index]))}`)
+    console.log(`EXECUTE: ${contractName}(${instance.address}) ${method}(${formattedParams.join(", ")})`);
+    const abidata = web3.eth.abi.encodeFunctionCall(methodAbi, args as string[]);
+    console.log(`    abi: ${abidata}`);
+}
+
+function requireUnchecked(artifacts: Truffle.Artifacts, contractName: string) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+    return artifacts.require(contractName as any) as unknown as Truffle.Contract<Truffle.ContractInstance>;
+}
+
+async function shouldExecute(execute: boolean, contract: IGovernedRead) {
+    const productionMode = await contract.productionMode();
     return execute && !productionMode;
 }
 

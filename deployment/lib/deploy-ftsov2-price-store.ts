@@ -1,4 +1,5 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
+import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { FAssetContractStore } from "./contracts";
 import { currentDeployConfigDir, encodeContractNames, loadDeployAccounts, truffleContractMetadata } from './deploy-utils';
@@ -11,6 +12,7 @@ interface FtsoV2PriceStoreParameters {
     trustedProviders: string[];
     trustedProvidersThreshold: number;
     maxSpreadBIPS: number;
+    minTurnoutBIPS: number;
     feeds: Array<{
         feedId: string;
         symbol: string;
@@ -43,6 +45,7 @@ export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contra
         parameters.feeds.map(feed => feed.symbol),
         parameters.feeds.map(feed => feed.feedDecimals),
         parameters.maxSpreadBIPS,
+        parameters.minTurnoutBIPS,
         { from: deployer });
 
     contracts.add("PriceReader", "FtsoV2PriceStoreProxy.sol", ftsoV2PriceStore.address);
@@ -73,7 +76,10 @@ export function encodeFeedIds(feedIds: IFeedId[]): string[] {
 
 function readFtsoV2Parameters(): FtsoV2PriceStoreParameters {
     const paramFileName = `${currentDeployConfigDir()}/ftsov2.json`;
-    return JSON.parse(readFileSync(paramFileName, { encoding: "ascii" })) as FtsoV2PriceStoreParameters;
+    const parameters = JSON.parse(readFileSync(paramFileName, { encoding: "ascii" })) as FtsoV2PriceStoreParameters;
+    // check for recently added parameters
+    assert(parameters.minTurnoutBIPS != null, "Missing minTurnoutBIPS");
+    return parameters;
 }
 
 export async function verifyFtsoV2PriceStore(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {

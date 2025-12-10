@@ -17,7 +17,7 @@ NOTE: anybody can call.
 
 **getCollateralType** - Get collateral  information about a token.
 
-**getCollateralTypes** - Get the list of all available and deprecated tokens used for collateral.
+**getCollateralTypes** - Get the list of all available tokens used for collateral.
 
 **setOwnerWorkAddress** - Associate a work address with the agent owner's management owner address. Every owner (management address) can have only one work address, so as soon as the new one is set, the old one stops working.
 NOTE: May only be called by an agent on the allowed agent list and only from the management address.
@@ -37,8 +37,8 @@ NOTE: may only be called by the agent vault owner.
 **executeAgentSettingUpdate** - Due to the effect on the pool, all agent settings are timelocked. This method executes a setting change after the timelock expires.
 NOTE: may only be called by the agent vault owner.
 
-**upgradeWNatContract** - When current pool collateral token contract (WNat) is replaced by the method setPoolWNatCollateralType, pools don't switch automatically. Instead, the agent must call this method that swaps old WNat tokens for new ones and sets it for use by the pool.
-NOTE: may only be called by the agent vault owner.
+**upgradeWNatContract** - When current pool collateral token contract (WNat) is replaced by the method setPoolWNatCollateralType, pools don't switch automatically. Instead, governance or executor must call this method one or several times to swap old WNat tokens for new ones and set them for use by the pools. The reason is that a single call could break the block gas limit if there are many agents.
+NOTE: may only be called by the governance or executor.
 
 **announceVaultCollateralWithdrawal** - The agent is going to withdraw `_valueNATWei` amount of collateral from the agent vault. This has to be announced and the agent must then wait `withdrawalWaitMinSeconds` time. After that time, the agent can call `withdrawCollateral(_vaultCollateralToken, _valueNATWei)` on the agent vault.
 NOTE: may only be called by the agent vault owner.

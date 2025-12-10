@@ -52,6 +52,7 @@ contract FtsoV2PriceStore is
     error TooManyTrustedProviders();
     error ThresholdTooHigh();
     error SymbolNotSupported();
+    error MinTurnoutTooBig();
 
     /// Timestamp when the first voting epoch started, in seconds since UNIX epoch.
     uint64 public firstVotingRoundStartTs;
@@ -88,7 +89,13 @@ contract FtsoV2PriceStore is
     /// The last published voting round id.
     uint32 public lastPublishedVotingRoundId;
 
+    /// The minimum percentage of providers that have to send a price for a feed in a round to be published
+    /// (for FTSO, not for trusted providers).
+    uint16 public minTurnoutBIPS;
+
     event PricesPublished(uint32 indexed votingRoundId);
+
+    event LowTurnoutForFeed(bytes21 indexed feedId, uint32 indexed votingRoundId, uint16 turnoutBIPS);
 
     constructor()
         GovernedUUPSProxyImplementation()   // marks as initialized
@@ -147,9 +154,14 @@ contract FtsoV2PriceStore is
             require(proof.proof.verifyCalldata(merkleRoot, feedHash), MerkleProofInvalid());
 
             PriceStore storage priceStore = latestPrices[feedId];
-            priceStore.votingRoundId = feed.votingRoundId;
-            priceStore.value = uint32(feed.value);
-            priceStore.decimals = feed.decimals;
+
+            if (feed.turnoutBIPS >= minTurnoutBIPS) {
+                priceStore.votingRoundId = feed.votingRoundId;
+                priceStore.value = uint32(feed.value);
+                priceStore.decimals = feed.decimals;
+            } else {
+                emit LowTurnoutForFeed(feedId, feed.votingRoundId, feed.turnoutBIPS);
+            }
 
             // calculate trusted prices for the same voting round
             bytes memory trustedPrices = submittedTrustedPrices[feedId][votingRoundId];
@@ -207,13 +219,16 @@ contract FtsoV2PriceStore is
         bytes21[] calldata _feedIds,
         string[] calldata _symbols,
         int8[] calldata _trustedDecimals,
-        uint16 _maxSpreadBIPS
+        uint16 _maxSpreadBIPS,
+        uint16 _minTurnoutBIPS
     )
         external onlyGovernance
     {
         require(_feedIds.length == _symbols.length && _feedIds.length == _trustedDecimals.length, LengthMismatch());
         require(_maxSpreadBIPS <= MAX_BIPS, MaxSpreadTooBig());
         maxSpreadBIPS = _maxSpreadBIPS;
+        require(_minTurnoutBIPS <= MAX_BIPS, MinTurnoutTooBig());
+        minTurnoutBIPS = _minTurnoutBIPS;
         feedIds = _feedIds;
         for (uint256 i = 0; i < _feedIds.length; i++) {
             bytes21 feedId = _feedIds[i];
@@ -256,6 +271,20 @@ contract FtsoV2PriceStore is
         for (uint256 i = 0; i < _trustedProviders.length; i++) {
             trustedProvidersMap[_trustedProviders[i]] = true;
         }
+    }
+
+    /**
+     * Sets the minTurnoutBIPS.
+     * @param _minTurnoutBIPS The minimum percentage of providers that have to send a price to be published.
+     * @dev Can only be called by the governance.
+     */
+    function setMinTurnoutBIPS(
+        uint16 _minTurnoutBIPS
+    )
+        external onlyGovernance
+    {
+        require(_minTurnoutBIPS <= MAX_BIPS, MinTurnoutTooBig());
+        minTurnoutBIPS = _minTurnoutBIPS;
     }
 
     /**

@@ -255,6 +255,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         uint256 toCloseUBA = _amountUBA.mulDiv(factorMul, factorDiv);
         // close the agent's backing
         (, uint256 closedUBA) = Redemptions.closeTickets(agent, Conversion.convertUBAToAmg(toCloseUBA), true);
+        require(closedUBA != 0, SelfCloseOfZero());
         // Calculate the `closedUBA` with added fee by reversing the operation in calculating `toCloseUBA`.
         // Resulting `closedWithFeeUBA` will be less than or equal to `_amountUBA` since `closedUBA <= toCloseUBA`
         // and the two inverse `mulDiv`s can only make value smaller due to rounding down.
@@ -268,8 +269,10 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         // the sender to approve ERC20 transaction, which isn't needed by burning and then minting).
         // Note that agent's backing does not need to increase, because in `burnFAssets` the fee was burned along
         // with the closed backing amount.
-        Globals.getFAsset().mint(address(agent.collateralPool), closedWithFeeUBA - closedUBA);
-        agent.collateralPool.fAssetFeeDeposited(closedWithFeeUBA - closedUBA);
+        if (closedWithFeeUBA > closedUBA) {
+            Globals.getFAsset().mint(address(agent.collateralPool), closedWithFeeUBA - closedUBA);
+            agent.collateralPool.fAssetFeeDeposited(closedWithFeeUBA - closedUBA);
+        }
         // try to pull agent out of liquidation
         Liquidation.endLiquidationIfHealthy(agent);
         // send event

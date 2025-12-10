@@ -151,9 +151,10 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
 
     /**
      * When current pool collateral token contract (WNat) is replaced by the method setPoolWNatCollateralType,
-     * pools don't switch automatically. Instead, the agent must call this method that swaps old WNat tokens for
-     * new ones and sets it for use by the pool.
-     * NOTE: may only be called by the agent vault owner.
+     * pools don't switch automatically. Instead, governance or executor must call this method one or several times
+     * to swap old WNat tokens for new ones and set them for use by the pools. The reason is that a single
+     * call could break the block gas limit if there are many agents.
+     * NOTE: may only be called by the governance or executor.
      */
     function upgradeWNatContract(
         uint256 _start,

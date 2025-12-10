@@ -434,6 +434,24 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await agent.confirmClosedMintingPayment(crt, tx);
         });
 
+        it("should not confirm payment after unstick minting as free underlying", async () => {
+            const crt = await minter.reserveCollateral(agent.vaultAddress, 5);
+            // perform too small payment (missing minting fee)
+            const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+            const tx = await minter.performPayment(crt.paymentAddress, paymentAmount, crt.paymentReference);
+            // cannot confirm closed minting payment when minting is still active
+            await expectRevert.custom(agent.confirmClosedMintingPayment(crt, tx), "InvalidCollateralReservationStatus", []);
+            // wait for FDC proof expiration and unstick minting
+            context.skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
+            await time.deterministicIncrease(DAYS);
+            await agent.unstickMinting(crt);
+            // make sure status is expired
+            const crtInfo = await context.assetManager.collateralReservationInfo(crt.collateralReservationId);
+            assertWeb3Equal(crtInfo.status, CollateralReservationStatus.EXPIRED);
+            // but still cannot confirm
+            await expectRevert.custom(agent.confirmClosedMintingPayment(crt, tx), "InvalidCollateralReservationStatus", []);
+        });
+
         it("closed minting payment cannot be confirmed twice", async () => {
             const crt = await minter.reserveCollateral(agent.vaultAddress, 5);
             // perform late payment

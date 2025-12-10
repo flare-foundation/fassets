@@ -66,7 +66,7 @@ export class SimulationPoolTokenHolder extends SimulationActor {
                 await this.runner.fAssetMarketplace.buy(scope, this.address, selfCloseFAssetRequired);
                 await this.context.fAsset.approve(this.poolInfo.pool.address, selfCloseFAssetRequired, { from: this.address });
                 const res = await this.poolInfo.pool.selfCloseExit(amount, redeemToCollateral, this.underlyingAddress, ZERO_ADDRESS, { from: this.address })
-                    .catch(e => scope.exitOnExpectedError(e, ["FAssetAllowanceTooSmall", "FAssetBalanceTooLow"]));
+                    .catch(e => scope.exitOnExpectedError(e, ["FAssetAllowanceTooSmall", "FAssetBalanceTooLow", "RedemptionRequiresClosingTooManyTickets"]));
                 const redemptionRequest = this.runner.eventDecoder.findEventFrom(res, this.context.assetManager, 'RedemptionRequested');
                 if (redemptionRequest) {
                     const redemptionPaymentReceiver = RedemptionPaymentReceiver.create(this.runner, this.address, this.underlyingAddress);

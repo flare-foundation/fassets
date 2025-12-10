@@ -136,9 +136,13 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         // the payment reference, which is good for nothing except attack attempts
         require(_payment.data.responseBody.blockNumber >= crt.firstUnderlyingBlock,
             MintingPaymentTooOld());
-        // only closed (not ACTIVE) minting payments can be confirmed in this way -
-        // ACTIVE minting payments should be confirmed by executeMinting
-        require(crt.status != CollateralReservation.Status.ACTIVE, InvalidCollateralReservationStatus());
+        // Only closed (SUCCESSFUL or DEFAULTED) minting payments can be confirmed in this way -
+        // ACTIVE minting payments should be confirmed by executeMinting.
+        // We also prevent EXPIRED minitngs to be confirmed this way, to extra incentivize agent to execute minting
+        // (when paid) instead of waiting and calling unstick minting.
+        CollateralReservation.Status status = crt.status;
+        require(status == CollateralReservation.Status.SUCCESSFUL || status == CollateralReservation.Status.DEFAULTED,
+            InvalidCollateralReservationStatus());
         // mark payment confirmed, which also checks that it hasn't been confirmed already
         AssetManagerState.get().paymentConfirmations.confirmIncomingPayment(_payment);
         // preform underlying balance topup

@@ -128,7 +128,7 @@
   {
     "name": "FtsoV2PriceStoreImplementation",
     "contractName": "FtsoV2PriceStore.sol",
-    "address": "0x399493A129d35a473373E3567becCAcC74e5F36D"
+    "address": "0xc87F6183C4B4548C4CbF888738458d99Bcf8B348"
   },
   {
     "name": "FtsoV2PriceStore",
@@ -220,12 +220,12 @@
   {
     "name": "MintingFacet",
     "contractName": "MintingFacet.sol",
-    "address": "0x3E22Bb98fb61ceE27B2Fe4d3C2602dFdfD9B4EFb"
+    "address": "0xb90Ef081E15717C4F51E8fdeBB0ac8b9E2cEF7Ac"
   },
   {
     "name": "RedemptionRequestsFacet",
     "contractName": "RedemptionRequestsFacet.sol",
-    "address": "0x2bDCe7246916aC970C6625aF2578B270Aa5b9a31"
+    "address": "0x1C2F32bFbEAAE1A40bF672b3D80d53e1A9a7c307"
   },
   {
     "name": "RedemptionConfirmationsFacet",
@@ -285,7 +285,7 @@
   {
     "name": "SettingsManagementFacet",
     "contractName": "SettingsManagementFacet.sol",
-    "address": "0xC0f52AF56ba21Ce99738767a94b00452F218a794"
+    "address": "0x2C4864be4afDc9e09B649BD76A44aA88Dc77285c"
   },
   {
     "name": "AgentVaultAndPoolSupportFacet",

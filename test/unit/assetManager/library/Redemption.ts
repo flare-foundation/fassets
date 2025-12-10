@@ -1,4 +1,5 @@
 import { AgentSettings, CollateralType, EmergencyPauseLevel, RedemptionRequestStatus } from "../../../../lib/fasset/AssetManagerTypes";
+import { lotSize } from "../../../../lib/fasset/Conversions";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { TestChainInfo, testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
 import { impersonateContract, stopImpersonatingContract } from "../../../../lib/test-utils/contract-test-helpers";
@@ -375,6 +376,29 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
 
         const res = assetManager.selfClose(agentVault.address, 0, { from: agentOwner1 });
+        await expectRevert.custom(res, "SelfCloseOfZero", []);
+    });
+
+    it("should not self close - self close of 0 because the amount is rounded to 0", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        // perform self-minting
+        const lots = 3;
+        const randomAddr = randomAddress();
+        const val = toBNExp(10000, 18);
+        chain.mint(randomAddr, val);
+        const transactionHash = await wallet.addTransaction(randomAddr, underlyingAgent1, val, PaymentReference.selfMint(agentVault.address));
+        const proof = await attestationProvider.provePayment(transactionHash, null, underlyingAgent1);
+        await assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
+        //
+        const res = assetManager.selfClose(agentVault.address, 1, { from: agentOwner1 });
+        await expectRevert.custom(res, "SelfCloseOfZero", []);
+    });
+
+    it("should not self close - self close of 0 because there are no tickets", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const res = assetManager.selfClose(agentVault.address, lotSize(settings), { from: agentOwner1 });
         await expectRevert.custom(res, "SelfCloseOfZero", []);
     });
 

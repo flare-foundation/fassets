@@ -1,11 +1,12 @@
 /* eslint-disable no-var */
 import { ZERO_BYTES_20 } from "@flarenetwork/js-flare-common";
-import { expectRevert, time } from "../../../lib/test-utils/test-helpers";
+import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestContracts } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
-import { erc165InterfaceId } from "../../../lib/utils/helpers";
+import { erc165InterfaceId, MAX_BIPS } from "../../../lib/utils/helpers";
 import { FtsoV2PriceStoreInstance, MockContractInstance } from "../../../typechain-truffle";
+import { filterEvents } from "../../../lib/utils/events/truffle";
 
 const FtsoV2PriceStore = artifacts.require('FtsoV2PriceStore');
 const FtsoV2PriceStoreProxy = artifacts.require('FtsoV2PriceStoreProxy');
@@ -42,7 +43,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         priceStore = await FtsoV2PriceStore.at(priceStoreProxy.address);
         relayMock = await MockContract.new();
         await priceStore.setTrustedProviders(trustedProviders, 1, { from: governance });
-        await priceStore.updateSettings(feedIds, feedSymbols, feedDecimals, 50, { from: governance });
+        await priceStore.updateSettings(feedIds, feedSymbols, feedDecimals, 50, 0, { from: governance });
         await contracts.addressUpdater.update(["AddressUpdater", "Relay"],
             [contracts.addressUpdater.address, relayMock.address],
             [priceStore.address],
@@ -54,8 +55,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         ({ contracts, priceStore } = await loadFixtureCopyVars(initialize));
     });
 
-    describe("method tests", () => {
-
+    describe("initialization", () => {
         it("should revert if deploying contract with invalid start time", async () => {
             await expectRevert.custom(FtsoV2PriceStoreProxy.new(
                 priceStoreImpl.address,
@@ -80,11 +80,13 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             ), "VotingEpochDurationTooShort", []);
         });
 
-        //// publishing prices
+    });
+
+    describe("publishing prices", () => {
         it("should revert if wrong number of proofs is provided", async () => {
             // update settings
             const feedIds = ["0x01464c522f55534400000000000000000000000000", "0x01555344432f555344000000000000000000000000"];
-            await priceStore.updateSettings(["0x01464c522f55534400000000000000000000000000"], ["FLR"], [6], 50, { from: governance });
+            await priceStore.updateSettings(["0x01464c522f55534400000000000000000000000000"], ["FLR"], [6], 50, 0, { from: governance });
 
             await expectRevert.custom(publishPrices(), "WrongNumberOfProofs", []);
         });
@@ -116,7 +118,9 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             await expectRevert.custom(publishPrices(true, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, true), "MerkleProofInvalid", []);
         });
 
-        //// submitting trusted prices
+    });
+
+    describe("submitting trusted prices", () => {
         it("should revert if submitter is not trusted provider", async () => {
             await expectRevert.custom(priceStore.submitTrustedPrices(1, []), "OnlyTrustedProvider", []);
         });
@@ -215,10 +219,6 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             assertWeb3Equal(decimals, feedDecimals[1]);
             assertWeb3Equal(decimals2, feedDecimals[1]);
             assertWeb3Equal(noOfSubmits, 4);
-        });
-
-        it("should revert if getting price from trusted providers with quality for unsupported symbol", async () => {
-            await expectRevert.custom(priceStore.getPriceFromTrustedProvidersWithQuality(ZERO_BYTES_20), "SymbolNotSupported", []);
         });
 
         it("should calculate median price from 1 trusted price", async () => {
@@ -336,18 +336,23 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             assertWeb3Equal(timestamp, timestamp2);
             assertWeb3Equal(decimals, decimals2);
         });
+    });
 
-        //// update settings
+    describe("update settings", () => {
         it("should revert if not governance", async () => {
-            await expectRevert.custom(priceStore.updateSettings([], [], [], 50), "OnlyGovernance", []);
+            await expectRevert.custom(priceStore.updateSettings([], [], [], 50, 0), "OnlyGovernance", []);
         });
 
         it("should revert if lengths mismatch", async () => {
-            await expectRevert.custom(priceStore.updateSettings([], [], [6], 50, { from: governance }), "LengthMismatch", []);
+            await expectRevert.custom(priceStore.updateSettings([], [], [6], 50, 0, { from: governance }), "LengthMismatch", []);
         });
 
         it("should revert if max spread too big", async () => {
-            await expectRevert.custom(priceStore.updateSettings([], [], [], 10001, { from: governance }), "MaxSpreadTooBig", []);
+            await expectRevert.custom(priceStore.updateSettings([], [], [], 10001, 0, { from: governance }), "MaxSpreadTooBig", []);
+        });
+
+        it("should revert if min turnout too big", async () => {
+            await expectRevert.custom(priceStore.updateSettings([], [], [], 50, 10001, { from: governance }), "MinTurnoutTooBig", []);
         });
 
         it("should delete trusted price for a symbol if changing decimals", async () => {
@@ -372,7 +377,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             assertWeb3Equal(decimals, 5);
 
             // update settings; change trusted decimals for USDC
-            await priceStore.updateSettings(feedIds, feedSymbols, [6, 4], 50, { from: governance });
+            await priceStore.updateSettings(feedIds, feedSymbols, [6, 4], 50, 0, { from: governance });
             var { 0: price, 1: timestamp, 2: decimals } = await priceStore.getPriceFromTrustedProviders("USDC");
             assertWeb3Equal(price, 0);
             assertWeb3Equal(timestamp, startTs + 1 * votingEpochDurationSeconds);
@@ -406,7 +411,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
             // update settings; change trusted decimals for USDC
             const newUSDCDecimals = 4;
-            await priceStore.updateSettings(feedIds, feedSymbols, [feedDecimals[0], newUSDCDecimals], 50, { from: governance });
+            await priceStore.updateSettings(feedIds, feedSymbols, [feedDecimals[0], newUSDCDecimals], 50, 0, { from: governance });
             var { 0: price, 1: timestamp, 2: decimals } = await priceStore.getPriceFromTrustedProviders("USDC");
             assertWeb3Equal(price, 0);
             assertWeb3Equal(timestamp, startTs + 1 * votingEpochDurationSeconds);
@@ -430,8 +435,9 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             assertWeb3Equal(timestamp, startTs + 2 * votingEpochDurationSeconds);
             assertWeb3Equal(decimals, 4);
         });
+    });
 
-        //// set trusted providers
+    describe("set trusted providers", () => {
         it ("should revert if not governance", async () => {
             await expectRevert.custom(priceStore.setTrustedProviders([], 1), "OnlyGovernance", []);
         });
@@ -465,7 +471,9 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             await priceStore.submitTrustedPrices(2, feeds0, { from: accounts[123] });
         });
 
-        //// get prices
+    });
+
+    describe("get prices", () => {
         it("should get price", async () => {
             await publishPrices();
 
@@ -522,6 +530,10 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             await expectRevert.custom(priceStore.getPriceFromTrustedProviders("USDT"), "SymbolNotSupported", []);
         });
 
+        it("should revert if getting price from trusted providers with quality for unsupported symbol", async () => {
+            await expectRevert.custom(priceStore.getPriceFromTrustedProvidersWithQuality(ZERO_BYTES_20), "SymbolNotSupported", []);
+        });
+
         it("should get trusted price if decimals are negative", async () => {
             await time.increaseTo(startTs + 2 * votingEpochDurationSeconds); // start of voting round 2
             const feeds0 = [];
@@ -533,7 +545,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
                 feeds1.push({ id: feedIds[i], value: 123455, decimals: newFeedDecimals[i] });
                 feeds2.push({ id: feedIds[i], value: 123456, decimals: newFeedDecimals[i] });
             }
-            await priceStore.updateSettings(feedIds, feedSymbols, newFeedDecimals, 50, { from: governance });
+            await priceStore.updateSettings(feedIds, feedSymbols, newFeedDecimals, 50, 0, { from: governance });
             await priceStore.submitTrustedPrices(1, feeds0, { from: trustedProviders[0] });
             await priceStore.submitTrustedPrices(1, feeds1, { from: trustedProviders[1] });
 
@@ -549,7 +561,9 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             assertWeb3Equal(decimals1, 0);
         });
 
-        ////
+    });
+
+    describe("reading settings", () => {
         it("should get feed ids", async () => {
             const feeds = await priceStore.getFeedIds();
             expect(feeds.toString()).to.eq(feedIds.toString());
@@ -577,7 +591,12 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             expect(xdcFeed).to.eq("0x" + "00".repeat(21));
 
             // update settings
-            await priceStore.updateSettings(["0x01464c522f55534400000000000000000000000000", "0x01555344432f555344000000000000000000000000", "0x015452582f55534400000000000000000000000000"], ["FLR", "USDC", "XDC"], [6, 7, 8], 50, { from: governance });
+            await priceStore.updateSettings(
+                ["0x01464c522f55534400000000000000000000000000", "0x01555344432f555344000000000000000000000000", "0x015452582f55534400000000000000000000000000"],
+                ["FLR", "USDC", "XDC"],
+                [6, 7, 8],
+                50, 0,
+                { from: governance });
 
             xdcFeed = await priceStore.getFeedId("XDC");
             expect(xdcFeed).to.eq("0x015452582f55534400000000000000000000000000");
@@ -595,6 +614,52 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             expect(trProviders.toString()).to.eq(newTrustedProviders.toString());
         });
 
+    });
+
+    describe("minimum turnout", () => {
+        it("should set minTurnoutBIPS", async () => {
+            await priceStore.setMinTurnoutBIPS(1234, { from: governance });
+            assertWeb3Equal(await priceStore.minTurnoutBIPS(), 1234);
+        });
+
+        it("only governance can set minTurnoutBIPS", async () => {
+            await expectRevert.custom(priceStore.setMinTurnoutBIPS(1234, { from: accounts[15] }), "OnlyGovernance", []);
+        });
+
+        it("should revert if minTurnoutBIPS is set to higher than MAX_BIPS", async () => {
+            await expectRevert.custom(priceStore.setMinTurnoutBIPS(MAX_BIPS + 1, { from: governance }), "MinTurnoutTooBig", []);
+            // but MAX_BIPS works
+            await priceStore.setMinTurnoutBIPS(MAX_BIPS, { from: governance });
+        });
+
+        it("should publish all prices if turnout is high enough", async () => {
+            await priceStore.setMinTurnoutBIPS(6000, { from: governance });
+            const feed0: PriceFeed = { votingRoundId: 1, id: feedIds[0], value: 1234, turnoutBIPS: 6000, decimals: 5 };
+            const feed1: PriceFeed = { votingRoundId: 1, id: feedIds[1], value: 12345, turnoutBIPS: 6000, decimals: 5 };
+            const res = await publishPriceFeeds(feed0, feed1);
+            expectEvent.notEmitted(res, "LowTurnoutForFeed");
+            assertWeb3Equal((await priceStore.getPrice("FLR"))[0], 1234);
+            assertWeb3Equal((await priceStore.getPrice("USDC"))[0], 12345);
+        });
+
+        it("should only publish prices for which turnout is high enough", async () => {
+            await priceStore.setMinTurnoutBIPS(6000, { from: governance });
+            // init prices
+            const feed0: PriceFeed = { votingRoundId: 1, id: feedIds[0], value: 1000, turnoutBIPS: 10000, decimals: 5 };
+            const feed1: PriceFeed = { votingRoundId: 1, id: feedIds[1], value: 1001, turnoutBIPS: 10000, decimals: 5 };
+            await publishPriceFeeds(feed0, feed1);
+            // change prices (only second feed has turnout high enough)
+            const feed0_1: PriceFeed = { votingRoundId: 2, id: feedIds[0], value: 2000, turnoutBIPS: 5999, decimals: 5 };
+            const feed1_1: PriceFeed = { votingRoundId: 2, id: feedIds[1], value: 2001, turnoutBIPS: 6000, decimals: 5 };
+            const res1 = await publishPriceFeeds(feed0_1, feed1_1);
+            expectEvent(res1, "LowTurnoutForFeed", { feedId: feedIds[0].padEnd(66, "0"), votingRoundId: 2, turnoutBIPS: 5999 });
+            assert.equal(filterEvents(res1, "LowTurnoutForFeed").length, 1);
+            assertWeb3Equal((await priceStore.getPrice("FLR"))[0], 1000);
+            assertWeb3Equal((await priceStore.getPrice("USDC"))[0], 2001);
+        });
+    });
+
+    describe("upgrade", () => {
         it("should update contract addresses", async () => {
             await contracts.addressUpdater.update(["AddressUpdater", "Relay"],
                 [accounts[79], accounts[80]],
@@ -640,13 +705,23 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         });
     });
 
+    type PriceFeed = Parameters<FtsoV2PriceStoreInstance["publishPrices"]>[0][0]["body"];
+
     async function publishPrices(increaseTime = true, votingRound1: number = 1, votingRound2: number = 1, feedId1: string = feedIds[0], feedId2: string = feedIds[1], value1: number = 123123, value2: number = 123456, decimals1: number = feedDecimals[0], decimals2: number = feedDecimals[1], zeroRoot: boolean = false) {
+        const feed0: PriceFeed = { votingRoundId: votingRound1, id: feedId1, value: value1, turnoutBIPS: 10000, decimals: decimals1 };
+        const feed1: PriceFeed = { votingRoundId: votingRound2, id: feedId2, value: value2, turnoutBIPS: 10000, decimals: decimals2 };
+        await publishPriceFeeds(feed0, feed1, increaseTime, votingRound1, zeroRoot);
+    }
+
+    function endOfRevealTime(votingRound: number) {
+        return startTs + (votingRound + 1) * votingEpochDurationSeconds + votingEpochDurationSeconds / 2;
+    }
+
+    async function publishPriceFeeds(feed0: PriceFeed, feed1: PriceFeed, increaseTime: boolean = true, votingRound: number = Number(feed0.votingRoundId), zeroRoot: boolean = false) {
         if (increaseTime) {
-            // increase time to the end of reveal time and submission window of voting round 1
-            await time.increaseTo(startTs + (votingRound1 + 1) * votingEpochDurationSeconds + votingEpochDurationSeconds / 2);
+            // increase time to the end of reveal time and submission window of voting round
+            await time.increaseTo(endOfRevealTime(votingRound));
         }
-        const feed0 = { votingRoundId: votingRound1, id: feedId1, value: value1, turnoutBIPS: 10000, decimals: decimals1 };
-        const feed1 = { votingRoundId: votingRound2, id: feedId2, value: value2, turnoutBIPS: 10000, decimals: decimals2 };
 
         const leaf0 = web3.utils.keccak256(web3.eth.abi.encodeParameters(
             ["tuple(uint32,bytes21,int32,uint16,int8)"], // IFtsoFeedPublisher.Feed (uint32 votingRoundId, bytes21 id, int32 value, uint16 turnoutBIPS, int8 decimals)
@@ -665,19 +740,18 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
         if (zeroRoot) {
             await relayMock.givenCalldataReturn(
-                web3.eth.abi.encodeFunctionCall({ type: "function", name: "merkleRoots", inputs: [{ name: "_protocolId", type: "uint256" }, { name: "_votingRoundId", type: "uint256" }] } as AbiItem, [String(ftsoScalingProtocolId), String(votingRound1)]),
+                web3.eth.abi.encodeFunctionCall({ type: "function", name: "merkleRoots", inputs: [{ name: "_protocolId", type: "uint256" }, { name: "_votingRoundId", type: "uint256" }] } as AbiItem, [String(ftsoScalingProtocolId), String(votingRound)]),
                 web3.eth.abi.encodeParameter("bytes32", "0x" + "00".repeat(32))
             );
-        }
-        else {
+        } else {
             await relayMock.givenCalldataReturn(
-                web3.eth.abi.encodeFunctionCall({ type: "function", name: "merkleRoots", inputs: [{ name: "_protocolId", type: "uint256" }, { name: "_votingRoundId", type: "uint256" }] } as AbiItem, [String(ftsoScalingProtocolId), String(votingRound1)]),
+                web3.eth.abi.encodeFunctionCall({ type: "function", name: "merkleRoots", inputs: [{ name: "_protocolId", type: "uint256" }, { name: "_votingRoundId", type: "uint256" }] } as AbiItem, [String(ftsoScalingProtocolId), String(votingRound)]),
                 web3.eth.abi.encodeParameter("bytes32", merkleRoot)
             );
         }
 
         const tx = await priceStore.publishPrices([{ proof: [leaf1], body: feed0 }, { proof: [leaf0], body: feed1 }]);
         console.log(`publishPrices gas used: ${tx.receipt.gasUsed}`);   // eslint-disable-line @typescript-eslint/no-unsafe-member-access
+        return tx;
     }
-
 });
