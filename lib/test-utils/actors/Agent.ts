@@ -374,28 +374,29 @@ export class Agent extends AssetContextClient {
     }
 
     async confirmActiveRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string) {
-        const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
-        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerWorkAddress });
+        const res = await this.confirmRedemptionPayment(transactionHash, request);
         return requiredEventArgs(res, 'RedemptionPerformed');
     }
 
     async confirmDefaultedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string) {
-        const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
-        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerWorkAddress });
+        const res = await this.confirmRedemptionPayment(transactionHash, request);
         checkEventNotEmited(res, 'RedemptionPerformed');
-        return res;
+        return requiredEventArgs(res, 'RedemptionPaymentFailed');
     }
 
     async confirmFailedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string): Promise<[redemptionPaymentFailed: EventArgs<RedemptionPaymentFailed>, redemptionDefault: EventArgs<RedemptionDefault>]> {
-        const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
-        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerWorkAddress });
+        const res = await this.confirmRedemptionPayment(transactionHash, request);
         return [requiredEventArgs(res, 'RedemptionPaymentFailed'), requiredEventArgs(res, 'RedemptionDefault')];
     }
 
     async confirmBlockedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string) {
-        const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
-        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerWorkAddress });
+        const res = await this.confirmRedemptionPayment(transactionHash, request);
         return requiredEventArgs(res, 'RedemptionPaymentBlocked');
+    }
+
+    async confirmRedemptionPayment(transactionHash: string, request: EventArgs<RedemptionRequested>) {
+        const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
+        return await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerWorkAddress });
     }
 
     async redemptionPaymentDefault(request: EventArgs<RedemptionRequested>) {

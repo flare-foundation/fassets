@@ -182,18 +182,22 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA) - request.underlyingFeeUBA;
         if (_payment.data.responseBody.status == TransactionAttestation.PAYMENT_FAILED) {
             return (false, "transaction failed");
-        } else if (_payment.data.responseBody.intendedReceivingAddressHash != request.redeemerUnderlyingAddressHash) {
+        }
+        if (_payment.data.responseBody.intendedReceivingAddressHash != request.redeemerUnderlyingAddressHash) {
             return (false, "not redeemer's address");
-        } else if (_payment.data.responseBody.receivedAmount < int256(paymentValueUBA)) { // paymentValueUBA < 2**128
+        }
+        if (_payment.data.responseBody.receivedAmount < int256(paymentValueUBA)) { // paymentValueUBA < 2**128
             // for blocked payments, receivedAmount == 0, but it's still receiver's fault
             if (_payment.data.responseBody.status != TransactionAttestation.PAYMENT_BLOCKED) {
                 return (false, "redemption payment too small");
             }
-        } else if (!request.transferToCoreVault &&
+        }
+        if (!request.transferToCoreVault &&
             _payment.data.responseBody.blockNumber > request.lastUnderlyingBlock &&
             _payment.data.responseBody.blockTimestamp > request.lastUnderlyingTimestamp) {
             return (false, "redemption payment too late");
-        } else if (request.status == Redemption.Status.DEFAULTED) {
+        }
+        if (request.status == Redemption.Status.DEFAULTED) {
             // Redemption is already defaulted, although the payment was not too late.
             // This indicates a problem in FDC, which gives proofs of both valid payment and nonpayment,
             // but we cannot solve it here. So we just return as failed and the off-chain code should alert.

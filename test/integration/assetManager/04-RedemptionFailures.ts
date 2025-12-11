@@ -106,6 +106,34 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await agent.exitAndDestroy(fullAgentCollateral);
         });
 
+        it("mint and redeem f-assets - payment blocked after default", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            // make agent available
+            await agent.depositCollateralLotsAndMakeAvailable(10);
+            // mine a block to skip the agent creation time
+            mockChain.mine();
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 3;
+            const lotsUBA = context.convertLotsToUBA(lots);
+            const [minted] = await minter.performMinting(agent.vaultAddress, lots);
+            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: lotsUBA.add(minted.poolFeeUBA), reservedUBA: 0 });
+            // redeemer "buys" f-assets
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            // start and default redemption
+            const [redemptionRequests] = await redeemer.requestRedemption(lots);
+            const request = redemptionRequests[0];
+            context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+            await redeemer.redemptionPaymentDefault(request);
+            // now agent pays but they're blocked
+            const tx1Hash = await agent.performRedemptionPayment(request, { status: TX_BLOCKED });
+            // since payment was late, it is considered FAILED even though it is blocked
+            const failed = await agent.confirmDefaultedRedemptionPayment(request, tx1Hash);
+            assert.equal(failed.failureReason, "redemption payment too late");
+        });
+
         it("mint and redeem defaults (agent) - no underlying payment", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -631,8 +659,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(startPoolBalanceAgent.sub(endPoolBalanceAgent), res.redeemedPoolCollateralWei);
             // perform too late redemption payment
             const tx1Hash = await agent.performRedemptionPayment(request);
-            const tx = await agent.confirmDefaultedRedemptionPayment(request, tx1Hash);
-            assert.equal(requiredEventArgs(tx, "RedemptionPaymentFailed").failureReason, "redemption payment too late");
+            const rdFailed = await agent.confirmDefaultedRedemptionPayment(request, tx1Hash);
+            assert.equal(rdFailed.failureReason, "redemption payment too late");
             await agent.checkAgentInfo({
                 totalVaultCollateralWei: fullAgentCollateral.sub(res.redeemedVaultCollateralWei),
                 freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.feeUBA), mintedUBA: minted.poolFeeUBA, redeemingUBA: 0
