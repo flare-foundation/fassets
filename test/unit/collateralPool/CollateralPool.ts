@@ -102,6 +102,11 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await loadFixtureCopyVars(initialize));
     });
 
+    after(async () => {
+        // apparently fixture does not work correctly with impersonate contract, so we cannot stop impersonating in every afterEach
+        await stopImpersonatingContract(assetManager.address);
+    });
+
     async function poolFAssetFeeNatValue() {
         const poolFAssetFees = await collateralPool.totalFAssetFees();
         const { 0: assetPriceMul, 1: assetPriceDiv } = await assetManager.assetPriceNatWei();
@@ -529,23 +534,6 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(collateral, ETH(10));
         });
 
-        it("should enter tokenless and f-assetless pool holding some collateral", async () => {
-            // artificially make pool have no tokens but have collateral (this might not be possible with non-mocked asset manager)
-            await agentVault.enterPool(collateralPool.address, { value: ETH(10) });
-            const assetManagerPayout = abiEncodeCall(collateralPool, (p) => p.payout(accounts[0], 0, ETH(10)));
-            await assetManager.callFunctionAt(collateralPool.address, assetManagerPayout);
-            assertEqualBN(await collateralPoolToken.totalSupply(), BN_ZERO);
-            assertEqualBN(await wNat.balanceOf(collateralPool.address), ETH(10));
-            await wNat.mintAmount(accounts[0], ETH(10));
-            const prms = collateralPool.enter({ value: ETH(10).subn(1) });
-            await expectRevert.custom(prms, "AmountOfCollateralTooLow", []);
-            await collateralPool.enter({ value: ETH(10) });
-            assertEqualBN(await collateralPoolToken.debtFreeBalanceOf(accounts[0]), ETH(10));
-            assertEqualBN(await collateralPoolToken.totalSupply(), ETH(10));
-            assertEqualBN(await wNat.balanceOf(collateralPool.address), ETH(20));
-            assertEqualBN(await collateralPool.totalCollateral(), ETH(20));
-        });
-
         it("should enter the topuped pool without f-assets, then pay off the debt", async () => {
             // mint required f-assets beforehand
             const initialPoolFassets = ETH(5);
@@ -580,30 +568,54 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(freeFassetsAfter, debtFassets);
         });
 
-        it.only("should not enter if nat balance to token supply is too small", async () => {
+        it("should not enter if nat balance iz zero and token supply is nonzero", async () => {
             const user1 = accounts[50];
             const user2 = accounts[51];
             await collateralPool.enter({ value: ETH(1), from: user1 });
             //Mint collateral pool tokens to increase total supply
-            await impersonateContract(assetManager.address, ETH(1), accounts[0]);
-            await collateralPool.payout(accounts[20], ETH(1).subn(1), 0, { from: assetManager.address });
-            await stopImpersonatingContract(assetManager.address);
+            await collateralPool.payout(accounts[20], ETH(1), 0, { from: assetManager.address });
             console.log(`balance=${await wNat.balanceOf(collateralPool.address)} tracked=${await collateralPool.totalCollateral()} tokensSupply=${await collateralPoolToken.totalSupply()}`);
-            await collateralPool.enter({ value: ETH(1), from: user2 });
+            await expectRevert.custom(collateralPool.enter({ value: ETH(1), from: user2 }), "CollateralToTokenRatioTooLow", []);
             console.log(`tokens1=${await collateralPoolToken.balanceOf(user1)} tokens2=${await collateralPoolToken.balanceOf(user2)}`);
             console.log(`balance=${await wNat.balanceOf(collateralPool.address)} tracked=${await collateralPool.totalCollateral()} tokensSupply=${await collateralPoolToken.totalSupply()}`);
         });
 
-        it.only("should not enter if token supply to nat balance is too small", async () => {
+        it("should not enter if nat balance iz nonzero and token supply is zero", async () => {
             const user1 = accounts[50];
             const user2 = accounts[51];
             await collateralPool.enter({ value: ETH(10), from: user1 });
             //Mint collateral pool tokens to increase total supply
-            await impersonateContract(collateralPool.address, ETH(1), accounts[0]);
-            await collateralPoolToken.burn(user1, ETH(10).subn(1), true, { from: collateralPool.address });
+            await impersonateContract(collateralPool.address, toBNExp(1000, 18), accounts[0]);
+            await collateralPoolToken.burn(user1, ETH(10), true, { from: collateralPool.address });
             await stopImpersonatingContract(collateralPool.address);
             console.log(`balance=${await wNat.balanceOf(collateralPool.address)} tracked=${await collateralPool.totalCollateral()} tokensSupply=${await collateralPoolToken.totalSupply()}`);
-            await collateralPool.enter({ value: ETH(5), from: user2 });
+            await expectRevert.custom(collateralPool.enter({ value: ETH(5), from: user2 }), "CollateralToTokenRatioTooHigh", []);
+            console.log(`tokens1=${await collateralPoolToken.balanceOf(user1)} tokens2=${await collateralPoolToken.balanceOf(user2)}`);
+            console.log(`balance=${await wNat.balanceOf(collateralPool.address)} tracked=${await collateralPool.totalCollateral()} tokensSupply=${await collateralPoolToken.totalSupply()}`);
+        });
+
+        it("should not enter if nat balance to token supply is too small", async () => {
+            const user1 = accounts[50];
+            const user2 = accounts[51];
+            await collateralPool.enter({ value: ETH(1), from: user1 });
+            //Mint collateral pool tokens to increase total supply
+            await collateralPool.payout(accounts[20], ETH(0.995), 0, { from: assetManager.address });
+            console.log(`balance=${await wNat.balanceOf(collateralPool.address)} tracked=${await collateralPool.totalCollateral()} tokensSupply=${await collateralPoolToken.totalSupply()}`);
+            await expectRevert.custom(collateralPool.enter({ value: ETH(1), from: user2 }), "CollateralToTokenRatioTooLow", []);
+            console.log(`tokens1=${await collateralPoolToken.balanceOf(user1)} tokens2=${await collateralPoolToken.balanceOf(user2)}`);
+            console.log(`balance=${await wNat.balanceOf(collateralPool.address)} tracked=${await collateralPool.totalCollateral()} tokensSupply=${await collateralPoolToken.totalSupply()}`);
+        });
+
+        it("should not enter if token supply to nat balance is too small", async () => {
+            const user1 = accounts[50];
+            const user2 = accounts[51];
+            await collateralPool.enter({ value: ETH(10), from: user1 });
+            //Mint collateral pool tokens to increase total supply
+            await impersonateContract(collateralPool.address, toBNExp(1000, 18), accounts[0]);
+            await collateralPoolToken.burn(user1, ETH(9.95), true, { from: collateralPool.address });
+            await stopImpersonatingContract(collateralPool.address);
+            console.log(`balance=${await wNat.balanceOf(collateralPool.address)} tracked=${await collateralPool.totalCollateral()} tokensSupply=${await collateralPoolToken.totalSupply()}`);
+            await expectRevert.custom(collateralPool.enter({ value: ETH(5), from: user2 }), "CollateralToTokenRatioTooHigh", []);
             console.log(`tokens1=${await collateralPoolToken.balanceOf(user1)} tokens2=${await collateralPoolToken.balanceOf(user2)}`);
             console.log(`balance=${await wNat.balanceOf(collateralPool.address)} tracked=${await collateralPool.totalCollateral()} tokensSupply=${await collateralPoolToken.totalSupply()}`);
         });

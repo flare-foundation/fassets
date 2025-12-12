@@ -36,6 +36,8 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     }
 
     uint256 public constant MIN_NAT_TO_ENTER = 1 ether;
+    uint256 public constant MAX_TOKEN_TO_COLLATERAL_RATIO_ON_ENTER = 100;
+    uint256 public constant MAX_COLLATERAL_TO_TOKEN_RATIO_ON_ENTER = 100;
     uint256 public constant MIN_TOKEN_SUPPLY_AFTER_EXIT = 1 ether;
     uint256 public constant MIN_NAT_BALANCE_AFTER_EXIT = 1 ether;
 
@@ -142,15 +144,19 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
     {
         require(msg.value >= MIN_NAT_TO_ENTER, AmountOfNatTooLow());
         uint256 totalPoolTokens = token.totalSupply();
+        require(totalPoolTokens <= totalCollateral * MAX_TOKEN_TO_COLLATERAL_RATIO_ON_ENTER,
+            CollateralToTokenRatioTooLow());
+        require(totalCollateral <= totalPoolTokens * MAX_COLLATERAL_TO_TOKEN_RATIO_ON_ENTER,
+            CollateralToTokenRatioTooHigh());
         if (totalPoolTokens == 0) {
-            // this conditions are set for keeping a stable token value
-            require(msg.value >= totalCollateral, AmountOfCollateralTooLow());
+            // if the pool is empty of tokens and collateral but contains fees, the new entrant can claim them,
+            // but must add enough collateral so that ratio fees/tokens stays normal for future fees
             AssetPrice memory assetPrice = _getAssetPrice();
             require(msg.value >= totalFAssetFees.mulDiv(assetPrice.mul, assetPrice.div), AmountOfCollateralTooLow());
         }
         // calculate obtained pool tokens and free f-assets
         uint256 tokenShare = _collateralToTokenShare(msg.value);
-        require(tokenShare > 0, DepositResultsInZeroTokens());
+        assert(tokenShare > 0);     // should never be 0 because of the three requires at the start of the method
         // calculate and create fee debt
         uint256 feeDebt = totalPoolTokens > 0 ? _totalVirtualFees().mulDiv(tokenShare, totalPoolTokens) : 0;
         _createFAssetFeeDebt(msg.sender, feeDebt);
@@ -433,9 +439,12 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         returns (uint256)
     {
         uint256 totalPoolTokens = token.totalSupply();
-        if (totalCollateral == 0 || totalPoolTokens == 0) { // pool is empty
+        if (totalCollateral == 0 && totalPoolTokens == 0) { // pool is empty
             return _collateral;
         }
+        // This can in principle result in DivisionByZero, but in practice it will never happen
+        // because the method enter() that calls this takes care that ratios tokens/collateral and
+        // collateral/tokens are limited.
         return totalPoolTokens.mulDiv(_collateral, totalCollateral);
     }
 

@@ -54,6 +54,8 @@ interface ICollateralPool {
     error PoolTokenAlreadySet();
     error AmountOfNatTooLow();
     error AmountOfCollateralTooLow();
+    error CollateralToTokenRatioTooLow();
+    error CollateralToTokenRatioTooHigh();
     error DepositResultsInZeroTokens();
     error TokenShareIsZero();
     error TokenBalanceTooLow();
