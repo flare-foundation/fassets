@@ -16,7 +16,6 @@ import {Redemption} from "./data/Redemption.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {Globals} from "./Globals.sol";
 import {Conversion} from "./Conversion.sol";
-import {ICoreVaultClient} from "../../userInterfaces/ICoreVaultClient.sol";
 
 
 library CoreVaultClient {
