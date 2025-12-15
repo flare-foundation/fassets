@@ -13,7 +13,6 @@ import {IGoverned} from "../../governance/interfaces/IGoverned.sol";
 abstract contract AssetManagerBase {
     error OnlyAssetManagerController();
     error NotAttached();
-    error NotWhitelisted();
     error EmergencyPauseActive();
     error OnlyImmediateGovernanceOrExecutor();
 

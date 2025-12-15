@@ -26,7 +26,6 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     error ZeroAssetManager();
     error CannotReplaceAssetManager();
     error OnlyCleanupBlockManager();
-    error FAssetTerminated();
     error FAssetBalanceTooLow();
     error CannotTransferToSelf();
     error EmergencyPauseOfTransfersActive();

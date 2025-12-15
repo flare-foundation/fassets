@@ -36,8 +36,6 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
     error WithdrawalValueTooHigh();
 
     error OnlyAgentVaultOrPool();
-    error CollateralWithdrawalAnnounced();
-    error FAssetNotTerminated();
 
     /**
      * Agent is going to withdraw `_valueNATWei` amount of collateral from agent vault.

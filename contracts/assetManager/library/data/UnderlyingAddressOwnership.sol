@@ -3,8 +3,6 @@ pragma solidity ^0.8.27;
 
 
 library UnderlyingAddressOwnership {
-    error InvalidAddressOwnershipProof();
-    error EOAProofRequired();
     error AddressAlreadyClaimed();
 
     struct Ownership {

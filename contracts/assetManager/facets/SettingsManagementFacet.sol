@@ -36,7 +36,6 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
     error BipsValueTooLow();
     error MustBeAtLeastTwoHours();
     error WindowTooSmall();
-    error ConfirmationTimeTooBig();
 
     struct UpdaterState {
         mapping (bytes4 => uint256) lastUpdate;
