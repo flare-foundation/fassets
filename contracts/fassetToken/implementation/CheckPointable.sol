@@ -33,12 +33,6 @@ abstract contract CheckPointable is IICheckPointable {
     // Address of the contract that is allowed to call methods for history cleaning.
     address public cleanerContract;
 
-    /**
-     * Emitted when a total supply cache entry is created.
-     * Allows history cleaners to track total supply cache cleanup opportunities off-chain.
-     */
-    event CreatedTotalSupplyCache(uint256 _blockNumber);
-
     // Most cleanup opportunities can be deduced from standard event
     // Transfer(from, to, amount):
     //   - balance history for `from` (if nonzero) and `to` (if nonzero)
