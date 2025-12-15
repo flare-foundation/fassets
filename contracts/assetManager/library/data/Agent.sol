@@ -137,8 +137,8 @@ library Agent {
         WithdrawalAnnouncement poolTokenWithdrawalAnnouncement;
 
         // Underlying block when the agent was created.
-        // Challenger's should track underlying address activity since this block
-        // and topups are only valid after this block (both inclusive).
+        // Challengers should track underlying address activity since this block
+        // and topups/self mint payments are only valid strictly after this block.
         uint64 underlyingBlockAtCreation;
 
         // The time when ongoing agent vault destroy was announced.
