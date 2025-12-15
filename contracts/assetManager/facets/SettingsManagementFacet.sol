@@ -56,7 +56,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         // update assetManagerController
         if (settings.assetManagerController != _controller) {
             settings.assetManagerController = _controller;
-            emit ContractChanged("assetManagerController", address(_controller));
+            emit ContractChanged("assetManagerController", _controller);
         }
         // update wNat
         IWNat oldWNat = Globals.getWNat();
