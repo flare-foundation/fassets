@@ -48,7 +48,7 @@ interface IAgentVault {
     /**
      * Buy collateral pool tokens for NAT.
      * Holding enough pool tokens in the vault is required for minting.
-     * NOTE: anybody can call this method, to allow the owner to deposit from any source.
+     * NOTE: only the owner of the agent vault may call this method.
      */
     function buyCollateralPoolTokens() external payable;
 
