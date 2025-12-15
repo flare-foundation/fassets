@@ -11,7 +11,7 @@ import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation"
 import { calculateReceivedNat } from "../../../lib/test-utils/eth";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
-import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
+import { ether, expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
@@ -811,5 +811,14 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const fassetsUser2 = await context.fAsset.balanceOf(user2);
         assertWeb3Equal(fassetsUser, userFassetFees);
         assertWeb3Equal(fassetsUser2, user2FassetFees);
+    });
+
+    it("should not enter pool after destroy", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        await agent.depositCollateralLotsAndMakeAvailable(10);
+        await agent.exitAndDestroy();
+        // try to enter pool
+        await expectRevert.custom(agent.collateralPool.enter({ from: minterAddress1, value: ether(100) }),
+            "InvalidAgentVaultAddress", []);
     });
 });

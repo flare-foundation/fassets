@@ -1291,6 +1291,24 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             trace({ agentSlashed }, { maxDecimals: 18 });
             assertEqualBN(agentSlashed, expectedPayout);
         });
+
+        it("should clear total collateral and total fees on destroy", async () => {
+            const natAmount = ETH(3);
+            const feeAmount = ETH(2);
+            // put some collateral and fees in pool
+            await collateralPool.depositNat({ value: natAmount, from: assetManager.address });
+            await fAsset.mint(collateralPool.address, feeAmount, { from: assetManager.address });
+            await collateralPool.fAssetFeeDeposited(feeAmount, { from: assetManager.address });
+            // destroy - should drain balance and clear variables
+            await collateralPool.destroy(accounts[10], { from: assetManager.address });
+            // check
+            assertEqualBN(await wNat.balanceOf(collateralPool.address), toBN(0));
+            assertEqualBN(await wNat.balanceOf(accounts[10]), natAmount);
+            assertEqualBN(await fAsset.balanceOf(collateralPool.address), toBN(0));
+            assertEqualBN(await fAsset.balanceOf(accounts[10]), feeAmount);
+            assertEqualBN(await collateralPool.totalCollateral(), toBN(0));
+            assertEqualBN(await collateralPool.totalFAssetFees(), toBN(0));
+        });
     });
 
     describe("distribution claiming and wnat delegation", () => {

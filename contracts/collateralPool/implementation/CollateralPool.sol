@@ -802,6 +802,9 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         if (untrackedFAsset > 0) {
             fAsset.safeTransfer(_recipient, untrackedFAsset);
         }
+        // reset tracked nat and fees if it isn't 0 already (shouldn't happen)
+        totalCollateral = 0;
+        totalFAssetFees = 0;
     }
 
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
