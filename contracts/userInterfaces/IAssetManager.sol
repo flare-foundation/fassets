@@ -851,7 +851,7 @@ interface IAssetManager is
      * among the first `maxRedeemedTickets` tickets.
      * To fix this, call this method. It converts small tickets to dust and when the dust exceeds one lot
      * adds it to the ticket.
-     * Since the method just cleans the redemption queue it can be called by anybody.
+     * NOTE: this method can be called by the governance or its executor.
      * @param _firstTicketId if nonzero, the ticket id of starting ticket; if zero, the starting ticket will
      *   be the redemption queue's first ticket id.
      *   When the method finishes, it emits RedemptionTicketsConsolidated event with the nextTicketId
