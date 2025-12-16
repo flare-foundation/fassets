@@ -132,7 +132,7 @@ library RedemptionDefaults {
                 Collateral.Data memory cdPool = AgentCollateral.poolCollateralData(_agent);
                 uint256 maxPoolWei = cdPool.maxRedemptionCollateral(_agent, _request.valueAMG);
                 uint256 extraPoolAmg = uint256(_request.valueAMG)
-                    .mulDivRoundUp(_vaultCollateralWei - maxVaultCollateralWei, _vaultCollateralWei);
+                    .mulDiv(_vaultCollateralWei - maxVaultCollateralWei, _vaultCollateralWei);
                 _vaultCollateralWei = maxVaultCollateralWei;
                 _poolWei = Conversion.convertAmgToTokenWei(extraPoolAmg, cdPool.amgToTokenWeiPrice);
                 // if there is not enough collateral in the pool, just reduce the payment - however this is not likely,
