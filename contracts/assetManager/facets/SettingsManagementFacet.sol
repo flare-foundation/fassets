@@ -206,9 +206,9 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
-        require(_rewardUSD5 <= (settings.paymentChallengeRewardUSD5 * 4) + 100e5, IncreaseTooBig());
+        require(_rewardUSD5 <= (settings.paymentChallengeRewardUSD5 * uint256(4)) + 100e5, IncreaseTooBig());
         require(_rewardUSD5 >= (settings.paymentChallengeRewardUSD5) / 4, DecreaseTooBig());
-        require(_rewardBIPS <= (settings.paymentChallengeRewardBIPS * 4) + 100, IncreaseTooBig());
+        require(_rewardBIPS <= (settings.paymentChallengeRewardBIPS * uint256(4)) + 100, IncreaseTooBig());
         require(_rewardBIPS >= (settings.paymentChallengeRewardBIPS) / 4, DecreaseTooBig());
         // update
         settings.paymentChallengeRewardUSD5 = _rewardUSD5.toUint128();
@@ -240,7 +240,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         // huge lot size increase is very dangerous, because it breaks redemption
         // (converts all tickets to dust)
         require(_value > 0, CannotBeZero());
-        require(_value <= settings.lotSizeAMG * 10, LotSizeIncreaseTooBig());
+        require(_value <= settings.lotSizeAMG * uint256(10), LotSizeIncreaseTooBig());
         require(_value >= settings.lotSizeAMG / 10, LotSizeDecreaseTooBig());
         require(settings.mintingCapAMG == 0 || settings.mintingCapAMG >= _value,
             LotSizeBiggerThanMintingCap());
@@ -257,7 +257,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
         require(_value > 0, CannotBeZero());
-        require(_value <= settings.maxTrustedPriceAgeSeconds * 2, FeeIncreaseTooBig());
+        require(_value <= settings.maxTrustedPriceAgeSeconds * uint256(2), FeeIncreaseTooBig());
         require(_value >= settings.maxTrustedPriceAgeSeconds / 2, FeeDecreaseTooBig());
         // update
         settings.maxTrustedPriceAgeSeconds = _value.toUint64();
@@ -273,7 +273,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         // validate
         require(_value > 0, CannotBeZero());
         require(_value < SafePct.MAX_BIPS, BipsValueTooHigh());
-        require(_value <= settings.collateralReservationFeeBIPS * 4, FeeIncreaseTooBig());
+        require(_value <= settings.collateralReservationFeeBIPS * uint256(4), FeeIncreaseTooBig());
         require(_value >= settings.collateralReservationFeeBIPS / 4, FeeDecreaseTooBig());
         // update
         settings.collateralReservationFeeBIPS = _value.toUint16();
@@ -289,7 +289,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         // validate
         require(_value > 0, CannotBeZero());
         require(_value < SafePct.MAX_BIPS, BipsValueTooHigh());
-        require(_value <= settings.redemptionFeeBIPS * 4, FeeIncreaseTooBig());
+        require(_value <= settings.redemptionFeeBIPS * uint256(4), FeeIncreaseTooBig());
         require(_value >= settings.redemptionFeeBIPS / 4, FeeDecreaseTooBig());
         // update
         settings.redemptionFeeBIPS = _value.toUint16();
@@ -335,7 +335,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
         require(_value > 0, CannotBeZero());
-        require(_value <= settings.confirmationByOthersRewardUSD5 * 4, FeeIncreaseTooBig());
+        require(_value <= settings.confirmationByOthersRewardUSD5 * uint256(4), FeeIncreaseTooBig());
         require(_value >= settings.confirmationByOthersRewardUSD5 / 4, FeeDecreaseTooBig());
         // update
         settings.confirmationByOthersRewardUSD5 = _value.toUint128();
@@ -350,7 +350,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
         require(_value > 0, CannotBeZero());
-        require(_value <= settings.maxRedeemedTickets * 2, IncreaseTooBig());
+        require(_value <= settings.maxRedeemedTickets * uint256(2), IncreaseTooBig());
         require(_value >= settings.maxRedeemedTickets / 4, DecreaseTooBig());
         // update
         settings.maxRedeemedTickets = _value.toUint16();
@@ -393,7 +393,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
         require(_value > 0, CannotBeZero());
-        require(_value <= settings.averageBlockTimeMS * 2, IncreaseTooBig());
+        require(_value <= settings.averageBlockTimeMS * uint256(2), IncreaseTooBig());
         require(_value >= settings.averageBlockTimeMS / 2, DecreaseTooBig());
         // update
         settings.averageBlockTimeMS = _value.toUint32();
@@ -407,7 +407,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
-        require(_value <= settings.mintingPoolHoldingsRequiredBIPS * 4 + SafePct.MAX_BIPS, ValueTooBig());
+        require(_value <= settings.mintingPoolHoldingsRequiredBIPS * uint256(4) + SafePct.MAX_BIPS, ValueTooBig());
         // update
         settings.mintingPoolHoldingsRequiredBIPS = _value.toUint32();
         emit SettingChanged("mintingPoolHoldingsRequiredBIPS", _value);
@@ -446,7 +446,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
-        require(_value <= settings.agentExitAvailableTimelockSeconds * 4 + 1 weeks, ValueTooBig());
+        require(_value <= settings.agentExitAvailableTimelockSeconds * uint256(4) + 1 weeks, ValueTooBig());
         // update
         settings.agentExitAvailableTimelockSeconds = _value.toUint64();
         emit SettingChanged("agentExitAvailableTimelockSeconds", _value);
@@ -459,7 +459,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
-        require(_value <= settings.agentFeeChangeTimelockSeconds * 4 + 1 days, ValueTooBig());
+        require(_value <= settings.agentFeeChangeTimelockSeconds * uint256(4) + 1 days, ValueTooBig());
         // update
         settings.agentFeeChangeTimelockSeconds = _value.toUint64();
         emit SettingChanged("agentFeeChangeTimelockSeconds", _value);
@@ -472,7 +472,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
-        require(_value <= settings.agentMintingCRChangeTimelockSeconds * 4 + 1 days, ValueTooBig());
+        require(_value <= settings.agentMintingCRChangeTimelockSeconds * uint256(4) + 1 days, ValueTooBig());
         // update
         settings.agentMintingCRChangeTimelockSeconds = _value.toUint64();
         emit SettingChanged("agentMintingCRChangeTimelockSeconds", _value);
@@ -485,7 +485,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
-        require(_value <= settings.poolExitCRChangeTimelockSeconds * 4 + 1 days, ValueTooBig());
+        require(_value <= settings.poolExitCRChangeTimelockSeconds * uint256(4) + 1 days, ValueTooBig());
         // update
         settings.poolExitCRChangeTimelockSeconds = _value.toUint64();
         emit SettingChanged("poolExitCRChangeTimelockSeconds", _value);
@@ -525,7 +525,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
         require(_stepSeconds > 0, CannotBeZero());
-        require(_stepSeconds <= settings.liquidationStepSeconds * 2, IncreaseTooBig());
+        require(_stepSeconds <= settings.liquidationStepSeconds * uint256(2), IncreaseTooBig());
         require(_stepSeconds >= settings.liquidationStepSeconds / 2, DecreaseTooBig());
         // update
         settings.liquidationStepSeconds = _stepSeconds.toUint64();
@@ -563,7 +563,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
         require(_value > 0, CannotBeZero());
-        require(_value <= settings.maxEmergencyPauseDurationSeconds * 4 + 60, IncreaseTooBig());
+        require(_value <= settings.maxEmergencyPauseDurationSeconds * uint256(4) + 60, IncreaseTooBig());
         require(_value >= settings.maxEmergencyPauseDurationSeconds / 4, DecreaseTooBig());
         // update
         settings.maxEmergencyPauseDurationSeconds = _value.toUint64();
@@ -579,7 +579,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
         require(_value > 0, CannotBeZero());
-        require(_value <= settings.emergencyPauseDurationResetAfterSeconds * 4 + 3600, IncreaseTooBig());
+        require(_value <= settings.emergencyPauseDurationResetAfterSeconds * uint256(4) + 3600, IncreaseTooBig());
         require(_value >= settings.emergencyPauseDurationResetAfterSeconds / 4, DecreaseTooBig());
         // update
         settings.emergencyPauseDurationResetAfterSeconds = _value.toUint64();
