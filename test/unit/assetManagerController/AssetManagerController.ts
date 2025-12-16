@@ -920,6 +920,18 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert.custom(timelock_info, "CannotBeZero", []);
         });
 
+        it("should revert setting min update repeat time when value is too high", async () => {
+            const res = assetManagerController.setMinUpdateRepeatTimeSeconds([assetManager.address], 6 * DAYS, { from: governance });
+            const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
+            await expectRevert.custom(timelock_info, "IncreaseTooBig", []);
+        });
+
+        it("should revert setting min update repeat time when increase is too high", async () => {
+            const res = assetManagerController.setMinUpdateRepeatTimeSeconds([assetManager.address], 10 * DAYS, { from: governance });
+            const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
+            await expectRevert.custom(timelock_info, "ValueTooBig", []);
+        });
+
         it("should set min update repeat time", async () => {
             const res = await assetManagerController.setMinUpdateRepeatTimeSeconds([assetManager.address], toBN(DAYS), { from: governance });
             const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);

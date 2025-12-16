@@ -225,6 +225,8 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // validate
         require(_value > 0, CannotBeZero());
+        require(_value <= 1 weeks, ValueTooBig());
+        require(_value <= settings.minUpdateRepeatTimeSeconds * uint256(4) + 1 days, IncreaseTooBig());
         // update
         settings.minUpdateRepeatTimeSeconds = _value.toUint64();
         emit SettingChanged("minUpdateRepeatTimeSeconds", _value);
