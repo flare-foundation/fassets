@@ -26,7 +26,7 @@ contract AgentInfoFacet is AssetManagerBase {
     using Agents for Agent.State;
 
     /**
-     * Get (a part of) the list of all agents.
+     * Get (a part of) the list of all active (not destroyed) agents.
      * The list must be retrieved in parts since retrieving the whole list can consume too much gas for one block.
      * @param _start first index to return from the available agent's list
      * @param _end end index (one above last) to return from the available agent's list
@@ -135,7 +135,7 @@ contract AgentInfoFacet is AssetManagerBase {
         external view
         returns (IERC20)
     {
-        return Agent.get(_agentVault).getVaultCollateral().token;
+        return Agent.getAllowDestroyed(_agentVault).getVaultCollateral().token;
     }
 
     function getAgentFullVaultCollateral(address _agentVault)
@@ -160,7 +160,7 @@ contract AgentInfoFacet is AssetManagerBase {
             uint256 _maxLiquidationAmountUBA
         )
     {
-        Agent.State storage agent = Agent.get(_agentVault);
+        Agent.State storage agent = Agent.getAllowDestroyed(_agentVault);
         Liquidation.CRData memory cr = Liquidation.getCollateralRatiosBIPS(agent);
         return _getLiquidationFactorsAndMaxAmount(agent, cr);
     }
@@ -183,7 +183,7 @@ contract AgentInfoFacet is AssetManagerBase {
         private view
         returns (uint256)
     {
-        Agent.State storage agent = Agent.get(_agentVault);
+        Agent.State storage agent = Agent.getAllowDestroyed(_agentVault);
         Collateral.Data memory collateral = AgentCollateral.singleCollateralData(agent, _kind);
         return collateral.fullCollateral;
     }
@@ -192,7 +192,7 @@ contract AgentInfoFacet is AssetManagerBase {
         private view
         returns (uint256)
     {
-        Agent.State storage agent = Agent.get(_agentVault);
+        Agent.State storage agent = Agent.getAllowDestroyed(_agentVault);
         (, uint256 sysMinCR) = AgentCollateral.mintingMinCollateralRatio(agent, _kind);
         return sysMinCR;
     }

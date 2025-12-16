@@ -380,7 +380,7 @@ interface IAssetManager is
     // Agent information
 
     /**
-     * Get (a part of) the list of all agents.
+     * Get (a part of) the list of all active (not destroyed) agents.
      * The list must be retrieved in parts since retrieving the whole list can consume too much gas for one block.
      * @param _start first index to return from the available agent's list
      * @param _end end index (one above last) to return from the available agent's list
