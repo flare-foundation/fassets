@@ -85,11 +85,9 @@ interface ICollateralPool {
 
     /**
      * Exits the pool by redeeming the given amount of pool tokens for a share of NAT and f-asset fees.
-     * Exiting with non-transferable tokens awards the user with NAT only, while transferable tokens also entitle
-     * one to a share of f-asset fees. As there are multiple ways to split spending transferable and
-     * non-transferable tokens, the method also takes a parameter called `_exitType`.
-     * Exiting with collateral that sinks pool's collateral ratio below exit CR is not allowed and
-     *  will revert. In that case, see selfCloseExit.
+     * Exiting only returns collateral, the fasset fees must be separately collected by calling `withdrawFees`.
+     * Exiting with collateral that lowers pool's collateral ratio below exit CR is not allowed and
+     * will revert. In that case, see selfCloseExit.
      * @param _tokenShare   The amount of pool tokens to be redeemed
      */
     function exit(uint256 _tokenShare)
@@ -101,13 +99,10 @@ interface ICollateralPool {
      * endanger the pool collateral ratio. Specifically, if pool's collateral ratio is above exit CR, then
      * the method burns an amount of user's f-assets that do not lower collateral ratio below exit CR. If, on
      * the other hand, collateral pool is below exit CR, then the method burns an amount of user's f-assets
-     * that preserve the pool's collateral ratio.
+     * that preserve the pool's collateral ratio. The method always burns fassets from user address even if
+     * the user has some fasset fees in the pool (those can be collected before using selfCloseExit).
      * F-assets will be redeemed in collateral if their value does not exceed one lot, regardless of
      *  `_redeemToCollateral` value.
-     * Method first tries to satisfy the condition by taking f-assets out of sender's f-asset fee share,
-     *  specified by `_tokenShare`. If it is not enough it moves on to spending total sender's f-asset fees. If they
-     *  are not enough, it takes from the sender's f-asset balance. Spending sender's f-asset fees means that
-     *  transferable tokens are converted to non-transferable.
      * In case of self-close via redemption, the user can set executor to trigger possible default.
      * In this case, some NAT can be sent with transaction, to pay the executor's fee.
      * @param _tokenShare                   The amount of pool tokens to be liquidated
@@ -132,11 +127,9 @@ interface ICollateralPool {
 
     /**
      * Exits the pool by redeeming the given amount of pool tokens for a share of NAT and f-asset fees.
-     * Exiting with non-transferable tokens awards the user with NAT only, while transferable tokens also entitle
-     * one to a share of f-asset fees. As there are multiple ways to split spending transferable and
-     * non-transferable tokens, the method also takes a parameter called `_exitType`.
-     * Exiting with collateral that sinks pool's collateral ratio below exit CR is not allowed and
-     *  will revert. In that case, see selfCloseExit.
+     * Exiting only returns collateral, the fasset fees must be separately collected by calling `withdrawFees`.
+     * Exiting with collateral that lowers pool's collateral ratio below exit CR is not allowed and
+     * will revert. In that case, see selfCloseExit.
      * @param _tokenShare   The amount of pool tokens to be redeemed
      * @param _recipient    The address to which NATs and FAsset fees will be transferred
      */
@@ -149,13 +142,10 @@ interface ICollateralPool {
      * endanger the pool collateral ratio. Specifically, if pool's collateral ratio is above exit CR, then
      * the method burns an amount of user's f-assets that do not lower collateral ratio below exit CR. If, on
      * the other hand, collateral pool is below exit CR, then the method burns an amount of user's f-assets
-     * that preserve the pool's collateral ratio.
+     * that preserve the pool's collateral ratio. The method always burns fassets from user address even if
+     * the user has some fasset fees in the pool (those can be collected before using selfCloseExit).
      * F-assets will be redeemed in collateral if their value does not exceed one lot, regardless of
      *  `_redeemToCollateral` value.
-     * Method first tries to satisfy the condition by taking f-assets out of sender's f-asset fee share,
-     *  specified by `_tokenShare`. If it is not enough it moves on to spending total sender's f-asset fees. If they
-     *  are not enough, it takes from the sender's f-asset balance. Spending sender's f-asset fees means that
-     *  transferable tokens are converted to non-transferable.
      * In case of self-close via redemption, the user can set executor to trigger possible default.
      * In this case, some NAT can be sent with transaction, to pay the executor's fee.
      * @param _tokenShare                   The amount of pool tokens to be liquidated
@@ -190,6 +180,8 @@ interface ICollateralPool {
     /**
      * Claim airdrops earned by holding wrapped native tokens in the pool.
      * NOTE: only the owner of the pool's corresponding agent vault may call this method.
+     * @param _distribution the airdrop distribution contract
+     * @param _month the month for which the claim is made
      */
     function claimAirdropDistribution(
         IDistributionToDelegators _distribution,
@@ -200,6 +192,7 @@ interface ICollateralPool {
     /**
      * Opt out of airdrops for wrapped native tokens in the pool.
      * NOTE: only the owner of the pool's corresponding agent vault may call this method.
+     * @param _distribution the airdrop distribution contract
      */
     function optOutOfAirdrop(
         IDistributionToDelegators _distribution
@@ -208,17 +201,22 @@ interface ICollateralPool {
     /**
      * Delegate WNat vote power for the wrapped native tokens held in this vault.
      * NOTE: only the owner of the pool's corresponding agent vault may call this method.
+     * @param _to the adress to which the delegation goes (the delegatee)
+     * @param _bips the delegation share (to be spent between at most two delegatees)
      */
     function delegate(address _to, uint256 _bips) external;
 
     /**
-     * Clear WNat delegation.
+     * Clear all WNat delegations.
      */
     function undelegateAll() external;
 
     /**
      * Claim the rewards earned by delegating the vote power for the pool.
      * NOTE: only the owner of the pool's corresponding agent vault may call this method.
+     * @param _rewardManager the reward manager contract address
+     * @param _lastRewardEpoch all unclaimed epochs until this one will be claimed
+     * @param _proofs the proofs of the collateral pool's claims
      */
     function claimDelegationRewards(
         IRewardManager _rewardManager,

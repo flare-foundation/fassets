@@ -233,8 +233,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
      * @param _redeemerUnderlyingAddress    Redeemer's address on the underlying chain
      * @param _executor                     The account that is allowed to execute redemption default
      * @notice F-assets will be redeemed in collateral if their value does not exceed one lot
-     * @notice All f-asset fees will be redeemed along with potential additionally required f-assets taken
-     *  from the sender's f-asset account
      */
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
     function selfCloseExit(
@@ -261,8 +259,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
      * @param _redeemerUnderlyingAddress    Redeemer's address on the underlying chain
      * @param _executor                     The account that is allowed to execute redemption default
      * @notice F-assets will be redeemed in collateral if their value does not exceed one lot
-     * @notice All f-asset fees will be redeemed along with potential additionally required f-assets taken
-     *  from the sender's f-asset account
      */
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
     function selfCloseExitTo(

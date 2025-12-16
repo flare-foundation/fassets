@@ -14,7 +14,9 @@ interface ICollateralPoolToken is IERC20 {
         returns (address);
 
     /**
-     * Returns the amount of tokens that is locked for transferring.
+     * Returns the amount of tokens that are cannot be transferred.
+     * These are tokens that are either timelocked or locked due to fasset fee debt.
+     * @param _account user's account address
      */
     function lockedBalanceOf(address _account)
         external view
@@ -22,20 +24,24 @@ interface ICollateralPoolToken is IERC20 {
 
     /**
      * Returns the amount of tokens that can be transferred.
+     * These are tokens that are neither timelocked neither locked due to fasset fee debt.
+     * @param _account user's account address
      */
     function transferableBalanceOf(address _account)
         external view
         returns (uint256);
 
     /**
-     * Returns the amount of account's tokens that are considered debt.
+     * Returns the amount of account's tokens that are locked due to account's fasset fee debt.
+     * @param _account user's account address
      */
     function debtLockedBalanceOf(address _account)
         external view
         returns (uint256);
 
     /**
-     * Returns the amount of account's tokens that are not considered debt.
+     * Returns the amount of account's tokens that are not locked due to account's fasset fee debt.
+     * @param _account user's account address
      */
     function debtFreeBalanceOf(address _account)
         external view
@@ -43,13 +49,15 @@ interface ICollateralPoolToken is IERC20 {
 
     /**
      * Returns the amount of account's tokens that are timelocked.
+     * @param _account user's account address
      */
     function timelockedBalanceOf(address _account)
         external view
         returns (uint256);
 
     /**
-     * Returns the amount of account's tokens that are timelocked.
+     * Returns the amount of account's tokens that are not timelocked.
+     * @param _account user's account address
      */
     function nonTimelockedBalanceOf(address _account)
         external view
