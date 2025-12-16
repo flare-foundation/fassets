@@ -65,6 +65,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     // addresses
     const underlyingBurnAddr = "Burn";
     const agentOwner1 = accounts[20];
+    const agentOwner1WorkAddress = accounts[21];
     const underlyingAgent1 = "Agent1";  // addresses on mock underlying chain can be any string, as long as it is unique
     const whitelistedAccount = accounts[1];
 
@@ -2920,6 +2921,24 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const minPoolCR = await assetManager.getAgentMinPoolCollateralRatioBIPS(agentVault.address);
             const poolToken = collaterals.filter(x => x.token === wNat.address)[0];
             expect(minPoolCR.toString()).to.equal(poolToken.minCollateralRatioBIPS.toString());
+        });
+
+        it("should check agent owner (no work address set)", async () => {
+            const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+            assertWeb3Equal(await assetManager.getWorkAddress(agentOwner1), ZERO_ADDRESS);
+            assert.isTrue(await assetManager.isAgentVaultOwner(agentVault.address, agentOwner1));
+            assert.isFalse(await assetManager.isAgentVaultOwner(agentVault.address, agentOwner1WorkAddress));
+            assert.isFalse(await assetManager.isAgentVaultOwner(agentVault.address, ZERO_ADDRESS));
+        });
+
+        it("should check agent owner (work address set)", async () => {
+            const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+            await contracts.agentOwnerRegistry.setWorkAddress(agentOwner1WorkAddress, { from: agentOwner1 });
+            assertWeb3Equal(await assetManager.getWorkAddress(agentOwner1), agentOwner1WorkAddress);
+            assert.isTrue(await assetManager.isAgentVaultOwner(agentVault.address, agentOwner1));
+            assert.isTrue(await assetManager.isAgentVaultOwner(agentVault.address, agentOwner1WorkAddress));
+            assert.isFalse(await assetManager.isAgentVaultOwner(agentVault.address, accounts[30]));
+            assert.isFalse(await assetManager.isAgentVaultOwner(agentVault.address, ZERO_ADDRESS));
         });
     })
 

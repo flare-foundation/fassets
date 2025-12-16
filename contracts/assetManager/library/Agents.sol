@@ -71,7 +71,8 @@ library Agents {
         internal view
         returns (bool)
     {
-        return _address == _agent.ownerManagementAddress || _address == getWorkAddress(_agent);
+        return _address != address(0) &&
+            (_address == _agent.ownerManagementAddress || _address == getWorkAddress(_agent));
     }
 
     function getWorkAddress(Agent.State storage _agent)
