@@ -9,8 +9,11 @@ import {SafePct} from "../library/SafePct.sol";
  * @notice A contract to expose the SafePct library for unit testing.
  **/
 contract SafePctMock {
-
     function mulDiv(uint256 x, uint256 y, uint256 z) public pure returns (uint256) {
         return SafePct.mulDiv(x, y, z);
+    }
+
+    function mulDivRoundUp(uint256 x, uint256 y, uint256 z) public pure returns (uint256) {
+        return SafePct.mulDivRoundUp(x, y, z);
     }
 }

@@ -27,8 +27,18 @@ contract(`SafePct.sol; ${getTestFile(__filename)};  SafePct unit tests`, account
         expect(result.toNumber()).to.equals(0);
     });
 
+    it("should calculate correctly - rounding up", async () => {
+        const result = await safePct.mulDivRoundUp(2, 3, 4);
+        expect(result.toNumber()).to.equals(2);
+    });
+
     it("should revert - division by 0", async () => {
         const tx = safePct.mulDiv(2, 3, 0);
+        await expectRevert.custom(tx, "DivisionByZero", []);
+    });
+
+    it("should revert - division by 0 (round up)", async () => {
+        const tx = safePct.mulDivRoundUp(2, 3, 0);
         await expectRevert.custom(tx, "DivisionByZero", []);
     });
 

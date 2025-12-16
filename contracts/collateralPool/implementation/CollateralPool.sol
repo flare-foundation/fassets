@@ -438,7 +438,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         if (totalCollateral == 0 && totalPoolTokens == 0) { // pool is empty
             return _collateral;
         }
-        // This can in principle result in DivisionByZero, but in practice it will never happen
+        // This can in principle result in division by zero, but in practice it will never happen
         // because the method enter() that calls this takes care that ratios tokens/collateral and
         // collateral/tokens are limited.
         return totalPoolTokens.mulDiv(_collateral, totalCollateral);
