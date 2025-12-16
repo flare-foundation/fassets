@@ -8,13 +8,13 @@ import {IICheckPointable} from "./IICheckPointable.sol";
 
 interface IIFAsset is IFAsset, IICheckPointable, IICleanable {
     /**
-     * Mints `_amount` od fAsset.
+     * Mints `_amount` of fAsset.
      * Only the assetManager corresponding to this fAsset may call `mint()`.
      */
     function mint(address _owner, uint256 _amount) external;
 
     /**
-     * Burns `_amount` od fAsset.
+     * Burns `_amount` of fAsset.
      * Only the assetManager corresponding to this fAsset may call `burn()`.
      */
     function burn(address _owner, uint256 _amount) external;

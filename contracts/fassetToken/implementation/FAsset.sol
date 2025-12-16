@@ -115,7 +115,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     }
 
     /**
-     * Mints `_amount` od fAsset.
+     * Mints `_amount` of fAsset.
      * Only the assetManager corresponding to this fAsset may call `mint()`.
      */
     function mint(address _owner, uint256 _amount)
@@ -126,7 +126,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable, UUPSUpgradeable, ER
     }
 
     /**
-     * Burns `_amount` od fAsset.
+     * Burns `_amount` of fAsset.
      * Only the assetManager corresponding to this fAsset may call `burn()`.
      */
     function burn(address _owner, uint256 _amount)
