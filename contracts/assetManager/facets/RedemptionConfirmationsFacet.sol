@@ -192,13 +192,12 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
                 return (false, "redemption payment too small");
             }
         }
-        if (!request.transferToCoreVault &&
-            _payment.data.responseBody.blockNumber > request.lastUnderlyingBlock &&
+        if (_payment.data.responseBody.blockNumber > request.lastUnderlyingBlock &&
             _payment.data.responseBody.blockTimestamp > request.lastUnderlyingTimestamp) {
             return (false, "redemption payment too late");
         }
         if (request.status == Redemption.Status.DEFAULTED) {
-            // Redemption is already defaulted, although the payment was not too late.
+            // Redemption is already defaulted, although the payment was correct and not late.
             // This indicates a problem in FDC, which gives proofs of both valid payment and nonpayment,
             // but we cannot solve it here. So we just return as failed and the off-chain code should alert.
             return (false, "redemption already defaulted");
