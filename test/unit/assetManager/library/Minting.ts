@@ -642,13 +642,24 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
     it("should not mint from free underlying if agent's status is not 'NORMAL'", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        //await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1});
         // act
         const lots = 2;
         const promise = assetManager.mintFromFreeUnderlying(agentVault.address, lots, { from: agentOwner1});
         // assert
         await expectRevert.custom(promise, "SelfMintInvalidAgentStatus", []);
+    });
+
+    it("should not mint from free underlying if underlying withdrawal is in progress", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
+        // act
+        const lots = 2;
+        const promise = assetManager.mintFromFreeUnderlying(agentVault.address, lots, { from: agentOwner1 });
+        // assert
+        await expectRevert.custom(promise, "AnnouncedUnderlyingWithdrawalActive", []);
     });
 
     it("should not mint from free underlying if minting is paused", async () => {

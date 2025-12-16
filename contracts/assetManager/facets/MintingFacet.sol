@@ -46,6 +46,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
     error SelfMintNotAgentsAddress();
     error SelfMintPaymentTooOld();
     error SelfMintPaymentTooSmall();
+    error AnnouncedUnderlyingWithdrawalActive();
 
     enum MintingType { PUBLIC, SELF_MINT, FROM_FREE_UNDERLYING }
 
@@ -235,6 +236,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         require(state.mintingPausedAt == 0, MintingPaused());
         require(_lots > 0, CannotMintZeroLots());
         require(agent.status == Agent.Status.NORMAL, SelfMintInvalidAgentStatus());
+        require(agent.announcedUnderlyingWithdrawalId == 0, AnnouncedUnderlyingWithdrawalActive());
         require(collateralData.freeCollateralLots(agent) >= _lots, NotEnoughFreeCollateral());
         uint64 valueAMG = Conversion.convertLotsToAMG(_lots);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
