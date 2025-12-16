@@ -192,15 +192,27 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
                 return (false, "redemption payment too small");
             }
         }
-        if (_payment.data.responseBody.blockNumber > request.lastUnderlyingBlock &&
-            _payment.data.responseBody.blockTimestamp > request.lastUnderlyingTimestamp) {
-            return (false, "redemption payment too late");
-        }
-        if (request.status == Redemption.Status.DEFAULTED) {
-            // Redemption is already defaulted, although the payment was correct and not late.
-            // This indicates a problem in FDC, which gives proofs of both valid payment and nonpayment,
-            // but we cannot solve it here. So we just return as failed and the off-chain code should alert.
-            return (false, "redemption already defaulted");
+        if (!request.transferToCoreVault) {
+            if (_payment.data.responseBody.blockNumber > request.lastUnderlyingBlock &&
+                _payment.data.responseBody.blockTimestamp > request.lastUnderlyingTimestamp) {
+                return (false, "redemption payment too late");
+            }
+            if (request.status == Redemption.Status.DEFAULTED) {
+                // Redemption is already defaulted, although the payment was correct and not late.
+                // This indicates a problem in FDC, which gives proofs of both valid payment and nonpayment,
+                // but we cannot solve it here. So we just return as failed and the off-chain code should alert.
+                return (false, "redemption already defaulted");
+            }
+        } else {
+            if (request.status == Redemption.Status.DEFAULTED) {
+                // For core vault transfers, the payment is never considered too late, but it can be defaulted
+                // either by the agent or by a 3rd party after enough time.
+                // Therefore this is a possible state in normal operation.
+                // However, it is very bad for the agent, since the redemption ticket was re-created on default,
+                // which means that payment confirmation will probably make the underying balance too low,
+                // causing full liquidation.
+                return (false, "core vault transfer defaulted");
+            }
         }
         return (true, "");
     }

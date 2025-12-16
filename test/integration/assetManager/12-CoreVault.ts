@@ -399,6 +399,63 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         expectEvent.notEmitted(redemptionRes, "RedemptionRequestIncomplete");
     });
 
+    it("transfer payment can be confirmed even if it is late", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        // make agent available
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        // mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        // agent requests transfer for half backing to core vault
+        const totalMintedAmount = toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA));
+        const transferAmount = context.lotSize().muln(5);
+        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
+        const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
+        assertWeb3Equal(rdreqs.length, 1);
+        const request = rdreqs[0];
+        // agent now has approx half backing in redeeming state
+        const expectRemainingMinted = totalMintedAmount.sub(transferAmount);
+        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: expectRemainingMinted, redeemingUBA: transferAmount });
+        // make the payment late
+        context.skipToExpiration(request.lastUnderlyingBlock.addn(100), request.lastUnderlyingTimestamp.addn(1000));
+        await time.deterministicIncrease(toBN(context.settings.confirmationByOthersAfterSeconds));
+        // agent makes and proves redemption payment without problems
+        const txHash = await agent.performRedemptionPayment(request);
+        await agent.confirmActiveRedemptionPayment(request, txHash);
+        // agent now has about half backing left
+        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: totalMintedAmount.sub(transferAmount), redeemingUBA: 0 });
+    });
+
+    it("if late payment is defaulted before confirmation, the confirmation will be considered failed", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        // make agent available
+        await agent.depositCollateralLotsAndMakeAvailable(100);
+        // mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        // agent requests transfer for half backing to core vault
+        const totalMintedAmount = toBN(minted.mintedAmountUBA).add(toBN(minted.poolFeeUBA));
+        const transferAmount = context.lotSize().muln(5);
+        const res = await context.assetManager.transferToCoreVault(agent.vaultAddress, transferAmount, { from: agent.ownerWorkAddress });
+        const rdreqs = filterEvents(res, "RedemptionRequested").map(evt => evt.args);
+        assertWeb3Equal(rdreqs.length, 1);
+        const request = rdreqs[0];
+        // agent now has approx half backing in redeeming state
+        const expectRemainingMinted = totalMintedAmount.sub(transferAmount);
+        await agent.checkAgentInfo({ status: AgentStatus.NORMAL, reservedUBA: 0, mintedUBA: expectRemainingMinted, redeemingUBA: transferAmount });
+        // make the payment late
+        context.skipToExpiration(request.lastUnderlyingBlock.addn(100), request.lastUnderlyingTimestamp.addn(1000));
+        await time.deterministicIncrease(toBN(context.settings.confirmationByOthersAfterSeconds));
+        const txHash = await agent.performRedemptionPayment(request);
+        // 3rd party defaults payment
+        await agent.transferToCoreVaultDefault(request, challengerAddress1);
+        // now 3rd party can also confirm the payment
+        const confRes = await agent.confirmDefaultedRedemptionPayment(request, txHash, challengerAddress1);
+        assert.equal(confRes.failureReason, "core vault transfer defaulted");
+        // agent is now in full liquidation, because the underlying has diminished, but minted stays the same
+        await agent.checkAgentInfo({ status: AgentStatus.FULL_LIQUIDATION, reservedUBA: 0, mintedUBA: totalMintedAmount, redeemingUBA: 0 });
+    });
+
     it("by setting coreVaultMinimumAmountLeftBIPS, system may require that some minting is left on the agent", async () => {
         // set nonzero coreVaultMinimumAmountLeftBIPS
         await executeTimelockedGovernanceCall(context.assetManager,
