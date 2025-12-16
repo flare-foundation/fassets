@@ -8,6 +8,7 @@ import {GovernedUUPSProxyImplementation} from "../../governance/implementation/G
 import {AddressUpdatable} from "../../flareSmartContracts/implementation/AddressUpdatable.sol";
 import {IPriceReader} from "../../ftso/interfaces/IPriceReader.sol";
 import {IPricePublisher} from "../interfaces/IPricePublisher.sol";
+import {IPriceChangeEmitter} from "../interfaces/IPriceChangeEmitter.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 
 
@@ -15,6 +16,7 @@ contract FtsoV2PriceStore is
     GovernedUUPSProxyImplementation,
     IPriceReader,
     IPricePublisher,
+    IPriceChangeEmitter,
     IERC165,
     AddressUpdatable
 {
@@ -92,8 +94,6 @@ contract FtsoV2PriceStore is
     /// The minimum percentage of providers that have to send a price for a feed in a round to be published
     /// (for FTSO, not for trusted providers).
     uint16 public minTurnoutBIPS;
-
-    event PricesPublished(uint32 indexed votingRoundId);
 
     event LowTurnoutForFeed(bytes21 indexed feedId, uint32 indexed votingRoundId, uint16 turnoutBIPS);
 
@@ -479,6 +479,7 @@ contract FtsoV2PriceStore is
     {
         return _interfaceId == type(IERC165).interfaceId
             || _interfaceId == type(IPriceReader).interfaceId
-            || _interfaceId == type(IPricePublisher).interfaceId;
+            || _interfaceId == type(IPricePublisher).interfaceId
+            || _interfaceId == type(IPriceChangeEmitter).interfaceId;
     }
 }

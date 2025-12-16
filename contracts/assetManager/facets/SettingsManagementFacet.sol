@@ -37,12 +37,6 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
     error MustBeAtLeastTwoHours();
     error WindowTooSmall();
 
-    struct UpdaterState {
-        mapping (bytes4 => uint256) lastUpdate;
-    }
-
-    bytes32 internal constant UPDATES_STATE_POSITION = keccak256("fasset.AssetManager.UpdaterState");
-
     modifier rateLimited() {
         SettingsUpdater.checkEnoughTimeSinceLastUpdate();
         _;
