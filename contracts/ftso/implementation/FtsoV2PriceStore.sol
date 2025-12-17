@@ -262,6 +262,8 @@ contract FtsoV2PriceStore is
         require(_trustedProviders.length < 2**8, TooManyTrustedProviders());
         require(_trustedProviders.length >= _trustedProvidersThreshold, ThresholdTooHigh());
         trustedProvidersThreshold = _trustedProvidersThreshold;
+        // reset already submitted data
+        _clearSubmittedTrustedPricesForLastEpoch();
         // reset all trusted providers
         for (uint256 i = 0; i < trustedProviders.length; i++) {
             trustedProvidersMap[trustedProviders[i]] = false;
@@ -387,6 +389,23 @@ contract FtsoV2PriceStore is
         internal override
     {
         relay = IRelay(_getContractAddress(_contractNameHashes, _contractAddresses, "Relay"));
+    }
+
+    /**
+     * When calling setTrustedProviders, the already submitted trusted prices for the last epoch
+     * have to be cleared, otherwise there can be double submissions.
+     */
+    function _clearSubmittedTrustedPricesForLastEpoch() private {
+        uint32 previousVotingEpochId = _getPreviousVotingEpochId();
+        uint256 numTrustedProviders = trustedProviders.length;
+        for (uint256 i = 0; i < numTrustedProviders; i++) {
+            lastVotingEpochIdByProvider[trustedProviders[i]] = 0;
+        }
+        uint256 numFeeds = feedIds.length;
+        for (uint256 i = 0; i < numFeeds; i++) {
+            bytes21 feedId = feedIds[i];
+            delete submittedTrustedPrices[feedId][previousVotingEpochId];
+        }
     }
 
     /**
