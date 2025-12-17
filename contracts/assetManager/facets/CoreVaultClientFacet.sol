@@ -16,14 +16,17 @@ import {PaymentReference} from "../library/data/PaymentReference.sol";
 import {AgentCollateral} from "../library/AgentCollateral.sol";
 import {Redemptions} from "../library/Redemptions.sol";
 import {RedemptionRequests} from "../library/RedemptionRequests.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {UnderlyingBalance} from "../library/UnderlyingBalance.sol";
 import {Collateral} from "../library/data/Collateral.sol";
 import {PaymentConfirmations} from "../library/data/PaymentConfirmations.sol";
 import {Agents} from "../library/Agents.sol";
 import {AgentBacking} from "../library/AgentBacking.sol";
+import {AgentPayout} from "../library/AgentPayout.sol";
 import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {TransactionAttestation} from "../library/TransactionAttestation.sol";
 import {UnderlyingBlockUpdater} from "../library/UnderlyingBlockUpdater.sol";
+import {Globals} from "../library/Globals.sol";
 
 
 contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultClient {
@@ -142,6 +145,7 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
         state.newTransferFromCoreVaultId += PaymentReference.randomizedIdSkip();
         uint64 requestId = state.newTransferFromCoreVaultId;
         agent.activeReturnFromCoreVaultId = requestId;
+        agent.activeReturnFromCoreVaultStartTs = block.timestamp.toUint64();
         // reserve collateral
         assert(agent.returnFromCoreVaultReservedAMG == 0);
         uint64 amountAMG = Conversion.convertLotsToAMG(_lots);
@@ -191,11 +195,13 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
         onlyEnabled
         notFullyEmergencyPaused
         nonReentrant
-        onlyAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
         CoreVaultClient.State storage state = CoreVaultClient.getState();
         TransactionAttestation.verifyPaymentSuccess(_payment);
+        // Only agent can confirm return, but after enough time, anybody can.
+        bool isAgent = Agents.isOwner(agent, msg.sender);
+        require(isAgent || _othersCanConfirmReturn(agent), Agents.OnlyAgentVaultOwner());
         uint64 requestId = agent.activeReturnFromCoreVaultId;
         require(requestId != 0, NoActiveReturnRequest());
         require(_payment.data.responseBody.sourceAddressHash == state.coreVaultManager.coreVaultAddressHash(),
@@ -220,6 +226,10 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
         UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
         // clear the reservation
         CoreVaultClient.deleteReturnFromCoreVaultRequest(agent);
+        // in case of confirmation by others, pay the reward
+        if (!isAgent) {
+            AgentPayout.payForConfirmationByOthers(agent, msg.sender);
+        }
         // send event
         uint256 remintedUBA = Conversion.convertAmgToUBA(remintedAMG);
         emit ReturnFromCoreVaultConfirmed(_agentVault, requestId, receivedAmountUBA, remintedUBA);
@@ -283,5 +293,18 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
         returns (uint256 _immediatelyAvailableUBA, uint256 _totalAvailableUBA)
     {
         return CoreVaultClient.coreVaultAvailableAmount();
+    }
+
+    function _othersCanConfirmReturn(
+        Agent.State storage _agent
+    )
+        private view
+        returns (bool)
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        // others can confirm default only for core vault transfers and only after enough time
+        // (!= 0 check is for upgrading - for requests started before upgrade, the start timestamp is always 0)
+        return _agent.activeReturnFromCoreVaultStartTs != 0 &&
+            block.timestamp > _agent.activeReturnFromCoreVaultStartTs + settings.confirmationByOthersAfterSeconds;
     }
 }

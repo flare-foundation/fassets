@@ -741,6 +741,39 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             "InvalidPaymentReference", []);
     });
 
+    it("request return from core and, after enough time, make confirmation by others", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        // allow CV manager addresses
+        await coreVaultManager.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
+        // make agent available
+        await agent.depositCollateralLotsAndMakeAvailable(10);
+        await agent2.depositCollateralLotsAndMakeAvailable(10);
+        // mint
+        const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+        // agent requests transfer for some backing to core vault
+        const transferAmount = context.lotSize().muln(5);
+        await agent.transferToCoreVault(transferAmount);
+        // second agent requests return from CV
+        const rres = await context.assetManager.requestReturnFromCoreVault(agent2.vaultAddress, 5, { from: agent2.ownerWorkAddress });
+        const returnReq = requiredEventArgs(rres, "ReturnFromCoreVaultRequested");
+        // core vault pays, but no one confirms
+        // simulate transfer from CV
+        const wallet = new MockChainWallet(mockChain);
+        const trigRes = await coreVaultManager.triggerInstructions({ from: triggeringAccount });
+        const [cvreq] = filterEvents(trigRes, "PaymentInstructions");
+        const rtx = await wallet.addTransaction(cvreq.args.account, cvreq.args.destination, cvreq.args.amount, cvreq.args.paymentReference);
+        const proof = await context.attestationProvider.provePayment(rtx, cvreq.args.account, cvreq.args.destination);
+        // at start only agent can confirm
+        await expectRevert.custom(context.assetManager.confirmReturnFromCoreVault(proof, agent2.vaultAddress, { from: challengerAddress1 }),
+            "OnlyAgentVaultOwner", []);
+        // after enough time anyone can confirm
+        await time.increase(toBN(context.settings.confirmationByOthersAfterSeconds).addn(1));
+        await context.assetManager.confirmReturnFromCoreVault(proof, agent2.vaultAddress, { from: challengerAddress1 });
+    });
+
     async function testRedeemFromCV(redeemer: Redeemer, lots: number) {
         const res = await context.assetManager.redeemFromCoreVault(lots, redeemer.underlyingAddress, { from: redeemer.address });
         const redeem = requiredEventArgs(res, "CoreVaultRedemptionRequested");
@@ -948,8 +981,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         await expectRevert.custom(context.assetManager.cancelReturnFromCoreVault(agent.vaultAddress), "OnlyAgentVaultOwner", []);
         // confirm return from core vault
         const wallet = new MockChainWallet(mockChain);
-        const rtx = await wallet.addTransaction(agent.underlyingAddress, coreVaultUnderlyingAddress, 10, null);
-        const proof = await context.attestationProvider.provePayment(rtx, agent.underlyingAddress, coreVaultUnderlyingAddress);
+        mockChain.mint(coreVaultUnderlyingAddress, 1e6);
+        const rtx = await wallet.addTransaction(coreVaultUnderlyingAddress, agent.underlyingAddress, 10, null);
+        const proof = await context.attestationProvider.provePayment(rtx, coreVaultUnderlyingAddress, agent.underlyingAddress);
         await expectRevert.custom(context.assetManager.confirmReturnFromCoreVault(proof, agent.vaultAddress), "OnlyAgentVaultOwner", []);
     })
 

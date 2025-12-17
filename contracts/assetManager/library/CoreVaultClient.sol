@@ -89,6 +89,7 @@ library CoreVaultClient {
         _agent.reservedAMG -= _agent.returnFromCoreVaultReservedAMG;
         _agent.activeReturnFromCoreVaultId = 0;
         _agent.returnFromCoreVaultReservedAMG = 0;
+        _agent.activeReturnFromCoreVaultStartTs = 0;
     }
 
     function transferToCoreVaultDefaultPenalty(

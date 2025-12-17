@@ -180,8 +180,8 @@ library Agent {
 
         EnumerableSet.AddressSet alwaysAllowedMinters;
 
-        // Only used for calculating Agent.State size. See deleteStorage() below.
-        uint256[1] _endMarker;
+        // The timestamp of the active return from core vault start (used for confirmation by others)
+        uint64 activeReturnFromCoreVaultStartTs;
     }
 
     // underwater collateral classes
