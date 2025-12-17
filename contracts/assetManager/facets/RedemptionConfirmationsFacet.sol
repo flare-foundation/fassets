@@ -67,7 +67,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
         // But if the agent doesn't respond for long enough,
         // we allow anybody and that user gets rewarded from agent's vault.
         bool isAgent = Agents.isOwner(agent, msg.sender);
-        require(isAgent || _othersCanConfirmPayment(request), Agents.OnlyAgentVaultOwner());
+        require(isAgent || _othersCanConfirmPayment(agent, request), Agents.OnlyAgentVaultOwner());
         // verify transaction
         TransactionAttestation.verifyPayment(_payment);
         // payment reference must match
@@ -162,14 +162,18 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
     }
 
     function _othersCanConfirmPayment(
+        Agent.State storage _agent,
         Redemption.Request storage _request
     )
         private view
         returns (bool)
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        // others can confirm payments only after several hours
-        return block.timestamp > _request.timestamp + settings.confirmationByOthersAfterSeconds;
+        // Others can confirm payments only after several hours and only if the vault is not in full liquidation.
+        // (Others' confirmations are not necessary for keeping the underlying balance when the vault is already in
+        // full liquidation and the reward just uses the collateral that should be reserved for liquidation.)
+        return block.timestamp > _request.timestamp + settings.confirmationByOthersAfterSeconds
+            && _agent.status != Agent.Status.FULL_LIQUIDATION;
     }
 
     function _validatePayment(

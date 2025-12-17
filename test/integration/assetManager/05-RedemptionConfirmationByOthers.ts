@@ -1,3 +1,4 @@
+import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { Challenger } from "../../../lib/test-utils/actors/Challenger";
@@ -274,6 +275,27 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert.custom(agent.finishRedemptionWithoutPayment(request), "InvalidRequestId", []);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(res.redeemedVaultCollateralWei).sub(challengerVaultCollateralReward));
+        });
+
+        it("confirmation by others is not allowed in full liquidation", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
+            const challenger = await Challenger.create(context, challengerAddress1);
+            await agent.depositCollateralLotsAndMakeAvailable(10);
+            // mint and start redemption
+            const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+            const [[request]] = await redeemer.requestRedemption(5);
+            const txHash = await agent.performRedemptionPayment(request);
+            // perform illegal payment and get fully liquidated
+            const illegalTxHash = await agent.performPayment(agent.ownerManagementAddress, 10, null);
+            await challenger.illegalPaymentChallenge(agent, illegalTxHash);
+            await agent.checkAgentInfo({ status: AgentStatus.FULL_LIQUIDATION }, "reset");
+            // confirmation by others now fails even after enough time
+            await time.increase(toBN(context.settings.confirmationByOthersAfterSeconds).addn(1));
+            await expectRevert.custom(challenger.confirmActiveRedemptionPayment(request, txHash, agent), "OnlyAgentVaultOwner", []);
+            // but agent can still confirm
+            await agent.confirmActiveRedemptionPayment(request, txHash);
         });
     });
 });
