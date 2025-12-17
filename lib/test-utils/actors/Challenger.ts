@@ -56,6 +56,7 @@ export class Challenger extends AssetContextClient {
         const proof = await this.attestationProvider.provePayment(transactionHash, agent.underlyingAddress, request.paymentAddress);
         const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.address });
         checkEventNotEmited(res, 'RedemptionPerformed');
+        return requiredEventArgs(res, 'RedemptionPaymentFailed');
     }
 
     async confirmFailedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string, agent: Agent): Promise<[redemptionPaymentFailed: EventArgs<RedemptionPaymentFailed>, redemptionDefault: EventArgs<RedemptionDefault>]>  {

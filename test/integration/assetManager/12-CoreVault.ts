@@ -429,6 +429,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
     it("if late payment is defaulted before confirmation, the confirmation will be considered failed", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        const challenger = await Challenger.create(context, challengerAddress1);
         // make agent available
         await agent.depositCollateralLotsAndMakeAvailable(100);
         // mint
@@ -450,7 +451,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // 3rd party defaults payment
         await agent.transferToCoreVaultDefault(request, challengerAddress1);
         // now 3rd party can also confirm the payment
-        const confRes = await agent.confirmDefaultedRedemptionPayment(request, txHash, challengerAddress1);
+        const confRes = await challenger.confirmDefaultedRedemptionPayment(request, txHash, agent);
         assert.equal(confRes.failureReason, "core vault transfer defaulted");
         // agent is now in full liquidation, because the underlying has diminished, but minted stays the same
         await agent.checkAgentInfo({ status: AgentStatus.FULL_LIQUIDATION, reservedUBA: 0, mintedUBA: totalMintedAmount, redeemingUBA: 0 });
