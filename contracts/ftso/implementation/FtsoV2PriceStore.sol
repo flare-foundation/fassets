@@ -239,6 +239,7 @@ contract FtsoV2PriceStore is
                 latestPrice.trustedDecimals = _trustedDecimals[i];
                 latestPrice.trustedValue = 0;
                 latestPrice.trustedVotingRoundId = 0;
+                latestPrice.numberOfSubmits = 0;
                 // delete all submitted trusted prices for the symbol
                 for (uint32 j = lastPublishedVotingRoundId + 1; j <= _getPreviousVotingEpochId(); j++) {
                     delete submittedTrustedPrices[feedId][j];

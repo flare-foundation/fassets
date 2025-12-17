@@ -405,17 +405,19 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
             await publishPrices();
 
-            var { 0: price, 1: timestamp, 2: decimals } = await priceStore.getPriceFromTrustedProviders("USDC");
+            var { 0: price, 1: timestamp, 2: decimals, 3: turnout } = await priceStore.getPriceFromTrustedProvidersWithQuality("USDC");
             assertWeb3Equal(price, 123456);
             assertWeb3Equal(timestamp, startTs + 2 * votingEpochDurationSeconds);
             assertWeb3Equal(decimals, 5);
+            assertWeb3Equal(turnout, 3);
 
             // update settings; change trusted decimals for USDC
             await priceStore.updateSettings(feedIds, feedSymbols, [6, 4], 50, 0, { from: governance });
-            var { 0: price, 1: timestamp, 2: decimals } = await priceStore.getPriceFromTrustedProviders("USDC");
+            var { 0: price, 1: timestamp, 2: decimals, 3: turnout } = await priceStore.getPriceFromTrustedProvidersWithQuality("USDC");
             assertWeb3Equal(price, 0);
             assertWeb3Equal(timestamp, startTs + 1 * votingEpochDurationSeconds);
             assertWeb3Equal(decimals, 4);
+            assertWeb3Equal(turnout, 0);
         });
 
         it("should delete submitted trusted prices and therefore not calculate median price", async () => {
