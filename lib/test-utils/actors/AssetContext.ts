@@ -252,6 +252,26 @@ export class AssetContext implements IAssetContext {
         return result;
     }
 
+    async setFTSOPrice(ftsoSymbol: string, price: BN, options: { ftsoAge?: number, trustedAge?: number } = {}) {
+        const fixedPrice = await this.adjustPriceAndDecimalsToFitUInt32(ftsoSymbol, price);
+        await this.priceStore.setCurrentPrice(ftsoSymbol, fixedPrice, options.ftsoAge ?? 0);
+        await this.priceStore.setCurrentPriceFromTrustedProviders(ftsoSymbol, fixedPrice, options.trustedAge ?? 0);
+    }
+
+    private async adjustPriceAndDecimalsToFitUInt32(symbol: string, price: BN) {
+        const maxUInt32 = toBN(1).shln(32);
+        let { 2: decimals } = await this.priceReader.getPrice(symbol);
+        if (price.lt(maxUInt32)) return price;
+        console.log(`Adjusting price=${price} decimals=${decimals}`);
+        while (price.gte(maxUInt32)) {
+            price = price.divn(10);
+            decimals = decimals.subn(1);
+        }
+        console.log(`After price=${price} decimals=${decimals}`);
+        await this.priceStore.setDecimals(symbol, decimals);
+        return price;
+    }
+
     static async createTest(common: CommonContext, chainInfo: TestChainInfo, options: SettingsOptions = {}): Promise<AssetContext> {
         // create mock chain
         const chain = new MockChain(await time.latest());

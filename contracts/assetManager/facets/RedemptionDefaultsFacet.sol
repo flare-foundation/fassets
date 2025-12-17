@@ -13,6 +13,7 @@ import {Agent} from "../library/data/Agent.sol";
 import {Agents} from "../library/Agents.sol";
 import {AgentPayout} from "../library/AgentPayout.sol";
 import {Redemption} from "../library/data/Redemption.sol";
+import {Liquidation} from "../library/Liquidation.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {PaymentReference} from "../library/data/PaymentReference.sol";
 import {Globals} from "../library/Globals.sol";
@@ -79,6 +80,8 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         if (!expectedSender) {
             AgentPayout.payForConfirmationByOthers(agent, msg.sender);
         }
+        // redemption can make agent healthy, so check and pull out of liquidation
+        Liquidation.endLiquidationIfHealthy(agent);
         // pay the executor if the executor called this
         // guarded against reentrancy in RedemptionDefaultsFacet
         Redemptions.payOrBurnExecutorFee(request);
@@ -121,6 +124,8 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
                     _proof.data.responseBody.blockTimestamp,
                 ShouldDefaultFirst());
             RedemptionDefaults.executeDefaultOrCancel(agent, request, _redemptionRequestId);
+            // redemption can make agent healthy, so check and pull out of liquidation
+            Liquidation.endLiquidationIfHealthy(agent);
             // burn the executor fee
             // guarded against reentrancy in RedemptionDefaultsFacet
             Redemptions.burnExecutorFee(request);

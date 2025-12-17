@@ -13,7 +13,7 @@ import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-s
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { DAYS, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
+import { DAYS, deepFormat, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
@@ -798,6 +798,52 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(redeemInfo.status, RedemptionRequestStatus.SUCCESSFUL);
             // agent should be ok
             await agent.checkAgentInfo({ status: AgentStatus.NORMAL, redeemingUBA: 0, freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(req.feeUBA) }, 'reset');
+        });
+
+        it("redemption default can pull the agent out of liquidation (pool price liquidation)", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await agent.depositCollateralLotsAndMakeAvailable(2);
+            // mint
+            const [minted] = await minter.performMinting(agent.vaultAddress, 2);
+            await minter.transferFAsset(redeemer.address, context.convertLotsToUBA(1));
+            // change price and start liquidation
+            await agent.setPoolCollateralRatioByChangingPoolTokenPrice(1.5 * MAX_BIPS);
+            await context.assetManager.startLiquidation(agent.vaultAddress);
+            await agent.checkAgentInfo({ status: AgentStatus.LIQUIDATION }, "reset");
+            // start redemption
+            const [[req]] = await redeemer.requestRedemption(1);
+            await agent.checkAgentInfo({ status: AgentStatus.LIQUIDATION });
+            // redemption default
+            context.skipToExpiration(req.lastUnderlyingBlock, req.lastUnderlyingTimestamp);
+            await redeemer.redemptionPaymentDefault(req);
+            // agent should be out of liquidation now
+            await agent.checkAgentInfo({ status: AgentStatus.NORMAL });
+        });
+
+        it("redemption expiration can pull the agent out of liquidation (vault price liquidation)", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await agent.depositCollateralLotsAndMakeAvailable(1);
+            // mint
+            const [minted] = await minter.performMinting(agent.vaultAddress, 1);
+            await minter.transferFAsset(redeemer.address, context.convertLotsToUBA(1));
+            // change price and start liquidation
+            await agent.setVaultCollateralRatioByChangingVaultTokenPrice(1.15 * MAX_BIPS);
+            await context.assetManager.startLiquidation(agent.vaultAddress);
+            await agent.checkAgentInfo({ status: AgentStatus.LIQUIDATION }, "reset");
+            // start redemption
+            const [[req]] = await redeemer.requestRedemption(1);
+            await agent.checkAgentInfo({ status: AgentStatus.LIQUIDATION });
+            // redemption default
+            context.skipToProofUnavailability(req.lastUnderlyingBlock, req.lastUnderlyingTimestamp);
+            const res = await agent.finishRedemptionWithoutPayment(req);
+            assert.isTrue(res != null); // default has happened in expiration
+            // console.log(deepFormat(res));
+            // agent should be out of liquidation now
+            await agent.checkAgentInfo({ status: AgentStatus.NORMAL });
         });
     });
 });
