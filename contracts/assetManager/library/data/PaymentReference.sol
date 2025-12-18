@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+import {Globals} from "../Globals.sol";
+
 
 library PaymentReference {
     uint256 private constant TYPE_SHIFT = 192;
@@ -70,7 +72,11 @@ library PaymentReference {
     function randomizedIdSkip() internal view returns (uint64) {
         // This is rather weak randomization, but it's ok for the purpose of preventing speculative underlying
         // payments, since there is only one guess possible - the first mistake makes agent liquidated.
+        // However, due to addition of Globals.getFspRandomNumber(), it can only be predicted within one FDC epoch.
+        // This prevents the known exploits, because if the agent tries to front run a challenge with e.g.
+        // underlying withdrawal announcement, it will be in a later FDC epoch due to the time the challenger
+        // needs to obtain a FDC proof (or the challenger can just wait one epoch).
         //slither-disable-next-line weak-prng
-        return uint64(block.number % ID_RANDOMIZATION + 1);
+        return uint64((Globals.getFspRandomNumber() + block.number) % ID_RANDOMIZATION + 1);
     }
 }

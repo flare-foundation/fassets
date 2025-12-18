@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+import {IFdcVerification} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {IIFAsset} from "../../fassetToken/interfaces/IIFAsset.sol";
 import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
@@ -62,5 +63,15 @@ library Globals {
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         return settings.burnAddress;
+    }
+
+    function getFspRandomNumber()
+        internal view
+        returns (uint256)
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        IFdcVerification fdcVerification = IFdcVerification(settings.fdcVerification);
+        (uint256 randomNumber,,) = fdcVerification.relay().getRandomNumber();
+        return randomNumber;
     }
 }

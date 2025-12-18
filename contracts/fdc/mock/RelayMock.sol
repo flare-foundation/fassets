@@ -42,7 +42,13 @@ contract RelayMock is IRelay {
             uint256 _randomNumber,
             bool _isSecureRandom,
             uint256 _randomTimestamp
-        ) {}
+        )
+    {
+        // this is a mock and this random number is very weak - do not use in production
+        _randomNumber = uint256(keccak256(abi.encode(block.number)));
+        _isSecureRandom = false;
+        _randomTimestamp = block.timestamp;
+    }
 
     /**
      * Returns the historical random number for a given _votingRoundId,

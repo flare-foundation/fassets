@@ -13,7 +13,7 @@ import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-s
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { toWei } from "../../../lib/utils/helpers";
+import { toBN, toWei } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
 
@@ -134,7 +134,8 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, accounts => {
         await whitelistAgentOwner(context.agentOwnerRegistry.address, agentOwner1);
         // deposit to underlying address
         const guessBlock = Number(await time.latestBlock()) + 20;
-        const guessId = guessBlock % 1000 + 1;
+        const mockFspRandom = toBN(web3.utils.keccak256(web3.eth.abi.encodeParameters(["uint256"], [guessBlock])));
+        const guessId = mockFspRandom.addn(guessBlock).mod(toBN(1000)).addn(1);
         const depositHash = await wallet.addTransaction(underlyingOwner1, underlyingAgent1, amount, PaymentReference.minting(guessId));
         // increase block number
         context.chain.mine(1);
