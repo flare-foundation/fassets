@@ -54,16 +54,37 @@ library Liquidation {
         if (_agent.status != Agent.Status.LIQUIDATION) return;
         // agent's current collateral ratio
         CRData memory cr = getCollateralRatiosBIPS(_agent);
-        // target ratio is minCollateralRatioBIPS if collateral not underwater, otherwise safetyMinCollateralRatioBIPS
-        uint256 targetRatioVaultCollateralBIPS = _targetRatioBIPS(_agent, Collateral.Kind.VAULT);
-        uint256 targetRatioPoolBIPS = _targetRatioBIPS(_agent, Collateral.Kind.POOL);
-        // if agent is safe, restore status to NORMAL
-        if (cr.vaultCR >= targetRatioVaultCollateralBIPS && cr.poolCR >= targetRatioPoolBIPS) {
+        bool healthy = markCollateralsHealthy(_agent, cr);
+        // if agent is healthy, restore status to NORMAL
+        if (healthy) {
             _agent.status = Agent.Status.NORMAL;
             _agent.liquidationStartedAt = 0;
             _agent.collateralsUnderwater = 0;
             emit IAssetManagerEvents.LiquidationEnded(_agent.vaultAddress());
         }
+    }
+
+    function markCollateralsHealthy(
+        Agent.State storage _agent,
+        Liquidation.CRData memory _cr
+    )
+        internal
+        returns (bool _healthy)
+    {
+        // target ratio is minCollateralRatioBIPS if collateral not underwater, otherwise safetyMinCollateralRatioBIPS
+        uint256 targetRatioVaultCollateralBIPS = _targetRatioBIPS(_agent, Collateral.Kind.VAULT);
+        uint256 targetRatioPoolBIPS = _targetRatioBIPS(_agent, Collateral.Kind.POOL);
+        // clean up separate collateral underwater flags when corresponding target CR is reached
+        bool vaultHealthy = _cr.vaultCR >= targetRatioVaultCollateralBIPS;
+        if (vaultHealthy) {
+            _agent.collateralsUnderwater &= ~Agent.LF_VAULT;
+        }
+        bool poolHealthy = _cr.poolCR >= targetRatioPoolBIPS;
+        if (poolHealthy) {
+            _agent.collateralsUnderwater &= ~Agent.LF_POOL;
+        }
+        // agent is healthy if both CRs are above their target CR
+        return vaultHealthy && poolHealthy;
     }
 
     function getCollateralRatiosBIPS(

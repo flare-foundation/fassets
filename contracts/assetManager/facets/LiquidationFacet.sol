@@ -79,6 +79,10 @@ contract LiquidationFacet is AssetManagerBase, ReentrancyGuard {
         // allow one-step liquidation (without calling startLiquidation first)
         bool inLiquidation = _startLiquidation(agent, cr);
         require(inLiquidation, NotInLiquidation());
+        // If any collateral type has become healthy due to price changes, mark it to reduce the payout repoonsibility.
+        // (Note that it is possible that the agent has become healthy but we still want to finish without reverting
+        // with NotInLiquidation so that we can set the agent status to NORMAL.)
+        Liquidation.markCollateralsHealthy(agent, cr);
         // liquidate redemption tickets
         (uint64 liquidatedAmountAMG, uint256 payoutC1Wei, uint256 payoutPoolWei) =
             _performLiquidation(agent, cr, Conversion.convertUBAToAmg(_amountUBA));
@@ -139,13 +143,14 @@ contract LiquidationFacet is AssetManagerBase, ReentrancyGuard {
         returns (bool _inLiquidation)
     {
         Agent.Status status = _agent.status;
-        if (status == Agent.Status.LIQUIDATION || status == Agent.Status.FULL_LIQUIDATION) {
+        if (status == Agent.Status.FULL_LIQUIDATION) {
+            return true;    // no need for underwater flags
+        } else if (status == Agent.Status.LIQUIDATION) {
             _inLiquidation = true;
         } else if (status != Agent.Status.NORMAL) {
             // if agent is not in normal status, it cannot be liquidated
             revert LiquidationNotPossible(Agents.getAgentStatus(_agent));
         }
-
         // if any collateral is underwater, set/update its flag
         bool vaultUnderwater = _isCollateralUnderwater(_cr.vaultCR, _agent.vaultCollateralIndex);
         if (vaultUnderwater) {

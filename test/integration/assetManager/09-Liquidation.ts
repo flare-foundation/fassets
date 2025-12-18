@@ -5,12 +5,13 @@ import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
 import { Liquidator } from "../../../lib/test-utils/actors/Liquidator";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
+import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Compare, assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
-import { BN_ZERO, deepFormat, toBN, toBNExp, toWei, trace } from "../../../lib/utils/helpers";
+import { BN_ZERO, MAX_BIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
     const governance = accounts[10];
@@ -1541,6 +1542,40 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // console.log("pool's safetyMinCollateralRatioBIPS", toBN(poolCollateralTypes.safetyMinCollateralRatioBIPS).toString());
             // console.log("after liqudation poolCollateralRatioBIPS:", info2.poolCollateralRatioBIPS);
             assertWeb3Equal(info2.poolCollateralRatioBIPS, poolCollateralTypes.safetyMinCollateralRatioBIPS);
+        });
+
+        it("liquidation due to price change - the responsibility should change from pool to vault and back to pool with price change", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            await agent.depositCollateralLotsAndMakeAvailable(10);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const liquidator = await Liquidator.create(context, liquidatorAddress1);
+            // mint
+            const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+            await minter.transferFAsset(liquidator.address, minted.mintedAmountUBA);
+            await agent.withdrawPoolFees(await agent.collateralPool.totalFAssetFees(), liquidator.address);
+            const liquidationAmount = await context.fAsset.balanceOf(liquidator.address);
+            await agent.checkAgentInfo({ mintedUBA: liquidationAmount });
+            // start liquidation due to pool
+            await agent.setPoolCollateralRatioByChangingPoolTokenPrice(1 * MAX_BIPS);
+            await liquidator.startLiquidation(agent);
+            const info1 = await agent.getAgentInfo();
+            // change liquidation responsibility to agent and liquidate
+            await agent.setPoolCollateralRatioByChangingPoolTokenPrice(2.2 * MAX_BIPS);
+            await agent.setVaultCollateralRatioByChangingVaultTokenPrice(1.0 * MAX_BIPS);
+            await liquidator.liquidate(agent, liquidationAmount.divn(2));
+            const info2 = await agent.getAgentInfo();
+            // all the responsibility should be on agent (so cca the same amount of agent pool tokens should be burned as total pool collateral)
+            // the small difference is because pool token price is not equal to nat price due to collateral reservation fee in pool
+            assertApproximatelyEqual(toBN(info1.totalAgentPoolTokensWei).sub(toBN(info2.totalAgentPoolTokensWei)),
+                toBN(info1.totalPoolCollateralNATWei).sub(toBN(info2.totalPoolCollateralNATWei)),
+                "relative", 0.01);
+            // change liquidation responsibility to pool and liquidate again
+            await agent.setPoolCollateralRatioByChangingPoolTokenPrice(1.0 * MAX_BIPS);
+            await agent.setVaultCollateralRatioByChangingVaultTokenPrice(2.0 * MAX_BIPS);
+            await liquidator.liquidate(agent, liquidationAmount.divn(2));
+            const info3 = await agent.getAgentInfo();
+            // now all the responsibility should be on pool (so none of the agent's pool tokens should be burned)
+            assertWeb3Equal(toBN(info2.totalAgentPoolTokensWei), toBN(info3.totalAgentPoolTokensWei));
         });
     });
 });
