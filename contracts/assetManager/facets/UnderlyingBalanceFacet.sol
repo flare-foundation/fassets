@@ -45,7 +45,7 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
     )
         external
         notEmergencyPaused
-        onlyAgentVaultOwner(_agentVault)
+        onlyActiveAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -80,7 +80,7 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
     )
         external
         notEmergencyPaused
-        onlyAgentVaultOwner(_agentVault)
+        onlyActiveAgentVaultOwner(_agentVault)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
@@ -155,7 +155,7 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
     )
         external
         notFullyEmergencyPaused
-        onlyAgentVaultOwner(_agentVault)
+        onlyActiveAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
         uint64 announcementId = agent.announcedUnderlyingWithdrawalId;

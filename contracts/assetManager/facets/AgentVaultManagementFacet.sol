@@ -126,7 +126,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
     )
         external
         notEmergencyPaused
-        onlyAgentVaultOwner(_agentVault)
+        onlyActiveAgentVaultOwner(_agentVault)
         returns (uint256 _destroyAllowedAt)
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
@@ -162,7 +162,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
     )
         external
         notFullyEmergencyPaused
-        onlyAgentVaultOwner(_agentVault)
+        onlyActiveAgentVaultOwner(_agentVault)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
@@ -202,7 +202,7 @@ contract AgentVaultManagementFacet is AssetManagerBase {
     )
         external
         notEmergencyPaused
-        onlyAgentVaultOwner(_agentVault)
+        onlyActiveAgentVaultOwner(_agentVault)
     {
         _upgradeAgentVaultAndPool(_agentVault);
     }

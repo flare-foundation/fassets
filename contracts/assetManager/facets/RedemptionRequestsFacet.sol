@@ -243,7 +243,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         external
         notEmergencyPaused
         nonReentrant
-        onlyAgentVaultOwner(_agentVault)
+        onlyActiveAgentVaultOwner(_agentVault)
         returns (uint256 _closedAmountUBA)
     {
         Agent.State storage agent = Agent.get(_agentVault);

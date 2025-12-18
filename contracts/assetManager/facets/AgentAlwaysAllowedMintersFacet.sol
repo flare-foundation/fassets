@@ -14,7 +14,7 @@ contract AgentAlwaysAllowedMintersFacet is AssetManagerBase {
         address _minter
     )
         external
-        onlyAgentVaultOwner(_agentVault)
+        onlyActiveAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
         agent.alwaysAllowedMinters.add(_minter);
@@ -25,7 +25,7 @@ contract AgentAlwaysAllowedMintersFacet is AssetManagerBase {
         address _minter
     )
         external
-        onlyAgentVaultOwner(_agentVault)
+        onlyActiveAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
         agent.alwaysAllowedMinters.remove(_minter);

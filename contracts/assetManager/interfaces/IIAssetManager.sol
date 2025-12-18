@@ -244,7 +244,8 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsMan
 
     /**
      * True if `_address` is either work or management address of the owner of the agent identified by `_agentVault`.
-     * Used internally by agent vault.
+     * Works even if the agent vault is already destroyed (and still returns true if _address is the owner).
+     * Used internally by agent vault and collateral pool.
      */
     function isAgentVaultOwner(address _agentVault, address _address)
         external view

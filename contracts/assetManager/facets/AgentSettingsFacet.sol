@@ -38,7 +38,7 @@ contract AgentSettingsFacet is AssetManagerBase {
         uint256 _value
     )
         external
-        onlyAgentVaultOwner(_agentVault)
+        onlyActiveAgentVaultOwner(_agentVault)
         returns (uint256 _updateAllowedAt)
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -61,7 +61,7 @@ contract AgentSettingsFacet is AssetManagerBase {
         string memory _name
     )
         external
-        onlyAgentVaultOwner(_agentVault)
+        onlyActiveAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
         bytes32 hash = _getAndCheckHash(_name);

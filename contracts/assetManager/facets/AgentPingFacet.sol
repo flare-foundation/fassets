@@ -19,7 +19,7 @@ contract AgentPingFacet is AssetManagerBase, IAgentPing {
      */
     function agentPingResponse(address _agentVault, uint256 _query, string memory _response)
         external
-        onlyAgentVaultOwner(_agentVault)
+        onlyActiveAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
         emit AgentPingResponse(_agentVault, agent.ownerManagementAddress, _query, _response);

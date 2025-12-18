@@ -107,7 +107,7 @@ library Agents {
         requireWhitelisted(_agent.ownerManagementAddress);
     }
 
-    function requireAgentVaultOwner(
+    function requireActiveAgentVaultOwner(
         address _agentVault
     )
         internal view

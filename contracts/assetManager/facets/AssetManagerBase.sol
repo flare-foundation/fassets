@@ -36,8 +36,9 @@ abstract contract AssetManagerBase {
         _;
     }
 
-    modifier onlyAgentVaultOwner(address _agentVault) {
-        Agents.requireAgentVaultOwner(_agentVault);
+    // require the caller to be the owner of _agentVault and it has to be active (not destroyed)
+    modifier onlyActiveAgentVaultOwner(address _agentVault) {
+        Agents.requireActiveAgentVaultOwner(_agentVault);
         _;
     }
 

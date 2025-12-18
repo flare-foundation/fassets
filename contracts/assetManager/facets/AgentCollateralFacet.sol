@@ -52,7 +52,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
     )
         external
         notEmergencyPaused
-        onlyAgentVaultOwner(_agentVault)
+        onlyActiveAgentVaultOwner(_agentVault)
         returns (uint256 _withdrawalAllowedAt)
     {
         return _announceWithdrawal(Collateral.Kind.VAULT, _agentVault, _valueNATWei);
@@ -74,7 +74,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
     )
         external
         notEmergencyPaused
-        onlyAgentVaultOwner(_agentVault)
+        onlyActiveAgentVaultOwner(_agentVault)
         returns (uint256 _redemptionAllowedAt)
     {
         return _announceWithdrawal(Collateral.Kind.AGENT_POOL, _agentVault, _valuePoolTokenWei);
