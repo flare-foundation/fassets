@@ -80,17 +80,26 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should add and remove asset manager", async () => {
             const managers_current = await assetManagerController.getAssetManagers();
-            const [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController, "Wrapped Ether", "FETH", 18, settings, collaterals, "Ether", "ETH", { governanceSettings, updateExecutor });
+            // call newAssetManager but don;t add it to controller, otherwise addAssetManager won't receive event
+            const [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController, "Wrapped Ether", "FETH", 18, settings, collaterals, "Ether", "ETH",
+                { governanceSettings, updateExecutor, addToController: false });
 
-            const res1 = await assetManagerController.addAssetManager(assetManager2.address, { from: governance });
-            await waitForTimelock(res1, assetManagerController, updateExecutor);
+            const tl1 = await assetManagerController.addAssetManager(assetManager2.address, { from: governance });
+            const res1 = await waitForTimelock(tl1, assetManagerController, updateExecutor);
             const managers_add = await assetManagerController.getAssetManagers();
             assert.equal(managers_current.length + 1, managers_add.length);
+            expectEvent(res1, "AssetManagerAdded");
 
-            const res2 = await assetManagerController.removeAssetManager(assetManager.address, { from: governance });
-            await waitForTimelock(res2, assetManagerController, updateExecutor);
+            const tl2 = await assetManagerController.removeAssetManager(assetManager.address, { from: governance });
+            const res2 = await waitForTimelock(tl2, assetManagerController, updateExecutor);
+            expectEvent(res2, "AssetManagerRemoved", { assetManager: assetManager.address });
             const managers_remove = await assetManagerController.getAssetManagers();
             assert.equal(managers_current.length, managers_remove.length);
+
+            // removing non-existen asset manager should not emit event
+            const tl3 = await assetManagerController.removeAssetManager(assetManager.address, { from: governance });
+            const res3 = await waitForTimelock(tl3, assetManagerController, updateExecutor);
+            expectEvent.notEmitted(res3, "AssetManagerRemoved");
         });
 
         it("Asset manager controller should not be attached when add asset manager is called from a different controller", async () => {
@@ -1171,13 +1180,23 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 assetManagerController.emergencyPauseStartOperations([assetManager.address], 10, { from: sender }),
                 "OnlyGovernanceOrEmergencyPauseSenders", []);
             // add sender
-            await assetManagerController.addEmergencyPauseSender(sender, { from: governance });
+            const resAdd1 = await assetManagerController.addEmergencyPauseSender(sender, { from: governance });
+            expectEvent(resAdd1, "EmergencyPauseSenderAdded", { emergencyPauseSender: sender });
+            // adding same sender again should not emit event
+            const resAdd2 = await assetManagerController.addEmergencyPauseSender(sender, { from: governance });
+            expectEvent.notEmitted(resAdd2, "EmergencyPauseSenderAdded");
+            // new sender can trigger pause now
             await assetManagerController.emergencyPauseStartOperations([assetManager.address], 10, { from: sender });
             assert.isTrue(await assetManager.emergencyPaused());
             await time.deterministicIncrease(20);
             assert.isFalse(await assetManager.emergencyPaused());
             // remove sender
-            await assetManagerController.removeEmergencyPauseSender(sender, { from: governance });
+            const resRemove1 = await assetManagerController.removeEmergencyPauseSender(sender, { from: governance });
+            expectEvent(resRemove1, "EmergencyPauseSenderRemoved", { emergencyPauseSender: sender });
+            // removing same sender again should not emit event
+            const resRemove2 = await assetManagerController.removeEmergencyPauseSender(sender, { from: governance });
+            expectEvent.notEmitted(resRemove2, "EmergencyPauseSenderRemoved");
+            // now pause should fail
             await expectRevert.custom(
                 assetManagerController.emergencyPauseStartOperations([assetManager.address], 10, { from: sender }),
                 "OnlyGovernanceOrEmergencyPauseSenders", []);

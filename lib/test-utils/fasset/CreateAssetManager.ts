@@ -48,11 +48,13 @@ export async function newAssetManager(
         governanceSettings?: string | GovernanceSettingsMockInstance,
         updateExecutor?: string,
         coreVaultCustodian?: string,
+        addToController?: boolean,  // default true
     }
 ): Promise<[IIAssetManagerInstance, FAssetInstance]> {
     // 0x8... is not a contract, but it is valid non-zero address so it will work in tests where we don't switch to production mode
     const governanceSettings = options?.governanceSettings ?? "0x8000000000000000000000000000000000000000";
     const updateExecutor = options?.updateExecutor ?? governanceAddress;
+    const addToController = options?.addToController ?? true;
     const fAssetImpl = await FAsset.new();
     const fAssetProxy = await FAssetProxy.new(fAssetImpl.address, name, symbol, assetName, assetSymbol, decimals);
     const fAsset = await FAsset.at(fAssetProxy.address);
@@ -78,12 +80,14 @@ export async function newAssetManager(
     // verify interface implementation
     await checkAllMethodsImplemented(assetManager, interfaceSelectors);
     // add to controller
-    if (typeof assetManagerController !== 'string') {
-        const res = await assetManagerController.addAssetManager(assetManager.address, { from: governanceAddress });
-        await waitForTimelock(res, assetManagerController, updateExecutor);
-    } else {
-        // simulate attaching to asset manager controller (for unit tests, where controller is an eoa address)
-        await assetManager.attachController(true, { from: assetManagerController });
+    if (addToController) {
+        if (typeof assetManagerController !== 'string') {
+            const res = await assetManagerController.addAssetManager(assetManager.address, { from: governanceAddress });
+            await waitForTimelock(res, assetManagerController, updateExecutor);
+        } else {
+            // simulate attaching to asset manager controller (for unit tests, where controller is an eoa address)
+            await assetManager.attachController(true, { from: assetManagerController });
+        }
     }
     await fAsset.setAssetManager(assetManager.address);
     return [assetManager, fAsset];

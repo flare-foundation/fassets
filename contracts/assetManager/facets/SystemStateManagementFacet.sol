@@ -2,11 +2,12 @@
 pragma solidity ^0.8.27;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 
 
-contract SystemStateManagementFacet is AssetManagerBase {
+contract SystemStateManagementFacet is AssetManagerBase, IAssetManagerEvents {
     using SafeCast for uint256;
 
     /**
@@ -39,6 +40,7 @@ contract SystemStateManagementFacet is AssetManagerBase {
         AssetManagerState.State storage state = AssetManagerState.get();
         if (state.mintingPausedAt == 0) {
             state.mintingPausedAt = block.timestamp.toUint64();
+            emit MintingPaused(true);
         }
     }
 
@@ -51,6 +53,9 @@ contract SystemStateManagementFacet is AssetManagerBase {
         onlyAssetManagerController
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        state.mintingPausedAt = 0;
+        if (state.mintingPausedAt != 0) {
+            state.mintingPausedAt = 0;
+            emit MintingPaused(false);
+        }
     }
 }

@@ -35,7 +35,10 @@ contract EmergencyPauseFacet is AssetManagerBase, IAssetManagerEvents {
         onlyAssetManagerController
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        state.emergencyPausedTotalDuration = 0;
+        if (state.emergencyPausedTotalDuration != 0) {
+            state.emergencyPausedTotalDuration = 0;
+            emit EmergencyPauseTotalDurationReset();
+        }
     }
 
     function emergencyPaused()

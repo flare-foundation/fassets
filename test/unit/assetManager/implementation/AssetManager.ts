@@ -763,18 +763,25 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     describe("pause and unpause minting", () => {
         it("should pause", async () => {
             assert.isFalse(await assetManager.mintingPaused());
-            await assetManager.pauseMinting({ from: assetManagerController });
+            const res1 = await assetManager.pauseMinting({ from: assetManagerController });
+            expectEvent(res1, "MintingPaused", { paused: true });
             assert.isTrue(await assetManager.mintingPaused());
-            // pause can be called twice with no extra effect
-            await assetManager.pauseMinting({ from: assetManagerController });
+            // pause can be called twice with no extra effect (no event should be emitted)
+            const res2 = await assetManager.pauseMinting({ from: assetManagerController });
+            expectEvent.notEmitted(res2, "MintingPaused");
             assert.isTrue(await assetManager.mintingPaused());
         });
 
         it("should unpause", async () => {
             await assetManager.pauseMinting({ from: assetManagerController });
             assert.isTrue(await assetManager.mintingPaused());
-            await assetManager.unpauseMinting({ from: assetManagerController });
+            // unpause
+            const res1 = await assetManager.unpauseMinting({ from: assetManagerController });
+            expectEvent(res1, "MintingPaused", { paused: false });
             assert.isFalse(await assetManager.mintingPaused());
+            // unpause can be called twice with no extra effect (no event should be emitted)
+            const res2 = await assetManager.unpauseMinting({ from: assetManagerController });
+            expectEvent.notEmitted(res2, "MintingPaused");
         });
 
         it("should not pause if not called from asset manager controller", async () => {
@@ -3178,9 +3185,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await time.deterministicIncrease(24 * HOURS);
             assert.isFalse(await assetManager.emergencyPaused());
             // reset
-            await assetManager.resetEmergencyPauseTotalDuration({ from: assetManagerController });
+            const res = await assetManager.resetEmergencyPauseTotalDuration({ from: assetManagerController });
+            expectEvent(res, "EmergencyPauseTotalDurationReset");
             // now we can use all time again
             await triggerPauseAndCheck(false, 24 * HOURS, { expectedDuration: 24 * HOURS });
+        });
+
+        it("governance reset pause time doesn't trigger event when pause time is 0", async () => {
+            const res = await assetManager.resetEmergencyPauseTotalDuration({ from: assetManagerController });
+            expectEvent.notEmitted(res, "EmergencyPauseTotalDurationReset");
         });
 
         it("should not reset pause time if not from asset manager controller", async () => {

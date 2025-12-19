@@ -19,6 +19,9 @@ interface IIAssetManagerController is
     IAddressUpdatable,
     IUUPSUpgradeable
 {
+    event EmergencyPauseSenderAdded(address emergencyPauseSender);
+    event EmergencyPauseSenderRemoved(address emergencyPauseSender);
+
     /**
      * New address in case this controller was replaced.
      * Note: this code contains no checks that replacedBy==0, because when replaced,

@@ -89,6 +89,7 @@ contract AssetManagerController is
         if (_assetManager.assetManagerController() == address(this)) {
             _assetManager.attachController(true);
         }
+        emit AssetManagerAdded(address(_assetManager));
     }
 
     /**
@@ -113,6 +114,7 @@ contract AssetManagerController is
         if (_assetManager.assetManagerController() == address(this)) {
             _assetManager.attachController(false);
         }
+        emit AssetManagerRemoved(address(_assetManager));
     }
 
     /**
@@ -666,14 +668,20 @@ contract AssetManagerController is
         external
         onlyImmediateGovernance
     {
-        emergencyPauseSenders.add(_address);
+        if (!emergencyPauseSenders.contains(_address)) {
+            emergencyPauseSenders.add(_address);
+            emit EmergencyPauseSenderAdded(_address);
+        }
     }
 
     function removeEmergencyPauseSender(address _address)
         external
         onlyImmediateGovernance
     {
-        emergencyPauseSenders.remove(_address);
+        if (emergencyPauseSenders.contains(_address)) {
+            emergencyPauseSenders.remove(_address);
+            emit EmergencyPauseSenderRemoved(_address);
+        }
     }
 
     function setMaxEmergencyPauseDurationSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)

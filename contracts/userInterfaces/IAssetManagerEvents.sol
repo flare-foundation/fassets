@@ -525,4 +525,14 @@ interface IAssetManagerEvents {
      * Emergency pause was canceled.
      */
     event EmergencyPauseCanceled();
+
+    /**
+     * Emergency pause total duration was reset by the governance.
+     */
+    event EmergencyPauseTotalDurationReset();
+
+    /**
+     * Minting was paused/unpaused by the governance.
+     */
+    event MintingPaused(bool paused);
 }
