@@ -146,12 +146,18 @@ library Conversion {
     {
         (uint256 assetPrice, uint256 assetTs, uint256 assetFtsoDec) =
             readFtsoPrice(_token.assetFtsoSymbol, _fromTrustedProviders);
+        if (_fromTrustedProviders && assetTs == 0) {
+            return (0, 0, 0);   // trusted price with timestamp 0 will be ignored
+        }
         if (_token.directPricePair) {
             uint256 price = calcAmgToTokenWeiPrice(_token.decimals, 1, 0, assetPrice, assetFtsoDec);
             return (price, assetTs, assetTs);
         } else {
             (uint256 tokenPrice, uint256 tokenTs, uint256 tokenFtsoDec) =
                 readFtsoPrice(_token.tokenFtsoSymbol, _fromTrustedProviders);
+            if (_fromTrustedProviders && tokenTs == 0) {
+                return (0, 0, 0);   // trusted price with timestamp 0 will be ignored
+            }
             uint256 price =
                 calcAmgToTokenWeiPrice(_token.decimals, tokenPrice, tokenFtsoDec, assetPrice, assetFtsoDec);
             return (price, assetTs, tokenTs);
@@ -165,7 +171,10 @@ library Conversion {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         IPriceReader priceReader = IPriceReader(settings.priceReader);
         if (_fromTrustedProviders) {
-            return priceReader.getPriceFromTrustedProviders(_symbol);
+            (uint256 price, uint256 timestamp, uint256 decimals, uint256 quality) =
+                priceReader.getPriceFromTrustedProvidersWithQuality(_symbol);
+            // (0, 0, 0) means that prices are not initialized
+            return quality > 0 ? (price, timestamp, decimals) : (0, 0, 0);
         } else {
             return priceReader.getPrice(_symbol);
         }

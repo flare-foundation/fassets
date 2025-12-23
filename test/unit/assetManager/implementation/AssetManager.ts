@@ -2951,6 +2951,39 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isFalse(await assetManager.isAgentVaultOwner(agentVault.address, accounts[30]));
             assert.isFalse(await assetManager.isAgentVaultOwner(agentVault.address, ZERO_ADDRESS));
         });
+
+        it("price and CR calculations should work correctly even if trusted prices are not initialized", async () => {
+            const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, agentOwner1, toBN(1));
+            const info1 = await assetManager.getAgentInfo(agentVault.address);
+            // reset the trusted submissions by changing feed decimals
+            const feedIds = await contracts.priceStore.getFeedIds();
+            const symbols = await contracts.priceStore.getSymbols();
+            const decimals = feedIds.map(_ => 3);
+            await contracts.priceStore.updateSettings(feedIds, symbols, decimals, 50, 5000, { from: governance });
+            // trusted prices are reset
+            const { 0: price, 3: quality } = await contracts.priceStore.getPriceFromTrustedProvidersWithQuality("USDC");
+            assertWeb3Equal(price, 0);
+            assertWeb3Equal(quality, 0);
+            // but agent info works ok
+            const info2 = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(info2.vaultCollateralRatioBIPS, info1.vaultCollateralRatioBIPS);
+            // agent info still returns same CR if trusted asset price changes
+            await contracts.priceStore.setCurrentPriceFromTrustedProviders(testChainInfo.eth.symbol, 123456, 0);
+            const { 0: price1, 3: quality1 } = await contracts.priceStore.getPriceFromTrustedProvidersWithQuality(testChainInfo.eth.symbol);
+            assertWeb3Equal(price1, 123456);
+            assertWeb3Equal(quality1, 1);
+            const info3 = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(info3.vaultCollateralRatioBIPS, info1.vaultCollateralRatioBIPS);
+            // but also setting trusted token price make trusted prices usable again and the price changes
+            await contracts.priceStore.setCurrentPriceFromTrustedProviders("USDC", 1000, 0);
+            const { 0: price2, 3: quality2 } = await contracts.priceStore.getPriceFromTrustedProvidersWithQuality("USDC");
+            assertWeb3Equal(price2, 1000);
+            assertWeb3Equal(quality2, 1);
+            const info4 = await assetManager.getAgentInfo(agentVault.address);
+            assert.notEqual(Number(info4.vaultCollateralRatioBIPS), Number(info1.vaultCollateralRatioBIPS));
+            assert.isAbove(Number(info4.vaultCollateralRatioBIPS), Number(info1.vaultCollateralRatioBIPS) + 1e6);
+        });
     })
 
     describe("emergency pause", () => {

@@ -32,6 +32,7 @@ contract FtsoV2PriceStoreMock is FtsoV2PriceStore {
         PriceStore storage feed = _getFeed(_symbol);
         feed.trustedValue = _price.toUint32();
         feed.trustedVotingRoundId = _timestampToVotingRound(block.timestamp - _ageSeconds);
+        feed.numberOfSubmits = 1;
     }
 
     function finalizePrices() external {
