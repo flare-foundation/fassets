@@ -154,6 +154,12 @@ interface IAssetManager is
      * to prevent current block being too outdated, which gives too short time for
      * minting or redemption payment.
      * NOTE: anybody can call.
+     * NOTE: the block/timestamp will only be updated if it is strictly higher than the current value.
+     * For mintings and redemptions we also add the duration from the last update (on this chain) to compensate
+     * for the time that passed since the last update. This mechanism can be abused by providing old block proof
+     * as fresh, which will distort the compensation accounting. Due to monotonicity such an attack will only work
+     * if there was no block update for some time. Therefore it is enough to have at least one honest
+     * current block updater regularly providing updates to avoid this issue.
      * @param _proof proof that a block with given number and timestamp exists
      */
     function updateCurrentBlock(
@@ -541,6 +547,9 @@ interface IAssetManager is
      * If the minter pays the underlying amount, minter obtains f-assets.
      * The collateral reservation fee is split between the agent and the collateral pool.
      * NOTE: the owner of the agent vault must be in the AgentOwnerRegistry.
+     * NOTE: if the underlying block isn't updated regularly, it can happen that there is not enough time for
+     * the underlying payment. Therefore minters have to verify the current underlying before minting and,
+     * if needed, update it by calling `updateCurrentBlock`.
      * @param _agentVault agent vault address
      * @param _lots the number of lots for which to reserve collateral
      * @param _maxMintingFeeBIPS maximum minting fee (BIPS) that can be charged by the agent - best is just to
@@ -688,6 +697,9 @@ interface IAssetManager is
      * of remaining lots.
      * Agent receives redemption request id and instructions for underlying payment in
      * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
+     * NOTE: if the underlying block isn't updated regularly, it can happen that there is no time for underlying
+     * payment. Since the agents cannot know when the next redemption will happen, they should regularly update the
+     * underlying time by obtaining fresh proof of latest underlying block and calling `updateCurrentBlock`.
      * @param _lots number of lots to redeem
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)

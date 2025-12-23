@@ -45,6 +45,9 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
      * If the minter pays the underlying amount, minter obtains f-assets.
      * The collateral reservation fee is split between the agent and the collateral pool.
      * NOTE: the owner of the agent vault must be in the AgentOwnerRegistry.
+     * NOTE: if the underlying block isn't updated regularly, it can happen that there is not enough time for
+     * the underlying payment. Therefore minters have to verify the current underlying before minting and,
+     * if needed, update it by calling `updateCurrentBlock`.
      * @param _agentVault agent vault address
      * @param _lots the number of lots for which to reserve collateral
      * @param _maxMintingFeeBIPS maximum minting fee (BIPS) that can be charged by the agent - best is just to

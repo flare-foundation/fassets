@@ -10,11 +10,17 @@ import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 contract UnderlyingTimekeepingFacet is AssetManagerBase {
     /**
      * Prove that a block with given number and timestamp exists and
-     * update the current underlying block info if the provided data higher.
+     * update the current underlying block info if the provided data is higher.
      * This method should be called by minters before minting and by agent's regularly
      * to prevent current block being too outdated, which gives too short time for
      * minting or redemption payment.
      * NOTE: anybody can call.
+     * NOTE: the block/timestamp will only be updated if it is strictly higher than the current value.
+     * For mintings and redemptions we also add the duration from the last update (on this chain) to compensate
+     * for the time that passed since the last update. This mechanism can be abused by providing old block proof
+     * as fresh, which will distort the compensation accounting. Due to monotonicity such an attack will only work
+     * if there was no block update for some time. Therefore it is enough to have at least one honest
+     * current block updater regularly providing updates to avoid this issue.
      * @param _proof proof that a block with given number and timestamp exists
      */
     function updateCurrentBlock(

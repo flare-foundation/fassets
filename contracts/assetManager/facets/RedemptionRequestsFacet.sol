@@ -45,11 +45,13 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
      * NOTE: in some cases not all sent f-assets can be redeemed (either there are not enough tickets or
      * more than a fixed limit of tickets should be redeemed). In this case only part of the approved assets
      * are burned and redeemed and the redeemer can execute this method again for the remaining lots.
-     * In such case `RedemptionRequestIncomplete` event will be emitted, indicating the number of remaining lots.
+     * In such a case the `RedemptionRequestIncomplete` event will be emitted, indicating the number
+     * of remaining lots.
      * Agent receives redemption request id and instructions for underlying payment in
      * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
-     * The agent can also reject the redemption request. In that case any other agent can take over the redemption.
-     * If no agent takes over the redemption, the redeemer can request the default payment.
+     * NOTE: if the underlying block isn't updated regularly, it can happen that there is no time for underlying
+     * payment. Since the agents cannot know when the next redemption will happen, they should regularly update the
+     * underlying time by obtaining fresh proof of latest underlying block and calling `updateCurrentBlock`.
      * @param _lots number of lots to redeem
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
