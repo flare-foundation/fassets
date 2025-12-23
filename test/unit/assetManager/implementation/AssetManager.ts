@@ -1239,11 +1239,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             chain.mine(3);  // make sure block no and timestamp change
             const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
             const res = await assetManager.updateCurrentBlock(proof);
-            expectEvent(res, 'CurrentUnderlyingBlockUpdated', { underlyingBlockNumber: proof.data.requestBody.blockNumber, underlyingBlockTimestamp: proof.data.responseBody.blockTimestamp });
+            // check
+            const expectedBlockNumber = Number(proof.data.requestBody.blockNumber) + Number(proof.data.responseBody.numberOfConfirmations);
+            const expectedBlockTime = Number(proof.data.responseBody.blockTimestamp) +
+                Math.floor(Number(proof.data.responseBody.numberOfConfirmations) * Number(settings.averageBlockTimeMS) / 1000);
+            expectEvent(res, 'CurrentUnderlyingBlockUpdated', { underlyingBlockNumber: expectedBlockNumber, underlyingBlockTimestamp: expectedBlockTime });
             const timestamp = await time.latest();
             const currentBlock = await assetManager.currentUnderlyingBlock();
-            assertWeb3Equal(currentBlock[0], proof.data.requestBody.blockNumber);
-            assertWeb3Equal(currentBlock[1], proof.data.responseBody.blockTimestamp);
+            assertWeb3Equal(currentBlock[0], expectedBlockNumber);
+            assertWeb3Equal(currentBlock[1], expectedBlockTime);
             assertWeb3Equal(currentBlock[2], timestamp);
         });
 

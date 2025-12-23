@@ -195,7 +195,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
             SelfMintNotAgentsAddress());
         require(_payment.data.responseBody.receivedAmount >= SafeCast.toInt256(mintValueUBA + poolFeeUBA),
             SelfMintPaymentTooSmall());
-        require(_payment.data.responseBody.blockNumber > agent.underlyingBlockAtCreation,
+        require(_payment.data.responseBody.blockNumber >= agent.underlyingBlockAtCreation,
             SelfMintPaymentTooOld());
         state.paymentConfirmations.confirmIncomingPayment(_payment);
         // update underlying block

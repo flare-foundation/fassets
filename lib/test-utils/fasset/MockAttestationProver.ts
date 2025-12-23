@@ -159,7 +159,7 @@ export class MockAttestationProver {
         const lowestQueryWindowBlock = startBlockInd >= 0 ? this.chain.blocks[startBlockInd] : null;
         return {
             blockTimestamp: String(block.timestamp),
-            numberOfConfirmations: String(this.chain.finalizationBlocks),
+            numberOfConfirmations: String(this.chain.finalizationBlocks + 1), // MockChain.finalizations doesn't include the transaction block, so add 1
             lowestQueryWindowBlockNumber: String(lowestQueryWindowBlock?.number ?? 0),
             lowestQueryWindowBlockTimestamp: String(lowestQueryWindowBlock?.timestamp ?? 0),
         };

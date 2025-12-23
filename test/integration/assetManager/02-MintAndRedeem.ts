@@ -73,7 +73,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const blockNumber = await context.updateUnderlyingBlock();
             const currentUnderlyingBlock = await context.assetManager.currentUnderlyingBlock();
             assertWeb3Equal(currentUnderlyingBlock[0], blockNumber);
-            assertWeb3Equal(currentUnderlyingBlock[1], (await context.chain.getBlockAt(blockNumber))?.timestamp);
             // perform minting
             const lots = 3;
             const crFee = await minter.getCollateralReservationFee(lots);
@@ -134,7 +133,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const blockNumber = await context.updateUnderlyingBlock();
             const currentUnderlyingBlock = await context.assetManager.currentUnderlyingBlock();
             assertWeb3Equal(currentUnderlyingBlock[0], blockNumber);
-            assertWeb3Equal(currentUnderlyingBlock[1], (await context.chain.getBlockAt(blockNumber))?.timestamp);
             // perform minting
             const lots = 3;
             const crFee = await minter.getCollateralReservationFee(lots);
@@ -213,7 +211,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const blockNumber = await context.updateUnderlyingBlock();
             const currentUnderlyingBlock = await context.assetManager.currentUnderlyingBlock();
             assertWeb3Equal(currentUnderlyingBlock[0], blockNumber);
-            assertWeb3Equal(currentUnderlyingBlock[1], (await context.chain.getBlockAt(blockNumber))?.timestamp);
             // perform minting
             const lots = 3;
             const crFee = await minter.getCollateralReservationFee(lots);
@@ -265,7 +262,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const blockNumber = await context.updateUnderlyingBlock();
             const currentUnderlyingBlock = await context.assetManager.currentUnderlyingBlock();
             assertWeb3Equal(currentUnderlyingBlock[0], blockNumber);
-            assertWeb3Equal(currentUnderlyingBlock[1], (await context.chain.getBlockAt(blockNumber))?.timestamp);
             //Set a small minting cap
             await context.assetManagerController.setMintingCapAmg([context.assetManager.address], context.convertLotsToAMG(10), { from: governance });
             // perform minting

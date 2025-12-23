@@ -8,6 +8,7 @@ import { expectEvent, time } from "../../../../lib/test-utils/test-helpers";
 import { TestSettingsContracts, createTestCollaterals, createTestContracts, createTestSettings } from "../../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { toBN } from "../../../../lib/utils/helpers";
 import { FAssetInstance, IIAssetManagerInstance } from "../../../../typechain-truffle";
 
 contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests`, accounts => {
@@ -54,7 +55,11 @@ contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests
 
         const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
         const res = await assetManager.updateCurrentBlock(proof);
-        expectEvent(res, 'CurrentUnderlyingBlockUpdated', { underlyingBlockNumber: proof.data.requestBody.blockNumber, underlyingBlockTimestamp: proof.data.responseBody.blockTimestamp });
+        expectEvent(res, 'CurrentUnderlyingBlockUpdated', {
+            underlyingBlockNumber: Number(proof.data.requestBody.blockNumber) + Number(proof.data.responseBody.numberOfConfirmations),
+            underlyingBlockTimestamp: Number(proof.data.responseBody.blockTimestamp) +
+                Math.floor(Number(proof.data.responseBody.numberOfConfirmations) * Number(settings.averageBlockTimeMS) / 1000)
+        });
 
         // when nothing is changed, there should be no event
         const proof2 = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));

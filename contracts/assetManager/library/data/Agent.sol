@@ -138,7 +138,7 @@ library Agent {
 
         // Underlying block when the agent was created.
         // Challengers should track underlying address activity since this block
-        // and topups/self mint payments are only valid strictly after this block.
+        // and topups/self mint payments are only valid after this block (inclusive).
         uint64 underlyingBlockAtCreation;
 
         // The time when ongoing agent vault destroy was announced.

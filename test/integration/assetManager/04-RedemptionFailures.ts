@@ -67,7 +67,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const blockNumber = await context.updateUnderlyingBlock();
             const currentUnderlyingBlock = await context.assetManager.currentUnderlyingBlock();
             assertWeb3Equal(currentUnderlyingBlock[0], blockNumber);
-            assertWeb3Equal(currentUnderlyingBlock[1], (await context.chain.getBlockAt(blockNumber))?.timestamp);
             // perform minting
             const lots = 3;
             const crFee = await minter.getCollateralReservationFee(lots);
