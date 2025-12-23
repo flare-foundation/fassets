@@ -222,25 +222,6 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         assertWeb3Equal(redemptionPoolFees.mod(toBN(settings.assetMintingGranularityUBA)), 0);
     });
 
-    it("should update underlying block with redemption proof", async () => {
-        // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
-        const request = await mintAndRedeemFromAgent(agentVault, collateralPool.address, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
-        //perform redemption payment
-        const paymentAmt = request.valueUBA.sub(request.feeUBA);
-        const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
-        const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
-        const res = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
-        expectEvent(res, 'RedemptionPerformed');
-        // assert
-        const { 0: underlyingBlock, 1: underlyingTime, 2: updateTime } = await assetManager.currentUnderlyingBlock();
-        assertWeb3Equal(underlyingBlock, toBN(proofR.data.responseBody.blockNumber).addn(1));
-        assert.isTrue(underlyingTime.gt(toBN(proofR.data.responseBody.blockTimestamp)));
-        assertWeb3Equal(updateTime, await time.latest());
-    });
-
     it("should confirm redemption payment from agent in collateral", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);

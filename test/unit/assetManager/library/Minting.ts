@@ -353,23 +353,6 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         expectEvent(res2, "RedemptionTicketUpdated", { ticketValueUBA: ticketValue1.add(ticketValue2) });
     });
 
-    it("should update underlying block with minting proof", async () => {
-        // init
-        const poolFeeShareBIPS = toBIPS(0.4);
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { poolFeeShareBIPS });
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        // act
-        const crt = await reserveCollateral(agentVault.address, 1);
-        const txHash = await performMintingPayment(crt);
-        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
-        const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
-        // assert
-        const { 0: underlyingBlock, 1: underlyingTime, 2: updateTime } = await assetManager.currentUnderlyingBlock();
-        assertWeb3Equal(underlyingBlock, toBN(proof.data.responseBody.blockNumber).addn(1));
-        assert.isTrue(underlyingTime.gt(toBN(proof.data.responseBody.blockTimestamp)));
-        assertWeb3Equal(updateTime, await time.latest());
-    });
-
     it("should self-mint", async () => {
         // init
         const feeBIPS = toBIPS("10%");
@@ -525,27 +508,6 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         // assert
         await expectRevert.custom(promise, "NotEnoughFreeCollateral", []);
     });
-
-    it("should update underlying block with self mint proof", async () => {
-        // init
-        const feeBIPS = toBIPS("10%");
-        const poolFeeShareBIPS = toBIPS(0.4);
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        // act
-        const lots = 2;
-        const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots);
-        const poolFee = paymentAmount.mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
-        const txHash = await performSelfMintingPayment(agentVault.address, paymentAmount.add(poolFee));
-        const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
-        const res = await assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
-        // assert
-        const { 0: underlyingBlock, 1: underlyingTime, 2: updateTime } = await assetManager.currentUnderlyingBlock();
-        assertWeb3Equal(underlyingBlock, toBN(proof.data.responseBody.blockNumber).addn(1));
-        assert.isTrue(underlyingTime.gt(toBN(proof.data.responseBody.blockTimestamp)));
-        assertWeb3Equal(updateTime, await time.latest());
-    });
-
 
     it("check agent's minting capacity", async () => {
         // init

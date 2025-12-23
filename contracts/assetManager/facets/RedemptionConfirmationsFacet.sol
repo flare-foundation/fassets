@@ -24,7 +24,6 @@ import {AgentBacking} from "../library/AgentBacking.sol";
 import {AgentPayout} from "../library/AgentPayout.sol";
 import {Conversion} from "../library/Conversion.sol";
 import {PaymentReference} from "../library/data/PaymentReference.sol";
-import {UnderlyingBlockUpdater} from "../library/UnderlyingBlockUpdater.sol";
 
 
 contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
@@ -138,8 +137,6 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
         Redemptions.burnExecutorFee(request);
         // redemption can make agent healthy, so check and pull out of liquidation
         Liquidation.endLiquidationIfHealthy(agent);
-        // update underlying block
-        UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
         // finish
         Redemptions.finishRedemptionRequest(_redemptionRequestId, request, finalStatus);
     }

@@ -25,7 +25,6 @@ import {AgentBacking} from "../library/AgentBacking.sol";
 import {AgentPayout} from "../library/AgentPayout.sol";
 import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {TransactionAttestation} from "../library/TransactionAttestation.sol";
-import {UnderlyingBlockUpdater} from "../library/UnderlyingBlockUpdater.sol";
 import {Globals} from "../library/Globals.sol";
 
 
@@ -222,8 +221,6 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
         AgentBacking.createNewMinting(agent, remintedAMG);
         // update underlying amount
         UnderlyingBalance.increaseBalance(agent, receivedAmountUBA);
-        // update underlying block
-        UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
         // clear the reservation
         CoreVaultClient.deleteReturnFromCoreVaultRequest(agent);
         // in case of confirmation by others, pay the reward

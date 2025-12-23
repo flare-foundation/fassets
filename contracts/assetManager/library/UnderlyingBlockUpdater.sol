@@ -6,8 +6,7 @@ import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {Globals} from "./Globals.sol";
 import {TransactionAttestation} from "./TransactionAttestation.sol";
-import {IConfirmedBlockHeightExists, IPayment} from
-    "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IConfirmedBlockHeightExists} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 
 
 library UnderlyingBlockUpdater {
@@ -19,16 +18,6 @@ library UnderlyingBlockUpdater {
         TransactionAttestation.verifyConfirmedBlockHeightExists(_proof);
         updateCurrentBlock(_proof.data.requestBody.blockNumber, _proof.data.responseBody.blockTimestamp,
             _proof.data.responseBody.numberOfConfirmations);
-    }
-
-    function updateCurrentBlockForVerifiedPayment(IPayment.Proof calldata _proof)
-        internal
-    {
-        // This is used in various payment methods, where the proof is already verified, so we don't verify again.
-        // Payment proof doesn't include confirmation blocks, but at least 1 confirmation is required on every chain,
-        // so we set _numberOfConfirmations to 1. The update happens only when block and timestamp increase,
-        // so this cannot make the block number or timestamp approximation worse.
-        updateCurrentBlock(_proof.data.responseBody.blockNumber, _proof.data.responseBody.blockTimestamp, 1);
     }
 
     function updateCurrentBlock(uint64 _blockNumber, uint64 _blockTimestamp, uint64 _numberOfConfirmations)

@@ -21,7 +21,6 @@ import {CollateralReservation} from "../library/data/CollateralReservation.sol";
 import {Conversion} from "../library/Conversion.sol";
 import {Globals} from "../library/Globals.sol";
 import {PaymentReference} from "../library/data/PaymentReference.sol";
-import {UnderlyingBlockUpdater} from "../library/UnderlyingBlockUpdater.sol";
 
 
 contract MintingFacet is AssetManagerBase, ReentrancyGuard {
@@ -91,8 +90,6 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         // execute minting
         _performMinting(agent, MintingType.PUBLIC, _crtId, crt.minter, crt.valueAMG,
             uint256(_payment.data.responseBody.receivedAmount), Minting.calculatePoolFeeUBA(agent, crt));
-        // update underlying block
-        UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
         // release agent's reserved collateral
         Minting.releaseCollateralReservation(crt, CollateralReservation.Status.SUCCESSFUL);
         // pay the executor if they executed the minting
@@ -149,8 +146,6 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         // preform underlying balance topup
         uint256 amountUBA = SafeCast.toUint256(_payment.data.responseBody.receivedAmount);
         UnderlyingBalance.increaseBalance(agent, amountUBA.toUint128());
-        // update underlying block
-        UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
         // notify
         emit IAssetManagerEvents.ConfirmedClosedMintingPayment(agent.vaultAddress(),
             _payment.data.requestBody.transactionId, amountUBA);
@@ -198,8 +193,6 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         require(_payment.data.responseBody.blockNumber >= agent.underlyingBlockAtCreation,
             SelfMintPaymentTooOld());
         state.paymentConfirmations.confirmIncomingPayment(_payment);
-        // update underlying block
-        UnderlyingBlockUpdater.updateCurrentBlockForVerifiedPayment(_payment);
         // case _lots==0 is allowed for self minting because if lot size increases between the underlying payment
         // and selfMint call, the paid assets would otherwise be stuck; in this way they are converted to free balance
         uint256 receivedAmount = uint256(_payment.data.responseBody.receivedAmount);  // guarded by require
