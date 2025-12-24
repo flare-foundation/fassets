@@ -2951,6 +2951,18 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isFalse(await assetManager.isAgentVaultOwner(agentVault.address, accounts[30]));
             assert.isFalse(await assetManager.isAgentVaultOwner(agentVault.address, ZERO_ADDRESS));
         });
+    });
+
+    describe("ftso price handling", () => {
+        const user = accounts[31];
+        const userUnderlying = "USER_ADDRESS";
+        const assetSymbol = testChainInfo.eth.symbol;
+        const vaultTokenSymbol = "USDC";
+        const poolTokenSymbol = "NAT";
+
+        beforeEach(async () => {
+            chain.mint(userUnderlying, toWei(1e8));
+        });
 
         it("price and CR calculations should work correctly even if trusted prices are not initialized", async () => {
             const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
@@ -2962,29 +2974,96 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const decimals = feedIds.map(_ => 3);
             await contracts.priceStore.updateSettings(feedIds, symbols, decimals, 50, 5000, { from: governance });
             // trusted prices are reset
-            const { 0: price, 3: quality } = await contracts.priceStore.getPriceFromTrustedProvidersWithQuality("USDC");
+            const { 0: price, 3: quality } = await contracts.priceStore.getPriceFromTrustedProvidersWithQuality(vaultTokenSymbol);
             assertWeb3Equal(price, 0);
             assertWeb3Equal(quality, 0);
             // but agent info works ok
             const info2 = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(info2.vaultCollateralRatioBIPS, info1.vaultCollateralRatioBIPS);
             // agent info still returns same CR if trusted asset price changes
-            await contracts.priceStore.setCurrentPriceFromTrustedProviders(testChainInfo.eth.symbol, 123456, 0);
-            const { 0: price1, 3: quality1 } = await contracts.priceStore.getPriceFromTrustedProvidersWithQuality(testChainInfo.eth.symbol);
+            await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, 123456, 0);
+            const { 0: price1, 3: quality1 } = await contracts.priceStore.getPriceFromTrustedProvidersWithQuality(assetSymbol);
             assertWeb3Equal(price1, 123456);
             assertWeb3Equal(quality1, 1);
             const info3 = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(info3.vaultCollateralRatioBIPS, info1.vaultCollateralRatioBIPS);
             // but also setting trusted token price make trusted prices usable again and the price changes
-            await contracts.priceStore.setCurrentPriceFromTrustedProviders("USDC", 1000, 0);
-            const { 0: price2, 3: quality2 } = await contracts.priceStore.getPriceFromTrustedProvidersWithQuality("USDC");
+            await contracts.priceStore.setCurrentPriceFromTrustedProviders(vaultTokenSymbol, 1000, 0);
+            const { 0: price2, 3: quality2 } = await contracts.priceStore.getPriceFromTrustedProvidersWithQuality(vaultTokenSymbol);
             assertWeb3Equal(price2, 1000);
             assertWeb3Equal(quality2, 1);
             const info4 = await assetManager.getAgentInfo(agentVault.address);
             assert.notEqual(Number(info4.vaultCollateralRatioBIPS), Number(info1.vaultCollateralRatioBIPS));
             assert.isAbove(Number(info4.vaultCollateralRatioBIPS), Number(info1.vaultCollateralRatioBIPS) + 1e6);
         });
-    })
+
+        async function setZeroPrice(...which: ("asset" | "vault" | "pool")[]) {
+            if (which.includes("vault")) {
+                await contracts.priceStore.setCurrentPrice(vaultTokenSymbol, 0, 0);
+                await contracts.priceStore.setCurrentPriceFromTrustedProviders(vaultTokenSymbol, 0, 0);
+            }
+            if (which.includes("pool")) {
+                await contracts.priceStore.setCurrentPrice(poolTokenSymbol, 0, 0);
+                await contracts.priceStore.setCurrentPriceFromTrustedProviders(poolTokenSymbol, 0, 0);
+            }
+            if (which.includes("asset")) {
+                await contracts.priceStore.setCurrentPrice(assetSymbol, 0, 0);
+                await contracts.priceStore.setCurrentPriceFromTrustedProviders(assetSymbol, 0, 0);
+            }
+        }
+
+        it("agent info and collateral reservations should fail if asset price is zero", async () => {
+            const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
+            await setZeroPrice("asset");
+            // agent info
+            await expectRevert.custom(assetManager.getAgentInfo(agentVault.address), "ZeroPrice", []);
+            // get reservation fee
+            await expectRevert.custom(assetManager.collateralReservationFee(1), "ZeroPrice", []);
+            // reserve collateral
+            await expectRevert.custom(assetManager.reserveCollateral(agentVault.address, 1, MAX_BIPS, ZERO_ADDRESS, { from: user }), "ZeroPrice", []);
+        });
+
+        it("agent info and collateral reservations should fail if vault token price is zero (reservation fee will work)", async () => {
+            const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
+            await setZeroPrice("vault");
+            // agent info
+            await expectRevert.custom(assetManager.getAgentInfo(agentVault.address), "ZeroPrice", []);
+            // get reservation fee
+            const crFee = await assetManager.collateralReservationFee(1);
+            // reserve collateral
+            await expectRevert.custom(assetManager.reserveCollateral(agentVault.address, 1, MAX_BIPS, ZERO_ADDRESS, { from: user }), "ZeroPrice", []);
+        });
+
+        it("agent info and collateral reservations should fail if pool token price is zero", async () => {
+            const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
+            await setZeroPrice("pool");
+            // agent info
+            await expectRevert.custom(assetManager.getAgentInfo(agentVault.address), "ZeroPrice", []);
+            // get reservation fee
+            await expectRevert.custom(assetManager.collateralReservationFee(1), "ZeroPrice", []);
+            // reserve collateral
+            await expectRevert.custom(assetManager.reserveCollateral(agentVault.address, 1, MAX_BIPS, ZERO_ADDRESS, { from: user }), "ZeroPrice", []);
+        });
+
+        it("finishing mint and successful redeem should work even if both prices are zero", async () => {
+            const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
+            // reserve collateral
+            const crFee = await assetManager.collateralReservationFee(1);
+            const resM = await assetManager.reserveCollateral(agentVault.address, 1, MAX_BIPS, ZERO_ADDRESS, { from: user, value: crFee });
+            const cr = requiredEventArgs(resM, "CollateralReserved");
+            // mint
+            await setZeroPrice("asset", "vault", "pool");
+            const mintTx = await wallet.addTransaction(userUnderlying, cr.paymentAddress, cr.valueUBA.add(cr.feeUBA), cr.paymentReference);
+            const proofM = await attestationProvider.provePayment(mintTx, userUnderlying, cr.paymentAddress);
+            await assetManager.executeMinting(proofM, cr.collateralReservationId, { from: user });
+            // redeem
+            const resR = await assetManager.redeem(1, userUnderlying, ZERO_ADDRESS, { from: user });
+            const rrq = requiredEventArgs(resR, "RedemptionRequested");
+            const redeemTx = await wallet.addTransaction(underlyingAgent1, rrq.paymentAddress, rrq.valueUBA, rrq.paymentReference);
+            const proofR = await attestationProvider.provePayment(redeemTx, underlyingAgent1, rrq.paymentAddress);
+            await assetManager.confirmRedemptionPayment(proofR, rrq.requestId, { from: agentOwner1 });
+        });
+    });
 
     describe("emergency pause", () => {
         async function triggerPauseAndCheck(byGovernance: boolean, duration: number, opts: { expectedEnd?: BN, expectedDuration?: number, level?: EmergencyPauseLevel, checkEffective?: boolean } = {}) {

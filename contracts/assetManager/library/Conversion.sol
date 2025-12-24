@@ -13,6 +13,8 @@ import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettin
 library Conversion {
     using SafePct for uint256;
 
+    error ZeroPrice();
+
     uint256 internal constant AMG_TOKEN_WEI_PRICE_SCALE_EXP = 9;
     uint256 internal constant AMG_TOKEN_WEI_PRICE_SCALE = 10 ** AMG_TOKEN_WEI_PRICE_SCALE_EXP;
     uint256 internal constant NAT_WEI = 1e18;
@@ -149,6 +151,7 @@ library Conversion {
         if (_fromTrustedProviders && assetTs == 0) {
             return (0, 0, 0);   // trusted price with timestamp 0 will be ignored
         }
+        require(assetPrice != 0, ZeroPrice());
         if (_token.directPricePair) {
             uint256 price = calcAmgToTokenWeiPrice(_token.decimals, 1, 0, assetPrice, assetFtsoDec);
             return (price, assetTs, assetTs);
@@ -158,6 +161,7 @@ library Conversion {
             if (_fromTrustedProviders && tokenTs == 0) {
                 return (0, 0, 0);   // trusted price with timestamp 0 will be ignored
             }
+            require(tokenPrice != 0, ZeroPrice());
             uint256 price =
                 calcAmgToTokenWeiPrice(_token.decimals, tokenPrice, tokenFtsoDec, assetPrice, assetFtsoDec);
             return (price, assetTs, tokenTs);
