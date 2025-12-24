@@ -180,7 +180,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const tx1Hash = await agent.performUnderlyingWithdrawal(underlyingWithdrawal, amount);
             await agent.checkAgentInfo({ announcedUnderlyingWithdrawalId: underlyingWithdrawal.announcementId });
             assert.isAbove(Number(underlyingWithdrawal.announcementId), 0);
-            // others cannot confirm underlying withdrawal immediatelly or challenge it as illegal payment
+            // others cannot confirm underlying withdrawal immediately or challenge it as illegal payment
             await expectRevert.custom(challenger.confirmUnderlyingWithdrawal(underlyingWithdrawal, tx1Hash, agent), "OnlyAgentVaultOwner", []);
             await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1Hash), "MatchingAnnouncedPaymentActive", []);
             // others can confirm underlying withdrawal after some time
@@ -197,6 +197,25 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(endVaultCollateralBalance.sub(startVaultCollateralBalance), challengerVaultCollateralReward);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(challengerVaultCollateralReward));
+        });
+
+        it("underlying withdrawal (others cannot confirm if agent in liquidation)", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const challenger = await Challenger.create(context, challengerAddress1);
+            await agent.depositCollateralLotsAndMakeAvailable(10);
+            await context.updateUnderlyingBlock();
+            // mint
+            const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+            // underlying withdrawal (perform twice, so it can be challenged)
+            const underlyingWithdrawal = await agent.announceUnderlyingWithdrawal();
+            const tx1Hash = await agent.performUnderlyingWithdrawal(underlyingWithdrawal, minted.poolFeeUBA);
+            const tx2Hash = await agent.performUnderlyingWithdrawal(underlyingWithdrawal, minted.poolFeeUBA);
+            // trigger full liquidation due to double payment
+            await challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash);
+            // wait for confirmation by others
+            await time.increase(toBN(context.settings.confirmationByOthersAfterSeconds).addn(100));
+            await expectRevert.custom(challenger.confirmUnderlyingWithdrawal(underlyingWithdrawal, tx1Hash, agent), "OnlyAgentVaultOwner", []);
         });
 
         it("try to redeem after pause", async () => {

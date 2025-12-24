@@ -108,7 +108,6 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
         nonReentrant
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
         TransactionAttestation.verifyPayment(_payment);
         Agent.State storage agent = Agent.get(_agentVault);
         bool isAgent = Agents.isOwner(agent, msg.sender);
@@ -119,19 +118,17 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
             WrongAnnouncedPaymentReference());
         require(_payment.data.responseBody.sourceAddressHash == agent.underlyingAddressHash,
             WrongAnnouncedPaymentSource());
-        require(isAgent || block.timestamp >
-                agent.underlyingWithdrawalAnnouncedAt + settings.confirmationByOthersAfterSeconds,
-                Agents.OnlyAgentVaultOwner());
+        require(isAgent || _othersCanConfirmWithdrawal(agent), Agents.OnlyAgentVaultOwner());
         // make sure withdrawal cannot be challenged as invalid
         state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
         // clear active withdrawal announcement
         agent.announcedUnderlyingWithdrawalId = 0;
-        // update free underlying balance and trigger liquidation if negative
-        UnderlyingBalance.updateBalance(agent, -_payment.data.responseBody.spentAmount);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
             AgentPayout.payForConfirmationByOthers(agent, msg.sender);
         }
+        // update free underlying balance and trigger liquidation if negative
+        UnderlyingBalance.updateBalance(agent, -_payment.data.responseBody.spentAmount);
         // send event
         emit IAssetManagerEvents.UnderlyingWithdrawalConfirmed(_agentVault, announcementId,
             _payment.data.responseBody.spentAmount, _payment.data.requestBody.transactionId);
@@ -159,5 +156,19 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
         agent.announcedUnderlyingWithdrawalId = 0;
         // send event
         emit IAssetManagerEvents.UnderlyingWithdrawalCancelled(_agentVault, announcementId);
+    }
+
+    function _othersCanConfirmWithdrawal(
+        Agent.State storage _agent
+    )
+        private view
+        returns (bool)
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        // Others can confirm payments only after several hours and only if the vault is not in full liquidation.
+        // (Others' confirmations are not necessary for keeping the underlying balance when the vault is already in
+        // full liquidation and the reward just uses the collateral that should be reserved for liquidation.)
+        return block.timestamp > _agent.underlyingWithdrawalAnnouncedAt + settings.confirmationByOthersAfterSeconds
+            && _agent.status != Agent.Status.FULL_LIQUIDATION;
     }
 }
