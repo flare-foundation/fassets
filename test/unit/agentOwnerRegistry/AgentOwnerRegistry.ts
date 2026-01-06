@@ -1,5 +1,4 @@
 import { CollateralType } from "../../../lib/fasset/AssetManagerTypes";
-import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, waitForTimelock } from "../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
@@ -36,7 +35,10 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
 
     const underlyingBurnAddr = "Burn";
     const agentOwner1 = accounts[20];
+    const workAddress1 = accounts[30];
+    const secondWorkAddress1 = accounts[31];
     const agentOwner2 = accounts[23];
+    const workAddress2 = accounts[33];
     const underlyingAgent1 = "Agent1";
 
     async function createAgentVault(owner: string, underlyingAddress: string): Promise<AgentVaultInstance> {
@@ -169,9 +171,8 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
     describe("agent registry functions", () => {
         it("should not create agent from work address after revoking management address", async () => {
             chain.mint(underlyingAgent1, toBNExp(100, 18));
-            const ownerWorkAddress = accounts[21];
             await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
-            await agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
+            await agentOwnerRegistry.setWorkAddress(workAddress1, { from: agentOwner1 });
             const agentSettings = createTestAgentSettings(usdc.address);
 
             //Revoke address and wait for timelock
@@ -181,28 +182,77 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             //Try to create agent
             const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
             assert.isTrue(addressValidityProof.data.responseBody.isValid);
-            const res = assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: ownerWorkAddress });
+            const res = assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: workAddress1 });
             await expectRevert.custom(res, "AgentNotWhitelisted", []);
         });
     });
 
     describe("setting work address", () => {
-        it("should set owner work address", async () => {
+        it("should set owner work address and the work address should accept", async () => {
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
+            // set owner work address
+            await agentOwnerRegistry.setWorkAddress(workAddress1, { from: agentOwner1 });
+            // for now, only pending work address is set
+            assert.equal(await agentOwnerRegistry.getWorkAddress(agentOwner1), ZERO_ADDRESS);
+            assert.equal(await agentOwnerRegistry.getPendingWorkAddress(agentOwner1), workAddress1);
+            // accept by the work address
+            await agentOwnerRegistry.acceptWorkAddressAssignment(agentOwner1, { from: workAddress1 });
+            // after accepting, the work address is set and the pending address is cleared
+            assert.equal(await agentOwnerRegistry.getWorkAddress(agentOwner1), workAddress1);
+            assert.equal(await agentOwnerRegistry.getPendingWorkAddress(agentOwner1), ZERO_ADDRESS);
+        });
+
+        it("should change owner work address and the work address should accept", async () => {
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
+            // set owner work address
+            await agentOwnerRegistry.setWorkAddress(workAddress1, { from: agentOwner1 });
+            await agentOwnerRegistry.acceptWorkAddressAssignment(agentOwner1, { from: workAddress1 });
+            // change owner work address
+            await agentOwnerRegistry.setWorkAddress(secondWorkAddress1, { from: agentOwner1 });
+            // pending is changed
+            assert.equal(await agentOwnerRegistry.getWorkAddress(agentOwner1), workAddress1);
+            assert.equal(await agentOwnerRegistry.getPendingWorkAddress(agentOwner1), secondWorkAddress1);
+            // accept
+            await agentOwnerRegistry.acceptWorkAddressAssignment(agentOwner1, { from: secondWorkAddress1 });
+            // work address is changed, pending is cleared
+            assert.equal(await agentOwnerRegistry.getWorkAddress(agentOwner1), secondWorkAddress1);
+            assert.equal(await agentOwnerRegistry.getPendingWorkAddress(agentOwner1), ZERO_ADDRESS);
+        });
+
+        it("should clear owner work address - no accept needed", async () => {
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
+            // set owner work address
+            await agentOwnerRegistry.setWorkAddress(workAddress1, { from: agentOwner1 });
+            await agentOwnerRegistry.acceptWorkAddressAssignment(agentOwner1, { from: workAddress1 });
+            assert.equal(await agentOwnerRegistry.getWorkAddress(agentOwner1), workAddress1);
+            // set pending owner work address
+            await agentOwnerRegistry.setWorkAddress(secondWorkAddress1, { from: agentOwner1 });
+            assert.equal(await agentOwnerRegistry.getPendingWorkAddress(agentOwner1), secondWorkAddress1);
+            // clear work address - no accept needed, also clears pending
+            await agentOwnerRegistry.setWorkAddress(ZERO_ADDRESS, { from: agentOwner1 });
+            assert.equal(await agentOwnerRegistry.getWorkAddress(agentOwner1), ZERO_ADDRESS);
+            assert.equal(await agentOwnerRegistry.getPendingWorkAddress(agentOwner1), ZERO_ADDRESS);
+        });
+
+        it("should set owner work address and see the assignment in agent info", async () => {
             await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
             // create agent
             const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
             // set owner work address
-            await agentOwnerRegistry.setWorkAddress("0xe34BDff68a5b89216D7f6021c1AB25c012142425", { from: agentOwner1 });
+            await agentOwnerRegistry.setWorkAddress(workAddress1, { from: agentOwner1 });
+            await agentOwnerRegistry.acceptWorkAddressAssignment(agentOwner1, { from: workAddress1 });
             const managementAddress = await assetManager.getAgentVaultOwner(agentVault.address);
             const info = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(managementAddress, agentOwner1);
             assert.equal(info.ownerManagementAddress, agentOwner1);
-            assert.equal(info.ownerWorkAddress, "0xe34BDff68a5b89216D7f6021c1AB25c012142425");
+            assert.equal(info.ownerWorkAddress, workAddress1);
+            assert.equal(info.ownerWorkAddress, workAddress1);
             // set owner work address again
-            await agentOwnerRegistry.setWorkAddress("0x27e80dB1f5a975f4C43C5eC163114E796cdB603D", { from: agentOwner1 });
+            await agentOwnerRegistry.setWorkAddress(secondWorkAddress1, { from: agentOwner1 });
+            await agentOwnerRegistry.acceptWorkAddressAssignment(agentOwner1, { from: secondWorkAddress1 });
             const info2 = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(info2.ownerManagementAddress, agentOwner1);
-            assert.equal(info2.ownerWorkAddress, "0x27e80dB1f5a975f4C43C5eC163114E796cdB603D");
+            assert.equal(info2.ownerWorkAddress, secondWorkAddress1);
             // set owner work address again with address 0
             await agentOwnerRegistry.setWorkAddress(ZERO_ADDRESS, { from: agentOwner1 });
             const info3 = await assetManager.getAgentInfo(agentVault.address);
@@ -211,9 +261,24 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         });
 
         it("should not set owner work address when not whitelisted", async () => {
-            chain.mint(underlyingAgent1, toBNExp(100, 18));
-            const ownerWorkAddress = accounts[21];
-            const res = agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
+            const res = agentOwnerRegistry.setWorkAddress(workAddress1, { from: agentOwner1 });
+            await expectRevert.custom(res, "AgentNotWhitelisted", []);
+        });
+
+        it("should not accept owner work address assignment that is not pending", async () => {
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
+            // no pending assignment
+            await expectRevert.custom(agentOwnerRegistry.acceptWorkAddressAssignment(agentOwner1, { from: workAddress1 }), "NotAPendingWorkAddress", []);
+            // pending assignment to wrong address
+            await agentOwnerRegistry.setWorkAddress(secondWorkAddress1, { from: agentOwner1 });
+            await expectRevert.custom(agentOwnerRegistry.acceptWorkAddressAssignment(agentOwner1, { from: workAddress1 }), "NotAPendingWorkAddress", []);
+        });
+
+        it("should not accept owner work address assignment when whitelisting is revoked", async () => {
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
+            await agentOwnerRegistry.setWorkAddress(workAddress1, { from: agentOwner1 });
+            await agentOwnerRegistry.revokeAddress(agentOwner1, { from: governance });
+            const res =  agentOwnerRegistry.acceptWorkAddressAssignment(agentOwner1, { from: workAddress1 });
             await expectRevert.custom(res, "AgentNotWhitelisted", []);
         });
 
@@ -221,20 +286,34 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
             // create agent
             const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
-            const workAddress = "0xe34BDff68a5b89216D7f6021c1AB25c012142425";
             // set owner work address
-            await agentOwnerRegistry.setWorkAddress(workAddress, { from: agentOwner1 });
-            assert.equal(await assetManager.isAgentVaultOwner(agentVault.address, workAddress), true);
+            await agentOwnerRegistry.setWorkAddress(workAddress1, { from: agentOwner1 });
+            await agentOwnerRegistry.acceptWorkAddressAssignment(agentOwner1, { from: workAddress1 });
+            assert.equal(await assetManager.isAgentVaultOwner(agentVault.address, workAddress1), true);
         });
 
         it("should not allow setting work address if work address is set on another agent owner", async () => {
             chain.mint(underlyingAgent1, toBNExp(100, 18));
-            const ownerWorkAddress = accounts[21];
             await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
-            await agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
+            await agentOwnerRegistry.setWorkAddress(workAddress1, { from: agentOwner1 });
+            await agentOwnerRegistry.acceptWorkAddressAssignment(agentOwner1, { from: workAddress1 });
 
             await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner2, "Agent 2", "Agent 2 description", "Agent 2 icon url", "Agent 2 tou url", { from: governance });
-            const res = agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner2 });
+            const res = agentOwnerRegistry.setWorkAddress(workAddress1, { from: agentOwner2 });
+            await expectRevert.custom(res, "WorkAddressInUse", []);
+        });
+
+        it("should not allow accepting work address assignment if work address is set on another agent owner", async () => {
+            chain.mint(underlyingAgent1, toBNExp(100, 18));
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner2, "Agent 2", "Agent 2 description", "Agent 2 icon url", "Agent 2 tou url", { from: governance });
+            // the first phase of setting is allowed
+            await agentOwnerRegistry.setWorkAddress(workAddress1, { from: agentOwner1 });
+            await agentOwnerRegistry.setWorkAddress(workAddress1, { from: agentOwner2 });
+            // but it can be accepted only for one owner
+            await agentOwnerRegistry.acceptWorkAddressAssignment(agentOwner1, { from: workAddress1 });
+            // and it fails for the second
+            const res = agentOwnerRegistry.acceptWorkAddressAssignment(agentOwner2, { from: workAddress1 });
             await expectRevert.custom(res, "WorkAddressInUse", []);
         });
 
@@ -245,6 +324,16 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             await expectRevert.custom(res, "CannotUseAManagementAddressAsWorkAddress", []);
             const res2 = agentOwnerRegistry.setWorkAddress(agentOwner2, { from: agentOwner2 });
             await expectRevert.custom(res2, "CannotUseAManagementAddressAsWorkAddress", []);
+        });
+
+        it("should not allow accepting (other) agent's management address as work address", async () => {
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, "Agent 1", "Agent 1 description", "Agent 1 icon url", "Agent 1 tou url", { from: governance });
+            // call setWorkAddress before whitelisting agentOwner2, this will work
+            await agentOwnerRegistry.setWorkAddress(agentOwner2, { from: agentOwner1 });
+            await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner2, "Agent 2", "Agent 2 description", "Agent 2 icon url", "Agent 2 tou url", { from: governance });
+            // but it cannot be accepted
+            const res = agentOwnerRegistry.acceptWorkAddressAssignment(agentOwner1, { from: agentOwner2 })
+            await expectRevert.custom(res, "CannotUseAManagementAddressAsWorkAddress", []);
         });
     });
 

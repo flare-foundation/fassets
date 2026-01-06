@@ -752,6 +752,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assertWeb3Equal(await assetManager.getWorkAddress(whitelistedAccount), ZERO_ADDRESS);
             // change
             await agentOwnerRegistry.setWorkAddress(workAddress, { from: whitelistedAccount });
+            await agentOwnerRegistry.acceptWorkAddressAssignment(whitelistedAccount, { from: workAddress });
             assertWeb3Equal(await assetManager.getWorkAddress(whitelistedAccount), workAddress);
             // create agent vault from work address
             const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
@@ -2945,6 +2946,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         it("should check agent owner (work address set)", async () => {
             const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
             await contracts.agentOwnerRegistry.setWorkAddress(agentOwner1WorkAddress, { from: agentOwner1 });
+            await contracts.agentOwnerRegistry.acceptWorkAddressAssignment(agentOwner1, { from: agentOwner1WorkAddress });
             assertWeb3Equal(await assetManager.getWorkAddress(agentOwner1), agentOwner1WorkAddress);
             assert.isTrue(await assetManager.isAgentVaultOwner(agentVault.address, agentOwner1));
             assert.isTrue(await assetManager.isAgentVaultOwner(agentVault.address, agentOwner1WorkAddress));

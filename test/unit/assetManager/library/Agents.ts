@@ -105,6 +105,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, accounts =>
         await whitelistAgentOwner(settings.agentOwnerRegistry, agentOwner1);
         const ownerWorkAddress = accounts[21];
         await contracts.agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
+        await contracts.agentOwnerRegistry.acceptWorkAddressAssignment(agentOwner1, { from: ownerWorkAddress });
         // act
         const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
         assert.isTrue(addressValidityProof.data.responseBody.isValid);

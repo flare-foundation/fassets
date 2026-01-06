@@ -14,6 +14,7 @@ contract AgentOwnerRegistry is GovernedUUPSProxyImplementation, IERC165, IAgentO
     error AddressZero();
     error OnlyGovernanceOrManager();
     error CannotUseAManagementAddressAsWorkAddress();
+    error NotAPendingWorkAddress();
 
     /**
      * When nonzero, this is the address that can perform whitelisting operations
@@ -25,6 +26,7 @@ contract AgentOwnerRegistry is GovernedUUPSProxyImplementation, IERC165, IAgentO
 
     mapping(address => address) private workToMgmtAddress;
     mapping(address => address) private mgmtToWorkAddress;
+    mapping(address => address) private pendingMgmtToWorkAddress;
 
     mapping(address => string) private agentName;
     mapping(address => string) private agentDescription;
@@ -78,25 +80,39 @@ contract AgentOwnerRegistry is GovernedUUPSProxyImplementation, IERC165, IAgentO
      * Every owner (management address) can have only one work address, so as soon as the new one is set, the old
      * one stops working.
      * NOTE: May only be called by an agent on the allowed agent list and only from the management address.
+     * NOTE: if the work address is not 0, it has to be confirmed by the work address to become active.
      */
-    function setWorkAddress(address _ownerWorkAddress)
+    function setWorkAddress(address _workAddress)
         external
     {
         require(isWhitelisted(msg.sender), AgentNotWhitelisted());
-        require(!isWhitelisted(_ownerWorkAddress), CannotUseAManagementAddressAsWorkAddress());
-        require(_ownerWorkAddress == address(0) || workToMgmtAddress[_ownerWorkAddress] == address(0),
-               WorkAddressInUse());
-        // delete old work to management mapping
-        address oldWorkAddress = mgmtToWorkAddress[msg.sender];
-        if (oldWorkAddress != address(0)) {
-            workToMgmtAddress[oldWorkAddress] = address(0);
+        require(!isWhitelisted(_workAddress), CannotUseAManagementAddressAsWorkAddress());
+        require(_workAddress == address(0) || workToMgmtAddress[_workAddress] == address(0), WorkAddressInUse());
+        if (_workAddress != address(0)) {
+            // create pending work address, which has to be accepted
+            pendingMgmtToWorkAddress[msg.sender] = _workAddress;
+        } else {
+            // immediately clear work address and (if set) pending work address
+            _setWorkAddress(msg.sender, address(0));
+            pendingMgmtToWorkAddress[msg.sender] = address(0);
         }
-        // create a new bidirectional mapping
-        mgmtToWorkAddress[msg.sender] = _ownerWorkAddress;
-        if (_ownerWorkAddress != address(0)) {
-            workToMgmtAddress[_ownerWorkAddress] = msg.sender;
-        }
-        emit WorkAddressChanged(msg.sender, oldWorkAddress, _ownerWorkAddress);
+    }
+
+    /**
+     * Confirm the management address's work address assignment from the work address.
+     * This proves that the management address's owner actually owns the work address.
+     */
+    function acceptWorkAddressAssignment(address _managementAddress)
+        external
+    {
+        require(pendingMgmtToWorkAddress[_managementAddress] == msg.sender, NotAPendingWorkAddress());
+        require(isWhitelisted(_managementAddress), AgentNotWhitelisted());
+        require(!isWhitelisted(msg.sender), CannotUseAManagementAddressAsWorkAddress());
+        require(workToMgmtAddress[msg.sender] == address(0), WorkAddressInUse());
+        // delete pending work address assignment
+        pendingMgmtToWorkAddress[_managementAddress] = address(0);
+        // execute the work address - it is confirmed from both management and work addresses
+        _setWorkAddress(_managementAddress, msg.sender);
     }
 
     /**
@@ -215,6 +231,17 @@ contract AgentOwnerRegistry is GovernedUUPSProxyImplementation, IERC165, IAgentO
         return workToMgmtAddress[_workAddress];
     }
 
+    /**
+     * Get the pending work address for the given management address.
+     * It has to be accepted to become the active work address.
+     */
+    function getPendingWorkAddress(address _managementAddress)
+        external view
+        returns (address)
+    {
+        return pendingMgmtToWorkAddress[_managementAddress];
+    }
+
     function isWhitelisted(address _address) public view override returns (bool) {
         return whitelist[_address];
     }
@@ -230,6 +257,22 @@ contract AgentOwnerRegistry is GovernedUUPSProxyImplementation, IERC165, IAgentO
         if (!whitelist[_address]) return;
         delete whitelist[_address];
         emit WhitelistingRevoked(_address);
+    }
+
+     function _setWorkAddress(address _managementAddress, address _workAddress)
+        private
+    {
+        // delete old work to management mapping
+        address oldWorkAddress = mgmtToWorkAddress[_managementAddress];
+        if (oldWorkAddress != address(0)) {
+            workToMgmtAddress[oldWorkAddress] = address(0);
+        }
+        // create a new bidirectional mapping
+        mgmtToWorkAddress[_managementAddress] = _workAddress;
+        if (_workAddress != address(0)) {
+            workToMgmtAddress[_workAddress] = _managementAddress;
+        }
+        emit WorkAddressChanged(_managementAddress, oldWorkAddress, _workAddress);
     }
 
     function _setAgentData(

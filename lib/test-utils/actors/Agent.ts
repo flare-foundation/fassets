@@ -72,6 +72,7 @@ export class Agent extends AssetContextClient {
     static async changeWorkAddress(ctx: AssetContext, managementAddress: string, workAddress: string) {
         await whitelistAgentOwner(ctx.agentOwnerRegistry.address, managementAddress);
         await ctx.agentOwnerRegistry.setWorkAddress(workAddress, { from: managementAddress });
+        await ctx.agentOwnerRegistry.acceptWorkAddressAssignment(managementAddress, { from: workAddress });
         this.setWorkAddressMapping(managementAddress, workAddress);
     }
 
