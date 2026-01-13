@@ -26,12 +26,13 @@ contract AgentOwnerRegistry is GovernedUUPSProxyImplementation, IERC165, IAgentO
 
     mapping(address => address) private workToMgmtAddress;
     mapping(address => address) private mgmtToWorkAddress;
-    mapping(address => address) private pendingMgmtToWorkAddress;
 
     mapping(address => string) private agentName;
     mapping(address => string) private agentDescription;
     mapping(address => string) private agentIconUrl;
     mapping(address => string) private agentTouUrl;
+
+    mapping(address => address) private pendingMgmtToWorkAddress;
 
     modifier onlyGovernanceOrManager {
         require(msg.sender == manager || msg.sender == governance(), OnlyGovernanceOrManager());
