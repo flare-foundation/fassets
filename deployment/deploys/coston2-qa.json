@@ -136,9 +136,14 @@
     "address": "0x94E33f519E256149752711245EAB2E1abb8c34A4"
   },
   {
-    "name": "AgentOwnerRegistry",
+    "name": "AgentOwnerRegistryImplementation",
     "contractName": "AgentOwnerRegistry.sol",
-    "address": "0x2b28B1Fa39831743f934275Da10f1687b0381376",
+    "address": "0x8334e344E37aE3DE441343f790d2425b1D6CE383"
+  },
+  {
+    "name": "AgentOwnerRegistry",
+    "contractName": "AgentOwnerRegistryProxy.sol",
+    "address": "0x7A021361627c38D49D14999768B81121017c6e77",
     "mustSwitchToProduction": true
   },
   {
