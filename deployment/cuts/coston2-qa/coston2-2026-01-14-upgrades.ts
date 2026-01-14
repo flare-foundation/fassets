@@ -1,0 +1,12 @@
+import { runDeployScript } from "../../lib/deploy-scripts";
+import { upgradeAgentVaultFactory, upgradeAgentVaultsAndPools, upgradeAssetManagerController, upgradeCollateralPoolFactory, upgradeGovernedProxy } from "../../lib/upgrade-contracts";
+
+runDeployScript(async (deployScriptEnvironment) => {
+    const execute = true;
+    await upgradeAssetManagerController(deployScriptEnvironment, execute);
+    // await upgradeGovernedProxy(deployScriptEnvironment, "FtsoV2PriceStore", "FtsoV2PriceStoreImplementation", "FtsoV2PriceStore", execute);
+    await upgradeGovernedProxy(deployScriptEnvironment, "AgentOwnerRegistry", "AgentOwnerRegistryImplementation", "AgentOwnerRegistry", execute);
+    await upgradeAgentVaultFactory(deployScriptEnvironment, "all", execute);
+    await upgradeCollateralPoolFactory(deployScriptEnvironment, "all", execute);
+    await upgradeAgentVaultsAndPools(deployScriptEnvironment, "all", execute);
+});
