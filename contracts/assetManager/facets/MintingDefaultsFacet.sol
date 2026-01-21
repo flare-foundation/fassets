@@ -148,6 +148,7 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         _burnedNatWei = Conversion.convert(burnCollateral, vaultCollateral, poolCollateral)
             .mulBips(settings.vaultCollateralBuyForFlareFactorBIPS);
         // Transfer vault collateral to the agent vault owner
+        // slither-disable-next-line reentrancy-balance     // AgentVault.payout is trusted
         vault.payout(vaultCollateral.token, Agents.getOwnerPayAddress(_agent), burnCollateral);
         // Burn the NAT equivalent (must be provided with the call).
         require(msg.value >= _burnedNatWei, NotEnoughFundsProvided());
