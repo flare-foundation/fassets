@@ -139,13 +139,14 @@ export async function performGovernanceCall<C extends Truffle.ContractInstance &
     }
 }
 
-function printExecuteData<C extends Truffle.ContractInstance, M extends keyof C & string>(contractName: string, instance: C, method: M, args: TruffleMethodParameters<C[M]>) {
+export function printExecuteData<C extends Truffle.ContractInstance, M extends keyof C & string>(contractName: string, instance: C, method: M, args: TruffleMethodParameters<C[M]>) {
     printExecuteDataUnchecked(contractName, instance, method, args);
 }
 
-function printExecuteDataUnchecked(contractName: string, instance: Truffle.ContractInstance, method: string, args: unknown[]) {
+export function printExecuteDataUnchecked(contractName: string, instance: Truffle.ContractInstance, method: string, args: unknown[]) {
     const methodAbi = instance.abi.find(it => it.type === "function" && it.name === method)!;
     const formattedParams = methodAbi.inputs!.map((param, index) => `${param.name} = ${JSON.stringify(web3DeepNormalize(args[index]))}`)
+    console.log("");    // blank line for readability
     console.log(`EXECUTE: ${contractName}(${instance.address}) ${method}(${formattedParams.join(", ")})`);
     const abidata = web3.eth.abi.encodeFunctionCall(methodAbi, args as string[]);
     console.log(`    abi: ${abidata}`);
