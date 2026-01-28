@@ -4,6 +4,7 @@ import { AttestationHelper } from "../../underlying-chain/AttestationHelper";
 import { TX_FAILED, TX_SUCCESS, TxInputOutput } from "../../underlying-chain/interfaces/IBlockChain";
 import { BN_ZERO, ZERO_BYTES32 } from "../../utils/helpers";
 import { MockChain, MockChainTransaction } from "./MockChain";
+import { XrpPayment } from "./mockInterface/XrpPayment";
 
 export class MockAttestationProverError extends Error {
     constructor(message: string) {
@@ -66,6 +67,31 @@ export class MockAttestationProver {
             receivedAmount: String(totalReceivedValue(transaction, receivingAddressHash, "actual")),
             intendedReceivedAmount: String(totalReceivedValue(transaction, receivingAddressHash, "intended")),
             oneToOne: false,    // not needed
+            status: String(transaction.status)
+        };
+    }
+
+    xrpPayment(transactionHash: string): XrpPayment.ResponseBody {
+        const { transaction, block } = this.findTransaction('payment', transactionHash);
+        if (transaction.inputs.length !== 1 || transaction.outputs.length !== 1) {
+            throw new MockAttestationProverError(`AttestationProver.xrpPayment: transaction is not one-to-one ${transactionHash}`);
+        }
+        const sourceAddressHash = Web3.utils.soliditySha3Raw(transaction.inputs[0][0]);
+        const receivingAddressHash = Web3.utils.soliditySha3Raw(transaction.outputs[0][0]);
+        return {
+            blockNumber: String(block.number),
+            blockTimestamp: String(block.timestamp),
+            sourceAddressHash: sourceAddressHash,
+            receivingAddressHash: transaction.status === TX_SUCCESS ? receivingAddressHash : ZERO_BYTES32,
+            intendedReceivingAddressHash: receivingAddressHash,
+            hasMemoData: transaction.reference != null,
+            firstMemoData: transaction.reference ?? ZERO_BYTES32,
+            hasTag: transaction.tag != null,
+            tag: String(transaction.tag ?? 0),
+            spentAmount: String(totalSpentValue(transaction, sourceAddressHash, "actual")),
+            intendedSpentAmount: String(totalSpentValue(transaction, sourceAddressHash, "intended")),
+            receivedAmount: String(totalReceivedValue(transaction, receivingAddressHash, "actual")),
+            intendedReceivedAmount: String(totalReceivedValue(transaction, receivingAddressHash, "intended")),
             status: String(transaction.status)
         };
     }

@@ -2,7 +2,8 @@ import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExis
 import { SourceId } from "./SourceId";
 import { IBlockChain, TxInputOutput } from "./interfaces/IBlockChain";
 import { AttestationNotProved, AttestationProof, AttestationRequestId, IFlareDataConnectorClient, OptionalAttestationProof } from "./interfaces/IFlareDataConnectorClient";
-import { requireNotNull, ZERO_BYTES32 } from "../utils/helpers";
+import { requireNotNull, ZERO_ADDRESS, ZERO_BYTES32 } from "../utils/helpers";
+import { XrpPayment } from "../test-utils/fasset/mockInterface/XrpPayment";
 
 export class AttestationHelperError extends Error {
     constructor(message: string) {
@@ -40,15 +41,7 @@ export class AttestationHelper {
     }
 
     async requestPaymentProof(transactionHash: string, sourceAddress: string | null, receivingAddress: string | null): Promise<AttestationRequestId | null> {
-        const transaction = await this.chain.getTransaction(transactionHash);
-        const block = await this.chain.getTransactionBlock(transactionHash);
-        if (transaction == null || block == null) {
-            throw new AttestationHelperError(`transaction not found ${transactionHash}`);
-        };
-        const finalizationBlock = await this.chain.getBlockAt(block.number + this.chain.finalizationBlocks);
-        if (finalizationBlock == null) {
-            throw new AttestationHelperError(`finalization block not found (block ${block.number}, height ${await this.chain.getBlockHeight()})`);
-        }
+        const transaction = await this.findFinalizedTransaction(transactionHash);
         const request: Payment.Request = {
             attestationType: Payment.TYPE,
             sourceId: this.chainId,
@@ -62,16 +55,22 @@ export class AttestationHelper {
         return await this.client.submitRequest(request);
     }
 
-    async requestBalanceDecreasingTransactionProof(transactionHash: string, sourceAddress: string): Promise<AttestationRequestId | null> {
-        const transaction = await this.chain.getTransaction(transactionHash);
-        const block = await this.chain.getTransactionBlock(transactionHash);
-        if (transaction == null || block == null) {
-            throw new AttestationHelperError(`transaction not found ${transactionHash}`);
+    async requestXrpPaymentProof(transactionHash: string, allowedExecutor: string | null): Promise<AttestationRequestId | null> {
+        await this.findFinalizedTransaction(transactionHash);   // verify existence
+        const request: XrpPayment.Request = {
+            attestationType: Payment.TYPE,
+            sourceId: this.chainId,
+            messageIntegrityCode: ZERO_BYTES32,
+            requestBody: {
+                transactionId: transactionHash,
+                allowedExecutor: allowedExecutor ?? ZERO_ADDRESS,
+            },
         };
-        const finalizationBlock = await this.chain.getBlockAt(block.number + this.chain.finalizationBlocks);
-        if (finalizationBlock == null) {
-            throw new AttestationHelperError(`finalization block not found (block ${block.number}, height ${await this.chain.getBlockHeight()})`);
-        }
+        return await this.client.submitRequest(request);
+    }
+
+    async requestBalanceDecreasingTransactionProof(transactionHash: string, sourceAddress: string): Promise<AttestationRequestId | null> {
+        await this.findFinalizedTransaction(transactionHash);   // verify existence
         const request: BalanceDecreasingTransaction.Request = {
             attestationType: BalanceDecreasingTransaction.TYPE,
             sourceId: this.chainId,
@@ -82,6 +81,19 @@ export class AttestationHelper {
             },
         };
         return await this.client.submitRequest(request);
+    }
+
+    private async findFinalizedTransaction(transactionHash: string) {
+        const transaction = await this.chain.getTransaction(transactionHash);
+        const block = await this.chain.getTransactionBlock(transactionHash);
+        if (transaction == null || block == null) {
+            throw new AttestationHelperError(`transaction not found ${transactionHash}`);
+        };
+        const finalizationBlock = await this.chain.getBlockAt(block.number + this.chain.finalizationBlocks);
+        if (finalizationBlock == null) {
+            throw new AttestationHelperError(`finalization block not found (block ${block.number}, height ${await this.chain.getBlockHeight()})`);
+        }
+        return transaction;
     }
 
     async requestReferencedPaymentNonexistenceProof(destinationAddress: string, paymentReference: string, amount: BN, startBlock: number, endBlock: number, endTimestamp: number, sourceAddressesRoot?: string): Promise<AttestationRequestId | null> {
@@ -155,6 +167,10 @@ export class AttestationHelper {
         return await this.client.obtainProof(round, requestData);
     }
 
+    async obtainXrpPaymentProof(round: number, requestData: string): Promise<XrpPayment.Proof | AttestationNotProved> {
+        return await this.client.obtainProof(round, requestData);
+    }
+
     async obtainBalanceDecreasingTransactionProof(round: number, requestData: string): Promise<BalanceDecreasingTransaction.Proof | AttestationNotProved> {
         return await this.client.obtainProof(round, requestData);
     }
@@ -180,6 +196,19 @@ export class AttestationHelper {
         const result = await this.client.obtainProof(request.round, request.data);
         if (!attestationProved(result)) {
             throw new AttestationHelperError("payment: not proved")
+        }
+        return result;
+    }
+
+    async proveXrpPayment(transactionHash: string, allowedExecutor: string | null): Promise<Payment.Proof> {
+        const request = await this.requestXrpPaymentProof(transactionHash, allowedExecutor);
+        if (request == null) {
+            throw new AttestationHelperError("xrpPayment: not proved")
+        }
+        await this.client.waitForRoundFinalization(request.round);
+        const result = await this.client.obtainProof(request.round, request.data);
+        if (!attestationProved(result)) {
+            throw new AttestationHelperError("xrpPayment: not proved")
         }
         return result;
     }

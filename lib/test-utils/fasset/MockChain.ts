@@ -8,11 +8,12 @@ import { ILogger } from "../../utils/logging";
 export type MockTransactionOptions = TransactionOptions & { status?: number };
 export type MockTransactionOptionsWithFee = TransactionOptionsWithFee & { status?: number };
 
-export interface MockChainTransaction {
+export interface MockChainTransaction extends ITransaction {
     hash: string;
     inputs: TxInputOutput[];
     outputs: TxInputOutput[];
     reference: string | null;
+    tag?: number;
     status: number; // 0 = success, 1 = failure (sender's fault), 2 = failure (receiver's fault)
 }
 
@@ -348,8 +349,9 @@ export class MockChainWallet implements IBlockChainWallet {
         assert.isTrue(totalSpent.gte(totalReceived), "mockTransaction: received more than spent");
         assert.isTrue(totalSpent.gte(totalReceived.add(this.chain.requiredFee)), "mockTransaction: not enough fee");
         const hash = this.chain.createTransactionHash(inputs, outputs, reference);
+        const tag = options?.xrpTag;
         // hash is set set when transaction is added to a block
-        return { hash, inputs, outputs, reference, status };
+        return { hash, inputs, outputs, reference, tag, status };
     }
 
     private calculateMaxFee(options: TransactionOptionsWithFee) {

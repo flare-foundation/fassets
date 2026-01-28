@@ -9,6 +9,7 @@ import { AttestationRequest } from "../../../typechain-truffle/IFdcHub";
 import { MockAttestationProver, MockAttestationProverError } from "./MockAttestationProver";
 import { MockChain } from "./MockChain";
 import { FdcHubMockInstance, RelayMockInstance } from "../../../typechain-truffle";
+import { XrpPayment } from "./mockInterface/XrpPayment";
 
 interface RoundProof {
     response: ARESBase;
@@ -212,6 +213,10 @@ export class MockFlareDataConnectorClient implements IFlareDataConnectorClient {
             case Payment.TYPE: {
                 const request = parsedRequest.requestBody as Payment.RequestBody;
                 return prover.payment(request.transactionId, toNumber(request.inUtxo), toNumber(request.utxo));
+            }
+            case XrpPayment.TYPE: {
+                const request = parsedRequest.requestBody as XrpPayment.RequestBody;
+                return prover.xrpPayment(request.transactionId);
             }
             case BalanceDecreasingTransaction.TYPE: {
                 const request = parsedRequest.requestBody as BalanceDecreasingTransaction.RequestBody;

@@ -2,8 +2,8 @@ import { IBlockChain } from "./IBlockChain";
 
 type NumberLike = BN | number | string;
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface TransactionOptions {
+    xrpTag?: number; // numeric tag - only for XRP transactions
 }
 
 export interface TransactionOptionsWithFee extends TransactionOptions {
@@ -21,11 +21,11 @@ export interface IBlockChainWallet {
     // Amount is the amount received by target and extra fee / gas can be added to it to obtain the value spent from sourceAddress
     // (the added amount can be limited by maxFee).
     // Returns new transaction hash.
-    addTransaction(sourceAddress: string, targetAddress: string, amount: NumberLike, reference: string | null, options?: TransactionOptionsWithFee): Promise<string>;
+    addTransaction(sourceAddress: string, targetAddress: string, amount: NumberLike, referenceOrMemo: string | null, options?: TransactionOptionsWithFee): Promise<string>;
 
     // Add a generic transaction from a set of source addresses to a set of target addresses.
     // Total source amount may be bigger (but not smaller!) than total target amount, the rest (or part of it) can be used as gas/fee (not all need to be used).
     // This variant is typically used on utxo chains.
     // Returns new transaction hash.
-    addMultiTransaction(spend: { [address: string]: NumberLike; }, receive: { [address: string]: NumberLike; }, reference: string | null, options?: TransactionOptions): Promise<string>;
+    addMultiTransaction(spend: { [address: string]: NumberLike; }, receive: { [address: string]: NumberLike; }, referenceOrMemo: string | null, options?: TransactionOptions): Promise<string>;
 }
