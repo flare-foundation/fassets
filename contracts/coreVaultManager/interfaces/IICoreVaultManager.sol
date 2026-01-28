@@ -7,6 +7,13 @@ import {ICoreVaultManager} from "../../userInterfaces/ICoreVaultManager.sol";
  * Core vault manager internal interface
  */
 interface IICoreVaultManager is ICoreVaultManager {
+    /**
+     * Confirms payment to core vault address (increases available funds).
+     * NOTE: may only be called by the asset manager.
+     * @param _transactionId ID of the payment transaction.
+     * @param _receivedAmount Amount received in minimal units.
+     */
+    function confirmPayment(bytes32 _transactionId, int256 _receivedAmount) external;
 
     /**
      * Requests transfer from core vault to destination address.

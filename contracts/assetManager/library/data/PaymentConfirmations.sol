@@ -3,6 +3,7 @@ pragma solidity ^0.8.27;
 
 import {IPayment, IBalanceDecreasingTransaction}
     from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IXrpPayment} from "../../../fdc/mockInterface/IXrpPayment.sol";
 
 
 library PaymentConfirmations {
@@ -25,6 +26,19 @@ library PaymentConfirmations {
     function confirmIncomingPayment(
         State storage _state,
         IPayment.Proof calldata _payment
+    )
+        internal
+    {
+        _recordPaymentVerification(_state, _payment.data.requestBody.transactionId);
+    }
+
+    /**
+     * For payment transaction with non-unique payment reference (generated from address, not id),
+     * we record `tx hash`, so that the same transaction can only be used once for payment.
+     */
+    function confirmIncomingPayment(
+        State storage _state,
+        IXrpPayment.Proof calldata _payment
     )
         internal
     {

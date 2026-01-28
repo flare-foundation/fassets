@@ -7,7 +7,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {GovernedUUPSProxyImplementation} from "../../governance/implementation/GovernedUUPSProxyImplementation.sol";
 import {AddressUpdatable} from "../../flareSmartContracts/implementation/AddressUpdatable.sol";
 import {IICoreVaultManager} from "../interfaces/IICoreVaultManager.sol";
-import {IFdcVerification, IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IFdcVerification} from "../../fdc/mockInterface/IFdcVerification.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 import {GovernedBase} from "../../governance/implementation/GovernedBase.sol";
 import {IIAddressUpdatable}
@@ -147,28 +147,21 @@ contract CoreVaultManager is
     }
 
     /**
-     * @inheritdoc ICoreVaultManager
+     * @inheritdoc IICoreVaultManager
      */
     function confirmPayment(
-        IPayment.Proof calldata _proof
+        bytes32 _transactionId,
+        int256 _receivedAmount
     )
         external
+        onlyAssetManager
     {
-        require(_proof.data.responseBody.status == 0, PaymentFailed()); // 0 = payment success
-        require(_proof.data.sourceId == chainId, InvalidChain());
-        require(fdcVerification.verifyPayment(_proof), PaymentNotProven());
-        require(_proof.data.responseBody.receivingAddressHash == coreVaultAddressHash, NotCoreVault());
-        require(_proof.data.responseBody.receivedAmount > 0, InvalidAmount());
-        if (!confirmedPayments[_proof.data.requestBody.transactionId]) {
-            uint128 receivedAmount = uint128(uint256(_proof.data.responseBody.receivedAmount));
-            confirmedPayments[_proof.data.requestBody.transactionId] = true;
-            availableFunds += receivedAmount;
-            emit PaymentConfirmed(
-                _proof.data.requestBody.transactionId,
-                _proof.data.responseBody.standardPaymentReference,
-                receivedAmount
-            );
-        }
+        require(!confirmedPayments[_transactionId], AlreadyConfirmed());
+        require(_receivedAmount >= 0, InvalidAmount());
+        uint128 receivedAmount = uint128(uint256(_receivedAmount));
+        confirmedPayments[_transactionId] = true;
+        availableFunds += receivedAmount;
+        emit PaymentConfirmed(_transactionId, receivedAmount);
     }
 
     /**

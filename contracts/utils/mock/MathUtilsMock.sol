@@ -30,4 +30,8 @@ contract MathUtilsMock {
     function mixedLTE_iu(int256 _a, uint256 _b) external pure returns (bool) {
         return MathUtils.mixedLTE(_a, _b);
     }
+
+    function bound(uint256 _value, uint256 _min, uint256 _max) external pure returns (uint256) {
+        return MathUtils.bound(_value, _min, _max);
+    }
 }

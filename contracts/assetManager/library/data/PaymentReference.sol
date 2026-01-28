@@ -20,6 +20,7 @@ library PaymentReference {
     uint256 internal constant REDEMPTION_FROM_CORE_VAULT = 0x4642505266410005 << TYPE_SHIFT;
     uint256 internal constant TOPUP = 0x4642505266410011 << TYPE_SHIFT;
     uint256 internal constant SELF_MINT = 0x4642505266410012 << TYPE_SHIFT;
+    uint256 internal constant DIRECT_MINTING = 0x4642505266410018 << TYPE_SHIFT;
 
     // create various payment references
 

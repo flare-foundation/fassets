@@ -2,8 +2,8 @@
 pragma solidity ^0.8.27;
 
 import {IFdcVerification, IPayment, IBalanceDecreasingTransaction, IConfirmedBlockHeightExists,
-        IReferencedPaymentNonexistence, IAddressValidity}
-    from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+        IReferencedPaymentNonexistence, IAddressValidity, IXrpPayment}
+    from "../../fdc/mock/FdcVerificationMock.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {Globals} from "./Globals.sol";
 
@@ -42,6 +42,26 @@ library TransactionAttestation {
         IFdcVerification fdcVerification = IFdcVerification(_settings.fdcVerification);
         require(_proof.data.sourceId == _settings.chainId, InvalidChain());
         require(fdcVerification.verifyPayment(_proof), LegalPaymentNotProven());
+    }
+
+    function verifyXrpPaymentSuccess(
+        IXrpPayment.Proof calldata _proof
+    )
+        internal view
+    {
+        require(_proof.data.responseBody.status == PAYMENT_SUCCESS, PaymentFailed());
+        verifyXrpPayment(_proof);
+    }
+
+    function verifyXrpPayment(
+        IXrpPayment.Proof calldata _proof
+    )
+        internal view
+    {
+        AssetManagerSettings.Data storage _settings = Globals.getSettings();
+        IFdcVerification fdcVerification = IFdcVerification(_settings.fdcVerification);
+        require(_proof.data.sourceId == _settings.chainId, InvalidChain());
+        require(fdcVerification.verifyXrpPayment(_proof), LegalPaymentNotProven());
     }
 
     function verifyBalanceDecreasingTransaction(

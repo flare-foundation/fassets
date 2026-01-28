@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 
 /**
  * Core vault manager
@@ -26,6 +25,7 @@ interface ICoreVaultManager {
     error EscrowAlreadyFinished();
     error OnlyAssetManager();
     error ContractPaused();
+    error AlreadyConfirmed();
 
     // Structs
     struct Escrow {
@@ -44,7 +44,6 @@ interface ICoreVaultManager {
     // Events
     event PaymentConfirmed(
         bytes32 indexed transactionId,
-        bytes32 paymentReference,
         uint256 amount
     );
 
@@ -143,12 +142,6 @@ interface ICoreVaultManager {
     event EmergencyPauseSenderRemoved(
         address sender
     );
-
-    /**
-     * Confirms payment to core vault address (increases available funds).
-     * @param _proof payment proof
-     */
-    function confirmPayment(IPayment.Proof calldata _proof) external;
 
     /**
      * Pauses the contract. New requests and instructions cannot be triggered.

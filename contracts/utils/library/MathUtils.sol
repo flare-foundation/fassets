@@ -38,4 +38,17 @@ library MathUtils {
     function mixedLTE(int256 _a, uint256 _b) internal pure returns (bool) {
         return _a <= 0 || uint256(_a) <= _b;
     }
+
+    /**
+     * Bounds `_value` to be within the range `_min` to `_max` (both inclusive).
+     */
+    function bound(uint256 _value, uint256 _min, uint256 _max) internal pure returns (uint256) {
+        if (_value < _min) {
+            return _min;
+        } else if (_value > _max) {
+            return _max;
+        } else {
+            return _value;
+        }
+    }
 }

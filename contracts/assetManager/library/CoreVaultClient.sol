@@ -48,6 +48,17 @@ library CoreVaultClient {
         _;
     }
 
+    function confirmCoreVaultPayment(
+        bytes32 _transactionId,
+        int256 _receivedAmount
+    )
+        internal
+        onlyEnabled
+    {
+        State storage state = getState();
+        state.coreVaultManager.confirmPayment(_transactionId, _receivedAmount);
+    }
+
     // only called by RedemptionConfirmations.confirmRedemptionPayment, so all checks are done there
     function confirmTransferToCoreVault(
         IPayment.Proof calldata _payment,
@@ -57,8 +68,9 @@ library CoreVaultClient {
         internal
         onlyEnabled
     {
-        State storage state = getState();
-        state.coreVaultManager.confirmPayment(_payment);
+        confirmCoreVaultPayment(
+            _payment.data.requestBody.transactionId,
+            _payment.data.responseBody.receivedAmount);
         uint256 receivedAmount = _payment.data.responseBody.receivedAmount.toUint256();
         emit ICoreVaultClient.TransferToCoreVaultSuccessful(_agent.vaultAddress(), _redemptionRequestId,
             receivedAmount);

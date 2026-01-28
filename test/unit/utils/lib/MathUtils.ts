@@ -65,4 +65,10 @@ contract(`MathUtils.sol; ${getTestFile(__filename)};  MathUtils unit tests`, acc
         expect(await mathUtils.mixedLTE_ui(0, MAX_INT_256)).to.equals(true);
         expect(await mathUtils.mixedLTE_ui(MAX_UINT_256, MAX_INT_256.neg())).to.equals(false);
     });
+
+    it("should bound value correctly", async () => {
+        expect(await mathUtils.bound(5, 1, 10)).to.equals(5);
+        expect(await mathUtils.bound(0, 1, 10)).to.equals(1);
+        expect(await mathUtils.bound(11, 1, 10)).to.equals(10);
+    });
 });
