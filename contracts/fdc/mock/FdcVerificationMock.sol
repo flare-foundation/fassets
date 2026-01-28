@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import {IFdcVerification, IPayment, IBalanceDecreasingTransaction, IReferencedPaymentNonexistence,
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import {IPayment, IBalanceDecreasingTransaction, IReferencedPaymentNonexistence,
         IConfirmedBlockHeightExists, IAddressValidity, IEVMTransaction, IWeb2Json}
     from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {IRelay} from "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
+import {IXrpPayment} from "../mockInterface/IXrpPayment.sol";
+import {IFdcVerification} from "../mockInterface/IFdcVerification.sol";
 
 
 contract FdcVerificationMock is IFdcVerification {
@@ -104,6 +106,19 @@ contract FdcVerificationMock is IFdcVerification {
         returns (bool _proved)
     {
         return _proof.data.attestationType == bytes32("Web2Json") &&
+            _proof.merkleProof.verifyCalldata(
+                relay.merkleRoots(fdcProtocolId, _proof.data.votingRound),
+                keccak256(abi.encode(_proof.data))
+            );
+    }
+
+    function verifyXrpPayment(
+        IXrpPayment.Proof calldata _proof
+    )
+        external view
+        returns (bool _proved)
+    {
+        return _proof.data.attestationType == bytes32("XrpPayment") &&
             _proof.merkleProof.verifyCalldata(
                 relay.merkleRoots(fdcProtocolId, _proof.data.votingRound),
                 keccak256(abi.encode(_proof.data))
