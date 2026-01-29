@@ -2,6 +2,7 @@
 pragma solidity ^0.8.27;
 
 import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IXrpPayment} from "../../fdc/mockInterface/IXrpPayment.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ICoreVaultClient} from "../../userInterfaces/ICoreVaultClient.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
@@ -26,6 +27,7 @@ import {AgentPayout} from "../library/AgentPayout.sol";
 import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {TransactionAttestation} from "../library/TransactionAttestation.sol";
 import {Globals} from "../library/Globals.sol";
+import {DirectMinting} from "../library/DirectMinting.sol";
 
 
 contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultClient {
@@ -49,6 +51,10 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
     error TooLittleMintingLeftAfterTransfer();
     error TransferAlreadyActive();
     error ZeroTransferNotAllowed();
+    error InvalidReceivingAddress();
+    error AmountNotPositive();
+    error InvalidExecutor();
+    error NotACoreVaultDonation();
 
     // core vault may not be enabled on all chains
     modifier onlyEnabled {
@@ -270,6 +276,37 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
             _redeemerUnderlyingAddress, paymentReference, paymentUBA, false);
         emit CoreVaultRedemptionRequested(msg.sender, _redeemerUnderlyingAddress, paymentReference,
             redeemedUBA, redemptionFeeUBA);
+    }
+
+    /**
+     * Confirm a donation payment made to the core vault underlying address.
+     * @param _payment FDC payment proof
+     */
+    function donateToCoreVault(
+        IXrpPayment.Proof calldata _payment
+    )
+        external
+        onlyAttached
+        notEmergencyPaused
+        nonReentrant
+    {
+        TransactionAttestation.verifyXrpPaymentSuccess(_payment);
+        require(_payment.data.responseBody.receivingAddressHash == CoreVaultClient.coreVaultUnderlyingAddressHash(),
+            InvalidReceivingAddress());
+        require(_payment.data.requestBody.allowedExecutor == address(0)
+            || msg.sender == _payment.data.requestBody.allowedExecutor,
+            InvalidExecutor());
+        require(_payment.data.responseBody.hasTag &&
+            _payment.data.responseBody.tag == DirectMinting.getState().coreVaultDonationTag,
+            NotACoreVaultDonation());
+        require(_payment.data.responseBody.receivedAmount > 0, AmountNotPositive());
+        // mark payment used
+        AssetManagerState.get().paymentConfirmations.confirmIncomingPayment(_payment);
+        // update core vault accounting
+        CoreVaultClient.confirmCoreVaultPayment(_payment.data.requestBody.transactionId,
+            _payment.data.responseBody.receivedAmount);
+        // emit event
+        emit CoreVaultFundsAdded(uint256(_payment.data.responseBody.receivedAmount));
     }
 
     function maximumTransferToCoreVault(

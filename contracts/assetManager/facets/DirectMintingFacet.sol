@@ -29,6 +29,7 @@ contract DirectMintingFacet is AssetManagerBase, IDirectMinting, ReentrancyGuard
     error InvalidReceivingAddress();
     error AmountNotPositive();
     error CoreVaultDonation();
+    error NotACoreVaultDonation();
     error ForbiddenPaymentReference();
     error DirectMintingStillDelayed(uint256 allowedAt);
 
