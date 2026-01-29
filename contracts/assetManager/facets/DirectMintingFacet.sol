@@ -16,18 +16,21 @@ import {PaymentReference} from "../library/data/PaymentReference.sol";
 import {DirectMinting} from "../library/DirectMinting.sol";
 import {CoreVaultClient} from "../library/CoreVaultClient.sol";
 import {PaymentConfirmations} from "../library/data/PaymentConfirmations.sol";
+import {MintingRateLimiter} from "../library/data/MintingRateLimiter.sol";
 
 
 contract DirectMintingFacet is AssetManagerBase, IDirectMinting, ReentrancyGuard {
     using SafePct for uint256;
     using SafeCast for uint256;
     using PaymentConfirmations for PaymentConfirmations.State;
+    using MintingRateLimiter for MintingRateLimiter.State;
 
     error InvalidExecutor();
     error InvalidReceivingAddress();
     error AmountNotPositive();
     error CoreVaultDonation();
     error ForbiddenPaymentReference();
+    error DirectMintingStillDelayed(uint256 allowedAt);
 
     function executeDirectMinting(
         IXrpPayment.Proof calldata _payment
@@ -47,14 +50,20 @@ contract DirectMintingFacet is AssetManagerBase, IDirectMinting, ReentrancyGuard
         require(_payment.data.responseBody.receivedAmount > 0, AmountNotPositive());
         uint256 receivedAmount = uint256(_payment.data.responseBody.receivedAmount);
         (bool mintToSmartAccount, address targetAddress) = _decodeTarget(_payment);
-        uint256 mintingFeeUBA = _computeMintingFeeUBA(receivedAmount);
-        uint256 executorFeeUBA = mintingFeeUBA.mulBips(state.executorFeeBIPS);
-        uint256 systemFeeUBA = mintingFeeUBA - executorFeeUBA;
+        // check rate limits
+        bool delayed = _checkRateLimits(_payment.data.requestBody.transactionId, receivedAmount);
+        if (delayed) {
+            return;
+        }
         // mark payment used
         AssetManagerState.get().paymentConfirmations.confirmIncomingPayment(_payment);
         // update core vault accounting
         CoreVaultClient.confirmCoreVaultPayment(_payment.data.requestBody.transactionId,
             _payment.data.responseBody.receivedAmount);
+        // calculate fees
+        uint256 mintingFeeUBA = _computeMintingFeeUBA(receivedAmount);
+        uint256 executorFeeUBA = mintingFeeUBA.mulBips(state.executorFeeBIPS);
+        uint256 systemFeeUBA = mintingFeeUBA - executorFeeUBA;
         // mint system fees to fee receiver
         Globals.getFAsset().mint(state.mintingFeeReceiver, systemFeeUBA);
         if (mintToSmartAccount) {
@@ -88,6 +97,54 @@ contract DirectMintingFacet is AssetManagerBase, IDirectMinting, ReentrancyGuard
                 systemFeeUBA,
                 executorFeeUBA);
         }
+    }
+
+    function _checkRateLimits(bytes32 _transactionId, uint256 _amount)
+        private
+        returns (bool _delayed)
+    {
+        DirectMinting.State storage state = DirectMinting.getState();
+        // already delayed?
+        DirectMinting.DelayedMinting storage alreadyDelayed = state.delayedMintings[_transactionId];
+        if (alreadyDelayed.allowedAt != 0) {
+            bool delayFinished = block.timestamp >= alreadyDelayed.allowedAt;
+            bool mintingsUnblocked = alreadyDelayed.startedAt < state.unblockMintingsUntilTimestamp;
+            // initial delay emits event, but calling while still delayed just reverts to avoid multiple events
+            require(delayFinished || mintingsUnblocked, DirectMintingStillDelayed(alreadyDelayed.allowedAt));
+            // delay finished - delete delay state and allow execution
+            delete state.delayedMintings[_transactionId];
+            return false;
+        }
+        // large mintings have separate limiter
+        uint64 amountAmg = Conversion.convertUBAToAmg(_amount);
+        if (amountAmg >= state.largeMintingThresholdAmg) {
+            (bool delayed, uint256 allowedAt) = state.largeMintingLimiter.recordMinting(amountAmg);
+            if (delayed) {
+                _addDelayedMinting(_transactionId, allowedAt);
+                emit LargeDirectMintingDelayed(_transactionId, _amount, allowedAt);
+                return true;
+            }
+        } else {
+            (bool delayedHourly, uint256 allowedAtHourly) = state.hourlyLimiter.recordMinting(amountAmg);
+            (bool delayedDaily, uint256 allowedAtDaily) = state.dailyLimiter.recordMinting(amountAmg);
+            if (delayedHourly || delayedDaily) {
+                uint256 allowedAt = Math.max(allowedAtHourly, allowedAtDaily);
+                _addDelayedMinting(_transactionId, allowedAt);
+                emit DirectMintingDelayed(_transactionId, _amount, allowedAt);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function _addDelayedMinting(bytes32 _transactionId, uint256 _allowedAt)
+        private
+    {
+        DirectMinting.State storage state = DirectMinting.getState();
+        state.delayedMintings[_transactionId] = DirectMinting.DelayedMinting({
+            startedAt: block.timestamp.toUint64(),
+            allowedAt: _allowedAt.toUint64()
+        });
     }
 
     function _decodeTarget(IXrpPayment.Proof calldata _payment)

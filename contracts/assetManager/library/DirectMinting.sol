@@ -3,9 +3,14 @@ pragma solidity ^0.8.27;
 
 import {IFAssetMintingTag} from "../../userInterfaces/IFAssetMintingTag.sol";
 import {ISmartAccountManagerMock} from "../mock/ISmartAccountManagerMock.sol";
-
+import {MintingRateLimiter} from "./data/MintingRateLimiter.sol";
 
 library DirectMinting {
+    struct DelayedMinting {
+        uint64 startedAt;
+        uint64 allowedAt;
+    }
+
     struct State {
         IFAssetMintingTag mintingTags;
         uint32 coreVaultDonationTag;
@@ -14,6 +19,12 @@ library DirectMinting {
         uint64 minimumMintingFeeAmg;
         uint16 mintingFeeBIPS;
         uint16 executorFeeBIPS; // relative to minting fee
+        MintingRateLimiter.State hourlyLimiter;
+        MintingRateLimiter.State dailyLimiter;
+        MintingRateLimiter.State largeMintingLimiter;
+        uint64 largeMintingThresholdAmg;
+        uint64 unblockMintingsUntilTimestamp;
+        mapping (bytes32 transactionId => DelayedMinting) delayedMintings;
     }
 
     function mintingRecipientForTag(uint256 _mintingTag)

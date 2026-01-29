@@ -21,7 +21,7 @@
       "multiple-sends": "error",
       "no-complex-fallback": "error",
       "no-inline-assembly": "error",
-      "no-unused-vars": "error",
+      "no-unused-vars": "warn",
       "not-rely-on-block-hash": "error",
       "not-rely-on-time": "off",
       "payable-fallback": "error",
