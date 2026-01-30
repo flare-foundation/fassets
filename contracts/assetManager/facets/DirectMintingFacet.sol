@@ -19,7 +19,7 @@ import {PaymentConfirmations} from "../library/data/PaymentConfirmations.sol";
 import {MintingRateLimiter} from "../library/data/MintingRateLimiter.sol";
 
 
-contract DirectMintingFacet is AssetManagerBase, IDirectMinting, ReentrancyGuard {
+contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting {
     using SafePct for uint256;
     using SafeCast for uint256;
     using PaymentConfirmations for PaymentConfirmations.State;
@@ -29,7 +29,6 @@ contract DirectMintingFacet is AssetManagerBase, IDirectMinting, ReentrancyGuard
     error InvalidReceivingAddress();
     error AmountNotPositive();
     error CoreVaultDonation();
-    error NotACoreVaultDonation();
     error ForbiddenPaymentReference();
     error DirectMintingStillDelayed(uint256 allowedAt);
 
@@ -99,6 +98,28 @@ contract DirectMintingFacet is AssetManagerBase, IDirectMinting, ReentrancyGuard
                 executorFeeUBA);
         }
     }
+
+    function directMintingPaymentAddress()
+        external view
+        returns (string memory)
+    {
+        return CoreVaultClient.coreVaultUnderlyingAddress();
+    }
+
+    function directMintingDelayState(bytes32 _transactionId)
+        external view
+        returns (bool _isDelayed, bool _canBeExecuted, uint256 _allowedAt, uint256 _startedAt)
+    {
+        DirectMinting.State storage state = DirectMinting.getState();
+        DirectMinting.DelayedMinting storage delayed = state.delayedMintings[_transactionId];
+        _isDelayed = delayed.allowedAt != 0;
+        _canBeExecuted = _isDelayed &&
+            (block.timestamp >= delayed.allowedAt || delayed.startedAt < state.unblockMintingsUntilTimestamp);
+        _allowedAt = delayed.allowedAt;
+        _startedAt = delayed.startedAt;
+    }
+
+    // internal functions
 
     function _checkRateLimits(bytes32 _transactionId, uint256 _amount)
         private

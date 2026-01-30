@@ -168,6 +168,17 @@ library CoreVaultClient {
         require(address(state.coreVaultManager) != address(0), CoreVaultNotEnabled());
     }
 
+    function coreVaultUnderlyingAddress()
+        internal view
+        returns (string memory)
+    {
+        State storage state = getState();
+        if (address(state.coreVaultManager) == address(0)) {
+            return "";
+        }
+        return state.coreVaultManager.coreVaultAddress();
+    }
+
     function coreVaultUnderlyingAddressHash()
         internal view
         returns (bytes32)

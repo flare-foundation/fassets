@@ -286,7 +286,7 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
         IXrpPayment.Proof calldata _payment
     )
         external
-        onlyAttached
+        onlyEnabled
         notEmergencyPaused
         nonReentrant
     {

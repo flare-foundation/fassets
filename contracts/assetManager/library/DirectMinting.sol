@@ -5,6 +5,7 @@ import {IFAssetMintingTag} from "../../userInterfaces/IFAssetMintingTag.sol";
 import {ISmartAccountManagerMock} from "../mock/ISmartAccountManagerMock.sol";
 import {MintingRateLimiter} from "./data/MintingRateLimiter.sol";
 
+
 library DirectMinting {
     struct DelayedMinting {
         uint64 startedAt;
@@ -12,6 +13,7 @@ library DirectMinting {
     }
 
     struct State {
+        bool initialized;
         IFAssetMintingTag mintingTags;
         uint32 coreVaultDonationTag;
         ISmartAccountManagerMock smartAccountManager;
