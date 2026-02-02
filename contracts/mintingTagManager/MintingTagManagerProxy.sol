@@ -3,10 +3,10 @@ pragma solidity ^0.8.27;
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
-import {FAssetMintingTag} from "./FAssetMintingTag.sol";
+import {MintingTagManager} from "./MintingTagManager.sol";
 
 
-contract FAssetMintingTagProxy is ERC1967Proxy {
+contract MintingTagManagerProxy is ERC1967Proxy {
     constructor(
         address _implementationAddress,
         IGovernanceSettings _governanceSettings,
@@ -18,7 +18,7 @@ contract FAssetMintingTagProxy is ERC1967Proxy {
     )
         ERC1967Proxy(_implementationAddress,
             abi.encodeCall(
-                FAssetMintingTag.initialize, (
+                MintingTagManager.initialize, (
                     _governanceSettings, _initialGovernance,
                     _name, _symbol, _reservationFeeNATWei, _reservationFeeRecipient
                 )

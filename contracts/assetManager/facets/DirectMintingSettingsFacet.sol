@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
-import {IFAssetMintingTag} from "../../userInterfaces/IFAssetMintingTag.sol";
+import {IMintingTagManager} from "../../userInterfaces/IMintingTagManager.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {IDirectMinting} from "../../userInterfaces/IDirectMinting.sol";
 import {IDirectMintingSettings} from "../../userInterfaces/IDirectMintingSettings.sol";
@@ -33,7 +33,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
     error InvalidPoolCollateralSetting();
 
     struct InitParams {
-        address mintingTagsToken;
+        address mintingTagManager;
         uint256 coreVaultDonationTag;
         address smartAccountManager;
         address mintingFeeReceiver;
@@ -67,9 +67,9 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         DirectMinting.State storage state = DirectMinting.getState();
         require(!state.initialized, AlreadyInitialized());
         state.initialized = true;
-        require(_params.mintingTagsToken != address(0), AddressZero());
+        require(_params.mintingTagManager != address(0), AddressZero());
         require(_params.smartAccountManager != address(0), AddressZero());
-        state.mintingTagsToken = IFAssetMintingTag(_params.mintingTagsToken);
+        state.mintingTagManager = IMintingTagManager(_params.mintingTagManager);
         state.coreVaultDonationTag = _params.coreVaultDonationTag.toUint32();
         state.smartAccountManager = ISmartAccountManagerMock(_params.smartAccountManager);
         state.mintingFeeReceiver = _params.mintingFeeReceiver;
@@ -100,15 +100,15 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
 
     // setters
 
-    function setDirectMintingTagsToken(address _mintingTags)
+    function setMintingTagManager(address mintingTagManager)
         external
         onlyGovernance
         rateLimited
     {
-        require(_mintingTags != address(0), AddressZero());
+        require(mintingTagManager != address(0), AddressZero());
         DirectMinting.State storage state = DirectMinting.getState();
-        state.mintingTagsToken = IFAssetMintingTag(_mintingTags);
-        emit IAssetManagerEvents.ContractChanged("directMintingTagsToken", _mintingTags);
+        state.mintingTagManager = IMintingTagManager(mintingTagManager);
+        emit IAssetManagerEvents.ContractChanged("mintingTagManager", mintingTagManager);
     }
 
     function setSmartAccountManager(address _smartAccountManager)
@@ -231,12 +231,12 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
 
     // getters
 
-    function getDirectMintingTagsToken()
+    function getMintingTagManager()
         external view
         returns (address)
     {
         DirectMinting.State storage state = DirectMinting.getState();
-        return address(state.mintingTagsToken);
+        return address(state.mintingTagManager);
     }
 
     function getCoreVaultDonationTag()

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {IFAssetMintingTag} from "../../userInterfaces/IFAssetMintingTag.sol";
+import {IMintingTagManager} from "../../userInterfaces/IMintingTagManager.sol";
 import {ISmartAccountManagerMock} from "../mock/ISmartAccountManagerMock.sol";
 import {MintingRateLimiter} from "./data/MintingRateLimiter.sol";
 
@@ -14,7 +14,7 @@ library DirectMinting {
 
     struct State {
         bool initialized;
-        IFAssetMintingTag mintingTagsToken;
+        IMintingTagManager mintingTagManager;
         uint32 coreVaultDonationTag;
         ISmartAccountManagerMock smartAccountManager;
         address mintingFeeReceiver;
@@ -34,7 +34,7 @@ library DirectMinting {
         returns (address)
     {
         State storage state = getState();
-        return state.mintingTagsToken.mintingRecipient(_mintingTag);
+        return state.mintingTagManager.mintingRecipient(_mintingTag);
     }
 
     bytes32 internal constant STATE_POSITION = keccak256("fasset.DirectMinting.State");

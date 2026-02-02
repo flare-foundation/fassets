@@ -16,7 +16,7 @@ interface IDirectMintingSettings {
 
     // setters
 
-    function setDirectMintingTagsToken(address _mintingTags)
+    function setMintingTagManager(address _mintingTagManager)
         external;
 
     function setSmartAccountManager(address _smartAccountManager)
@@ -44,7 +44,7 @@ interface IDirectMintingSettings {
 
     // getters
 
-    function getDirectMintingTagsToken()
+    function getMintingTagManager()
         external view
         returns (address);
 

@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 
-interface IFAssetMintingTag is IERC721 {
+interface IMintingTagManager is IERC721 {
     event MintingTagReserved(uint256 tag, address owner);
     event MintingTagRecipientChanged(uint256 tag, address recipient);
 

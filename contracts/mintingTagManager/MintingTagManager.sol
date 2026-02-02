@@ -6,14 +6,14 @@ import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare
 import {GovernedBase} from "../governance/implementation/GovernedBase.sol";
 import {GovernedUUPSProxyImplementation} from "../governance/implementation/GovernedUUPSProxyImplementation.sol";
 import {Transfers} from "../utils/library/Transfers.sol";
-import {IFAssetMintingTag} from "../userInterfaces/IFAssetMintingTag.sol";
+import {IMintingTagManager} from "../userInterfaces/IMintingTagManager.sol";
 import {ReentrancyGuard} from "../openzeppelin/security/ReentrancyGuard.sol";
 
 
-contract FAssetMintingTag is
+contract MintingTagManager is
     ERC721,
     GovernedUUPSProxyImplementation,
-    IFAssetMintingTag,
+    IMintingTagManager,
     ReentrancyGuard
 {
     error OnlyTagOwner();
