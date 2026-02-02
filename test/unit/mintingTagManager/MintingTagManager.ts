@@ -1,6 +1,6 @@
 import hre from "hardhat";
 import { getProxyImplementationAddress } from "../../../deployment/lib/deploy-utils";
-import { ether, expectRevert } from "../../../lib/test-utils/test-helpers";
+import { ether, expectEvent, expectRevert } from "../../../lib/test-utils/test-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { MintingTagManagerInstance, GovernanceSettingsMockInstance } from "../../../typechain-truffle";
@@ -54,7 +54,7 @@ contract("MintingTagManager", function (accounts) {
         assertWeb3Equal(recipient, tagOwner);
     });
 
-    it("should fail to reserve a minting tag with insufficient payment", async () => {
+    it("should fail to reserve a minting tag with insufficient or too large payment", async () => {
         // reservation fee should not be too small
         await expectRevert.custom(
             mintingTagManager.reserve({ from: tagOwner, value: ether("0.05") }),
@@ -203,5 +203,33 @@ contract("MintingTagManager", function (accounts) {
             mintingTagManager.upgradeTo(mintingTagManagerImplV2.address, { from: tagOwner }),
             "OnlyGovernance", []
         );
+    });
+
+    it("should change reservation fee by governance", async () => {
+        const newReservationFee = ether("0.2");
+        const res = await mintingTagManager.setReservationFee(newReservationFee, { from: governance });
+        expectEvent(res, "ReservationFeeChanged", { reservationFeeNATWei: newReservationFee });
+        const reservationFeeStored = await mintingTagManager.reservationFeeNATWei();
+        assertWeb3Equal(reservationFeeStored, newReservationFee);
+    });
+
+    it("should fail to change reservation fee if not governance", async () => {
+        const newReservationFee = ether("0.2");
+        await expectRevert.custom(mintingTagManager.setReservationFee(newReservationFee, { from: tagOwner }),
+            "OnlyGovernance", []);
+    });
+
+    it("should change reservation fee recipient by governance", async () => {
+        const newRecipient = accounts[4];
+        const res = await mintingTagManager.setReservationFeeRecipient(newRecipient, { from: governance });
+        expectEvent(res, "ReservationFeeChanged", { recipient: newRecipient });
+        const recipientStored = await mintingTagManager.reservationFeeRecipient();
+        assertWeb3Equal(recipientStored, newRecipient);
+    });
+
+    it("should fail to change reservation fee recipient if not governance", async () => {
+        const newRecipient = accounts[4];
+        await expectRevert.custom(mintingTagManager.setReservationFeeRecipient(newRecipient, { from: tagOwner }),
+            "OnlyGovernance", []);
     });
 });

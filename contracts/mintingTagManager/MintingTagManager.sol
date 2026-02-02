@@ -69,6 +69,26 @@ contract MintingTagManager is
         }
     }
 
+    function setReservationFee(
+        uint256 _reservationFeeNATWei
+    )
+        external
+        onlyGovernance
+    {
+        reservationFeeNATWei = _reservationFeeNATWei;
+        emit ReservationFeeChanged(_reservationFeeNATWei, reservationFeeRecipient);
+    }
+
+    function setReservationFeeRecipient(
+        address payable _reservationFeeRecipient
+    )
+        external
+        onlyGovernance
+    {
+        reservationFeeRecipient = _reservationFeeRecipient;
+        emit ReservationFeeChanged(reservationFeeNATWei, _reservationFeeRecipient);
+    }
+
     function reserve()
         external payable
         nonReentrant

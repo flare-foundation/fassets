@@ -7,6 +7,7 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 interface IMintingTagManager is IERC721 {
     event MintingTagReserved(uint256 tag, address owner);
     event MintingTagRecipientChanged(uint256 tag, address recipient);
+    event ReservationFeeChanged(uint256 reservationFeeNATWei, address recipient);
 
     function reserve() external payable returns (uint256);
     function transfer(address _to, uint256 _mintingTag) external;
