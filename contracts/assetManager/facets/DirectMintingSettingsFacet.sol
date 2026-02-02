@@ -295,6 +295,14 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         return Conversion.convertAmgToUBA(state.largeMintingThresholdAmg);
     }
 
+    function getDirectMintingLargeMintingDelaySeconds()
+        external view
+        returns (uint256)
+    {
+        DirectMinting.State storage state = DirectMinting.getState();
+        return state.largeMintingLimiter.windowSizeSeconds;
+    }
+
     function getDirectMintingHourlyLimitUBA()
         external view
         returns (uint256)

@@ -76,6 +76,10 @@ interface IDirectMintingSettings {
         external view
         returns (uint256);
 
+    function getDirectMintingLargeMintingDelaySeconds()
+        external view
+        returns (uint256);
+
     function getDirectMintingHourlyLimitUBA()
         external view
         returns (uint256);
