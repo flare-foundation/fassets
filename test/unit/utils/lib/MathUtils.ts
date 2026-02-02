@@ -67,8 +67,8 @@ contract(`MathUtils.sol; ${getTestFile(__filename)};  MathUtils unit tests`, acc
     });
 
     it("should bound value correctly", async () => {
-        expect(await mathUtils.bound(5, 1, 10)).to.equals(5);
-        expect(await mathUtils.bound(0, 1, 10)).to.equals(1);
-        expect(await mathUtils.bound(11, 1, 10)).to.equals(10);
+        expect(Number(await mathUtils.bound(5, 1, 10))).to.equals(5);
+        expect(Number(await mathUtils.bound(0, 1, 10))).to.equals(1);
+        expect(Number(await mathUtils.bound(11, 1, 10))).to.equals(10);
     });
 });

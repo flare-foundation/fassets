@@ -21,7 +21,7 @@ contract("MintingTagManager", function (accounts) {
         governanceSettings = await GovernanceSettingsMock.new();
         const mintingTagManagerImpl = await MintingTagManager.new();
         const mintingTagManagerProxy = await MintingTagManagerProxy.new(mintingTagManagerImpl.address, governanceSettings.address, governance,
-            "FAsset Minting Tag", "FAMT", reservationFee, governance);
+            "Minting Tag Manager", "MTMG", reservationFee, governance);
         mintingTagManager = await MintingTagManager.at(mintingTagManagerProxy.address);
     });
 
@@ -29,14 +29,14 @@ contract("MintingTagManager", function (accounts) {
         const name = await mintingTagManager.name();
         const symbol = await mintingTagManager.symbol();
         const reservationFeeStored = await mintingTagManager.reservationFeeNATWei();
-        assert.equal(name, "FAsset Minting Tag");
-        assert.equal(symbol, "FAMT");
+        assert.equal(name, "Minting Tag Manager");
+        assert.equal(symbol, "MTMG");
         assertWeb3Equal(reservationFeeStored, reservationFee);
     });
 
     it("should not initialize twice", async () => {
         await expectRevert.custom(
-            mintingTagManager.initialize(governanceSettings.address, governance, "FAsset Minting Tag", "FAMT", reservationFee, governance),
+            mintingTagManager.initialize(governanceSettings.address, governance, "Minting Tag Manager", "MTMG", reservationFee, governance),
             "AlreadyInitialized", []
         );
     });
@@ -192,7 +192,7 @@ contract("MintingTagManager", function (accounts) {
         const implementationAddress = await getProxyImplementationAddress(hre, mintingTagManager.address);
         // data should be preserved after upgrade
         assert.equal(implementationAddress, mintingTagManagerImplV2.address);
-        assert.equal((await mintingTagManager.name()), "FAsset Minting Tag");
+        assert.equal((await mintingTagManager.name()), "Minting Tag Manager");
         assert.equal(await mintingTagManager.ownerOf(reserved.tag), tagOwner);
         assert.equal(await mintingTagManager.mintingRecipient(reserved.tag), accounts[8]);
     });

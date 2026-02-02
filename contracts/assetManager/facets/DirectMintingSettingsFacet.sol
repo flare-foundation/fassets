@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {IMintingTagManager} from "../../userInterfaces/IMintingTagManager.sol";
@@ -11,6 +12,7 @@ import {ISmartAccountManagerMock} from "../mock/ISmartAccountManagerMock.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {Globals} from "../library/Globals.sol";
+import {LibDiamond} from "../../diamond/library/LibDiamond.sol";
 import {Conversion} from "../library/Conversion.sol";
 import {DirectMinting} from "../library/DirectMinting.sol";
 import {MintingRateLimiter} from "../library/data/MintingRateLimiter.sol";
@@ -31,6 +33,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
     error ValueTooHigh();
     error TimestampMustBeInThePast();
     error InvalidPoolCollateralSetting();
+    error DiamondNotInitialized();
 
     struct InitParams {
         address mintingTagManager;
@@ -67,7 +70,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         DirectMinting.State storage state = DirectMinting.getState();
         require(!state.initialized, AlreadyInitialized());
         state.initialized = true;
-        require(_params.mintingTagManager != address(0), AddressZero());
+        _updateInterfacesAtDeploy();
         state.mintingTagManager = IMintingTagManager(_params.mintingTagManager);
         state.coreVaultDonationTag = _params.coreVaultDonationTag.toUint32();
         state.smartAccountManager = ISmartAccountManagerMock(_params.smartAccountManager);
@@ -80,6 +83,14 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         uint64 largeMintingThresholdAmg = Conversion.convertUBAToAmg(_params.largeMintingThresholdUBA);
         state.largeMintingLimiter.initialize(_params.largeMintingDelaySeconds.toUint64(), largeMintingThresholdAmg);
         state.largeMintingThresholdAmg = largeMintingThresholdAmg;
+    }
+
+    function _updateInterfacesAtDeploy() private {
+        LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
+        require(ds.supportedInterfaces[type(IERC165).interfaceId], DiamondNotInitialized());
+        // DirectMinting interfaces added
+        ds.supportedInterfaces[type(IDirectMinting).interfaceId] = true;
+        ds.supportedInterfaces[type(IDirectMintingSettings).interfaceId] = true;
     }
 
     // governance methods

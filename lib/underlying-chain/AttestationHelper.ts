@@ -58,7 +58,7 @@ export class AttestationHelper {
     async requestXrpPaymentProof(transactionHash: string, allowedExecutor: string | null): Promise<AttestationRequestId | null> {
         await this.findFinalizedTransaction(transactionHash);   // verify existence
         const request: XrpPayment.Request = {
-            attestationType: Payment.TYPE,
+            attestationType: XrpPayment.TYPE,
             sourceId: this.chainId,
             messageIntegrityCode: ZERO_BYTES32,
             requestBody: {
@@ -200,7 +200,7 @@ export class AttestationHelper {
         return result;
     }
 
-    async proveXrpPayment(transactionHash: string, allowedExecutor: string | null): Promise<Payment.Proof> {
+    async proveXrpPayment(transactionHash: string, allowedExecutor: string | null): Promise<XrpPayment.Proof> {
         const request = await this.requestXrpPaymentProof(transactionHash, allowedExecutor);
         if (request == null) {
             throw new AttestationHelperError("xrpPayment: not proved")

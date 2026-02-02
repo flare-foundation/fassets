@@ -17,6 +17,16 @@ export interface AssetManagerInitSettings extends AssetManagerSettings {
     coreVaultRedemptionFeeBIPS: BNish;
     coreVaultMinimumAmountLeftBIPS: BNish;
     coreVaultMinimumRedeemLots: BNish;
+    // direct minting
+    coreVaultDonationTag: BNish;
+    directMintingFeeReceiver: string;
+    directMintingMinimumFeeUBA: BNish;
+    directMintingFeeBIPS: BNish;
+    directMintingExecutorFeeShareBIPS: BNish; // relative to minting fee
+    directMintingHourlyLimitUBA: BNish;
+    directMintingDailyLimitUBA: BNish;
+    directMintingLargeMintingThresholdUBA: BNish;
+    directMintingLargeMintingDelaySeconds: BNish;
 }
 
 const IIAssetManager = artifacts.require('IIAssetManager');
@@ -55,10 +65,11 @@ export async function newAssetManager(
     const governanceSettings = options?.governanceSettings ?? "0x8000000000000000000000000000000000000000";
     const updateExecutor = options?.updateExecutor ?? governanceAddress;
     const addToController = options?.addToController ?? true;
+    // create fAsset
     const fAssetImpl = await FAsset.new();
     const fAssetProxy = await FAssetProxy.new(fAssetImpl.address, name, symbol, assetName, assetSymbol, decimals);
     const fAsset = await FAsset.at(fAssetProxy.address);
-    // const fAsset = await FAsset.new(name, symbol, assetName, assetSymbol, decimals);
+    // normalize settings
     const assetManagerControllerAddress = typeof assetManagerController === 'string' ? assetManagerController : assetManagerController.address;
     assetManagerSettings = web3DeepNormalize({
         ...assetManagerSettings,
@@ -77,6 +88,21 @@ export async function newAssetManager(
         (c) => c.initCoreVaultFacet(ZERO_ADDRESS, assetManagerSettings.coreVaultNativeAddress,
             assetManagerSettings.coreVaultTransferTimeExtensionSeconds, assetManagerSettings.coreVaultTransferDefaultPenaltyBIPS, assetManagerSettings.coreVaultRedemptionFeeBIPS,
             assetManagerSettings.coreVaultMinimumAmountLeftBIPS, assetManagerSettings.coreVaultMinimumRedeemLots));
+    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("DirectMintingFacet"), ["IDirectMinting"]);
+    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("DirectMintingSettingsFacet"), ["IDirectMintingSettings"],
+        (c) => c.initialize({
+            mintingTagManager: ZERO_ADDRESS, // can be set later
+            coreVaultDonationTag: assetManagerSettings.coreVaultDonationTag,
+            smartAccountManager: ZERO_ADDRESS,
+            mintingFeeReceiver: assetManagerSettings.directMintingFeeReceiver,
+            minimumMintingFeeUBA: assetManagerSettings.directMintingMinimumFeeUBA,
+            mintingFeeBIPS: assetManagerSettings.directMintingFeeBIPS,
+            executorFeeShareBIPS: assetManagerSettings.directMintingExecutorFeeShareBIPS,
+            hourlyLimitUBA: assetManagerSettings.directMintingHourlyLimitUBA,
+            dailyLimitUBA: assetManagerSettings.directMintingDailyLimitUBA,
+            largeMintingThresholdUBA: assetManagerSettings.directMintingLargeMintingThresholdUBA,
+            largeMintingDelaySeconds: assetManagerSettings.directMintingLargeMintingDelaySeconds,
+        }));
     // verify interface implementation
     await checkAllMethodsImplemented(assetManager, interfaceSelectors);
     // add to controller
@@ -96,11 +122,14 @@ export async function newAssetManager(
 export async function newAssetManagerDiamond(diamondCuts: DiamondCut[], assetManagerInit: AssetManagerInitInstance, governanceSettings: string | GovernanceSettingsMockInstance,
     governanceAddress: string, assetManagerSettings: AssetManagerSettings, collateralTokens: CollateralType[])
 {
-    const governanceSettingsAddress = typeof governanceSettings === 'string' ? governanceSettings : governanceSettings.address;
     const initParameters = abiEncodeCall(assetManagerInit,
-        c => c.init(governanceSettingsAddress, governanceAddress, assetManagerSettings, collateralTokens));
+        c => c.init(contractAddress(governanceSettings), governanceAddress, assetManagerSettings, collateralTokens));
     const assetManagerDiamond = await AssetManager.new(diamondCuts, assetManagerInit.address, initParameters);
     return await IIAssetManager.at(assetManagerDiamond.address);
+}
+
+export function contractAddress(contract: Truffle.ContractInstance | string): string {
+    return typeof contract === 'string' ? contract : contract.address;
 }
 
 async function deployAndInitFacet<T extends Truffle.ContractInstance>(governanceAddress: string, assetManager: IIAssetManagerInstance, facetContract: Truffle.Contract<T>, interfaces: string[], init?: (c: T) => Promise<unknown>) {

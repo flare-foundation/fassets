@@ -31,6 +31,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
     error CoreVaultDonation();
     error ForbiddenPaymentReference();
     error DirectMintingStillDelayed(uint256 allowedAt);
+    error MissingMintingTagManager();
     error MissingSmartAccountManager();
 
     function executeDirectMinting(
@@ -50,6 +51,10 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         }
         require(_payment.data.responseBody.receivedAmount > 0, AmountNotPositive());
         uint256 receivedAmount = uint256(_payment.data.responseBody.receivedAmount);
+        // MintingTagManager and smartAccountManager may not exist at deploy time, so they are checked here
+        // instead of in initialization function. However, once they are set they cannot be unset again
+        // (so direct minting won't stop working once it works).
+        require(address(state.mintingTagManager) != address(0), MissingMintingTagManager());
         require(address(state.smartAccountManager) != address(0), MissingSmartAccountManager());
         (bool mintToSmartAccount, address targetAddress) = _decodeTarget(_payment);
         // check rate limits

@@ -132,7 +132,7 @@ interface ICoreVaultClient {
      * Confirm a donation payment made to the core vault underlying address.
      * @param _payment FDC payment proof
      */
-    function donateToCoreVault(IXrpPayment.Proof calldata _payment)
+    function confirmCoreVaultDonation(IXrpPayment.Proof calldata _payment)
         external;
 
     /**

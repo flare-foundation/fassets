@@ -282,7 +282,7 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
      * Confirm a donation payment made to the core vault underlying address.
      * @param _payment FDC payment proof
      */
-    function donateToCoreVault(
+    function confirmCoreVaultDonation(
         IXrpPayment.Proof calldata _payment
     )
         external

@@ -19,7 +19,7 @@ import { AgentSettings, AssetManagerSettings, CollateralClass, CollateralType } 
 import { ChainInfo } from "../fasset/ChainInfo";
 import { AttestationHelper } from "../underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../utils/events/truffle";
-import { BNish, DAYS, HOURS, MINUTES, requireNotNull, toBIPS, toBNExp, WEEKS, ZERO_ADDRESS } from "../utils/helpers";
+import { BNish, DAYS, HOURS, MINUTES, requireNotNull, toBIPS, toBN, toBNExp, toWei, WEEKS, ZERO_ADDRESS } from "../utils/helpers";
 import { web3DeepNormalize } from "../utils/web3normalize";
 import { CoreVaultManagerSettings } from "./actors/MockCoreVaultBot";
 import { testChainInfo, TestChainInfo } from "./actors/TestChainInfo";
@@ -47,6 +47,9 @@ const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
 const AgentOwnerRegistryProxy = artifacts.require("AgentOwnerRegistryProxy");
 const CoreVaultManager = artifacts.require('CoreVaultManager');
 const CoreVaultManagerProxy = artifacts.require('CoreVaultManagerProxy');
+const MintingTagManager = artifacts.require('MintingTagManager');
+const MintingTagManagerProxy = artifacts.require('MintingTagManagerProxy');
+const SmartAccountManagerMock = artifacts.require('SmartAccountManagerMock');
 
 export interface TestSettingsCommonContracts {
     governanceSettings: GovernanceSettingsMockInstance;
@@ -139,12 +142,23 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         __takeOverRedemptionRequestWindowSeconds: 0,
         __rejectedRedemptionDefaultFactorVaultCollateralBIPS: 0,
         __rejectedRedemptionDefaultFactorPoolBIPS: 0,
+        // core vault settings
         coreVaultNativeAddress: "0xfa3BdC8709226Da0dA13A4d904c8b66f16c3c8BA",     // one of test accounts [9]
         coreVaultTransferTimeExtensionSeconds: 2 * HOURS,
         coreVaultTransferDefaultPenaltyBIPS: toBIPS("0.1%"),
         coreVaultRedemptionFeeBIPS: toBIPS("1%"),
         coreVaultMinimumAmountLeftBIPS: 0,
         coreVaultMinimumRedeemLots: 10,
+        // direct minting settings
+        coreVaultDonationTag: 1,
+        directMintingFeeReceiver: ZERO_ADDRESS,
+        directMintingMinimumFeeUBA: toBNExp(0.01 * ci.lotSize, ci.decimals),
+        directMintingFeeBIPS: toBIPS("1%"),
+        directMintingExecutorFeeShareBIPS: toBIPS("30%"),
+        directMintingHourlyLimitUBA: toBNExp(100 * ci.lotSize, ci.decimals),
+        directMintingDailyLimitUBA: toBNExp(1000 * ci.lotSize, ci.decimals),
+        directMintingLargeMintingThresholdUBA: toBNExp(500 * ci.lotSize, ci.decimals),
+        directMintingLargeMintingDelaySeconds: 3600,
     };
     return Object.assign(result, options ?? {});
 }
@@ -237,16 +251,13 @@ export async function createTestContracts(governance: string): Promise<TestSetti
         USDC: await ERC20Mock.new("USDCoin", "USDC"),
         USDT: await ERC20Mock.new("Tether", "USDT"),
     };
-
     // create FTSOv2 price store
     const priceStore = await createMockFtsoV2PriceStore(governanceSettings.address, governance, addressUpdater.address, {...testChainInfo});
-
     // add some addresses to address updater
     await addressUpdater.addOrUpdateContractNamesAndAddresses(
         ["GovernanceSettings", "AddressUpdater", "FdcHub", "Relay", "FdcVerification", "WNat", "FtsoV2PriceStore"],
         [governanceSettings.address, addressUpdater.address, fdcHub.address, relay.address, fdcVerification.address, wNat.address, priceStore.address],
         { from: governance });
-
     // create agent vault factory
     const agentVaultImplementation = await AgentVault.new(ZERO_ADDRESS);
     const agentVaultFactory = await AgentVaultFactory.new(agentVaultImplementation.address);
@@ -290,6 +301,27 @@ export async function assignCoreVaultManager(assetManager: IIAssetManagerInstanc
     const coreVaultManager = await createCoreVaultManager(assetManager, addressUpdater, settings);
     await waitForTimelock(assetManager.setCoreVaultManager(coreVaultManager.address, { from: governance }), assetManager, governance);
     return coreVaultManager;
+}
+
+export async function assignMintingTagManager(assetManager: IIAssetManagerInstance, options?: { fee?: BNish, feeReceiver?: string }) {
+    const governance = await assetManager.governance();
+    // create tag manager
+    const governanceSettings = await assetManager.governanceSettings();
+    const mintingTagManagerImpl = await MintingTagManager.new();
+    const mintingTagManagerProxy = await MintingTagManagerProxy.new(mintingTagManagerImpl.address, governanceSettings, governance,
+        "Minting Tag Manager", "MTM", toBN(options?.fee ?? toWei("0.1")), options?.feeReceiver ?? ZERO_ADDRESS);
+    const mintingTagManager = await MintingTagManager.at(mintingTagManagerProxy.address);
+    // assign to asset manager
+    await waitForTimelock(assetManager.setMintingTagManager(mintingTagManager.address, { from: governance }), assetManager, governance);
+    //
+    return mintingTagManager;
+}
+
+export async function assignSmartAccountManagerMock(assetManager: IIAssetManagerInstance) {
+    const governance = await assetManager.governance();
+    const smartAccountManager = await SmartAccountManagerMock.new(await assetManager.fAsset());
+    await waitForTimelock(assetManager.setSmartAccountManager(smartAccountManager.address, { from: governance }), assetManager, governance);
+    return smartAccountManager;
 }
 
 export interface CreateTestAgentDeps {
