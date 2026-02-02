@@ -157,7 +157,7 @@ contract CoreVaultManager is
         onlyAssetManager
     {
         require(!confirmedPayments[_transactionId], AlreadyConfirmed());
-        require(_receivedAmount >= 0, InvalidAmount());
+        require(_receivedAmount > 0, InvalidAmount());
         uint128 receivedAmount = uint128(uint256(_receivedAmount));
         confirmedPayments[_transactionId] = true;
         availableFunds += receivedAmount;

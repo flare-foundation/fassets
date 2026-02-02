@@ -542,10 +542,9 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             const transactionId = web3.utils.keccak256("transactionId");
             const amount = 100;
             const proof = createPaymentProof(transactionId, amount);
-            const tx = await coreVaultManager.confirmPayment(proof);
+            const tx = await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager });
             expectEvent(tx, "PaymentConfirmed", {
                 transactionId,
-                paymentReference: standardPaymentReference,
                 amount: amount.toString(),
             });
             assertWeb3Equal(await coreVaultManager.availableFunds(), amount);
@@ -556,64 +555,25 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             const transactionId = web3.utils.keccak256("transactionId");
             const amount = 100;
             const proof = createPaymentProof(transactionId, amount);
-            const tx = await coreVaultManager.confirmPayment(proof);
+            const tx = await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager });
             expectEvent(tx, "PaymentConfirmed", {
                 transactionId,
-                paymentReference: standardPaymentReference,
                 amount: amount.toString(),
             });
-            const tx2 = await coreVaultManager.confirmPayment(proof);
-            expectEvent.notEmitted(tx2, "PaymentConfirmed");
+            await expectRevert.custom(
+                coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager }),
+                "AlreadyConfirmed", []);
             assertWeb3Equal(await coreVaultManager.availableFunds(), amount);
         });
 
-        it("should revert confirming payment with failed status", async () => {
-            const transactionId = web3.utils.keccak256("transactionId");
-            const amount = 100;
-            const proof = createPaymentProof(transactionId, amount, "1");
-            await expectRevert.custom(
-                coreVaultManager.confirmPayment(proof),
-                "PaymentFailed", []
-            );
-            assertWeb3Equal(await coreVaultManager.availableFunds(), 0);
-        });
-
-        it("should revert confirming payment with invalid chain", async () => {
-            const transactionId = web3.utils.keccak256("transactionId");
-            const amount = 100;
-            const proof = createPaymentProof(
-                transactionId,
-                amount,
-                "0",
-                web3.utils.keccak256("124")
-            );
-            await expectRevert.custom(
-                coreVaultManager.confirmPayment(proof),
-                "InvalidChain", []
-            );
-            assertWeb3Equal(await coreVaultManager.availableFunds(), 0);
-        });
-
-        it("should revert confirming payment if payment is not proved", async () => {
-            await fdcVerification.givenAnyReturnBool(false);
+        it("should revert confirming payment if not from asset manager", async () => {
             const transactionId = web3.utils.keccak256("transactionId");
             const amount = 100;
             const proof = createPaymentProof(transactionId, amount);
-            await expectRevert.custom(coreVaultManager.confirmPayment(proof), "PaymentNotProven", []);
-            assertWeb3Equal(await coreVaultManager.availableFunds(), 0);
-        });
-
-        it("should revert confirming payment sent to different address", async () => {
-            const transactionId = web3.utils.keccak256("transactionId");
-            const amount = 100;
-            const proof = createPaymentProof(
-                transactionId,
-                amount,
-                "0",
-                chainId,
-                web3.utils.keccak256("notCoreVaultAddress")
+            await expectRevert.custom(
+                coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: accounts[1] }),
+                "OnlyAssetManager", []
             );
-            await expectRevert.custom(coreVaultManager.confirmPayment(proof), "NotCoreVault", []);
             assertWeb3Equal(await coreVaultManager.availableFunds(), 0);
         });
 
@@ -621,12 +581,12 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             const transactionId = web3.utils.keccak256("transactionId");
             const proof = createPaymentProof(transactionId, 0);
             await expectRevert.custom(
-                coreVaultManager.confirmPayment(proof),
+                coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager }),
                 "InvalidAmount", []
             );
             const proof2 = createPaymentProof(transactionId, -100);
             await expectRevert.custom(
-                coreVaultManager.confirmPayment(proof2),
+                coreVaultManager.confirmPayment(proof2.data.requestBody.transactionId, proof2.data.responseBody.receivedAmount, { from: assetManager }),
                 "InvalidAmount", []
             );
             assertWeb3Equal(await coreVaultManager.availableFunds(), 0);
@@ -641,7 +601,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
                 from: governance,
             });
             const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
-            await coreVaultManager.confirmPayment(proof); // available funds = 1000
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager }); // available funds = 1000
 
             const tx = await coreVaultManager.requestTransferFromCoreVault(
                 destinationAddress,
@@ -679,7 +639,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
                 { from: governance }
             );
             const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
-            await coreVaultManager.confirmPayment(proof); // available funds = 1000
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager }); // available funds = 1000
 
             const tx = await coreVaultManager.requestTransferFromCoreVault(
                 destinationAddress,
@@ -731,7 +691,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
                 from: governance,
             });
             const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
-            await coreVaultManager.confirmPayment(proof); // available funds = 1000
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager }); // available funds = 1000
 
             const tx = await coreVaultManager.requestTransferFromCoreVault(
                 destinationAddress,
@@ -769,7 +729,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
                 from: governance,
             });
             const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
-            await coreVaultManager.confirmPayment(proof); // available funds = 1000
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager }); // available funds = 1000
 
             const tx = await coreVaultManager.requestTransferFromCoreVault(
                 destinationAddress,
@@ -805,7 +765,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
                 { from: governance }
             );
             const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
-            await coreVaultManager.confirmPayment(proof); // available funds = 1000
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager }); // available funds = 1000
 
             const tx = await coreVaultManager.requestTransferFromCoreVault(
                 destinationAddress,
@@ -858,7 +818,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
                 { from: governance }
             );
             const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
-            await coreVaultManager.confirmPayment(proof); // available funds = 1000
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager }); // available funds = 1000
 
             const tx = await coreVaultManager.requestTransferFromCoreVault(
                 destinationAddress,
@@ -959,7 +919,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
                 { from: governance }
             );
             const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
-            await coreVaultManager.confirmPayment(proof); // available funds = 1000
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager }); // available funds = 1000
 
             await coreVaultManager.requestTransferFromCoreVault(destinationAddress, paymentReference, 100, true, {
                 from: assetManager,
@@ -990,7 +950,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
                 { from: governance }
             );
             const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 1000);
-            await coreVaultManager.confirmPayment(proof); // available funds = 1000
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager }); // available funds = 1000
 
             const tx = await coreVaultManager.requestTransferFromCoreVault(
                 destinationAddress,
@@ -1096,7 +1056,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         async function createEscrows() {
             // fund contract
             const proof = createPaymentProof(web3.utils.keccak256("transactionId"), 780);
-            await coreVaultManager.confirmPayment(proof);
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager });
 
             const currentTimestamp = await time.latest();
             const escrowEndTimestamp1 = currentTimestamp.addn(DAY);
@@ -1150,7 +1110,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             const transactionId = web3.utils.keccak256("transactionId");
             const amount = 1080;
             const proof = createPaymentProof(transactionId, amount);
-            await coreVaultManager.confirmPayment(proof);
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager });
 
             // request cancelable transfer
             const amount1 = "100";
@@ -1247,7 +1207,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             const transactionId = web3.utils.keccak256("transactionId");
             const amount = 1080;
             const proof = createPaymentProof(transactionId, amount);
-            await coreVaultManager.confirmPayment(proof);
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager });
 
             // request cancelable transfer
             const amount1 = "100";
@@ -1313,7 +1273,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             const transactionId = web3.utils.keccak256("transactionId");
             const amount = 16900;
             const proof = createPaymentProof(transactionId, amount);
-            await coreVaultManager.confirmPayment(proof);
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager });
             await coreVaultManager.removeUnusedPreimageHashes(2, { from: governance });
 
             // request 50 cancelable transfers
@@ -1387,7 +1347,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         it("should not issue payment instructions if there are no funds", async () => {
             const transactionId = web3.utils.keccak256("transactionId");
             const proof = createPaymentProof(transactionId, 1080 + 225 * 2 + 300);
-            await coreVaultManager.confirmPayment(proof);
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager });
 
             // request cancelable transfers
             const amount1 = "1085";
@@ -1464,7 +1424,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             // confirm payment. One payment should be issued
             const transactionId1 = web3.utils.keccak256("transactionId1");
             const proof1 = createPaymentProof(transactionId1, 1);
-            await coreVaultManager.confirmPayment(proof1);
+            await coreVaultManager.confirmPayment(proof1.data.requestBody.transactionId, proof1.data.responseBody.receivedAmount, { from: assetManager });
             assertWeb3Equal(await coreVaultManager.availableFunds(), 301);
             const tx3 = await coreVaultManager.triggerInstructions({ from: accounts[1] });
             expectEvent(tx3, "PaymentInstructions", {
@@ -1509,7 +1469,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             // fund contract
             const transactionId = web3.utils.keccak256("transactionId");
             const proof = createPaymentProof(transactionId, 500);
-            await coreVaultManager.confirmPayment(proof);
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager });
 
             // trigger instructions - not enough funds to create escrow
             await coreVaultManager.triggerInstructions({ from: accounts[1] });
@@ -1519,7 +1479,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             // add funds for fee
             const transactionId1 = web3.utils.keccak256("transactionId1");
             const proof1 = createPaymentProof(transactionId1, 15);
-            await coreVaultManager.confirmPayment(proof1);
+            await coreVaultManager.confirmPayment(proof1.data.requestBody.transactionId, proof1.data.responseBody.receivedAmount, { from: assetManager });
             // trigger instructions - create escrow
             await coreVaultManager.triggerInstructions({ from: accounts[1] });
             assertWeb3Equal(await coreVaultManager.availableFunds(), 300);
@@ -1556,7 +1516,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             // fund contract
             const transactionId = web3.utils.keccak256("transactionId");
             const proof = createPaymentProof(transactionId, 780);
-            await coreVaultManager.confirmPayment(proof);
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager });
 
             // create escrow
             await coreVaultManager.triggerInstructions({ from: accounts[1] });
@@ -1590,7 +1550,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             // fund contract
             const transactionId = web3.utils.keccak256("transactionId");
             const proof = createPaymentProof(transactionId, 800);
-            await coreVaultManager.confirmPayment(proof);
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager });
 
             // trigger instructions; no escrows should be created
             await coreVaultManager.triggerInstructions({ from: accounts[1] });
@@ -1687,7 +1647,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             // fund contract
             const transactionId = web3.utils.keccak256("transactionId");
             const proof = createPaymentProof(transactionId, 780);
-            await coreVaultManager.confirmPayment(proof);
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager });
 
             // create escrows
             await coreVaultManager.triggerInstructions({ from: accounts[1] });
@@ -1755,7 +1715,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             // fund contract
             const transactionId = web3.utils.keccak256("transactionId");
             const proof = createPaymentProof(transactionId, 780);
-            await coreVaultManager.confirmPayment(proof);
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager });
 
             // create escrows
             await coreVaultManager.triggerInstructions({ from: accounts[1] });
@@ -1825,7 +1785,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             // fund contract
             const transactionId = web3.utils.keccak256("transactionId");
             const proof = createPaymentProof(transactionId, 780);
-            await coreVaultManager.confirmPayment(proof);
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager });
 
             // create escrows
             const tx = await coreVaultManager.triggerInstructions({ from: accounts[1] });
@@ -1857,7 +1817,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             // send additional funds to contract
             const transactionId1 = web3.utils.keccak256("transactionId1");
             const proof1 = createPaymentProof(transactionId1, 75);
-            await coreVaultManager.confirmPayment(proof1);
+            await coreVaultManager.confirmPayment(proof1.data.requestBody.transactionId, proof1.data.responseBody.receivedAmount, { from: assetManager });
             // move to the expiry of the first escrow
             await time.increaseTo(cancelAfterTs1.addn(1));
             // create escrows
@@ -1884,7 +1844,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             await coreVaultManager.setEscrowsFinished([preimageHash2], { from: governance });
             // send additional funds to contract
             const proof2 = createPaymentProof(web3.utils.keccak256("transactionId2"), 125);
-            await coreVaultManager.confirmPayment(proof2);
+            await coreVaultManager.confirmPayment(proof2.data.requestBody.transactionId, proof2.data.responseBody.receivedAmount, { from: assetManager });
             // create escrows
             const tx2 = await coreVaultManager.triggerInstructions({ from: accounts[1] });
             lastUnfinishedExpiry = cancelAfterTs3;
@@ -1910,7 +1870,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             // fund contract
             const transactionId = web3.utils.keccak256("transactionId");
             const proof = createPaymentProof(transactionId, 780);
-            await coreVaultManager.confirmPayment(proof);
+            await coreVaultManager.confirmPayment(proof.data.requestBody.transactionId, proof.data.responseBody.receivedAmount, { from: assetManager });
 
             // create escrows
             const currentTs = await time.latest();
@@ -1946,7 +1906,7 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
             assertWeb3Equal(await coreVaultManager.availableFunds(), 780 - 2 * 200 - 2 * 15);
             // send additional funds to contract
             const proof1 = createPaymentProof(web3.utils.keccak256("transactionId1"), 165);
-            await coreVaultManager.confirmPayment(proof1);
+            await coreVaultManager.confirmPayment(proof1.data.requestBody.transactionId, proof1.data.responseBody.receivedAmount, { from: assetManager });
 
             // create one new escrow; expiry time should be the same as second escrow (now finished)
             const tx = await coreVaultManager.triggerInstructions({ from: accounts[1] });
