@@ -68,7 +68,6 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         require(!state.initialized, AlreadyInitialized());
         state.initialized = true;
         require(_params.mintingTagManager != address(0), AddressZero());
-        require(_params.smartAccountManager != address(0), AddressZero());
         state.mintingTagManager = IMintingTagManager(_params.mintingTagManager);
         state.coreVaultDonationTag = _params.coreVaultDonationTag.toUint32();
         state.smartAccountManager = ISmartAccountManagerMock(_params.smartAccountManager);

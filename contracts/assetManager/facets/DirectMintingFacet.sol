@@ -31,6 +31,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
     error CoreVaultDonation();
     error ForbiddenPaymentReference();
     error DirectMintingStillDelayed(uint256 allowedAt);
+    error MissingSmartAccountManager();
 
     function executeDirectMinting(
         IXrpPayment.Proof calldata _payment
@@ -49,6 +50,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         }
         require(_payment.data.responseBody.receivedAmount > 0, AmountNotPositive());
         uint256 receivedAmount = uint256(_payment.data.responseBody.receivedAmount);
+        require(address(state.smartAccountManager) != address(0), MissingSmartAccountManager());
         (bool mintToSmartAccount, address targetAddress) = _decodeTarget(_payment);
         // check rate limits
         bool delayed = _checkRateLimits(_payment.data.requestBody.transactionId, receivedAmount);
