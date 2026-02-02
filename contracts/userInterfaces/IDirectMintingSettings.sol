@@ -19,9 +19,6 @@ interface IDirectMintingSettings {
     function setDirectMintingTagsToken(address _mintingTags)
         external;
 
-    function setCoreVaultDonationTag(uint256 _coreVaultDonationTag)
-        external;
-
     function setSmartAccountManager(address _smartAccountManager)
         external;
 
@@ -31,7 +28,7 @@ interface IDirectMintingSettings {
     function setDirectMintingFee(uint256 _mintingFeeBIPS, uint256 _minimumMintingFeeUBA)
         external;
 
-    function setDirectMintingExecutorFeeBIPS(uint256 _executorFeeBIPS)
+    function setDirectMintingExecutorFeeShareBIPS(uint256 _executorFeeShareBIPS)
         external;
 
     function setDirectMintingHourlyLimitUBA(uint256 _hourlyLimitUBA)
@@ -71,7 +68,7 @@ interface IDirectMintingSettings {
         external view
         returns (uint256);
 
-    function getDirectMintingExecutorFeeBIPS()
+    function getDirectMintingExecutorFeeShareBIPS()
         external view
         returns (uint256);
 

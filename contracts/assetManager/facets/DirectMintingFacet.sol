@@ -62,7 +62,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
             _payment.data.responseBody.receivedAmount);
         // calculate fees
         uint256 mintingFeeUBA = _computeMintingFeeUBA(receivedAmount);
-        uint256 executorFeeUBA = mintingFeeUBA.mulBips(state.executorFeeBIPS);
+        uint256 executorFeeUBA = mintingFeeUBA.mulBips(state.executorFeeShareBIPS);
         uint256 systemFeeUBA = mintingFeeUBA - executorFeeUBA;
         // mint system fees to fee receiver
         Globals.getFAsset().mint(state.mintingFeeReceiver, systemFeeUBA);

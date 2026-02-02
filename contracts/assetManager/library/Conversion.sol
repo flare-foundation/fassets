@@ -133,9 +133,20 @@ library Conversion {
         if (bytes(_token.tokenFtsoSymbol).length == 0) {
             return _amountUSD5;
         }
-        (uint256 tokenPrice,, uint256 tokenFtsoDec) = readFtsoPrice(_token.tokenFtsoSymbol, false);
+        return convertFromUSD5(_amountUSD5, _token.tokenFtsoSymbol, _token.decimals);
+    }
+
+    function convertFromUSD5(
+        uint256 _amountUSD5,
+        string memory _tokenFtsoSymbol,
+        uint8 _tokenDecimals
+    )
+        internal view
+        returns (uint256)
+    {
+        (uint256 tokenPrice,, uint256 tokenFtsoDec) = readFtsoPrice(_tokenFtsoSymbol, false);
         // 5 is for 5 decimals of USD5
-        uint256 expPlus = _token.decimals + tokenFtsoDec - 5;
+        uint256 expPlus = _tokenDecimals + tokenFtsoDec - 5;
         return _amountUSD5.mulDiv(10 ** expPlus, tokenPrice);
     }
 

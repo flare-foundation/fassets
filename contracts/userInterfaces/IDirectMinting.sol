@@ -10,16 +10,6 @@ import {IXrpPayment} from "../fdc/mockInterface/IXrpPayment.sol";
 interface IDirectMinting {
     // Events
 
-    event LargeDirectMintingDelayed(
-        bytes32 transactionId,
-        uint256 amount,
-        uint256 executionAllowedAt);
-
-    event DirectMintingDelayed(
-        bytes32 transactionId,
-        uint256 amount,
-        uint256 executionAllowedAt);
-
     event DirectMintingExecuted(
         bytes32 transactionId,
         address targetAddress,
@@ -36,6 +26,19 @@ interface IDirectMinting {
         uint256 systemFeeUBA,
         bool hasMemoData,
         bytes firstMemoData);
+
+    event LargeDirectMintingDelayed(
+        bytes32 transactionId,
+        uint256 amount,
+        uint256 executionAllowedAt);
+
+    event DirectMintingDelayed(
+        bytes32 transactionId,
+        uint256 amount,
+        uint256 executionAllowedAt);
+
+    event DirectMintingsUnblocked(
+        uint256 startedUntilTimestamp);
 
     // Functions
 

@@ -14,13 +14,13 @@ library DirectMinting {
 
     struct State {
         bool initialized;
-        IFAssetMintingTag mintingTags;
+        IFAssetMintingTag mintingTagsToken;
         uint32 coreVaultDonationTag;
         ISmartAccountManagerMock smartAccountManager;
         address mintingFeeReceiver;
         uint64 minimumMintingFeeAmg;
         uint16 mintingFeeBIPS;
-        uint16 executorFeeBIPS; // relative to minting fee
+        uint16 executorFeeShareBIPS; // relative to minting fee
         MintingRateLimiter.State hourlyLimiter;
         MintingRateLimiter.State dailyLimiter;
         MintingRateLimiter.State largeMintingLimiter;
@@ -34,7 +34,7 @@ library DirectMinting {
         returns (address)
     {
         State storage state = getState();
-        return state.mintingTags.mintingRecipient(_mintingTag);
+        return state.mintingTagsToken.mintingRecipient(_mintingTag);
     }
 
     bytes32 internal constant STATE_POSITION = keccak256("fasset.DirectMinting.State");
