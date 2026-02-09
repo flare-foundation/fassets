@@ -2,7 +2,7 @@
 pragma solidity >=0.7.6 <0.9;
 
 import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
-import {IXrpPayment} from "../fdc/mockInterface/IXrpPayment.sol";
+import {IXRPPayment} from "../fdc/mockInterface/IXRPPayment.sol";
 
 
 /**
@@ -132,7 +132,7 @@ interface ICoreVaultClient {
      * Confirm a donation payment made to the core vault underlying address.
      * @param _payment FDC payment proof
      */
-    function confirmCoreVaultDonation(IXrpPayment.Proof calldata _payment)
+    function confirmCoreVaultDonation(IXRPPayment.Proof calldata _payment)
         external;
 
     /**

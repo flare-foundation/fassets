@@ -11,7 +11,7 @@ import {
     IReferencedPaymentNonexistenceVerification,
     IWeb2JsonVerification
 } from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
-import {IXrpPaymentVerification} from "./IXrpPaymentVerification.sol";
+import {IXRPPaymentVerification} from "./IXRPPaymentVerification.sol";
 
 /**
  * FdcVerification interface.
@@ -23,7 +23,7 @@ interface IFdcVerification is
     IEVMTransactionVerification,
     IPaymentVerification,
     IReferencedPaymentNonexistenceVerification,
-    IXrpPaymentVerification,
+    IXRPPaymentVerification,
     IWeb2JsonVerification
 {
     /**

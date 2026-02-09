@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import {IPayment, IBalanceDecreasingTransaction}
     from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
-import {IXrpPayment} from "../../../fdc/mockInterface/IXrpPayment.sol";
+import {IXRPPayment} from "../../../fdc/mockInterface/IXRPPayment.sol";
 
 
 library PaymentConfirmations {
@@ -38,7 +38,7 @@ library PaymentConfirmations {
      */
     function confirmIncomingPayment(
         State storage _state,
-        IXrpPayment.Proof calldata _payment
+        IXRPPayment.Proof calldata _payment
     )
         internal
     {

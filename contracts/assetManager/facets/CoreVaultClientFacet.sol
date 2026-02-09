@@ -2,7 +2,7 @@
 pragma solidity ^0.8.27;
 
 import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
-import {IXrpPayment} from "../../fdc/mockInterface/IXrpPayment.sol";
+import {IXRPPayment} from "../../fdc/mockInterface/IXRPPayment.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ICoreVaultClient} from "../../userInterfaces/ICoreVaultClient.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
@@ -283,21 +283,21 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
      * @param _payment FDC payment proof
      */
     function confirmCoreVaultDonation(
-        IXrpPayment.Proof calldata _payment
+        IXRPPayment.Proof calldata _payment
     )
         external
         onlyEnabled
         notEmergencyPaused
         nonReentrant
     {
-        TransactionAttestation.verifyXrpPaymentSuccess(_payment);
+        TransactionAttestation.verifyXRPPaymentSuccess(_payment);
         require(_payment.data.responseBody.receivingAddressHash == CoreVaultClient.coreVaultUnderlyingAddressHash(),
             InvalidReceivingAddress());
-        require(_payment.data.requestBody.allowedExecutor == address(0)
-            || msg.sender == _payment.data.requestBody.allowedExecutor,
+        require(_payment.data.requestBody.preferredProofPresenter == address(0)
+            || msg.sender == _payment.data.requestBody.preferredProofPresenter,
             InvalidExecutor());
-        require(_payment.data.responseBody.hasTag &&
-            _payment.data.responseBody.tag == DirectMinting.getState().coreVaultDonationTag,
+        require(_payment.data.responseBody.hasDestinationTag &&
+            _payment.data.responseBody.destinationTag == DirectMinting.getState().coreVaultDonationTag,
             NotACoreVaultDonation());
         require(_payment.data.responseBody.receivedAmount > 0, AmountNotPositive());
         // mark payment used

@@ -6,7 +6,7 @@ import {IPayment, IBalanceDecreasingTransaction, IReferencedPaymentNonexistence,
         IConfirmedBlockHeightExists, IAddressValidity, IEVMTransaction, IWeb2Json}
     from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {IRelay} from "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
-import {IXrpPayment} from "../mockInterface/IXrpPayment.sol";
+import {IXRPPayment} from "../mockInterface/IXRPPayment.sol";
 import {IFdcVerification} from "../mockInterface/IFdcVerification.sol";
 
 
@@ -112,13 +112,13 @@ contract FdcVerificationMock is IFdcVerification {
             );
     }
 
-    function verifyXrpPayment(
-        IXrpPayment.Proof calldata _proof
+    function verifyXRPPayment(
+        IXRPPayment.Proof calldata _proof
     )
         external view
         returns (bool _proved)
     {
-        return _proof.data.attestationType == bytes32("XrpPayment") &&
+        return _proof.data.attestationType == bytes32("XRPPayment") &&
             _proof.merkleProof.verifyCalldata(
                 relay.merkleRoots(fdcProtocolId, _proof.data.votingRound),
                 keccak256(abi.encode(_proof.data))

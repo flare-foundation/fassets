@@ -493,7 +493,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
     async function prefundCoreVault(from: string, amount: BNish) {
         const wallet = new MockChainWallet(mockChain);
         const rtx = await wallet.addTransaction(from, coreVaultUnderlyingAddress, amount, null);
-        const proof = await context.attestationProvider.proveXrpPayment(rtx, from);
+        const proof = await context.attestationProvider.proveXRPPayment(rtx, from);
         await context.assetManager.confirmCoreVaultDonation(proof, { from });
     }
 
@@ -1156,7 +1156,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const wallet = new MockChainWallet(mockChain);
         assertWeb3Equal(await mockChain.getBalance(coreVaultCustodianAddress), context.convertLotsToUBA(300));
         const txHash = await wallet.addTransaction(coreVaultCustodianAddress, coreVaultUnderlyingAddress, context.convertLotsToUBA(300), null);
-        const proof = await context.attestationProvider.proveXrpPayment(txHash, null);
+        const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
         await context.assetManager.confirmCoreVaultDonation(proof);
         // redeemer can now be paid
         const handled4 = await coreVaultBot.triggerAndPerformActions();

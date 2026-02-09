@@ -2,7 +2,7 @@
 pragma solidity >=0.7.6 <0.9;
 
 /**
- * @custom:name IXrpPayment
+ * @custom:name IXRPPayment
  * @custom:id 0x08
  * @custom:supported XRP
  * @author Flare
@@ -26,7 +26,7 @@ pragma solidity >=0.7.6 <0.9;
  * @custom:lut `blockTimestamp`
  * @custom:lutlimit `0x127500`, `0x127500`, `0x127500`
  */
-interface IXrpPayment {
+interface IXRPPayment {
     /**
      * @notice Toplevel request
      * @param attestationType ID of the attestation type.
@@ -74,18 +74,19 @@ interface IXrpPayment {
     /**
      * @notice Request body for Payment attestation type
      * @param transactionId ID of the payment transaction.
-     * @param allowedExecutor Address that is allowed to execute the method that requires this attestation.
+     * @param preferredProofPresenter Address that is allowed to execute the method that requires this attestation.
      *  If zero, any address can execute.
      */
     struct RequestBody {
         bytes32 transactionId;
-        address allowedExecutor;
+        address preferredProofPresenter;
     }
 
     /**
      * @notice Response body for Payment attestation type
      * @param blockNumber Number of the block in which the transaction is included.
      * @param blockTimestamp The timestamp of the block in which the transaction is included.
+     * @param sourceAddress Address string of the source address (r address).
      * @param sourceAddressHash Standard address hash of the source address.
      * @param receivingAddressHash Standard address hash of the receiving address.
      * The zero 32-byte string if there is no receivingAddress (if `status` is not success).
@@ -97,16 +98,19 @@ interface IXrpPayment {
      * @param receivedAmount Amount in minimal units received by the receiving address.
      * @param intendedReceivedAmount Amount in minimal units intended to be received by the receiving address.
      * Relevant if the transaction is unsuccessful.
-     * @param hasMemoData Indicator whether the transaction has memo data.
-     * @param firstMemoData The first memo data field of the transaction.
-     * @param hasTag Indicator whether the transaction has an XRP tag.
-     * @param tag The tag of the transaction. Zero if `hasTag` is false.
+     * @param hasMemoData True if the transaction has a MemoData field, false otherwise.
+     * @param firstMemoData Raw bytes of MemoData filed of first Memo in the transaction, empty if no memo is present.
+     * @param hasDestinationTag True if the transaction has a destination tag, false otherwise.
+     * @param destinationTag Destination tag of the transaction, 0 if no destination tag is present,
+     * see hasDestinationTag for indication if transaction has destination tag.
+     * Currently XRPL only supports destination tags that are uint32 values.
      * @param status Success status of the transaction: 0 - success, 1 - failed by sender's fault,
      * 2 - failed by receiver's fault.
      */
     struct ResponseBody {
         uint64 blockNumber;
         uint64 blockTimestamp;
+        string sourceAddress;
         bytes32 sourceAddressHash;
         bytes32 receivingAddressHash;
         bytes32 intendedReceivingAddressHash;
@@ -116,8 +120,8 @@ interface IXrpPayment {
         int256 intendedReceivedAmount;
         bool hasMemoData;
         bytes firstMemoData;
-        bool hasTag;
-        uint256 tag;
+        bool hasDestinationTag;
+        uint256 destinationTag;
         uint8 status;
     }
 }

@@ -13,7 +13,7 @@ export interface MockChainTransaction extends ITransaction {
     inputs: TxInputOutput[];
     outputs: TxInputOutput[];
     reference: string | null;
-    tag?: number;
+    destinationTag?: number;
     status: number; // 0 = success, 1 = failure (sender's fault), 2 = failure (receiver's fault)
 }
 

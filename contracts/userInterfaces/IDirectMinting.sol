@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import {IXrpPayment} from "../fdc/mockInterface/IXrpPayment.sol";
+import {IXRPPayment} from "../fdc/mockInterface/IXRPPayment.sol";
 
 
 /**
@@ -47,7 +47,7 @@ interface IDirectMinting {
      * The payment must be made to the fAsset Core Vault's XRP address.
      * @param _payment the XRP payment proof data
      */
-    function executeDirectMinting(IXrpPayment.Proof calldata _payment)
+    function executeDirectMinting(IXRPPayment.Proof calldata _payment)
         external;
 
     /**

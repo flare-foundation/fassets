@@ -1,10 +1,9 @@
-import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/js-flare-common";
+import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence, XRPPayment } from "@flarenetwork/js-flare-common";
 import Web3 from "web3";
 import { AttestationHelper } from "../../underlying-chain/AttestationHelper";
 import { TX_FAILED, TX_SUCCESS, TxInputOutput } from "../../underlying-chain/interfaces/IBlockChain";
 import { BN_ZERO, ZERO_BYTES32 } from "../../utils/helpers";
 import { MockChain, MockChainTransaction } from "./MockChain";
-import { XrpPayment } from "./mockInterface/XrpPayment";
 
 export class MockAttestationProverError extends Error {
     constructor(message: string) {
@@ -71,7 +70,7 @@ export class MockAttestationProver {
         };
     }
 
-    xrpPayment(transactionHash: string): XrpPayment.ResponseBody {
+    xrpPayment(transactionHash: string): XRPPayment.ResponseBody {
         const { transaction, block } = this.findTransaction('payment', transactionHash);
         if (transaction.inputs.length !== 1 || transaction.outputs.length !== 1) {
             throw new MockAttestationProverError(`AttestationProver.xrpPayment: transaction is not one-to-one ${transactionHash}`);
@@ -81,13 +80,14 @@ export class MockAttestationProver {
         return {
             blockNumber: String(block.number),
             blockTimestamp: String(block.timestamp),
+            sourceAddress: transaction.inputs[0][0],
             sourceAddressHash: sourceAddressHash,
             receivingAddressHash: transaction.status === TX_SUCCESS ? receivingAddressHash : ZERO_BYTES32,
             intendedReceivingAddressHash: receivingAddressHash,
             hasMemoData: transaction.reference != null,
             firstMemoData: transaction.reference ?? ZERO_BYTES32,
-            hasTag: transaction.tag != null,
-            tag: String(transaction.tag ?? 0),
+            hasDestinationTag: transaction.destinationTag != null,
+            destinationTag: String(transaction.destinationTag ?? 0),
             spentAmount: String(totalSpentValue(transaction, sourceAddressHash, "actual")),
             intendedSpentAmount: String(totalSpentValue(transaction, sourceAddressHash, "intended")),
             receivedAmount: String(totalReceivedValue(transaction, receivingAddressHash, "actual")),

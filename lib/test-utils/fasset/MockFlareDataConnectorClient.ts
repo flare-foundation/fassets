@@ -1,15 +1,14 @@
-import { ARBase, ARESBase, AddressValidity, AttestationDefinitionStore, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MIC_SALT, MerkleTree, Payment, ReferencedPaymentNonexistence, decodeAttestationName } from "@flarenetwork/js-flare-common";
+import { ARBase, ARESBase, AddressValidity, AttestationDefinitionStore, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MIC_SALT, MerkleTree, Payment, ReferencedPaymentNonexistence, XRPPayment, decodeAttestationName } from "@flarenetwork/js-flare-common";
+import { FdcHubMockInstance, RelayMockInstance } from "../../../typechain-truffle";
+import { AttestationRequest } from "../../../typechain-truffle/IFdcHub";
 import { SourceId } from "../../underlying-chain/SourceId";
 import { AttestationNotProved, AttestationRequestId, IFlareDataConnectorClient, OptionalAttestationProof } from "../../underlying-chain/interfaces/IFlareDataConnectorClient";
 import { findRequiredEvent } from "../../utils/events/truffle";
-import { filterStackTrace, sleep, toBN, toNumber, ZERO_BYTES32 } from "../../utils/helpers";
+import { ZERO_BYTES32, filterStackTrace, sleep, toBN, toNumber } from "../../utils/helpers";
 import { stringifyJson } from "../../utils/json-bn";
 import { ILogger } from "../../utils/logging";
-import { AttestationRequest } from "../../../typechain-truffle/IFdcHub";
 import { MockAttestationProver, MockAttestationProverError } from "./MockAttestationProver";
 import { MockChain } from "./MockChain";
-import { FdcHubMockInstance, RelayMockInstance } from "../../../typechain-truffle";
-import { XrpPayment } from "./mockInterface/XrpPayment";
 
 interface RoundProof {
     response: ARESBase;
@@ -214,8 +213,8 @@ export class MockFlareDataConnectorClient implements IFlareDataConnectorClient {
                 const request = parsedRequest.requestBody as Payment.RequestBody;
                 return prover.payment(request.transactionId, toNumber(request.inUtxo), toNumber(request.utxo));
             }
-            case XrpPayment.TYPE: {
-                const request = parsedRequest.requestBody as XrpPayment.RequestBody;
+            case XRPPayment.TYPE: {
+                const request = parsedRequest.requestBody as XRPPayment.RequestBody;
                 return prover.xrpPayment(request.transactionId);
             }
             case BalanceDecreasingTransaction.TYPE: {

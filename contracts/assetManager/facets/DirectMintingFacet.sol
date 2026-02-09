@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
-import {IXrpPayment} from "../../fdc/mockInterface/IXrpPayment.sol";
+import {IXRPPayment} from "../../fdc/mockInterface/IXRPPayment.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
@@ -35,19 +35,19 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
     error MissingSmartAccountManager();
 
     function executeDirectMinting(
-        IXrpPayment.Proof calldata _payment
+        IXRPPayment.Proof calldata _payment
     )
         external
         onlyAttached
         notEmergencyPaused
         nonReentrant
     {
-        TransactionAttestation.verifyXrpPaymentSuccess(_payment);
+        TransactionAttestation.verifyXRPPaymentSuccess(_payment);
         DirectMinting.State storage state = DirectMinting.getState();
         require(_payment.data.responseBody.receivingAddressHash == CoreVaultClient.coreVaultUnderlyingAddressHash(),
             InvalidReceivingAddress());
-        if (_payment.data.requestBody.allowedExecutor != address(0)) {
-            require(msg.sender == _payment.data.requestBody.allowedExecutor, InvalidExecutor());
+        if (_payment.data.requestBody.preferredProofPresenter != address(0)) {
+            require(msg.sender == _payment.data.requestBody.preferredProofPresenter, InvalidExecutor());
         }
         require(_payment.data.responseBody.receivedAmount > 0, AmountNotPositive());
         uint256 receivedAmount = uint256(_payment.data.responseBody.receivedAmount);
@@ -176,11 +176,11 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         });
     }
 
-    function _decodeTarget(IXrpPayment.Proof calldata _payment)
+    function _decodeTarget(IXRPPayment.Proof calldata _payment)
         private view
         returns (bool _mintToSmartAccount, address _targetAddress)
     {
-        IXrpPayment.ResponseBody memory body = _payment.data.responseBody;
+        IXRPPayment.ResponseBody memory body = _payment.data.responseBody;
         DirectMinting.State storage state = DirectMinting.getState();
         // has valid DIRECT_MINTING payment reference
         if (body.hasMemoData && body.firstMemoData.length == 32) {
@@ -196,10 +196,10 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
                 ForbiddenPaymentReference());
         }
         // has registered tag (both tag and memo data is invalid combination that goes to smart account)
-        if (body.hasTag && !body.hasMemoData) {
+        if (body.hasDestinationTag && !body.hasMemoData) {
             // forbid core vault donation tag - it should be confirmed using method confirmCoreVaultDonation
-            require(body.tag != state.coreVaultDonationTag, CoreVaultDonation());
-            address registeredAddress = DirectMinting.mintingRecipientForTag(body.tag);
+            require(body.destinationTag != state.coreVaultDonationTag, CoreVaultDonation());
+            address registeredAddress = DirectMinting.mintingRecipientForTag(body.destinationTag);
             if (registeredAddress != address(0)) {
                 return (false, registeredAddress);
             }
