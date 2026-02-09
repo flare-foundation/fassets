@@ -68,8 +68,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         CoreVaultClient.confirmCoreVaultPayment(_payment.data.requestBody.transactionId,
             _payment.data.responseBody.receivedAmount);
         // calculate fees
-        uint256 mintingFeeUBA = _computeMintingFeeUBA(receivedAmount);
-        uint256 executorFeeUBA = mintingFeeUBA.mulBips(state.executorFeeShareBIPS);
+        (uint256 mintingFeeUBA, uint256 executorFeeUBA) = _computeMintingFee(receivedAmount);
         uint256 systemFeeUBA = mintingFeeUBA - executorFeeUBA;
         // mint system fees to fee receiver
         Globals.getFAsset().mint(state.mintingFeeReceiver, systemFeeUBA);
@@ -208,10 +207,16 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         return (true, address(state.smartAccountManager));
     }
 
-    function _computeMintingFeeUBA(uint256 _receivedAmount) private view returns (uint256) {
+    function _computeMintingFee(uint256 _receivedAmount)
+        private view
+        returns (uint256 _totalFeeUBA, uint256 _executorFeeUBA)
+    {
         DirectMinting.State storage state = DirectMinting.getState();
         uint256 relativeFeeUBA = _receivedAmount.mulBips(state.mintingFeeBIPS);
         uint256 minimumFeeUBA = Conversion.convertAmgToUBA(state.minimumMintingFeeAmg);
-        return Math.min(Math.max(relativeFeeUBA, minimumFeeUBA), _receivedAmount);
+        _totalFeeUBA = Math.min(Math.max(relativeFeeUBA, minimumFeeUBA), _receivedAmount);
+        uint256 relativeExecutorFeeUBA = _receivedAmount.mulBips(state.executorFeeBIPS);
+        uint256 minimumExecutorFeeUBA = Conversion.convertAmgToUBA(state.minimumExecutorFeeAmg);
+        _executorFeeUBA = Math.min(Math.max(relativeExecutorFeeUBA, minimumExecutorFeeUBA), _totalFeeUBA);
     }
 }

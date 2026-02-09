@@ -279,7 +279,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             resInitSettings.directMintingFeeReceiver = await assetManager.getDirectMintingFeeReceiver();
             resInitSettings.directMintingMinimumFeeUBA = await assetManager.getDirectMintingMinimumFeeUBA();
             resInitSettings.directMintingFeeBIPS = await assetManager.getDirectMintingFeeBIPS();
-            resInitSettings.directMintingExecutorFeeShareBIPS = await assetManager.getDirectMintingExecutorFeeShareBIPS();
+            resInitSettings.directMintingMinimumExecutorFeeUBA = await assetManager.getDirectMintingMinimumExecutorFeeUBA();
+            resInitSettings.directMintingExecutorFeeBIPS = await assetManager.getDirectMintingExecutorFeeBIPS();
             resInitSettings.directMintingHourlyLimitUBA = await assetManager.getDirectMintingHourlyLimitUBA();
             resInitSettings.directMintingDailyLimitUBA = await assetManager.getDirectMintingDailyLimitUBA();
             resInitSettings.directMintingLargeMintingThresholdUBA = await assetManager.getDirectMintingLargeMintingThresholdUBA();
