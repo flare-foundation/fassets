@@ -3,7 +3,7 @@ import { IBlockChain } from "./IBlockChain";
 type NumberLike = BN | number | string;
 
 export interface TransactionOptions {
-    xrpTag?: number; // numeric tag - only for XRP transactions
+    destinationTag?: number; // numeric tag - only for XRP transactions
 }
 
 export interface TransactionOptionsWithFee extends TransactionOptions {

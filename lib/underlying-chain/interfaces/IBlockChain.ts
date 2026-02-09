@@ -22,7 +22,7 @@ export interface ITransaction {
     reference: string | null;
 
     // Numeric tag - only for XRP transactions
-    tag?: number;
+    destinationTag?: number;
 
     // Transaction status (only important on chains like Ehereum, where failed transactions are recorded and charged, otherwise always 0).
     // TX_SUCCESS (0) = success, TX_FAILED (1) = failure (sender's fault), TX_BLOCKED (2) = failure (receiver's fault, e.g. blocking contract)

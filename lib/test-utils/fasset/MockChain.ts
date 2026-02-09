@@ -349,9 +349,9 @@ export class MockChainWallet implements IBlockChainWallet {
         assert.isTrue(totalSpent.gte(totalReceived), "mockTransaction: received more than spent");
         assert.isTrue(totalSpent.gte(totalReceived.add(this.chain.requiredFee)), "mockTransaction: not enough fee");
         const hash = this.chain.createTransactionHash(inputs, outputs, reference);
-        const tag = options?.xrpTag;
+        const destinationTag = options?.destinationTag;
         // hash is set set when transaction is added to a block
-        return { hash, inputs, outputs, reference, tag, status };
+        return { hash, inputs, outputs, reference, destinationTag, status };
     }
 
     private calculateMaxFee(options: TransactionOptionsWithFee) {

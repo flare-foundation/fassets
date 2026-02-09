@@ -490,11 +490,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         expectEvent(res, "TransferToCoreVaultStarted", { agentVault: agent.vaultAddress, valueUBA: transferAmount });
     });
 
-    async function prefundCoreVault(from: string, amount: BNish) {
+    async function donateToCoreVault(from: string, amount: BNish) {
         const wallet = new MockChainWallet(mockChain);
-        const rtx = await wallet.addTransaction(from, coreVaultUnderlyingAddress, amount, null);
-        const proof = await context.attestationProvider.proveXRPPayment(rtx, from);
-        await context.assetManager.confirmCoreVaultDonation(proof, { from });
+        const coreVaultDonationTag = Number(context.initSettings.coreVaultDonationTag);
+        const rtx = await wallet.addTransaction(from, coreVaultUnderlyingAddress, amount, null, { destinationTag: coreVaultDonationTag });
+        const proof = await context.attestationProvider.proveXRPPayment(rtx, null);
+        await context.assetManager.confirmCoreVaultDonation(proof);
     }
 
     it("request return from core vault", async () => {
@@ -502,7 +503,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
-        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        await donateToCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
         await coreVaultManager.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
@@ -564,7 +565,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
-        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        await donateToCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
         await coreVaultManager.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
@@ -601,7 +602,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
-        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        await donateToCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
         await coreVaultManager.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
@@ -627,7 +628,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
-        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        await donateToCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
         await coreVaultManager.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
@@ -649,7 +650,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
-        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        await donateToCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
         await coreVaultManager.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
@@ -679,7 +680,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
-        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        await donateToCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
         await coreVaultManager.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
@@ -708,7 +709,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
-        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        await donateToCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
         await coreVaultManager.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
@@ -745,7 +746,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
-        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        await donateToCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
         await coreVaultManager.addAllowedDestinationAddresses([agent2.underlyingAddress], { from: governance });
         // make agent available
@@ -792,7 +793,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000000));
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
-        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        await donateToCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
         await coreVaultManager.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
         // make agent available
@@ -831,7 +832,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
-        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        await donateToCoreVault(minter.underlyingAddress, 1e6);
         // make agent available
         await agent.depositCollateralLotsAndMakeAvailable(100);
         // mint
@@ -1008,7 +1009,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(1000));
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
-        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        await donateToCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
         await coreVaultManager.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
         // make agent available
@@ -1041,7 +1042,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(1000));
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
         const coreVaultBot = new MockCoreVaultBot(context, triggeringAccount);
-        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        await donateToCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
         await coreVaultManager.addAllowedDestinationAddresses([agent.underlyingAddress, agent2.underlyingAddress], { from: governance });
         // make agent available
@@ -1108,7 +1109,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(1000));
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
         const coreVaultBot = new MockCoreVaultBot(context, triggeringAccount);
-        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        await donateToCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
         await coreVaultManager.addAllowedDestinationAddresses([agent.underlyingAddress, redeemer.underlyingAddress], { from: governance });
         // make agent available
@@ -1153,11 +1154,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // console.log(deepFormat({ available: await coreVaultManager.availableFunds(), escrowed: await coreVaultManager.escrowedFunds() }));
         await coreVaultManager.setEscrowsFinished(releasedHashes, { from: governance });
         // transfer from custodian address to core vault and prove the transfer
-        const wallet = new MockChainWallet(mockChain);
         assertWeb3Equal(await mockChain.getBalance(coreVaultCustodianAddress), context.convertLotsToUBA(300));
-        const txHash = await wallet.addTransaction(coreVaultCustodianAddress, coreVaultUnderlyingAddress, context.convertLotsToUBA(300), null);
-        const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
-        await context.assetManager.confirmCoreVaultDonation(proof);
+        await donateToCoreVault(coreVaultCustodianAddress, context.convertLotsToUBA(300));
+        assertWeb3Equal(await mockChain.getBalance(coreVaultCustodianAddress), 0);
         // redeemer can now be paid
         const handled4 = await coreVaultBot.triggerAndPerformActions();
         assert.equal(handled4.createdEscrows.length, 0);
@@ -1362,7 +1361,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000000));
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
-        await prefundCoreVault(minter.underlyingAddress, 1e6);
+        await donateToCoreVault(minter.underlyingAddress, 1e6);
         // allow CV manager addresses
         await coreVaultManager.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
         // make agent available
@@ -1384,7 +1383,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
         await context.assetManager.setCoreVaultRedemptionFeeBIPS(0, { from: governance });
         const { 3: cvFee } = await coreVaultManager.getSettings();
-        await prefundCoreVault(minter.underlyingAddress, cvFee);
+        await donateToCoreVault(minter.underlyingAddress, cvFee);
         // allow CV manager addresses
         await coreVaultManager.addAllowedDestinationAddresses([redeemer.underlyingAddress], { from: governance });
         // make agent available

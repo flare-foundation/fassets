@@ -19,8 +19,8 @@
   ],
   "scripts": {
     "---------TEST---SCRIPTS": "",
-    "test": "yarn hardhat test",
-    "coverage": "env NODE_OPTIONS=\"--max_old_space_size=8192\" yarn hardhat coverage --testfiles",
+    "test": "env NODE_OPTIONS=\"--stack-trace-limit=100\" yarn hardhat test",
+    "coverage": "env NODE_OPTIONS=\"--max_old_space_size=8192 --stack-trace-limit=100\" yarn hardhat coverage --testfiles",
     "test-with-coverage": "yarn clean && yarn compile && yarn coverage \"test/unit test/integration\"",
     "cov": "yarn coverage",
     "testHH": "tsc && yarn hardhat test \"test/{unit,integration}/**/*.ts\"",
