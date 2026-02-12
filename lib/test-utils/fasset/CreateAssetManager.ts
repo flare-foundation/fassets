@@ -22,8 +22,7 @@ export interface AssetManagerInitSettings extends AssetManagerSettings {
     directMintingFeeReceiver: string;
     directMintingMinimumFeeUBA: BNish;
     directMintingFeeBIPS: BNish;
-    directMintingMinimumExecutorFeeUBA: BNish;
-    directMintingExecutorFeeBIPS: BNish;
+    directMintingExecutorFeeUBA: BNish;
     directMintingHourlyLimitUBA: BNish;
     directMintingDailyLimitUBA: BNish;
     directMintingLargeMintingThresholdUBA: BNish;
@@ -98,8 +97,7 @@ export async function newAssetManager(
             mintingFeeReceiver: assetManagerSettings.directMintingFeeReceiver,
             minimumMintingFeeUBA: assetManagerSettings.directMintingMinimumFeeUBA,
             mintingFeeBIPS: assetManagerSettings.directMintingFeeBIPS,
-            minimumExecutorFeeUBA: assetManagerSettings.directMintingMinimumExecutorFeeUBA,
-            executorFeeBIPS: assetManagerSettings.directMintingExecutorFeeBIPS,
+            executorFeeUBA: assetManagerSettings.directMintingExecutorFeeUBA,
             hourlyLimitUBA: assetManagerSettings.directMintingHourlyLimitUBA,
             dailyLimitUBA: assetManagerSettings.directMintingDailyLimitUBA,
             largeMintingThresholdUBA: assetManagerSettings.directMintingLargeMintingThresholdUBA,

@@ -2,19 +2,12 @@
 pragma solidity ^0.8.27;
 
 interface ISmartAccountManagerMock {
-    event MintedToSmartAccount(
-        bytes32 sourceAddressHash,
-        uint256 amount,
-        bool hasMemoData,
-        bytes firstMemoData
-    );
-
     function mintedFAssets(
-        bytes32 _sourceAddressHash,
+        bytes32 _transactionId,
+        string calldata _sourceAddress,
         uint256 _amount,
-        bool _hasMemoData,
-        bytes calldata _firstMemoData,
-        address _executor,
-        uint256 _suggestedExecutorFeeUBA
+        uint256 _underlyingTimestamp,
+        bytes calldata _memoData,
+        address _executor
     ) external;
 }

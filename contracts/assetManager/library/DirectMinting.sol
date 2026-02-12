@@ -20,8 +20,7 @@ library DirectMinting {
         address mintingFeeReceiver;
         uint64 minimumMintingFeeAmg;
         uint16 mintingFeeBIPS;
-        uint64 minimumExecutorFeeAmg;
-        uint16 executorFeeBIPS;
+        uint64 executorFeeAmg;
         MintingRateLimiter.State hourlyLimiter;
         MintingRateLimiter.State dailyLimiter;
         MintingRateLimiter.State largeMintingLimiter;

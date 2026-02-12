@@ -15,17 +15,16 @@ interface IDirectMinting {
         address targetAddress,
         address executor,
         uint256 mintedAmountUBA,
-        uint256 systemFeeUBA,
+        uint256 mintingFeeUBA,
         uint256 executorFeeUBA);
 
     event DirectMintingExecutedToSmartAccount(
         bytes32 transactionId,
-        bytes32 sourceAddressHash,
+        string sourceAddress,
         address executor,
         uint256 mintedAmountUBA,
-        uint256 systemFeeUBA,
-        bool hasMemoData,
-        bytes firstMemoData);
+        uint256 mintingFeeUBA,
+        bytes memoData);
 
     event LargeDirectMintingDelayed(
         bytes32 transactionId,

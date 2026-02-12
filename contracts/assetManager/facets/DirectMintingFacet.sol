@@ -68,39 +68,39 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         CoreVaultClient.confirmCoreVaultPayment(_payment.data.requestBody.transactionId,
             _payment.data.responseBody.receivedAmount);
         // calculate fees
-        (uint256 mintingFeeUBA, uint256 executorFeeUBA) = _computeMintingFee(receivedAmount);
-        uint256 systemFeeUBA = mintingFeeUBA - executorFeeUBA;
+        (uint256 mintingFeeUBA, uint256 executorFeeUBA) =_computeFees(receivedAmount);
         // mint system fees to fee receiver
-        Globals.getFAsset().mint(state.mintingFeeReceiver, systemFeeUBA);
+        _mintFAssets(state.mintingFeeReceiver, mintingFeeUBA);
         if (mintToSmartAccount) {
-            // mint everything except minting fee to smart account manager and notify it
-            // NOTE: smart account manager must pay the executor
-            Globals.getFAsset().mint(targetAddress, receivedAmount - systemFeeUBA);
+            // Mint everything except minting fee to smart account manager and notify it.
+            // NOTE: smart account manager must pay the executor in this case
+            uint256 sendToTargetUBA = receivedAmount - mintingFeeUBA;
+            _mintFAssets(targetAddress, sendToTargetUBA);
             state.smartAccountManager.mintedFAssets(
-                _payment.data.responseBody.sourceAddressHash,
-                receivedAmount - systemFeeUBA,
-                _payment.data.responseBody.hasMemoData,
+                _payment.data.requestBody.transactionId,
+                _payment.data.responseBody.sourceAddress,
+                sendToTargetUBA,
+                _payment.data.responseBody.blockTimestamp,
                 _payment.data.responseBody.firstMemoData,
-                msg.sender,
-                executorFeeUBA);
+                msg.sender);
             emit DirectMintingExecutedToSmartAccount(
                 _payment.data.requestBody.transactionId,
-                _payment.data.responseBody.sourceAddressHash,
+                _payment.data.responseBody.sourceAddress,
                 msg.sender,
-                receivedAmount - systemFeeUBA,
-                systemFeeUBA,
-                _payment.data.responseBody.hasMemoData,
+                sendToTargetUBA,
+                mintingFeeUBA,
                 _payment.data.responseBody.firstMemoData);
         } else {
             // mint to target address and pay executor directly
-            Globals.getFAsset().mint(targetAddress, receivedAmount - mintingFeeUBA);
-            Globals.getFAsset().mint(msg.sender, executorFeeUBA);
+            uint256 minterReceivesUBA = receivedAmount - mintingFeeUBA - executorFeeUBA;
+            _mintFAssets(targetAddress, minterReceivesUBA);
+            _mintFAssets(msg.sender, executorFeeUBA);
             emit DirectMintingExecuted(
                 _payment.data.requestBody.transactionId,
                 targetAddress,
                 msg.sender,
-                receivedAmount - mintingFeeUBA,
-                systemFeeUBA,
+                minterReceivesUBA,
+                mintingFeeUBA,
                 executorFeeUBA);
         }
     }
@@ -181,6 +181,15 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
     {
         IXRPPayment.ResponseBody memory body = _payment.data.responseBody;
         DirectMinting.State storage state = DirectMinting.getState();
+        // has registered tag (ignore memo data in this case)
+        if (body.hasDestinationTag) {
+            // forbid core vault donation tag - it should be confirmed using method confirmCoreVaultDonation
+            require(body.destinationTag != state.coreVaultDonationTag, CoreVaultDonation());
+            address registeredAddress = DirectMinting.mintingRecipientForTag(body.destinationTag);
+            if (registeredAddress != address(0)) {
+                return (false, registeredAddress);
+            }
+        }
         // has valid DIRECT_MINTING payment reference
         if (body.hasMemoData && body.firstMemoData.length == 32) {
             bytes32 paymentReference = bytes32(body.firstMemoData);
@@ -194,29 +203,26 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
             require(!PaymentReference.isValid(paymentReference, PaymentReference.REDEMPTION),
                 ForbiddenPaymentReference());
         }
-        // has registered tag (both tag and memo data is invalid combination that goes to smart account)
-        if (body.hasDestinationTag && !body.hasMemoData) {
-            // forbid core vault donation tag - it should be confirmed using method confirmCoreVaultDonation
-            require(body.destinationTag != state.coreVaultDonationTag, CoreVaultDonation());
-            address registeredAddress = DirectMinting.mintingRecipientForTag(body.destinationTag);
-            if (registeredAddress != address(0)) {
-                return (false, registeredAddress);
-            }
-        }
-        // no direct minting - mint to smart account manager
+        // no direct minting - mint through smart account manager
         return (true, address(state.smartAccountManager));
     }
 
-    function _computeMintingFee(uint256 _receivedAmount)
+    function _mintFAssets(address _to, uint256 _amount) private {
+        if (_amount > 0) {
+            Globals.getFAsset().mint(_to, _amount);
+        }
+    }
+
+    function _computeFees(uint256 _receivedAmount)
         private view
-        returns (uint256 _totalFeeUBA, uint256 _executorFeeUBA)
+        returns (uint256 _mintingFeeUBA, uint256 _executorFeeUBA)
     {
         DirectMinting.State storage state = DirectMinting.getState();
         uint256 relativeFeeUBA = _receivedAmount.mulBips(state.mintingFeeBIPS);
         uint256 minimumFeeUBA = Conversion.convertAmgToUBA(state.minimumMintingFeeAmg);
-        _totalFeeUBA = Math.min(Math.max(relativeFeeUBA, minimumFeeUBA), _receivedAmount);
-        uint256 relativeExecutorFeeUBA = _receivedAmount.mulBips(state.executorFeeBIPS);
-        uint256 minimumExecutorFeeUBA = Conversion.convertAmgToUBA(state.minimumExecutorFeeAmg);
-        _executorFeeUBA = Math.min(Math.max(relativeExecutorFeeUBA, minimumExecutorFeeUBA), _totalFeeUBA);
+        _mintingFeeUBA = Math.min(Math.max(relativeFeeUBA, minimumFeeUBA), _receivedAmount);
+        // prioritize system fee over executor fee
+        uint256 executorFeeUBA = Conversion.convertAmgToUBA(state.executorFeeAmg);
+        _executorFeeUBA = Math.min(executorFeeUBA, _receivedAmount - _mintingFeeUBA);
     }
 }

@@ -28,7 +28,7 @@ interface IDirectMintingSettings {
     function setDirectMintingFee(uint256 _mintingFeeBIPS, uint256 _minimumMintingFeeUBA)
         external;
 
-    function setDirectMintingExecutorFee(uint256 _executorFeeBIPS, uint256 _minimumExecutorFeeUBA)
+    function setDirectMintingExecutorFee(uint256 _executorFeeUBA)
         external;
 
     function setDirectMintingHourlyLimitUBA(uint256 _hourlyLimitUBA)
@@ -68,11 +68,7 @@ interface IDirectMintingSettings {
         external view
         returns (uint256);
 
-    function getDirectMintingMinimumExecutorFeeUBA()
-        external view
-        returns (uint256);
-
-    function getDirectMintingExecutorFeeBIPS()
+    function getDirectMintingExecutorFeeUBA()
         external view
         returns (uint256);
 

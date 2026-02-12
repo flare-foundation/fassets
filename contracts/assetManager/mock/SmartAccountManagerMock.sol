@@ -6,6 +6,14 @@ import {IFAsset} from "../../userInterfaces/IFAsset.sol";
 
 
 contract SmartAccountManagerMock is ISmartAccountManagerMock {
+    event MintedToSmartAccount(
+        bytes32 transactionId,
+        string sourceAddress,
+        uint256 amount,
+        uint256 underlyingTimestamp,
+        bytes memoData
+    );
+
     IFAsset public immutable fAsset;
 
     constructor(
@@ -15,14 +23,14 @@ contract SmartAccountManagerMock is ISmartAccountManagerMock {
     }
 
     function mintedFAssets(
-        bytes32 _sourceAddressHash,
+        bytes32 _transactionId,
+        string calldata _sourceAddress,
         uint256 _amount,
-        bool _hasMemoData,
-        bytes calldata _firstMemoData,
-        address _executor,
-        uint256 _suggestedExecutorFeeUBA
+        uint256 _underlyingTimestamp,
+        bytes calldata _memoData,
+        address _executor
     ) external {
-        fAsset.transfer(_executor, _suggestedExecutorFeeUBA);
-        emit MintedToSmartAccount(_sourceAddressHash, _amount, _hasMemoData, _firstMemoData);
+        fAsset.transfer(_executor, _amount);
+        emit MintedToSmartAccount(_transactionId, _sourceAddress, _amount, _underlyingTimestamp, _memoData);
     }
 }

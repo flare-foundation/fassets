@@ -42,8 +42,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         address mintingFeeReceiver;
         uint256 minimumMintingFeeUBA;
         uint256 mintingFeeBIPS;
-        uint256 minimumExecutorFeeUBA;
-        uint256 executorFeeBIPS;
+        uint256 executorFeeUBA;
         uint256 hourlyLimitUBA;
         uint256 dailyLimitUBA;
         uint256 largeMintingThresholdUBA;
@@ -78,8 +77,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         state.mintingFeeReceiver = _params.mintingFeeReceiver;
         state.minimumMintingFeeAmg = Conversion.convertUBAToAmg(_params.minimumMintingFeeUBA);
         state.mintingFeeBIPS = _params.mintingFeeBIPS.toUint16();
-        state.minimumExecutorFeeAmg = Conversion.convertUBAToAmg(_params.minimumExecutorFeeUBA);
-        state.executorFeeBIPS = _params.executorFeeBIPS.toUint16();
+        state.executorFeeAmg = Conversion.convertUBAToAmg(_params.executorFeeUBA);
         state.hourlyLimiter.initialize(1 hours, Conversion.convertUBAToAmg(_params.hourlyLimitUBA));
         state.dailyLimiter.initialize(1 days, Conversion.convertUBAToAmg(_params.dailyLimitUBA));
         uint64 largeMintingThresholdAmg = Conversion.convertUBAToAmg(_params.largeMintingThresholdUBA);
@@ -169,8 +167,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
     }
 
     function setDirectMintingExecutorFee(
-        uint256 _executorFeeBIPS,
-        uint256 _minimumExecutorFeeUBA
+        uint256 _executorFeeUBA
     )
         external
         onlyGovernance
@@ -178,15 +175,12 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
     {
         DirectMinting.State storage state = DirectMinting.getState();
         // validate
-        require(_executorFeeBIPS <= state.mintingFeeBIPS, ValueTooHigh());
-        require(_executorFeeBIPS >= state.executorFeeBIPS / 4, DecreaseTooBig());
-        uint64 minimumExecutorFeeAmg = Conversion.convertUBAToAmg(_minimumExecutorFeeUBA);
-        require(minimumExecutorFeeAmg <= state.minimumMintingFeeAmg, ValueTooHigh());
+        uint64 executorFeeAmg = Conversion.convertUBAToAmg(_executorFeeUBA);
+        require(executorFeeAmg >= state.executorFeeAmg / 4, DecreaseTooBig());
+        require(executorFeeAmg <= state.executorFeeAmg * 4 + _usd5InAssetAmg(1e5), IncreaseTooBig());
         // update
-        state.executorFeeBIPS = _executorFeeBIPS.toUint16();
-        state.minimumExecutorFeeAmg = minimumExecutorFeeAmg;
-        emit IAssetManagerEvents.SettingChanged("directMintingExecutorFeeBIPS", _executorFeeBIPS);
-        emit IAssetManagerEvents.SettingChanged("directMintingMinimumExecutorFeeUBA", _minimumExecutorFeeUBA);
+        state.executorFeeAmg = executorFeeAmg;
+        emit IAssetManagerEvents.SettingChanged("executorFeeUBA", _executorFeeUBA);
     }
 
     function setDirectMintingHourlyLimitUBA(uint256 _hourlyLimitUBA)
@@ -296,20 +290,12 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         return state.mintingFeeBIPS;
     }
 
-    function getDirectMintingMinimumExecutorFeeUBA()
+    function getDirectMintingExecutorFeeUBA()
         external view
         returns (uint256)
     {
         DirectMinting.State storage state = DirectMinting.getState();
-        return Conversion.convertAmgToUBA(state.minimumExecutorFeeAmg);
-    }
-
-    function getDirectMintingExecutorFeeBIPS()
-        external view
-        returns (uint256)
-    {
-        DirectMinting.State storage state = DirectMinting.getState();
-        return state.executorFeeBIPS;
+        return Conversion.convertAmgToUBA(state.executorFeeAmg);
     }
 
     function getDirectMintingLargeMintingThresholdUBA()
