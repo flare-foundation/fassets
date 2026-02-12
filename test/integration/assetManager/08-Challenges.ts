@@ -18,7 +18,7 @@ import { EventArgs } from "../../../lib/utils/events/common";
 import { DAYS, toBN, toWei } from "../../../lib/utils/helpers";
 import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
 
-contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
+contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests - challenges and full liquidation`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];

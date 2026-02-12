@@ -17,7 +17,7 @@ import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, divRoundUp, MAX_BIPS, sumBN, toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { ERC20MockInstance } from "../../../typechain-truffle";
 
-contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
+contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests - successful minting and redeeming`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];

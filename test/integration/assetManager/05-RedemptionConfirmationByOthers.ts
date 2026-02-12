@@ -13,7 +13,7 @@ import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { toBN, toWei } from "../../../lib/utils/helpers";
 
-contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
+contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests - redemption confirmation by others`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];

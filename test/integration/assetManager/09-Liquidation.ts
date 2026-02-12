@@ -13,7 +13,7 @@ import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-s
 import { assertWeb3Compare, assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { BN_ZERO, MAX_BIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 
-contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
+contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests - price change liquidation`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];

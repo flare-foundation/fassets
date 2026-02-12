@@ -19,7 +19,7 @@ import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder"
 import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BNish, DAYS, deepFormat, HOURS, MAX_BIPS, requireNotNull, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 
-contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
+contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests - core vault`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];

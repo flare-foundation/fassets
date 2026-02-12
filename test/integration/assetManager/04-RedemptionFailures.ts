@@ -16,7 +16,7 @@ import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { DAYS, deepFormat, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 
 
-contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
+contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests - redemption failures`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];

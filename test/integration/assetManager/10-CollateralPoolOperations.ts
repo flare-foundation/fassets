@@ -18,7 +18,7 @@ import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { MAX_BIPS, ZERO_ADDRESS, toBIPS, toBN, toWei } from "../../../lib/utils/helpers";
 
 
-contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral pool operations`, accounts => {
+contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral pool operations - collateral pool operations`, accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];
