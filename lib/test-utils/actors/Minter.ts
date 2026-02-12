@@ -1,5 +1,5 @@
 import { CollateralReserved } from "../../../typechain-truffle/IIAssetManager";
-import { IBlockChainWallet } from "../../underlying-chain/interfaces/IBlockChainWallet";
+import { IBlockChainWallet, TransactionOptionsWithFee } from "../../underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../utils/events/common";
 import { requiredEventArgs } from "../../utils/events/truffle";
 import { BNish, ZERO_ADDRESS, requireNotNull, toBN } from "../../utils/helpers";
@@ -57,12 +57,20 @@ export class Minter extends AssetContextClient {
         return [minted, crt, txHash] as const;
     }
 
+    async donateToCoreVault(amount: BNish) {
+        const coreVaultDonationTag = Number(this.context.initSettings.coreVaultDonationTag);
+        const coreVaultUnderlyingAddress = await requireNotNull(this.context.coreVaultManager).coreVaultAddress();
+        const rtx = await this.wallet.addTransaction(this.underlyingAddress, coreVaultUnderlyingAddress, amount, null, { destinationTag: coreVaultDonationTag });
+        const proof = await this.context.attestationProvider.proveXRPPayment(rtx, null);
+        await this.context.assetManager.confirmCoreVaultDonation(proof);
+    }
+
     async getCollateralReservationFee(lots: BNish) {
         return await this.assetManager.collateralReservationFee(lots);
     }
 
-    async performPayment(paymentAddress: string, paymentAmount: BNish, paymentReference: string | null = null) {
-        return this.wallet.addTransaction(this.underlyingAddress, paymentAddress, paymentAmount, paymentReference);
+    async performPayment(paymentAddress: string, paymentAmount: BNish, paymentReference: string | null = null, options?: TransactionOptionsWithFee) {
+        return this.wallet.addTransaction(this.underlyingAddress, paymentAddress, paymentAmount, paymentReference, options);
     }
 
     async transferFAsset(target: string, amount: BNish) {
