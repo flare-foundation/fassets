@@ -41,7 +41,7 @@ contract MintingTagManager is
     string private _symbol;
 
     uint256 public nextAvailableTag = 0;
-    uint256 public reservationFeeNATWei;
+    uint256 public reservationFee;
     address payable public reservationFeeRecipient;
     mapping (uint256 mintingTag => TagData) private tagData;
 
@@ -60,39 +60,27 @@ contract MintingTagManager is
         address _initialGovernance,
         string memory name_,
         string memory symbol_,
-        uint256 _reservationFeeNATWei,
-        address payable _reservationFeeRecipient
+        uint256 _reservationFee,
+        address payable _reservationFeeRecipient,
+        uint256 _reservedTagsCount
     ) external {
         require(nextAvailableTag == 0, AlreadyInitialized());
         GovernedBase.initialise(_governanceSettings, _initialGovernance);
-        nextAvailableTag = 1;
+        nextAvailableTag = _reservedTagsCount;
         _name = name_;
         _symbol = symbol_;
-        reservationFeeNATWei = _reservationFeeNATWei;
+        reservationFee = _reservationFee;
         reservationFeeRecipient = _reservationFeeRecipient;
     }
 
-    function reserveForSystem(
-        address _to,
-        uint256 _numberOfTags
-    )
-        external
-        onlyGovernance
-    {
-        require(_to != address(0), ZeroAddress());
-        for (uint256 i = 0; i < _numberOfTags; i++) {
-            _reserve(_to);
-        }
-    }
-
     function setReservationFee(
-        uint256 _reservationFeeNATWei
+        uint256 _reservationFee
     )
         external
         onlyGovernance
     {
-        reservationFeeNATWei = _reservationFeeNATWei;
-        emit ReservationFeeChanged(_reservationFeeNATWei, reservationFeeRecipient);
+        reservationFee = _reservationFee;
+        emit ReservationFeeChanged(_reservationFee, reservationFeeRecipient);
     }
 
     function setReservationFeeRecipient(
@@ -102,7 +90,7 @@ contract MintingTagManager is
         onlyGovernance
     {
         reservationFeeRecipient = _reservationFeeRecipient;
-        emit ReservationFeeChanged(reservationFeeNATWei, _reservationFeeRecipient);
+        emit ReservationFeeChanged(reservationFee, _reservationFeeRecipient);
     }
 
     function reserve()
@@ -110,7 +98,7 @@ contract MintingTagManager is
         nonReentrant
         returns (uint256)
     {
-        require(msg.value == reservationFeeNATWei, WrongReservationPaymentAmount());
+        require(msg.value == reservationFee, WrongReservationPaymentAmount());
         uint256 mintingTag = _reserve(msg.sender);
         Transfers.transferNAT(reservationFeeRecipient, msg.value);
         return mintingTag;
