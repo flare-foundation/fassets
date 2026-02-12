@@ -157,4 +157,51 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         assertWeb3Equal(await context.chain.getBalance(underlyingMinter1),
             startMinterUnderlying.add(rdrqs[0].valueUBA).sub(rdrqs[0].feeUBA));
     });
+
+    it("direct mint by reserving tag and setting recipient", async () => {
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        //
+        const totalMintingAmount = context.convertLotsToUBA(3);
+        const { expectedMintingFee, expectedExecutorFee } = await calculateMintingFees(totalMintingAmount);
+        // reserve minting tag and set recipient
+        const tagPrice = await mintingTagManager.reservationFee();
+        const tagRes = await mintingTagManager.reserve({ from: minter.address, value: tagPrice });
+        const tagId = requiredEventArgs(tagRes, 'MintingTagReserved').tag;
+        await mintingTagManager.setMintingRecipient(tagId, minter.address, { from: minter.address });
+        // mint some fAssets
+        const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, null, { destinationTag: Number(tagId) });
+        const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+        const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+        const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
+        assertWeb3Equal(mintingExecuted.mintedAmountUBA, totalMintingAmount.sub(expectedMintingFee).sub(expectedExecutorFee));
+        assertWeb3Equal(mintingExecuted.mintingFeeUBA, expectedMintingFee);
+        assertWeb3Equal(mintingExecuted.executorFeeUBA, expectedExecutorFee);
+        // check the minter received amount minus fees
+        const finalMinterBalance = toBN(await context.fAsset.balanceOf(minter.address));
+        assertWeb3Equal(finalMinterBalance, mintingExecuted.mintedAmountUBA);
+    });
+
+    it("set the executor in tag manager and it should be the only one allowed for minting", async () => {
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+        //
+        const totalMintingAmount = context.convertLotsToUBA(3);
+        // reserve minting tag and set recipient
+        const tagPrice = await mintingTagManager.reservationFee();
+        const tagRes = await mintingTagManager.reserve({ from: minter.address, value: tagPrice });
+        const tagId = requiredEventArgs(tagRes, 'MintingTagReserved').tag;
+        await mintingTagManager.setMintingRecipient(tagId, minter.address, { from: minter.address });
+        // set allowed executor for the tag and wait for it to be active
+        const resEx = await mintingTagManager.setAllowedExecutor(tagId, executorAddress1, { from: minter.address });
+        const argsEx = requiredEventArgs(resEx, "AllowedExecutorChangePending");
+        await time.increaseTo(argsEx.activeAfterTs);
+        // try to execute direct minting with different executor - should fail
+        const paymentReference = PaymentReference.directMinting(minter.address);
+        const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, paymentReference, { destinationTag: Number(tagId) });
+        const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+        await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress2 }), "InvalidExecutor", []);
+        // execute with correct executor should succeed
+        const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+        const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
+        assertWeb3Equal(mintingExecuted.mintedAmountUBA.add(mintingExecuted.mintingFeeUBA).add(mintingExecuted.executorFeeUBA), totalMintingAmount);
+    });
 });

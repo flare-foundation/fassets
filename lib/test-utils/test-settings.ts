@@ -303,13 +303,13 @@ export async function assignCoreVaultManager(assetManager: IIAssetManagerInstanc
     return coreVaultManager;
 }
 
-export async function assignMintingTagManager(assetManager: IIAssetManagerInstance, options?: { fee?: BNish, feeReceiver?: string }) {
+export async function assignMintingTagManager(assetManager: IIAssetManagerInstance, options?: { fee?: BNish, feeReceiver?: string, reservedTags?: number }) {
     const governance = await assetManager.governance();
     // create tag manager
     const governanceSettings = await assetManager.governanceSettings();
     const mintingTagManagerImpl = await MintingTagManager.new();
     const mintingTagManagerProxy = await MintingTagManagerProxy.new(mintingTagManagerImpl.address, governanceSettings, governance,
-        "Minting Tag Manager", "MTM", toBN(options?.fee ?? toWei("0.1")), options?.feeReceiver ?? ZERO_ADDRESS);
+        "Minting Tag Manager", "MTM", toBN(options?.fee ?? toWei("0.1")), options?.feeReceiver ?? ZERO_ADDRESS, options?.reservedTags ?? 10);
     const mintingTagManager = await MintingTagManager.at(mintingTagManagerProxy.address);
     // assign to asset manager
     await waitForTimelock(assetManager.setMintingTagManager(mintingTagManager.address, { from: governance }), assetManager, governance);
