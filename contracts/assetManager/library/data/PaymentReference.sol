@@ -21,6 +21,7 @@ library PaymentReference {
     uint256 internal constant TOPUP = 0x4642505266410011 << TYPE_SHIFT;
     uint256 internal constant SELF_MINT = 0x4642505266410012 << TYPE_SHIFT;
     uint256 internal constant DIRECT_MINTING = 0x4642505266410018 << TYPE_SHIFT;
+    uint256 internal constant DIRECT_MINTING_EX = 0x4642505266410021;   // will be in bytes not bytes32
 
     // create various payment references
 

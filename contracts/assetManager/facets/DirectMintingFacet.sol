@@ -51,15 +51,16 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         }
         require(_payment.data.responseBody.receivedAmount > 0, AmountNotPositive());
         uint256 receivedAmount = uint256(_payment.data.responseBody.receivedAmount);
-        // MintingTagManager and smartAccountManager may not exist at deploy time, so they are checked here
+        // MintingTagManager and smartAccountManager need not exist at deploy time, so they are checked here
         // instead of in initialization function. However, once they are set they cannot be unset again
         // (so direct minting won't stop working once it works).
         require(address(state.mintingTagManager) != address(0), MissingMintingTagManager());
         require(address(state.smartAccountManager) != address(0), MissingSmartAccountManager());
-        (bool mintToSmartAccount, address targetAddress) = _decodeTarget(_payment);
+        (bool mintToSmartAccount, address recipient, address allowedExecutor) = _decodeTarget(_payment);
+        require(allowedExecutor == address(0) || allowedExecutor == msg.sender, InvalidExecutor());
         // check rate limits
-        bool delayed = _checkRateLimits(_payment.data.requestBody.transactionId, receivedAmount);
-        if (delayed) {
+        bool mintingDelayed = _checkRateLimits(_payment.data.requestBody.transactionId, receivedAmount);
+        if (mintingDelayed) {
             return;
         }
         // mark payment used
@@ -72,36 +73,9 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         // mint system fees to fee receiver
         _mintFAssets(state.mintingFeeReceiver, mintingFeeUBA);
         if (mintToSmartAccount) {
-            // Mint everything except minting fee to smart account manager and notify it.
-            // NOTE: smart account manager must pay the executor in this case
-            uint256 sendToTargetUBA = receivedAmount - mintingFeeUBA;
-            _mintFAssets(targetAddress, sendToTargetUBA);
-            state.smartAccountManager.mintedFAssets(
-                _payment.data.requestBody.transactionId,
-                _payment.data.responseBody.sourceAddress,
-                sendToTargetUBA,
-                _payment.data.responseBody.blockTimestamp,
-                _payment.data.responseBody.firstMemoData,
-                msg.sender);
-            emit DirectMintingExecutedToSmartAccount(
-                _payment.data.requestBody.transactionId,
-                _payment.data.responseBody.sourceAddress,
-                msg.sender,
-                sendToTargetUBA,
-                mintingFeeUBA,
-                _payment.data.responseBody.firstMemoData);
+            _mintToSmartAccounts(_payment, receivedAmount, mintingFeeUBA);
         } else {
-            // mint to target address and pay executor directly
-            uint256 minterReceivesUBA = receivedAmount - mintingFeeUBA - executorFeeUBA;
-            _mintFAssets(targetAddress, minterReceivesUBA);
-            _mintFAssets(msg.sender, executorFeeUBA);
-            emit DirectMintingExecuted(
-                _payment.data.requestBody.transactionId,
-                targetAddress,
-                msg.sender,
-                minterReceivesUBA,
-                mintingFeeUBA,
-                executorFeeUBA);
+            _mintToRecipient(_payment, recipient, receivedAmount, mintingFeeUBA, executorFeeUBA);
         }
     }
 
@@ -177,34 +151,94 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
 
     function _decodeTarget(IXRPPayment.Proof calldata _payment)
         private view
-        returns (bool _mintToSmartAccount, address _targetAddress)
+        returns (bool _mintToSmartAccount, address _targetAddress, address _allowedExecutor)
     {
-        IXRPPayment.ResponseBody memory body = _payment.data.responseBody;
+        IXRPPayment.ResponseBody calldata body = _payment.data.responseBody;
         DirectMinting.State storage state = DirectMinting.getState();
         // has registered tag (ignore memo data in this case)
         if (body.hasDestinationTag) {
+            uint256 destinationTag = body.destinationTag;
             // forbid core vault donation tag - it should be confirmed using method confirmCoreVaultDonation
-            require(body.destinationTag != state.coreVaultDonationTag, CoreVaultDonation());
-            address registeredAddress = DirectMinting.mintingRecipientForTag(body.destinationTag);
+            require(destinationTag != state.coreVaultDonationTag, CoreVaultDonation());
+            address registeredAddress = DirectMinting.mintingRecipientForTag(destinationTag);
             if (registeredAddress != address(0)) {
-                return (false, registeredAddress);
+                return (false, registeredAddress, DirectMinting.allowedExecutorForTag(body.destinationTag));
             }
         }
         // has valid DIRECT_MINTING payment reference
         if (body.hasMemoData && body.firstMemoData.length == 32) {
+            // normal direct minting payment reference
             bytes32 paymentReference = bytes32(body.firstMemoData);
             if (PaymentReference.isValid(paymentReference, PaymentReference.DIRECT_MINTING)) {
                 uint256 addressNumeric = PaymentReference.decodeId(paymentReference);
                 if (addressNumeric <= type(uint160).max) {
-                    return (false, address(uint160(addressNumeric)));
+                    return (false, address(uint160(addressNumeric)), address(0));
                 }
             }
             // forbid REDEMPTION payment reference, because it could be used to steal agents' core vault deposits
             require(!PaymentReference.isValid(paymentReference, PaymentReference.REDEMPTION),
                 ForbiddenPaymentReference());
+        } else if (body.hasMemoData && body.firstMemoData.length == 48) {
+            uint64 prefix = uint64(bytes8(body.firstMemoData[0:8]));
+            if (prefix == PaymentReference.DIRECT_MINTING_EX) {
+                address target = address(bytes20(body.firstMemoData[8:28]));
+                address executor = address(bytes20(body.firstMemoData[28:48]));
+                if (target != address(0)) {
+                    return (false, target, executor);
+                }
+            }
         }
         // no direct minting - mint through smart account manager
-        return (true, address(state.smartAccountManager));
+        return (true, address(0), address(0));
+    }
+
+    // mint to target address and pay executor directly
+    function _mintToRecipient(
+        IXRPPayment.Proof calldata _payment,
+        address _targetAddress,
+        uint256 _receivedAmountUBA,
+        uint256 _mintingFeeUBA,
+        uint256 _executorFeeUBA
+    ) private {
+        uint256 mintedAmountUBA = _receivedAmountUBA - _mintingFeeUBA - _executorFeeUBA;
+        _mintFAssets(_targetAddress, mintedAmountUBA);
+        _mintFAssets(msg.sender, _executorFeeUBA);
+        emit DirectMintingExecuted(
+            _payment.data.requestBody.transactionId,
+            _targetAddress,
+            msg.sender,
+            mintedAmountUBA,
+            _mintingFeeUBA,
+            _executorFeeUBA
+        );
+    }
+
+    // Mint everything except minting fee to smart account manager and notify it.
+    // NOTE: smart account manager must pay the executor in this case
+    function _mintToSmartAccounts(
+        IXRPPayment.Proof calldata _payment,
+        uint256 _receivedAmountUBA,
+        uint256 _mintingFeeUBA
+    ) private {
+        DirectMinting.State storage state = DirectMinting.getState();
+        uint256 mintedAmountUBA = _receivedAmountUBA - _mintingFeeUBA;
+        _mintFAssets(address(state.smartAccountManager), mintedAmountUBA);
+        state.smartAccountManager.mintedFAssets(
+            _payment.data.requestBody.transactionId,
+            _payment.data.responseBody.sourceAddress,
+            mintedAmountUBA,
+            _payment.data.responseBody.blockTimestamp,
+            _payment.data.responseBody.firstMemoData,
+            msg.sender
+        );
+        emit DirectMintingExecutedToSmartAccount(
+            _payment.data.requestBody.transactionId,
+            _payment.data.responseBody.sourceAddress,
+            msg.sender,
+            mintedAmountUBA,
+            _mintingFeeUBA,
+            _payment.data.responseBody.firstMemoData
+        );
     }
 
     function _mintFAssets(address _to, uint256 _amount) private {

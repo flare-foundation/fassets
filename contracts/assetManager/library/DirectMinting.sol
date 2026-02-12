@@ -37,6 +37,14 @@ library DirectMinting {
         return state.mintingTagManager.mintingRecipient(_mintingTag);
     }
 
+    function allowedExecutorForTag(uint256 _mintingTag)
+        internal view
+        returns (address)
+    {
+        State storage state = getState();
+        return state.mintingTagManager.allowedExecutor(_mintingTag);
+    }
+
     bytes32 internal constant STATE_POSITION = keccak256("fasset.DirectMinting.State");
 
     function getState()
