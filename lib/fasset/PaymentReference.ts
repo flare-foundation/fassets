@@ -1,4 +1,4 @@
-import { BNish, toBN, toHex } from "../utils/helpers";
+import { BNish, joinHexBytes, toBN, toHex } from "../utils/helpers";
 
 export namespace PaymentReference {
     export const TYPE_SHIFT = 192;
@@ -15,6 +15,7 @@ export namespace PaymentReference {
     export const TOPUP = toBN('0x4642505266410011').shln(TYPE_SHIFT);
     export const SELF_MINT = toBN('0x4642505266410012').shln(TYPE_SHIFT);
     export const DIRECT_MINTING = toBN('0x4642505266410018').shln(TYPE_SHIFT);
+    export const DIRECT_MINTING_EX = "0x4642505266410021";   // will be in bytes not bytes32
 
     export function minting(id: BNish) {
         return toHex(toBN(id).or(MINTING), 32);
@@ -46,6 +47,11 @@ export namespace PaymentReference {
 
     export function directMinting(address: string) {
         return toHex(toBN(address).or(DIRECT_MINTING), 32);
+    }
+
+    // returns a 48 byte memo data, not a standard payment reference
+    export function directMintingEx(targetAddress: string, allowedExecutor: string) {
+        return joinHexBytes(DIRECT_MINTING_EX, targetAddress, allowedExecutor).toLowerCase();
     }
 
     export function isValid(reference: string | null): reference is string {

@@ -28,7 +28,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
     error InvalidExecutor();
     error InvalidReceivingAddress();
     error AmountNotPositive();
-    error CoreVaultDonation();
+    error PaymentIsCoreVaultDonation();
     error ForbiddenPaymentReference();
     error DirectMintingStillDelayed(uint256 allowedAt);
     error MissingMintingTagManager();
@@ -159,7 +159,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         if (body.hasDestinationTag) {
             uint256 destinationTag = body.destinationTag;
             // forbid core vault donation tag - it should be confirmed using method confirmCoreVaultDonation
-            require(destinationTag != state.coreVaultDonationTag, CoreVaultDonation());
+            require(destinationTag != state.coreVaultDonationTag, PaymentIsCoreVaultDonation());
             address registeredAddress = DirectMinting.mintingRecipientForTag(destinationTag);
             if (registeredAddress != address(0)) {
                 return (false, registeredAddress, DirectMinting.allowedExecutorForTag(body.destinationTag));

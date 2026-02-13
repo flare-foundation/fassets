@@ -1,25 +1,22 @@
-import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
-import { Challenger } from "../../../lib/test-utils/actors/Challenger";
 import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { MockCoreVaultBot } from "../../../lib/test-utils/actors/MockCoreVaultBot";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
-import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
-import { executeTimelockedGovernanceCall } from "../../../lib/test-utils/contract-test-helpers";
-import { newAssetManager } from "../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
-import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
+import { expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { assignMintingTagManager, assignSmartAccountManagerMock } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
-import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
-import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BNish, DAYS, deepFormat, HOURS, MAX_BIPS, requireNotNull, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
+import { EventArgs } from "../../../lib/utils/events/common";
+import { requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { MAX_BIPS, requireNotNull, toBN } from "../../../lib/utils/helpers";
 import { CoreVaultManagerInstance, MintingTagManagerInstance, SmartAccountManagerMockInstance } from "../../../typechain-truffle";
+import { DirectMintingExecuted } from "../../../typechain-truffle/IIAssetManager";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
     const governance = accounts[10];
@@ -99,109 +96,219 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         return { expectedMintingFee, expectedExecutorFee };
     }
 
-    it("direct mint (with payment reference) and check fees", async () => {
-        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
-        //
-        const totalMintingAmount = context.convertLotsToUBA(3);
+    async function verifyDirectMintingResult(mintingExecuted: EventArgs<DirectMintingExecuted>, minterAddress: string, executorAddress: string, totalMintingAmount: BN) {
         const { expectedMintingFee, expectedExecutorFee } = await calculateMintingFees(totalMintingAmount);
-        // mint some fAssets
-        const paymentReference = PaymentReference.directMinting(minter.address);
-        const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, paymentReference);
-        const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
-        const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
-        const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
+        assertWeb3Equal(mintingExecuted.targetAddress, minterAddress);
+        assertWeb3Equal(mintingExecuted.executor, executorAddress);
         assertWeb3Equal(mintingExecuted.mintedAmountUBA, totalMintingAmount.sub(expectedMintingFee).sub(expectedExecutorFee));
         assertWeb3Equal(mintingExecuted.mintingFeeUBA, expectedMintingFee);
         assertWeb3Equal(mintingExecuted.executorFeeUBA, expectedExecutorFee);
-        // check fee receiver got the fee
-        const finalFeeReceiverBalance = toBN(await context.fAsset.balanceOf(mintingFeeReceiver));
-        assertWeb3Equal(finalFeeReceiverBalance, expectedMintingFee);
-        // check executor got the fee
-        const finalExecutorBalance = toBN(await context.fAsset.balanceOf(executorAddress1));
-        assertWeb3Equal(finalExecutorBalance, expectedExecutorFee);
-        // check the minter received amount minus fees
-        const finalMinterBalance = toBN(await context.fAsset.balanceOf(minter.address));
-        assertWeb3Equal(finalMinterBalance, mintingExecuted.mintedAmountUBA);
+    }
+
+    describe("Direct minting by payment reference or tag", () => {
+        it("direct mint (with payment reference) and check fees", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            //
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            const { expectedMintingFee, expectedExecutorFee } = await calculateMintingFees(totalMintingAmount);
+            // mint some fAssets
+            const paymentReference = PaymentReference.directMinting(minter.address);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, paymentReference);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
+            assertWeb3Equal(mintingExecuted.mintedAmountUBA, totalMintingAmount.sub(expectedMintingFee).sub(expectedExecutorFee));
+            assertWeb3Equal(mintingExecuted.mintingFeeUBA, expectedMintingFee);
+            assertWeb3Equal(mintingExecuted.executorFeeUBA, expectedExecutorFee);
+            // check fee receiver got the fee
+            const finalFeeReceiverBalance = toBN(await context.fAsset.balanceOf(mintingFeeReceiver));
+            assertWeb3Equal(finalFeeReceiverBalance, expectedMintingFee);
+            // check executor got the fee
+            const finalExecutorBalance = toBN(await context.fAsset.balanceOf(executorAddress1));
+            assertWeb3Equal(finalExecutorBalance, expectedExecutorFee);
+            // check the minter received amount minus fees
+            const finalMinterBalance = toBN(await context.fAsset.balanceOf(minter.address));
+            assertWeb3Equal(finalMinterBalance, mintingExecuted.mintedAmountUBA);
+        });
+
+        it("direct mint and then redeem through agent", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
+            // add agent collateral and allow return from core vault - we don't need available agents
+            await agent.depositCollateralLots(100);
+            await coreVaultManager.addAllowedDestinationAddresses([agent.underlyingAddress], { from: governance });
+            await minter.donateToCoreVault(1e6);
+            //
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            // mint some fAssets
+            const paymentReference = PaymentReference.directMinting(minter.address);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, paymentReference);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            // transfer everything to the minter so they can redeem through agent
+            const finalFeeReceiverBalance = toBN(await context.fAsset.balanceOf(mintingFeeReceiver));
+            await context.fAsset.transfer(minter.address, finalFeeReceiverBalance, { from: mintingFeeReceiver });
+            const finalExecutorBalance = toBN(await context.fAsset.balanceOf(executorAddress1));
+            await context.fAsset.transfer(minter.address, finalExecutorBalance, { from: executorAddress1 });
+            const finalMinterBalance = toBN(await context.fAsset.balanceOf(minter.address));
+            assertWeb3Equal(finalMinterBalance, totalMintingAmount);
+            // agent must request underlying from core vault
+            await agent.requestReturnFromCoreVault(3);
+            const cvBotHandled = await coreVaultBot.triggerAndPerformActions();
+            await agent.confirmReturnFromCoreVault(cvBotHandled.payments[0].txHash);
+            // now the minter can redeem everything
+            const startMinterUnderlying = await mockChain.getBalance(minter.underlyingAddress);
+            const [rdrqs] = await redeemer.requestRedemption(3);
+            await agent.performRedemptions(rdrqs);
+            assertWeb3Equal(await context.chain.getBalance(underlyingMinter1),
+                startMinterUnderlying.add(rdrqs[0].valueUBA).sub(rdrqs[0].feeUBA));
+        });
+
+        it("direct mint by reserving tag and setting recipient", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            //
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            // reserve minting tag and set recipient
+            const tagPrice = await mintingTagManager.reservationFee();
+            const tagRes = await mintingTagManager.reserve({ from: minter.address, value: tagPrice });
+            const tagId = requiredEventArgs(tagRes, 'MintingTagReserved').tag;
+            await mintingTagManager.setMintingRecipient(tagId, minter.address, { from: minter.address });
+            // mint some fAssets
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, null, { destinationTag: Number(tagId) });
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
+            // check the minter received amount minus fees
+            const finalMinterBalance = toBN(await context.fAsset.balanceOf(minter.address));
+            assertWeb3Equal(finalMinterBalance, mintingExecuted.mintedAmountUBA);
+        });
     });
 
-    it("direct mint and then redeem through agent", async () => {
-        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
-        const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
-        // add agent collateral and allow return from core vault - we don't need available agents
-        await agent.depositCollateralLots(100);
-        await coreVaultManager.addAllowedDestinationAddresses([agent.underlyingAddress], { from: governance });
-        await minter.donateToCoreVault(1e6);
-        //
-        const totalMintingAmount = context.convertLotsToUBA(3);
-        // mint some fAssets
-        const paymentReference = PaymentReference.directMinting(minter.address);
-        const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, paymentReference);
-        const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
-        await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
-        // transfer everything to the minter so they can redeem through agent
-        const finalFeeReceiverBalance = toBN(await context.fAsset.balanceOf(mintingFeeReceiver));
-        await context.fAsset.transfer(minter.address, finalFeeReceiverBalance, { from: mintingFeeReceiver });
-        const finalExecutorBalance = toBN(await context.fAsset.balanceOf(executorAddress1));
-        await context.fAsset.transfer(minter.address, finalExecutorBalance, { from: executorAddress1 });
-        const finalMinterBalance = toBN(await context.fAsset.balanceOf(minter.address));
-        assertWeb3Equal(finalMinterBalance, totalMintingAmount);
-        // agent must request underlying from core vault
-        await agent.requestReturnFromCoreVault(3);
-        const cvBotHandled = await coreVaultBot.triggerAndPerformActions();
-        await agent.confirmReturnFromCoreVault(cvBotHandled.payments[0].txHash);
-        // now the minter can redeem everything
-        const startMinterUnderlying = await mockChain.getBalance(minter.underlyingAddress);
-        const [rdrqs] = await redeemer.requestRedemption(3);
-        await agent.performRedemptions(rdrqs);
-        assertWeb3Equal(await context.chain.getBalance(underlyingMinter1),
-            startMinterUnderlying.add(rdrqs[0].valueUBA).sub(rdrqs[0].feeUBA));
+    describe("Restrictions on allowed executors for direct minting", () => {
+        it("set the executor in tag manager and it should be the only one allowed for minting", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            //
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            // reserve minting tag and set recipient
+            const tagPrice = await mintingTagManager.reservationFee();
+            const tagRes = await mintingTagManager.reserve({ from: minter.address, value: tagPrice });
+            const tagId = requiredEventArgs(tagRes, 'MintingTagReserved').tag;
+            await mintingTagManager.setMintingRecipient(tagId, minter.address, { from: minter.address });
+            // set allowed executor for the tag and wait for it to be active
+            const resEx = await mintingTagManager.setAllowedExecutor(tagId, executorAddress1, { from: minter.address });
+            const argsEx = requiredEventArgs(resEx, "AllowedExecutorChangePending");
+            await time.increaseTo(argsEx.activeAfterTs);
+            // try to execute direct minting with different executor - should fail
+            const paymentReference = PaymentReference.directMinting(minter.address);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, paymentReference, { destinationTag: Number(tagId) });
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress2 }), "InvalidExecutor", []);
+            // execute with correct executor should succeed
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
+        });
+
+        it("set the allowed executor in memo data and it should be the only one allowed for minting", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            //
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            // mint some fAssets with executor specified in memo
+            const memoData = PaymentReference.directMintingEx(minter.address, executorAddress1);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, memoData);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            // try to execute direct minting with different executor - should fail
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress2 }), "InvalidExecutor", []);
+            // execute with correct executor should succeed
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
+        });
+
+        it("proof requester can set the allowed executor in proof request and it should be the only one allowed to present proof", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            //
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            // mint some fAssets with executor specified in memo
+            const memoData = PaymentReference.directMintingEx(minter.address, executorAddress1);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, memoData);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, executorAddress1);
+            // try to execute direct minting with different executor - should fail
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress2 }), "InvalidExecutor", []);
+            // execute with correct executor should succeed
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
+        });
     });
 
-    it("direct mint by reserving tag and setting recipient", async () => {
-        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
-        //
-        const totalMintingAmount = context.convertLotsToUBA(3);
-        const { expectedMintingFee, expectedExecutorFee } = await calculateMintingFees(totalMintingAmount);
-        // reserve minting tag and set recipient
-        const tagPrice = await mintingTagManager.reservationFee();
-        const tagRes = await mintingTagManager.reserve({ from: minter.address, value: tagPrice });
-        const tagId = requiredEventArgs(tagRes, 'MintingTagReserved').tag;
-        await mintingTagManager.setMintingRecipient(tagId, minter.address, { from: minter.address });
-        // mint some fAssets
-        const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, null, { destinationTag: Number(tagId) });
-        const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
-        const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
-        const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
-        assertWeb3Equal(mintingExecuted.mintedAmountUBA, totalMintingAmount.sub(expectedMintingFee).sub(expectedExecutorFee));
-        assertWeb3Equal(mintingExecuted.mintingFeeUBA, expectedMintingFee);
-        assertWeb3Equal(mintingExecuted.executorFeeUBA, expectedExecutorFee);
-        // check the minter received amount minus fees
-        const finalMinterBalance = toBN(await context.fAsset.balanceOf(minter.address));
-        assertWeb3Equal(finalMinterBalance, mintingExecuted.mintedAmountUBA);
-    });
+    describe("Invalid direct minting attempts", () => {
+        it("should fail minting if payment is to invalid address", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            // mint some fAssets with executor specified in memo
+            const paymentReference = PaymentReference.directMinting(minter.address);
+            const txHash = await minter.performPayment(underlyingMinter2, context.convertLotsToUBA(3), paymentReference);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "InvalidReceivingAddress", []);
+        });
 
-    it("set the executor in tag manager and it should be the only one allowed for minting", async () => {
-        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
-        //
-        const totalMintingAmount = context.convertLotsToUBA(3);
-        // reserve minting tag and set recipient
-        const tagPrice = await mintingTagManager.reservationFee();
-        const tagRes = await mintingTagManager.reserve({ from: minter.address, value: tagPrice });
-        const tagId = requiredEventArgs(tagRes, 'MintingTagReserved').tag;
-        await mintingTagManager.setMintingRecipient(tagId, minter.address, { from: minter.address });
-        // set allowed executor for the tag and wait for it to be active
-        const resEx = await mintingTagManager.setAllowedExecutor(tagId, executorAddress1, { from: minter.address });
-        const argsEx = requiredEventArgs(resEx, "AllowedExecutorChangePending");
-        await time.increaseTo(argsEx.activeAfterTs);
-        // try to execute direct minting with different executor - should fail
-        const paymentReference = PaymentReference.directMinting(minter.address);
-        const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, paymentReference, { destinationTag: Number(tagId) });
-        const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
-        await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress2 }), "InvalidExecutor", []);
-        // execute with correct executor should succeed
-        const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
-        const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
-        assertWeb3Equal(mintingExecuted.mintedAmountUBA.add(mintingExecuted.mintingFeeUBA).add(mintingExecuted.executorFeeUBA), totalMintingAmount);
+        it("should fail minting if payment is failed", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            // mint with zero amount
+            const paymentReference = PaymentReference.directMinting(minter.address);
+            const wallet = new MockChainWallet(mockChain);
+            const txHash = await wallet.addTransaction(minter.underlyingAddress, coreVaultUnderlyingAddress, context.convertLotsToUBA(3), paymentReference, { status: TX_FAILED });
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "PaymentFailed", []);
+        });
+
+        it("should fail minting if payment is zero", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            // mint with zero amount
+            const paymentReference = PaymentReference.directMinting(minter.address);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, 0, paymentReference);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "AmountNotPositive", []);
+        });
+
+        it("should fail minting if tag manager or smart account manager aren't set", async () => {
+            // deploy new asset manager without setting tag manager and smart account manager
+            const context = await AssetContext.createTest(commonContext, testChainInfo.xrp);
+            await context.assignCoreVaultManager({
+                underlyingAddress: coreVaultUnderlyingAddress,
+                custodianAddress: coreVaultCustodianAddress,
+                triggeringAccounts: [triggeringAccount],
+            });
+            // mint some fAssets
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const paymentReference = PaymentReference.directMinting(minter.address);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(3), paymentReference);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            // revert without tag manager
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "MissingMintingTagManager", []);
+            // add tag manager but not smart account manager
+            await assignMintingTagManager(context.assetManager, { fee: toBN(100), feeReceiver: tagManagerFeeReceiver });
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "MissingSmartAccountManager", []);
+        });
+
+        it("should fail minting with tag when payment has core vault donation tag", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            // mint some fAssets with core vault donation tag
+            const coreVaultDonationTag = Number(context.initSettings.coreVaultDonationTag);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(3), null, { destinationTag: coreVaultDonationTag });
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "PaymentIsCoreVaultDonation", []);
+        });
+
+        it("should fail minting with payment reference that corresponds to redemption", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            // mint some fAssets with core vault donation tag
+            const paymentReference = PaymentReference.redemption(33);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(3), paymentReference);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenPaymentReference", []);
+        });
     });
 });

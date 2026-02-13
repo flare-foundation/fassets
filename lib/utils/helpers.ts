@@ -193,6 +193,27 @@ export function toHex(x: BNish, padToBytes?: number) {
 }
 
 /**
+ * Adds '0x' prefix to a hex string if it doesn't already have one.
+ */
+export function prefix0x(hex: string) {
+    return hex.match(/^0x/i) ? hex : '0x' + hex;
+}
+
+/**
+ * Removes '0x' prefix from a hex string if it has one.
+ */
+export function unprefix0x(hex: string) {
+    return hex.replace(/^0x/i, '');
+}
+
+/**
+ * Joins multiple hex strings into one, ensuring a single '0x' prefix.
+ */
+export function joinHexBytes(...hexParts: string[]) {
+    return '0x' + hexParts.map(unprefix0x).join('');
+}
+
+/**
  * Generate random EVM addresss.
  */
 export function randomAddress() {
