@@ -85,7 +85,7 @@ export class MockAttestationProver {
             receivingAddressHash: transaction.status === TX_SUCCESS ? receivingAddressHash : ZERO_BYTES32,
             intendedReceivingAddressHash: receivingAddressHash,
             hasMemoData: transaction.reference != null,
-            firstMemoData: transaction.reference ?? ZERO_BYTES32,
+            firstMemoData: transaction.reference ?? "0x",
             hasDestinationTag: transaction.destinationTag != null,
             destinationTag: String(transaction.destinationTag ?? 0),
             spentAmount: String(totalSpentValue(transaction, sourceAddressHash, "actual")),

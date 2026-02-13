@@ -1,3 +1,4 @@
+import { ZERO_ADDRESS } from "../../../deployment/lib/deploy-utils";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
@@ -11,12 +12,17 @@ import { expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { assignMintingTagManager, assignSmartAccountManagerMock } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
+import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
 import { TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EventArgs } from "../../../lib/utils/events/common";
-import { requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { ContractWithEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { MAX_BIPS, requireNotNull, toBN } from "../../../lib/utils/helpers";
 import { CoreVaultManagerInstance, MintingTagManagerInstance, SmartAccountManagerMockInstance } from "../../../typechain-truffle";
+import { DirectMintingExecutedToSmartAccount } from "../../../typechain-truffle/DirectMintingFacet";
 import { DirectMintingExecuted } from "../../../typechain-truffle/IIAssetManager";
+import { MintedToSmartAccount } from "../../../typechain-truffle/SmartAccountManagerMock";
+
+export type SmartAccountManagerMockEvents = import('../../../typechain-truffle/SmartAccountManagerMock').AllEvents;
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
     const governance = accounts[10];
@@ -56,7 +62,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
     let mockChain: MockChain;
     let coreVaultManager: CoreVaultManagerInstance;
     let mintingTagManager: MintingTagManagerInstance;
-    let smartAccountManager: SmartAccountManagerMockInstance;
+    let smartAccountManager: ContractWithEvents<SmartAccountManagerMockInstance, SmartAccountManagerMockEvents>;
     let coreVaultBot: MockCoreVaultBot;
 
     async function initialize() {
@@ -103,6 +109,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         assertWeb3Equal(mintingExecuted.mintedAmountUBA, totalMintingAmount.sub(expectedMintingFee).sub(expectedExecutorFee));
         assertWeb3Equal(mintingExecuted.mintingFeeUBA, expectedMintingFee);
         assertWeb3Equal(mintingExecuted.executorFeeUBA, expectedExecutorFee);
+    }
+
+    async function verifyDirectMintingToSmartAccountsReceived(mintingExecuted: EventArgs<DirectMintingExecutedToSmartAccount>, txHash: string, memoData: string | null, minterUnderlyingAddress: string, executorAddress: string, totalMintingAmount: BN) {
+        const { expectedMintingFee } = await calculateMintingFees(totalMintingAmount);
+        assertWeb3Equal(mintingExecuted.transactionId, txHash);
+        assertWeb3Equal(mintingExecuted.sourceAddress, minterUnderlyingAddress);
+        assertWeb3Equal(mintingExecuted.executor, executorAddress);
+        assertWeb3Equal(mintingExecuted.mintedAmountUBA, totalMintingAmount.sub(expectedMintingFee));
+        assertWeb3Equal(mintingExecuted.mintingFeeUBA, expectedMintingFee);
+        assertWeb3Equal(mintingExecuted.memoData, memoData);
     }
 
     describe("Direct minting by payment reference or tag", () => {
@@ -309,6 +325,86 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const txHash = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(3), paymentReference);
             const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
             await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenPaymentReference", []);
+        });
+    });
+
+    describe.only("Direct minting to smart accounts", () => {
+        async function verifyDirectMintingToSmartAccounts(
+            mintingExecuted: EventArgs<DirectMintingExecutedToSmartAccount>,
+            smartAccontReceived: EventArgs<MintedToSmartAccount>,
+            txHash: string, memoData: string | null, minterUnderlyingAddress: string, executorAddress: string, totalMintingAmount: BN) {
+            // cechk that asset manager emitted correct event
+            const { expectedMintingFee } = await calculateMintingFees(totalMintingAmount);
+            assertWeb3Equal(mintingExecuted.transactionId, txHash);
+            assertWeb3Equal(mintingExecuted.sourceAddress, minterUnderlyingAddress);
+            assertWeb3Equal(mintingExecuted.executor, executorAddress);
+            assertWeb3Equal(mintingExecuted.mintedAmountUBA, totalMintingAmount.sub(expectedMintingFee));
+            assertWeb3Equal(mintingExecuted.mintingFeeUBA, expectedMintingFee);
+            assertWeb3Equal(mintingExecuted.memoData, memoData);
+            // check that smart account manager received the minted amount with correct parameters
+            const txBlockId = await mockChain.getTransactionBlock(txHash);
+            const txBlock = await mockChain.getBlockAt(txBlockId!.number);
+            assertWeb3Equal(smartAccontReceived.transactionId, txHash);
+            assertWeb3Equal(smartAccontReceived.sourceAddress, minterUnderlyingAddress);
+            assertWeb3Equal(smartAccontReceived.amount, totalMintingAmount.sub(mintingExecuted.mintingFeeUBA));
+            assertWeb3Equal(smartAccontReceived.underlyingTimestamp, txBlock!.timestamp);
+            assertWeb3Equal(smartAccontReceived.memoData, memoData);
+        }
+
+        it("should send minting to smart account manager if memo data is not recognized", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            //
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            // mint some fAssets with unrecognized memo data
+            const memoData = "0x12345678"; // not a valid payment reference
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, memoData);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecutedToSmartAccount');
+            const smartAccontReceived = requiredEventArgsFrom(res, smartAccountManager, 'MintedToSmartAccount');
+            await verifyDirectMintingToSmartAccounts(mintingExecuted, smartAccontReceived, txHash, memoData, minter.underlyingAddress, executorAddress1, totalMintingAmount);
+        });
+
+        it("should send minting to smart account manager if there is no memo data or tag", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            //
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            // mint some fAssets with unrecognized memo data
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, null);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecutedToSmartAccount');
+            const smartAccontReceived = requiredEventArgsFrom(res, smartAccountManager, 'MintedToSmartAccount');
+            await verifyDirectMintingToSmartAccounts(mintingExecuted, smartAccontReceived, txHash, null, minter.underlyingAddress, executorAddress1, totalMintingAmount);
+        });
+
+        it("should send minting to smart account manager if the tag is invalid", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            //
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            // mint some fAssets with unrecognized memo data
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, null, { destinationTag: 9999 });
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecutedToSmartAccount');
+            const smartAccontReceived = requiredEventArgsFrom(res, smartAccountManager, 'MintedToSmartAccount');
+            await verifyDirectMintingToSmartAccounts(mintingExecuted, smartAccontReceived, txHash, null, minter.underlyingAddress, executorAddress1, totalMintingAmount);
+        });
+    });
+
+    describe("Edge cases for direct minting fees", () => {
+        it("should charge minimum fee if calculated fee is below minimum", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            //
+            const totalMintingAmount = context.convertLotsToUBA(1); // small amount to ensure fee is below minimum
+            const { expectedMintingFee } = await calculateMintingFees(totalMintingAmount);
+            // mint some fAssets
+            const paymentReference = PaymentReference.directMinting(minter.address);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, paymentReference);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
+            assertWeb3Equal(mintingExecuted.mintingFeeUBA, expectedMintingFee);
         });
     });
 });

@@ -221,14 +221,21 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         uint256 _mintingFeeUBA
     ) private {
         DirectMinting.State storage state = DirectMinting.getState();
+        // use empty memo data if not present, to avoid having to check for its existence in the smart account manager
+        bytes memory memoData = "";
+        if (_payment.data.responseBody.hasMemoData) {
+            memoData = _payment.data.responseBody.firstMemoData;
+        }
+        // mint to smart account manager
         uint256 mintedAmountUBA = _receivedAmountUBA - _mintingFeeUBA;
         _mintFAssets(address(state.smartAccountManager), mintedAmountUBA);
+        // notify smart account manager
         state.smartAccountManager.mintedFAssets(
             _payment.data.requestBody.transactionId,
             _payment.data.responseBody.sourceAddress,
             mintedAmountUBA,
             _payment.data.responseBody.blockTimestamp,
-            _payment.data.responseBody.firstMemoData,
+            memoData,
             msg.sender
         );
         emit DirectMintingExecutedToSmartAccount(
@@ -237,7 +244,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
             msg.sender,
             mintedAmountUBA,
             _mintingFeeUBA,
-            _payment.data.responseBody.firstMemoData
+            memoData
         );
     }
 
