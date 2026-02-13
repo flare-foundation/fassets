@@ -69,10 +69,16 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         CoreVaultClient.confirmCoreVaultPayment(_payment.data.requestBody.transactionId,
             _payment.data.responseBody.receivedAmount);
         // calculate fees
-        (uint256 mintingFeeUBA, uint256 executorFeeUBA) =_computeFees(receivedAmount);
+        (bool paymentTooSmall, uint256 mintingFeeUBA, uint256 executorFeeUBA) =_computeFees(receivedAmount);
         // mint system fees to fee receiver
         _mintFAssets(state.mintingFeeReceiver, mintingFeeUBA);
-        if (mintToSmartAccount) {
+        if (paymentTooSmall) {
+            // If the total payment is less than the system fee, everything goes to the fee receiver and no further
+            // actions are done, to prevent smart accounts users from sending very small amounts to avoid paying fee.
+            // Executor also gets nothing in this case since the minting fee has priority over the executor fee.
+            emit DirectMintingPaymentTooSmallForFee(_payment.data.requestBody.transactionId,
+                receivedAmount, Conversion.convertAmgToUBA(state.minimumMintingFeeAmg));
+        } else if (mintToSmartAccount) {
             _mintToSmartAccounts(_payment, receivedAmount, mintingFeeUBA);
         } else {
             _mintToRecipient(_payment, recipient, receivedAmount, mintingFeeUBA, executorFeeUBA);
@@ -256,11 +262,12 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
 
     function _computeFees(uint256 _receivedAmount)
         private view
-        returns (uint256 _mintingFeeUBA, uint256 _executorFeeUBA)
+        returns (bool _paymentTooSmall, uint256 _mintingFeeUBA, uint256 _executorFeeUBA)
     {
         DirectMinting.State storage state = DirectMinting.getState();
         uint256 relativeFeeUBA = _receivedAmount.mulBips(state.mintingFeeBIPS);
         uint256 minimumFeeUBA = Conversion.convertAmgToUBA(state.minimumMintingFeeAmg);
+        _paymentTooSmall = _receivedAmount < minimumFeeUBA;
         _mintingFeeUBA = Math.min(Math.max(relativeFeeUBA, minimumFeeUBA), _receivedAmount);
         // prioritize system fee over executor fee
         uint256 executorFeeUBA = Conversion.convertAmgToUBA(state.executorFeeAmg);

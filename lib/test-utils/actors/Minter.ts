@@ -65,6 +65,26 @@ export class Minter extends AssetContextClient {
         await this.context.assetManager.confirmCoreVaultDonation(proof);
     }
 
+    async directMintRaw(amount: BNish, options?: { memoData?: string, destinationTag?: number, executor?: string }) {
+        const coreVaultUnderlyingAddress = await requireNotNull(this.context.coreVaultManager).coreVaultAddress();
+        const txHash = await this.performPayment(coreVaultUnderlyingAddress, amount, options?.memoData ?? null, { destinationTag: options?.destinationTag });
+        const proof = await this.context.attestationProvider.proveXRPPayment(txHash, null);
+        const res = await this.context.assetManager.executeDirectMinting(proof, { from: options?.executor ?? this.address });
+        return [res, txHash] as const;
+    }
+
+    async directMint(amount: BNish, options?: { memoData?: string, destinationTag?: number, executor?: string }) {
+        const [res, txHash] = await this.directMintRaw(amount, options);
+        const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
+        return [mintingExecuted, txHash] as const;
+    }
+
+    async directMintToSmartAccount(amount: BNish, options?: { memoData?: string, destinationTag?: number, executor?: string }) {
+        const [res, txHash] = await this.directMintRaw(amount, options);
+        const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecutedToSmartAccount');
+        return [mintingExecuted, txHash] as const;
+    }
+
     async getCollateralReservationFee(lots: BNish) {
         return await this.assetManager.collateralReservationFee(lots);
     }
