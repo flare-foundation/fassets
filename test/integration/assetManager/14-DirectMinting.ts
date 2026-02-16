@@ -15,7 +15,7 @@ import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder"
 import { TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { ContractWithEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { HOURS, MAX_BIPS, requireNotNull, toBN } from "../../../lib/utils/helpers";
+import { BN_ONE, HOURS, joinHexBytes, MAX_BIPS, requireNotNull, toBN, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { CoreVaultManagerInstance, MintingTagManagerInstance, SmartAccountManagerMockInstance } from "../../../typechain-truffle";
 import { DirectMintingExecutedToSmartAccount } from "../../../typechain-truffle/DirectMintingFacet";
 import { DirectMintingExecuted } from "../../../typechain-truffle/IIAssetManager";
@@ -382,6 +382,42 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecutedToSmartAccount');
             const smartAccontReceived = requiredEventArgsFrom(res, smartAccountManager, 'MintedToSmartAccount');
             await verifyDirectMintingToSmartAccounts(mintingExecuted, smartAccontReceived, txHash, null, minter.underlyingAddress, executorAddress1, totalMintingAmount);
+        });
+
+        it("should ignore unknown valid payment references and just mint to smart accounts", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // mint some fAssets with unknown tag and payment reference
+            const memoData = PaymentReference.topup(agentOwner1); // not a valid payment reference for direct minting
+            const [res] = await minter.directMintRaw(context.convertLotsToUBA(3), { memoData, executor: executorAddress1 });
+            expectEvent.notEmitted(res, 'DirectMintingExecuted');
+            expectEvent(res, 'DirectMintingExecutedToSmartAccount');
+        });
+
+        it("should ignore direct minting payment references with invalid address and just mint to smart accounts", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // mint some fAssets with unknown tag and payment reference
+            const memoData = PaymentReference.directMinting(toBN(minterAddress1).or(BN_ONE.shln(162)).toString()); // invalid address - out of 160 bit range
+            const [res] = await minter.directMintRaw(context.convertLotsToUBA(3), { memoData, executor: executorAddress1 });
+            expectEvent.notEmitted(res, 'DirectMintingExecuted');
+            expectEvent(res, 'DirectMintingExecutedToSmartAccount');
+        });
+
+        it("should ignore invalid long (48-byte) payment references and just mint to smart accounts", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // mint some fAssets with unknown tag and payment reference
+            const memoData = joinHexBytes("0x4642505266410011", minterAddress1, executorAddress1).toLowerCase();
+            const [res] = await minter.directMintRaw(context.convertLotsToUBA(3), { memoData, executor: executorAddress1 });
+            expectEvent.notEmitted(res, 'DirectMintingExecuted');
+            expectEvent(res, 'DirectMintingExecutedToSmartAccount');
+        });
+
+        it("should ignore valid long (48-byte) payment references with zero target address and just mint to smart accounts", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // mint some fAssets with unknown tag and payment reference
+            const memoData = PaymentReference.directMintingEx(ZERO_ADDRESS, executorAddress1);
+            const [res] = await minter.directMintRaw(context.convertLotsToUBA(3), { memoData, executor: executorAddress1 });
+            expectEvent.notEmitted(res, 'DirectMintingExecuted');
+            expectEvent(res, 'DirectMintingExecutedToSmartAccount');
         });
     });
 
