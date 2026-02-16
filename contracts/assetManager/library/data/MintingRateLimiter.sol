@@ -56,6 +56,18 @@ library MintingRateLimiter {
         _state.maxMintingPerWindow = _newMaxMintingPerWindow;
     }
 
+    function setWindowSizeSeconds(
+        State storage _state,
+        uint64 _newWindowSizeSeconds
+    ) internal {
+        _processElapsedWindows(_state);
+        _state.windowSizeSeconds = _newWindowSizeSeconds;
+        // Align on new window size; this may increase the current window length a bit too much,
+        // but this is acceptable as it will only increase the amount of allowed minting by less than 1 window.
+        _state.windowStartTimestamp =
+            _state.windowStartTimestamp - _state.windowStartTimestamp % _newWindowSizeSeconds;
+    }
+
     function _processElapsedWindows(State storage _state) internal {
         uint256 windowsElapsed = (block.timestamp - _state.windowStartTimestamp) / _state.windowSizeSeconds;
         if (windowsElapsed > 0) {

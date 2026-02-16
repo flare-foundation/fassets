@@ -328,7 +328,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         it("should fail minting with tag when payment has core vault donation tag", async () => {
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             // mint some fAssets with core vault donation tag
-            const coreVaultDonationTag = Number(context.initSettings.coreVaultDonationTag);
+            const coreVaultDonationTag = Number(await context.assetManager.getCoreVaultDonationTag());
             const txHash = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(3), null, { destinationTag: coreVaultDonationTag });
             const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
             await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "PaymentIsCoreVaultDonation", []);
@@ -475,6 +475,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
     });
 
     describe("Direct minting limits", () => {
+        beforeEach(async () => {
+            const ts = await time.latest();
+            await time.increaseTo(ts.addn(1 * DAYS).subn(ts.modn(DAYS))); // move to the start of a day to have clean state for daily limits
+        });
+
         it("should delay minting when hourly limit is exceeded", async () => {
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             // mint close to the hourly limit first (95 lots out of 100)
@@ -547,44 +552,28 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
 
         it("should delay minting when daily limit is exceeded", async () => {
-            const minter1 = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
-            const minter2 = await Minter.createTest(context, minterAddress2, underlyingMinter2, context.convertLotsToUBA(200));
-            const minter3 = await Minter.createTest(context, minterAddress3, underlyingMinter3, context.convertLotsToUBA(2000));
-            // mint in batches that stay under hourly limit but exceed daily limit
-            // Batch 1: 95 lots
-            const [res1] = await minter1.directMintRaw(context.convertLotsToUBA(95), {
-                memoData: PaymentReference.directMinting(minter1.address),
-                executor: executorAddress1
-            });
-            expectEvent(res1, 'DirectMintingExecuted');
-            // Wait 1 hour to reset hourly limit
-            await time.increase(HOURS);
-            // Batch 2: 95 lots (total: 190)
-            const [res2] = await minter2.directMintRaw(context.convertLotsToUBA(95), {
-                memoData: PaymentReference.directMinting(minter2.address),
-                executor: executorAddress1
-            });
-            expectEvent(res2, 'DirectMintingExecuted');
-            // Wait 1 hour again
-            await time.increase(HOURS);
-            // Batch 3: Continue minting until we approach daily limit (need 10 more batches to reach ~1000 lots)
-            for (let i = 0; i < 9; i++) {
-                await minter3.directMintRaw(context.convertLotsToUBA(90), {
-                    memoData: PaymentReference.directMinting(minter3.address),
+            const minter1 = await Minter.createTest(context, minterAddress3, underlyingMinter3, context.convertLotsToUBA(2000));
+            const minter2 = await Minter.createTest(context, minterAddress3, underlyingMinter3, context.convertLotsToUBA(2000));
+            // Batch: Continue minting until we approach daily limit (need 10 more batches to reach ~1000 lots)
+            for (let i = 0; i < 11; i++) {
+                const minter = [minter1, minter2][i % 2]; // alternate between two minters (minters share the same daily limit)
+                const [res] = await minter.directMintRaw(context.convertLotsToUBA(90), {
+                    memoData: PaymentReference.directMinting(minter.address),
                     executor: executorAddress1
                 });
+                expectEvent(res, 'DirectMintingExecuted');
                 await time.increase(HOURS);
             }
             // Now we should be close to 1000 lots minted in 24 hours
             // Try to mint 10 more lots - should be delayed due to daily limit
-            const [res3, txHash3] = await minter3.directMintRaw(context.convertLotsToUBA(10), {
-                memoData: PaymentReference.directMinting(minter3.address),
+            const [res2, txHash2] = await minter1.directMintRaw(context.convertLotsToUBA(50), {
+                memoData: PaymentReference.directMinting(minter1.address),
                 executor: executorAddress1
             });
-            expectEvent.notEmitted(res3, 'DirectMintingExecuted');
-            const delayedEvent = requiredEventArgs(res3, 'DirectMintingDelayed');
-            assertWeb3Equal(delayedEvent.transactionId, txHash3);
-            assertWeb3Equal(delayedEvent.amount, context.convertLotsToUBA(10));
+            expectEvent.notEmitted(res2, 'DirectMintingExecuted');
+            const delayedEvent = requiredEventArgs(res2, 'DirectMintingDelayed');
+            assertWeb3Equal(delayedEvent.transactionId, txHash2);
+            assertWeb3Equal(delayedEvent.amount, context.convertLotsToUBA(50));
         });
 
         it("should delay minting when either hourly or daily limit is exceeded", async () => {
@@ -616,6 +605,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 executor: executorAddress1
             });
             expectEvent(res2, 'DirectMintingDelayed');
+            // check unblock until state (should not be set)
+            const unblockState0 = await context.assetManager.getDirectMintingsUnblockUntilTimestamp();
+            assertWeb3Equal(unblockState0, 0);
             // wait a bit and then get the current time for unblocking
             await time.increase(10);
             const currentTime = await time.latest();
@@ -625,6 +617,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const res3 = await context.assetManager.executeDirectMinting(proof2, { from: executorAddress1 });
             const mintingExecuted = requiredEventArgs(res3, 'DirectMintingExecuted');
             await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
+            // check unblock until state
+            const unblockState = await context.assetManager.getDirectMintingsUnblockUntilTimestamp();
+            assertWeb3Equal(unblockState, currentTime);
         });
 
         it("should delay large minting separately from regular limits", async () => {
@@ -692,6 +687,48 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 "TimestampMustBeInThePast",
                 []
             );
+        });
+
+        it("daily and hourly minting state should update correctly", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(2000));
+            const paymentReference = PaymentReference.directMinting(minter.address);
+            // make a payment and check that hourly and daily limiter state update correctly
+            const [res] = await minter.directMintRaw(context.convertLotsToUBA(10), { memoData: paymentReference, executor: executorAddress1 });
+            expectEvent(res, 'DirectMintingExecuted');
+            const hourlyLimiterState1 = await context.assetManager.getDirectMintingHourlyLimiterState();
+            const dailyLimiterState1 = await context.assetManager.getDirectMintingDailyLimiterState();
+            assertWeb3Equal(hourlyLimiterState1[1], context.convertLotsToUBA(10));
+            assertWeb3Equal(dailyLimiterState1[1], context.convertLotsToUBA(10));
+            // after half an hour, try again
+            await time.increase(0.5 * HOURS);
+            const [res2] = await minter.directMintRaw(context.convertLotsToUBA(20), { memoData: paymentReference, executor: executorAddress1 });
+            expectEvent(res2, 'DirectMintingExecuted');
+            const hourlyLimiterState2 = await context.assetManager.getDirectMintingHourlyLimiterState();
+            const dailyLimiterState2 = await context.assetManager.getDirectMintingDailyLimiterState();
+            assertWeb3Equal(hourlyLimiterState2[0], hourlyLimiterState1[0]); // window start stays the same
+            assertWeb3Equal(dailyLimiterState2[0], dailyLimiterState1[0]); // window start stays the same
+            assertWeb3Equal(hourlyLimiterState2[1], context.convertLotsToUBA(30)); // 10 + 20
+            assertWeb3Equal(dailyLimiterState2[1], context.convertLotsToUBA(30)); // 10 + 20
+            // after 1 hour, hourly limiter window is reset but daily limiter window is not
+            await time.increase(0.5 * HOURS);
+            const [res3] = await minter.directMintRaw(context.convertLotsToUBA(50), { memoData: paymentReference, executor: executorAddress1 });
+            expectEvent(res3, 'DirectMintingExecuted');
+            const hourlyLimiterState3 = await context.assetManager.getDirectMintingHourlyLimiterState();
+            const dailyLimiterState3 = await context.assetManager.getDirectMintingDailyLimiterState();
+            assertWeb3Equal(hourlyLimiterState3[0], hourlyLimiterState1[0].addn(1 * HOURS));
+            assertWeb3Equal(dailyLimiterState3[0], dailyLimiterState1[0]); // window start stays the same
+            assertWeb3Equal(hourlyLimiterState3[1], context.convertLotsToUBA(50)); // new window, only 50 lots
+            assertWeb3Equal(dailyLimiterState3[1], context.convertLotsToUBA(80)); // 30 + 50
+            // 1 day after the start, both windows are reset
+            await time.increase(23 * HOURS);
+            const [res4] = await minter.directMintRaw(context.convertLotsToUBA(10), { memoData: paymentReference, executor: executorAddress1 });
+            expectEvent(res4, 'DirectMintingExecuted');
+            const hourlyLimiterState4 = await context.assetManager.getDirectMintingHourlyLimiterState();
+            const dailyLimiterState4 = await context.assetManager.getDirectMintingDailyLimiterState();
+            assertWeb3Equal(hourlyLimiterState4[0], hourlyLimiterState1[0].addn(24 * HOURS));
+            assertWeb3Equal(dailyLimiterState4[0], dailyLimiterState1[0].addn(1 * DAYS));
+            assertWeb3Equal(hourlyLimiterState4[1], context.convertLotsToUBA(10)); // new window, only 100 lots
+            assertWeb3Equal(dailyLimiterState4[1], context.convertLotsToUBA(10)); // new window, only 10 lots
         });
     });
 
@@ -1003,7 +1040,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
     describe("Direct minting settings governance and timelock", () => {
         beforeEach(async () => {
-            // advance time to avoid rate limiting
+            // increase time to avoid rate limiting between tests (minUpdateRepeatTimeSeconds = 1 day)
             await time.increase(DAYS + 1);
         });
 

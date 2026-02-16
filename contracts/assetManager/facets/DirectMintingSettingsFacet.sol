@@ -195,7 +195,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         require(newLimitAmg <= currentLimitAmg * 10 + _usd5InAssetAmg(1000e5), IncreaseTooBig());
         require(newLimitAmg >= currentLimitAmg / 10, DecreaseTooBig());
         // update
-        state.hourlyLimiter.maxMintingPerWindow = newLimitAmg;
+        state.hourlyLimiter.setMaxMintingPerWindow(newLimitAmg);
         emit IAssetManagerEvents.SettingChanged("directMintingHourlyLimitUBA", _hourlyLimitUBA);
     }
 
@@ -211,7 +211,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         require(newLimitAmg <= currentLimitAmg * 10 + _usd5InAssetAmg(1000e5), IncreaseTooBig());
         require(newLimitAmg >= currentLimitAmg / 10, DecreaseTooBig());
         // update
-        state.dailyLimiter.maxMintingPerWindow = newLimitAmg;
+        state.dailyLimiter.setMaxMintingPerWindow(newLimitAmg);
         emit IAssetManagerEvents.SettingChanged("directMintingDailyLimitUBA", _dailyLimitUBA);
     }
 
@@ -234,8 +234,8 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         require(_largeMintingDelaySeconds <= currentDelaySeconds * 4 + 12 hours, IncreaseTooBig());
         require(_largeMintingDelaySeconds >= currentDelaySeconds / 4, DecreaseTooBig());
         // update
-        state.largeMintingLimiter.maxMintingPerWindow = newThresholdAmg;
-        state.largeMintingLimiter.windowSizeSeconds = _largeMintingDelaySeconds.toUint64();
+        state.largeMintingLimiter.setMaxMintingPerWindow(newThresholdAmg);
+        state.largeMintingLimiter.setWindowSizeSeconds(_largeMintingDelaySeconds.toUint64());
         emit IAssetManagerEvents.SettingChanged("directMintingLargeMintingThresholdUBA", _largeMintingThresholdUBA);
         emit IAssetManagerEvents.SettingChanged("directMintingLargeMintingDelaySeconds", _largeMintingDelaySeconds);
     }
