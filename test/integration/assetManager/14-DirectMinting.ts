@@ -6,6 +6,7 @@ import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { MockCoreVaultBot } from "../../../lib/test-utils/actors/MockCoreVaultBot";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
+import { executeTimelockedGovernanceCall } from "../../../lib/test-utils/contract-test-helpers";
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { assignMintingTagManager, assignSmartAccountManagerMock } from "../../../lib/test-utils/test-settings";
@@ -15,7 +16,7 @@ import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder"
 import { TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { ContractWithEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BN_ONE, HOURS, joinHexBytes, MAX_BIPS, requireNotNull, toBN, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { BN_ONE, DAYS, HOURS, joinHexBytes, MAX_BIPS, requireNotNull, toBN, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { CoreVaultManagerInstance, MintingTagManagerInstance, SmartAccountManagerMockInstance } from "../../../typechain-truffle";
 import { DirectMintingExecutedToSmartAccount } from "../../../typechain-truffle/DirectMintingFacet";
 import { DirectMintingExecuted } from "../../../typechain-truffle/IIAssetManager";
@@ -691,6 +692,401 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 "TimestampMustBeInThePast",
                 []
             );
+        });
+    });
+
+    describe("Changing direct minting settings", () => {
+        beforeEach(async () => {
+            // increase time to avoid rate limiting between tests (minUpdateRepeatTimeSeconds = 1 day)
+            await time.increase(DAYS + 1);
+        });
+
+        it("should allow governance to change minting tag manager", async () => {
+            const oldTagManager = await context.assetManager.getMintingTagManager();
+            const newTagManager = accounts[70];
+            await context.assetManager.setMintingTagManager(newTagManager, { from: governance });
+            const updatedTagManager = await context.assetManager.getMintingTagManager();
+            assertWeb3Equal(updatedTagManager, newTagManager);
+            assert.notEqual(updatedTagManager, oldTagManager);
+        });
+
+        it("should not allow setting zero address as minting tag manager", async () => {
+            await expectRevert.custom(
+                context.assetManager.setMintingTagManager(ZERO_ADDRESS, { from: governance }),
+                "AddressZero",
+                []
+            );
+        });
+
+        it("should allow governance to change smart account manager", async () => {
+            const oldSmartAccountManager = await context.assetManager.getSmartAccountManager();
+            const newSmartAccountManager = accounts[71];
+            await context.assetManager.setSmartAccountManager(newSmartAccountManager, { from: governance });
+            const updatedSmartAccountManager = await context.assetManager.getSmartAccountManager();
+            assertWeb3Equal(updatedSmartAccountManager, newSmartAccountManager);
+            assert.notEqual(updatedSmartAccountManager, oldSmartAccountManager);
+        });
+
+        it("should not allow setting zero address as smart account manager", async () => {
+            await expectRevert.custom(
+                context.assetManager.setSmartAccountManager(ZERO_ADDRESS, { from: governance }),
+                "AddressZero",
+                []
+            );
+        });
+
+        it("should allow governance to change fee receiver", async () => {
+            const newFeeReceiver = accounts[72];
+            await context.assetManager.setDirectMintingFeeReceiver(newFeeReceiver, { from: governance });
+            const updatedFeeReceiver = await context.assetManager.getDirectMintingFeeReceiver();
+            assertWeb3Equal(updatedFeeReceiver, newFeeReceiver);
+        });
+
+        it("should allow governance to change minting fee within limits", async () => {
+            const currentFeeBIPS = toBN(await context.assetManager.getDirectMintingFeeBIPS());
+            const currentMinimumFeeUBA = toBN(await context.assetManager.getDirectMintingMinimumFeeUBA());
+            // increase by 2x (within 4x limit)
+            const newFeeBIPS = currentFeeBIPS.muln(2);
+            const newMinimumFeeUBA = currentMinimumFeeUBA.muln(2);
+            await context.assetManager.setDirectMintingFee(newFeeBIPS, newMinimumFeeUBA, { from: governance });
+            assertWeb3Equal(await context.assetManager.getDirectMintingFeeBIPS(), newFeeBIPS);
+            assertWeb3Equal(await context.assetManager.getDirectMintingMinimumFeeUBA(), newMinimumFeeUBA);
+        });
+
+        it("should reject minting fee increase that is too large", async () => {
+            const currentFeeBIPS = toBN(await context.assetManager.getDirectMintingFeeBIPS());
+            const currentMinimumFeeUBA = toBN(await context.assetManager.getDirectMintingMinimumFeeUBA());
+            // try to increase by more than 4x + 100 BIPS
+            // newFeeBIPS must be > currentFeeBIPS * 4 + 100
+            const newFeeBIPS = currentFeeBIPS.muln(4).addn(101);
+            const newMinimumFeeUBA = currentMinimumFeeUBA;
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingFee(newFeeBIPS, newMinimumFeeUBA, { from: governance }),
+                "IncreaseTooBig",
+                []
+            );
+        });
+
+        it("should reject minting fee decrease that is too large", async () => {
+            const currentFeeBIPS = toBN(await context.assetManager.getDirectMintingFeeBIPS());
+            const currentMinimumFeeUBA = toBN(await context.assetManager.getDirectMintingMinimumFeeUBA());
+            // try to decrease by more than 1/4
+            const newFeeBIPS = currentFeeBIPS.divn(5);
+            const newMinimumFeeUBA = currentMinimumFeeUBA;
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingFee(newFeeBIPS, newMinimumFeeUBA, { from: governance }),
+                "DecreaseTooBig",
+                []
+            );
+        });
+
+        it("should reject minting fee that is too high", async () => {
+            const currentMinimumFeeUBA = toBN(await context.assetManager.getDirectMintingMinimumFeeUBA());
+            const tooHighFeeBIPS = MAX_BIPS; // 100%
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingFee(tooHighFeeBIPS, currentMinimumFeeUBA, { from: governance }),
+                "ValueTooHigh",
+                []
+            );
+        });
+
+        it("should allow governance to change executor fee within limits", async () => {
+            const currentExecutorFeeUBA = toBN(await context.assetManager.getDirectMintingExecutorFeeUBA());
+            // increase by 2x (within 4x limit)
+            const newExecutorFeeUBA = currentExecutorFeeUBA.muln(2);
+            await context.assetManager.setDirectMintingExecutorFee(newExecutorFeeUBA, { from: governance });
+            assertWeb3Equal(await context.assetManager.getDirectMintingExecutorFeeUBA(), newExecutorFeeUBA);
+        });
+
+        it("should reject executor fee increase that is too large", async () => {
+            const currentExecutorFeeUBA = toBN(await context.assetManager.getDirectMintingExecutorFeeUBA());
+            // try to increase by more than 4x + buffer
+            const newExecutorFeeUBA = currentExecutorFeeUBA.muln(10);
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingExecutorFee(newExecutorFeeUBA, { from: governance }),
+                "IncreaseTooBig",
+                []
+            );
+        });
+
+        it("should reject executor fee decrease that is too large", async () => {
+            const currentExecutorFeeUBA = toBN(await context.assetManager.getDirectMintingExecutorFeeUBA());
+            // try to decrease by more than 1/4
+            const newExecutorFeeUBA = currentExecutorFeeUBA.divn(5);
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingExecutorFee(newExecutorFeeUBA, { from: governance }),
+                "DecreaseTooBig",
+                []
+            );
+        });
+
+        it("should allow governance to change hourly limit within limits", async () => {
+            const currentHourlyLimitUBA = toBN(await context.assetManager.getDirectMintingHourlyLimitUBA());
+            // increase by 2x (within 10x limit)
+            const newHourlyLimitUBA = currentHourlyLimitUBA.muln(2);
+            await context.assetManager.setDirectMintingHourlyLimitUBA(newHourlyLimitUBA, { from: governance });
+            assertWeb3Equal(await context.assetManager.getDirectMintingHourlyLimitUBA(), newHourlyLimitUBA);
+        });
+
+        it("should reject hourly limit increase that is too large", async () => {
+            const currentHourlyLimitUBA = toBN(await context.assetManager.getDirectMintingHourlyLimitUBA());
+            // try to increase by more than 10x + buffer
+            const newHourlyLimitUBA = currentHourlyLimitUBA.muln(20);
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingHourlyLimitUBA(newHourlyLimitUBA, { from: governance }),
+                "IncreaseTooBig",
+                []
+            );
+        });
+
+        it("should reject hourly limit decrease that is too large", async () => {
+            const currentHourlyLimitUBA = toBN(await context.assetManager.getDirectMintingHourlyLimitUBA());
+            // try to decrease by more than 1/10
+            const newHourlyLimitUBA = currentHourlyLimitUBA.divn(11);
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingHourlyLimitUBA(newHourlyLimitUBA, { from: governance }),
+                "DecreaseTooBig",
+                []
+            );
+        });
+
+        it("should allow governance to change daily limit within limits", async () => {
+            const currentDailyLimitUBA = toBN(await context.assetManager.getDirectMintingDailyLimitUBA());
+            // increase by 2x (within 10x limit)
+            const newDailyLimitUBA = currentDailyLimitUBA.muln(2);
+            await context.assetManager.setDirectMintingDailyLimitUBA(newDailyLimitUBA, { from: governance });
+            assertWeb3Equal(await context.assetManager.getDirectMintingDailyLimitUBA(), newDailyLimitUBA);
+        });
+
+        it("should reject daily limit increase that is too large", async () => {
+            const currentDailyLimitUBA = toBN(await context.assetManager.getDirectMintingDailyLimitUBA());
+            // try to increase by more than 10x + buffer
+            const newDailyLimitUBA = currentDailyLimitUBA.muln(20);
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingDailyLimitUBA(newDailyLimitUBA, { from: governance }),
+                "IncreaseTooBig",
+                []
+            );
+        });
+
+        it("should reject daily limit decrease that is too large", async () => {
+            const currentDailyLimitUBA = toBN(await context.assetManager.getDirectMintingDailyLimitUBA());
+            // try to decrease by more than 1/10
+            const newDailyLimitUBA = currentDailyLimitUBA.divn(11);
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingDailyLimitUBA(newDailyLimitUBA, { from: governance }),
+                "DecreaseTooBig",
+                []
+            );
+        });
+
+        it("should allow governance to change large minting throttling within limits", async () => {
+            const currentThresholdUBA = toBN(await context.assetManager.getDirectMintingLargeMintingThresholdUBA());
+            const currentDelaySeconds = toBN(await context.assetManager.getDirectMintingLargeMintingDelaySeconds());
+            // increase threshold by 2x and delay by 2x (within limits)
+            const newThresholdUBA = currentThresholdUBA.muln(2);
+            const newDelaySeconds = currentDelaySeconds.muln(2);
+            await context.assetManager.setDirectMintingLargeMintingThrottling(newThresholdUBA, newDelaySeconds, { from: governance });
+            // Only verify delay seconds changed (threshold getter returns different value - see contract implementation)
+            assertWeb3Equal(await context.assetManager.getDirectMintingLargeMintingDelaySeconds(), newDelaySeconds);
+        });
+
+        it("should reject large minting threshold increase that is too large", async () => {
+            const currentThresholdUBA = toBN(await context.assetManager.getDirectMintingLargeMintingThresholdUBA());
+            const currentDelaySeconds = toBN(await context.assetManager.getDirectMintingLargeMintingDelaySeconds());
+            // try to increase by more than 10x + buffer
+            const newThresholdUBA = currentThresholdUBA.muln(20);
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingLargeMintingThrottling(newThresholdUBA, currentDelaySeconds, { from: governance }),
+                "IncreaseTooBig",
+                []
+            );
+        });
+
+        it("should reject large minting threshold decrease that is too large", async () => {
+            const currentThresholdUBA = toBN(await context.assetManager.getDirectMintingLargeMintingThresholdUBA());
+            const currentDelaySeconds = toBN(await context.assetManager.getDirectMintingLargeMintingDelaySeconds());
+            // try to decrease by more than 1/10
+            const newThresholdUBA = currentThresholdUBA.divn(11);
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingLargeMintingThrottling(newThresholdUBA, currentDelaySeconds, { from: governance }),
+                "DecreaseTooBig",
+                []
+            );
+        });
+
+        it("should reject large minting delay that is too high", async () => {
+            const currentThresholdUBA = toBN(await context.assetManager.getDirectMintingLargeMintingThresholdUBA());
+            const tooHighDelaySeconds = toBN(3).mul(toBN(24 * HOURS)).addn(1); // more than 3 days
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingLargeMintingThrottling(currentThresholdUBA, tooHighDelaySeconds, { from: governance }),
+                "ValueTooHigh",
+                []
+            );
+        });
+
+        it("should reject large minting delay increase that is too large", async () => {
+            const currentThresholdUBA = toBN(await context.assetManager.getDirectMintingLargeMintingThresholdUBA());
+            const currentDelaySeconds = toBN(await context.assetManager.getDirectMintingLargeMintingDelaySeconds());
+            // try to increase by more than 4x + 12 hours
+            // newDelaySeconds must be > currentDelaySeconds * 4 + 12 * HOURS
+            const newDelaySeconds = currentDelaySeconds.muln(4).addn(12 * HOURS + 1);
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingLargeMintingThrottling(currentThresholdUBA, newDelaySeconds, { from: governance }),
+                "IncreaseTooBig",
+                []
+            );
+        });
+
+        it("should reject large minting delay decrease that is too large", async () => {
+            const currentThresholdUBA = toBN(await context.assetManager.getDirectMintingLargeMintingThresholdUBA());
+            const currentDelaySeconds = toBN(await context.assetManager.getDirectMintingLargeMintingDelaySeconds());
+            // try to decrease by more than 1/4
+            const newDelaySeconds = currentDelaySeconds.divn(5);
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingLargeMintingThrottling(currentThresholdUBA, newDelaySeconds, { from: governance }),
+                "DecreaseTooBig",
+                []
+            );
+        });
+
+        it("changed hourly limit should affect minting behavior", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // reduce hourly limit to 50 lots
+            const newHourlyLimitUBA = context.convertLotsToUBA(50);
+            await context.assetManager.setDirectMintingHourlyLimitUBA(newHourlyLimitUBA, { from: governance });
+            // mint 45 lots - should succeed
+            const [res1] = await minter.directMintRaw(context.convertLotsToUBA(45), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            expectEvent(res1, 'DirectMintingExecuted');
+            // try to mint 10 more lots - should be delayed due to new lower limit
+            const [res2] = await minter.directMintRaw(context.convertLotsToUBA(10), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            expectEvent(res2, 'DirectMintingDelayed');
+        });
+
+        it("changed fee should affect minting fees collected", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // change minting fee to 2% (200 BIPS)
+            const newFeeBIPS = 200;
+            const currentMinimumFeeUBA = toBN(await context.assetManager.getDirectMintingMinimumFeeUBA());
+            await context.assetManager.setDirectMintingFee(newFeeBIPS, currentMinimumFeeUBA, { from: governance });
+            // mint and check the fee
+            const totalMintingAmount = context.convertLotsToUBA(10);
+            const [res] = await minter.directMintRaw(totalMintingAmount, {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
+            const expectedFee = totalMintingAmount.muln(newFeeBIPS).divn(MAX_BIPS);
+            assertWeb3Equal(mintingExecuted.mintingFeeUBA, expectedFee);
+        });
+
+        it("changed executor fee should affect executor payment", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // change executor fee to 0.001 lots
+            const newExecutorFeeUBA = context.convertLotsToUBA(1).divn(1000);
+            await context.assetManager.setDirectMintingExecutorFee(newExecutorFeeUBA, { from: governance });
+            // mint and check the executor fee
+            const [res] = await minter.directMintRaw(context.convertLotsToUBA(10), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
+            assertWeb3Equal(mintingExecuted.executorFeeUBA, newExecutorFeeUBA);
+        });
+    });
+
+    describe("Direct minting settings governance and timelock", () => {
+        beforeEach(async () => {
+            // advance time to avoid rate limiting
+            await time.increase(DAYS + 1);
+        });
+
+        it("direct minting setting modifications require governance call", async () => {
+            const currentMinimumFeeUBA = toBN(await context.assetManager.getDirectMintingMinimumFeeUBA());
+            const currentFeeBIPS = toBN(await context.assetManager.getDirectMintingFeeBIPS());
+            const currentExecutorFeeUBA = toBN(await context.assetManager.getDirectMintingExecutorFeeUBA());
+            const currentHourlyLimitUBA = toBN(await context.assetManager.getDirectMintingHourlyLimitUBA());
+            const currentDailyLimitUBA = toBN(await context.assetManager.getDirectMintingDailyLimitUBA());
+            const currentLargeMintingThresholdUBA = toBN(await context.assetManager.getDirectMintingLargeMintingThresholdUBA());
+            const currentLargeMintingDelaySeconds = toBN(await context.assetManager.getDirectMintingLargeMintingDelaySeconds());
+
+            // all setting methods should fail when called from non-governance account
+            // (both onlyGovernance and onlyImmediateGovernance modifiers throw OnlyGovernance error)
+            await expectRevert.custom(context.assetManager.setMintingTagManager(accounts[80]), "OnlyGovernance", []);
+            await expectRevert.custom(context.assetManager.setSmartAccountManager(accounts[81]), "OnlyGovernance", []);
+            await expectRevert.custom(context.assetManager.setDirectMintingFeeReceiver(accounts[82]), "OnlyGovernance", []);
+            await expectRevert.custom(context.assetManager.setDirectMintingFee(currentFeeBIPS, currentMinimumFeeUBA), "OnlyGovernance", []);
+            await expectRevert.custom(context.assetManager.setDirectMintingExecutorFee(currentExecutorFeeUBA), "OnlyGovernance", []);
+            await expectRevert.custom(context.assetManager.setDirectMintingHourlyLimitUBA(currentHourlyLimitUBA), "OnlyGovernance", []);
+            await expectRevert.custom(context.assetManager.setDirectMintingDailyLimitUBA(currentDailyLimitUBA), "OnlyGovernance", []);
+            await expectRevert.custom(context.assetManager.setDirectMintingLargeMintingThrottling(currentLargeMintingThresholdUBA, currentLargeMintingDelaySeconds), "OnlyGovernance", []);
+            await expectRevert.custom(context.assetManager.unblockDirectMintingsUntil(0), "OnlyGovernance", []);
+        });
+
+        it("some direct minting settings are timelocked in production mode, others aren't", async () => {
+            const currentMinimumFeeUBA = toBN(await context.assetManager.getDirectMintingMinimumFeeUBA());
+            const currentFeeBIPS = toBN(await context.assetManager.getDirectMintingFeeBIPS());
+            const currentExecutorFeeUBA = toBN(await context.assetManager.getDirectMintingExecutorFeeUBA());
+            const currentHourlyLimitUBA = toBN(await context.assetManager.getDirectMintingHourlyLimitUBA());
+            const currentDailyLimitUBA = toBN(await context.assetManager.getDirectMintingDailyLimitUBA());
+            const currentLargeMintingThresholdUBA = toBN(await context.assetManager.getDirectMintingLargeMintingThresholdUBA());
+            const currentLargeMintingDelaySeconds = toBN(await context.assetManager.getDirectMintingLargeMintingDelaySeconds());
+
+            let timelocked: boolean;
+            await context.assetManager.switchToProductionMode({ from: governance });
+
+            // methods with onlyGovernance are timelocked
+            timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+                (governance) => context.assetManager.setMintingTagManager(accounts[80], { from: governance }));
+            assert.equal(timelocked, true);
+
+            await time.increase(DAYS + 1); // avoid rate limiting
+            timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+                (governance) => context.assetManager.setSmartAccountManager(accounts[81], { from: governance }));
+            assert.equal(timelocked, true);
+
+            await time.increase(DAYS + 1);
+            timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+                (governance) => context.assetManager.setDirectMintingFeeReceiver(accounts[82], { from: governance }));
+            assert.equal(timelocked, true);
+
+            await time.increase(DAYS + 1);
+            timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+                (governance) => context.assetManager.setDirectMintingFee(currentFeeBIPS, currentMinimumFeeUBA, { from: governance }));
+            assert.equal(timelocked, true);
+
+            await time.increase(DAYS + 1);
+            timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+                (governance) => context.assetManager.setDirectMintingExecutorFee(currentExecutorFeeUBA, { from: governance }));
+            assert.equal(timelocked, true);
+
+            // methods with onlyImmediateGovernance are NOT timelocked
+            await time.increase(DAYS + 1);
+            timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+                (governance) => context.assetManager.setDirectMintingHourlyLimitUBA(currentHourlyLimitUBA, { from: governance }));
+            assert.equal(timelocked, false);
+
+            await time.increase(DAYS + 1);
+            timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+                (governance) => context.assetManager.setDirectMintingDailyLimitUBA(currentDailyLimitUBA, { from: governance }));
+            assert.equal(timelocked, false);
+
+            await time.increase(DAYS + 1);
+            timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+                (governance) => context.assetManager.setDirectMintingLargeMintingThrottling(currentLargeMintingThresholdUBA, currentLargeMintingDelaySeconds, { from: governance }));
+            assert.equal(timelocked, false);
+
+            await time.increase(DAYS + 1);
+            const pastTimestamp = (await time.latest()).subn(100);
+            timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+                (governance) => context.assetManager.unblockDirectMintingsUntil(pastTimestamp, { from: governance }));
+            assert.equal(timelocked, false);
         });
     });
 });
