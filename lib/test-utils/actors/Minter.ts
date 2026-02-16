@@ -66,8 +66,8 @@ export class Minter extends AssetContextClient {
     }
 
     async directMintRaw(amount: BNish, options?: { memoData?: string, destinationTag?: number, executor?: string }) {
-        const coreVaultUnderlyingAddress = await requireNotNull(this.context.coreVaultManager).coreVaultAddress();
-        const txHash = await this.performPayment(coreVaultUnderlyingAddress, amount, options?.memoData ?? null, { destinationTag: options?.destinationTag });
+        const paymentAddress = await this.context.assetManager.directMintingPaymentAddress();
+        const txHash = await this.performPayment(paymentAddress, amount, options?.memoData ?? null, { destinationTag: options?.destinationTag });
         const proof = await this.context.attestationProvider.proveXRPPayment(txHash, null);
         const res = await this.context.assetManager.executeDirectMinting(proof, { from: options?.executor ?? this.address });
         return [res, txHash] as const;

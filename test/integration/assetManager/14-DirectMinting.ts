@@ -138,7 +138,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
     describe("Direct minting by payment reference or tag", () => {
         it("direct mint (with payment reference) and check fees", async () => {
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             //
             const totalMintingAmount = context.convertLotsToUBA(3);
             const { expectedMintingFee, expectedExecutorFee } = await calculateMintingFees(totalMintingAmount);
@@ -164,7 +164,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
         it("direct mint and then redeem through agent", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
             // add agent collateral and allow return from core vault - we don't need available agents
             await agent.depositCollateralLots(100);
@@ -197,7 +197,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
 
         it("direct mint by reserving tag and setting recipient", async () => {
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             //
             const totalMintingAmount = context.convertLotsToUBA(3);
             // reserve minting tag and set recipient
@@ -219,7 +219,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
     describe("Restrictions on allowed executors for direct minting", () => {
         it("set the executor in tag manager and it should be the only one allowed for minting", async () => {
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             //
             const totalMintingAmount = context.convertLotsToUBA(3);
             // reserve minting tag and set recipient
@@ -243,7 +243,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
 
         it("set the allowed executor in memo data and it should be the only one allowed for minting", async () => {
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             //
             const totalMintingAmount = context.convertLotsToUBA(3);
             // mint some fAssets with executor specified in memo
@@ -259,7 +259,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
 
         it("proof requester can set the allowed executor in proof request and it should be the only one allowed to present proof", async () => {
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             //
             const totalMintingAmount = context.convertLotsToUBA(3);
             // mint some fAssets with executor specified in memo
@@ -277,7 +277,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
     describe("Invalid direct minting attempts", () => {
         it("should fail minting if payment is to invalid address", async () => {
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             // mint some fAssets with executor specified in memo
             const paymentReference = PaymentReference.directMinting(minter.address);
             const txHash = await minter.performPayment(underlyingMinter2, context.convertLotsToUBA(3), paymentReference);
@@ -286,7 +286,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
 
         it("should fail minting if payment is failed", async () => {
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             // mint with zero amount
             const paymentReference = PaymentReference.directMinting(minter.address);
             const wallet = new MockChainWallet(mockChain);
@@ -296,7 +296,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
 
         it("should fail minting if payment is zero", async () => {
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             // mint with zero amount
             const paymentReference = PaymentReference.directMinting(minter.address);
             const txHash = await minter.performPayment(coreVaultUnderlyingAddress, 0, paymentReference);
@@ -313,7 +313,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 triggeringAccounts: [triggeringAccount],
             });
             // mint some fAssets
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             const paymentReference = PaymentReference.directMinting(minter.address);
             const txHash = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(3), paymentReference);
             const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
@@ -325,7 +325,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
 
         it("should fail minting with tag when payment has core vault donation tag", async () => {
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             // mint some fAssets with core vault donation tag
             const coreVaultDonationTag = Number(context.initSettings.coreVaultDonationTag);
             const txHash = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(3), null, { destinationTag: coreVaultDonationTag });
@@ -334,7 +334,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
 
         it("should fail minting with payment reference that corresponds to redemption", async () => {
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             // mint some fAssets with core vault donation tag
             const paymentReference = PaymentReference.redemption(33);
             const txHash = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(3), paymentReference);
@@ -345,7 +345,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
     describe("Direct minting to smart accounts", () => {
         it("should send minting to smart account manager if memo data is not recognized", async () => {
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             //
             const totalMintingAmount = context.convertLotsToUBA(3);
             // mint some fAssets with unrecognized memo data
@@ -359,7 +359,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
 
         it("should send minting to smart account manager if there is no memo data or tag", async () => {
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             //
             const totalMintingAmount = context.convertLotsToUBA(3);
             // mint some fAssets with unrecognized memo data
@@ -372,7 +372,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
 
         it("should send minting to smart account manager if the tag is invalid", async () => {
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             //
             const totalMintingAmount = context.convertLotsToUBA(3);
             // mint some fAssets with unrecognized memo data
@@ -387,7 +387,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
     describe("Edge cases for direct minting fees", () => {
         it("minter and executor get nothing if fee is smaller than minimum minting fee", async () => {
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             const totalMintingAmount = toBN(context.initSettings.directMintingMinimumFeeUBA).subn(1); // set amount just below minimum fee
             const paymentReference = PaymentReference.directMinting(minter.address);
             const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, paymentReference);
@@ -405,7 +405,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
 
         it("smart account manager does not get called when fee is smaller than minimum minting fee", async () => {
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             const totalMintingAmount = toBN(context.initSettings.directMintingMinimumFeeUBA).subn(1); // set amount just below minimum fee
             const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, null);
             const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
@@ -421,7 +421,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
 
         it("smart account manager should be called when fee equal to minimum minting fee", async () => {
-            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             const totalMintingAmount = toBN(context.initSettings.directMintingMinimumFeeUBA); // set amount just below minimum fee
             const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, null);
             const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
@@ -434,6 +434,227 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 txHash, null, minter.underlyingAddress, executorAddress1, totalMintingAmount
             );
             assertWeb3Equal(await context.fAsset.balanceOf(executorAddress1), 0);   // executor still gets 0
+        });
+    });
+
+    describe("Direct minting limits", () => {
+        it("should delay minting when hourly limit is exceeded", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // mint close to the hourly limit first (95 lots out of 100)
+            const [res1] = await minter.directMintRaw(context.convertLotsToUBA(95), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            expectEvent(res1, 'DirectMintingExecuted');
+            // try to mint 10 more lots - should be delayed as it exceeds the 100 lot hourly limit
+            const totalMintingAmount = context.convertLotsToUBA(10);
+            const [res2, txHash2] = await minter.directMintRaw(totalMintingAmount, {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            expectEvent.notEmitted(res2, 'DirectMintingExecuted');
+            const delayedEvent = requiredEventArgs(res2, 'DirectMintingDelayed');
+            assertWeb3Equal(delayedEvent.transactionId, txHash2);
+            assertWeb3Equal(delayedEvent.amount, totalMintingAmount);
+            // check that delay state was recorded
+            const delayState = await context.assetManager.directMintingDelayState(txHash2);
+            assert.isTrue(delayState[0]); // _isDelayed
+            assert.isFalse(delayState[1]); // _canBeExecuted
+            assertWeb3Equal(delayState[2], delayedEvent.executionAllowedAt); // _allowedAt
+        });
+
+        it("should allow executing delayed minting after delay period", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // mint close to the hourly limit first
+            await minter.directMintRaw(context.convertLotsToUBA(95), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            // make another payment that will be delayed
+            const totalMintingAmount = context.convertLotsToUBA(10);
+            const [res2, txHash2] = await minter.directMintRaw(totalMintingAmount, {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            const delayedEvent = requiredEventArgs(res2, 'DirectMintingDelayed');
+            // advance time past the delay
+            await time.increaseTo(delayedEvent.executionAllowedAt);
+            // now execution should succeed
+            const proof2 = await context.attestationProvider.proveXRPPayment(txHash2, null);
+            const res3 = await context.assetManager.executeDirectMinting(proof2, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res3, 'DirectMintingExecuted');
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
+        });
+
+        it("should fail when trying to execute delayed minting before delay is over", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // mint close to the hourly limit first
+            await minter.directMintRaw(context.convertLotsToUBA(95), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            // make another payment that will be delayed
+            const totalMintingAmount = context.convertLotsToUBA(10);
+            const [res2, txHash2] = await minter.directMintRaw(totalMintingAmount, {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            const delayedEvent = requiredEventArgs(res2, 'DirectMintingDelayed');
+            // try to execute again before delay is over - should fail
+            const proof2 = await context.attestationProvider.proveXRPPayment(txHash2, null);
+            await expectRevert.custom(
+                context.assetManager.executeDirectMinting(proof2, { from: executorAddress1 }),
+                "DirectMintingStillDelayed",
+                [delayedEvent.executionAllowedAt]
+            );
+        });
+
+        it("should delay minting when daily limit is exceeded", async () => {
+            const minter1 = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const minter2 = await Minter.createTest(context, minterAddress2, underlyingMinter2, context.convertLotsToUBA(200));
+            const minter3 = await Minter.createTest(context, minterAddress3, underlyingMinter3, context.convertLotsToUBA(2000));
+            // mint in batches that stay under hourly limit but exceed daily limit
+            // Batch 1: 95 lots
+            const [res1] = await minter1.directMintRaw(context.convertLotsToUBA(95), {
+                memoData: PaymentReference.directMinting(minter1.address),
+                executor: executorAddress1
+            });
+            expectEvent(res1, 'DirectMintingExecuted');
+            // Wait 1 hour to reset hourly limit
+            await time.increase(HOURS);
+            // Batch 2: 95 lots (total: 190)
+            const [res2] = await minter2.directMintRaw(context.convertLotsToUBA(95), {
+                memoData: PaymentReference.directMinting(minter2.address),
+                executor: executorAddress1
+            });
+            expectEvent(res2, 'DirectMintingExecuted');
+            // Wait 1 hour again
+            await time.increase(HOURS);
+            // Batch 3: Continue minting until we approach daily limit (need 10 more batches to reach ~1000 lots)
+            for (let i = 0; i < 9; i++) {
+                await minter3.directMintRaw(context.convertLotsToUBA(90), {
+                    memoData: PaymentReference.directMinting(minter3.address),
+                    executor: executorAddress1
+                });
+                await time.increase(HOURS);
+            }
+            // Now we should be close to 1000 lots minted in 24 hours
+            // Try to mint 10 more lots - should be delayed due to daily limit
+            const [res3, txHash3] = await minter3.directMintRaw(context.convertLotsToUBA(10), {
+                memoData: PaymentReference.directMinting(minter3.address),
+                executor: executorAddress1
+            });
+            expectEvent.notEmitted(res3, 'DirectMintingExecuted');
+            const delayedEvent = requiredEventArgs(res3, 'DirectMintingDelayed');
+            assertWeb3Equal(delayedEvent.transactionId, txHash3);
+            assertWeb3Equal(delayedEvent.amount, context.convertLotsToUBA(10));
+        });
+
+        it("should delay minting when either hourly or daily limit is exceeded", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // mint up to hourly limit
+            await minter.directMintRaw(context.convertLotsToUBA(95), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            // try to mint again - should be delayed due to hourly limit
+            const [res2] = await minter.directMintRaw(context.convertLotsToUBA(10), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            expectEvent(res2, 'DirectMintingDelayed');
+        });
+
+        it("governance can unblock delayed mintings", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // exceed the hourly limit to create a delayed minting
+            await minter.directMintRaw(context.convertLotsToUBA(95), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            // create delayed minting
+            const totalMintingAmount = context.convertLotsToUBA(10);
+            const [res2, txHash2] = await minter.directMintRaw(totalMintingAmount, {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            expectEvent(res2, 'DirectMintingDelayed');
+            // wait a bit and then get the current time for unblocking
+            await time.increase(10);
+            const currentTime = await time.latest();
+            await context.assetManager.unblockDirectMintingsUntil(currentTime, { from: governance });
+            // now execution should succeed even though delay period hasn't passed
+            const proof2 = await context.attestationProvider.proveXRPPayment(txHash2, null);
+            const res3 = await context.assetManager.executeDirectMinting(proof2, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res3, 'DirectMintingExecuted');
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
+        });
+
+        it("should delay large minting separately from regular limits", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(2000));
+            // make a payment above the large minting threshold (500 lots threshold, so mint 501 lots) - should be delayed
+            const [res, txHash] = await minter.directMintRaw(context.convertLotsToUBA(501), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            expectEvent.notEmitted(res, 'DirectMintingExecuted');
+            const delayedEvent = requiredEventArgs(res, 'LargeDirectMintingDelayed');
+            assertWeb3Equal(delayedEvent.transactionId, txHash);
+            assertWeb3Equal(delayedEvent.amount, context.convertLotsToUBA(501));
+            // check delay state
+            const delayState = await context.assetManager.directMintingDelayState(txHash);
+            assert.isTrue(delayState[0]); // _isDelayed
+            assert.isFalse(delayState[1]); // _canBeExecuted
+        });
+
+        it("should allow executing large delayed minting after delay period", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(2000));
+            // make a payment above the large minting threshold (501 lots)
+            const [res, txHash] = await minter.directMintRaw(context.convertLotsToUBA(501), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            const delayedEvent = requiredEventArgs(res, 'LargeDirectMintingDelayed');
+            // advance time past the delay
+            await time.increaseTo(delayedEvent.executionAllowedAt);
+            // now execution should succeed
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            const res2 = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res2, 'DirectMintingExecuted');
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, context.convertLotsToUBA(501));
+        });
+
+        it("should mint to smart account when delayed minting has no valid payment reference", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // exceed the hourly limit to create a delayed minting
+            await minter.directMintRaw(context.convertLotsToUBA(95), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            // create delayed minting to smart account (no payment reference)
+            const totalMintingAmount = context.convertLotsToUBA(10);
+            const [res2, txHash2] = await minter.directMintRaw(totalMintingAmount, {
+                executor: executorAddress1
+            });
+            expectEvent(res2, 'DirectMintingDelayed');
+            // advance time and execute
+            const delayedEvent = requiredEventArgs(res2, 'DirectMintingDelayed');
+            await time.increaseTo(delayedEvent.executionAllowedAt);
+            const proof2 = await context.attestationProvider.proveXRPPayment(txHash2, null);
+            const res3 = await context.assetManager.executeDirectMinting(proof2, { from: executorAddress1 });
+            // should mint to smart account
+            const mintingExecuted = requiredEventArgs(res3, 'DirectMintingExecutedToSmartAccount');
+            const smartAccountReceived = requiredEventArgsFrom(res3, smartAccountManager, 'MintedToSmartAccount');
+            await verifyDirectMintingToSmartAccounts(mintingExecuted, smartAccountReceived, txHash2, null, minter.underlyingAddress, executorAddress1, totalMintingAmount);
+        });
+
+        it("should fail unblocking with future timestamp", async () => {
+            const futureTime = (await time.latest()).addn(HOURS);
+            await expectRevert.custom(
+                context.assetManager.unblockDirectMintingsUntil(futureTime, { from: governance }),
+                "TimestampMustBeInThePast",
+                []
+            );
         });
     });
 });
