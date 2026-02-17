@@ -2060,6 +2060,19 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert.custom(r, "NotAttached", []);
         });
 
+        it("cannot direct mint if asset manager is not attached", async () => {
+            await assetManager.attachController(false, { from: assetManagerController });
+            const paymentAmount = toBNExp(100, 18);
+            chain.mint("random_address", paymentAmount);
+            const paymentAddress = await assetManager.directMintingPaymentAddress();
+            const txHash = await wallet.addTransaction("random_address", paymentAddress, paymentAmount,
+                PaymentReference.directMinting(accounts[5]));
+            const proof = await attestationProvider.proveXRPPayment(txHash, null);
+            // direct mint
+            const res = assetManager.executeDirectMinting(proof, { from: accounts[5] });
+            await expectRevert.custom(res, "NotAttached", []);
+        });
+
         it("random address shouldn't be able to add collateral token", async () => {
             const collateral = deepCopy(web3DeepNormalize(collaterals[1]));
             collateral.token = (await ERC20Mock.new("New Token", "NT")).address;

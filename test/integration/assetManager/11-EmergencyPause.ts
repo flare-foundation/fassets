@@ -280,6 +280,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert.custom(challenger.illegalPaymentChallenge(agent, tx1), "EmergencyPauseActive", []);
             await expectRevert.custom(challenger.doublePaymentChallenge(agent, tx1, tx2), "EmergencyPauseActive", []);
             await expectRevert.custom(challenger.freeBalanceNegativeChallenge(agent, [tx1, tx2]), "EmergencyPauseActive", []);
+            // cannot direct mint
+            await expectRevert.custom(minter.directMint(context.convertLotsToUBA(10)), "EmergencyPauseActive", []);
         });
     });
 });
