@@ -127,11 +127,12 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         uint64 amountAmg = Conversion.convertUBAToAmg(_amount);
         if (amountAmg >= state.largeMintingThresholdAmg) {
             (bool delayed, uint256 allowedAt) = state.largeMintingLimiter.recordMinting(amountAmg);
-            if (delayed) {
-                _addDelayedMinting(_transactionId, allowedAt);
-                emit LargeDirectMintingDelayed(_transactionId, _amount, allowedAt);
-                return true;
-            }
+            // largeMintingThresholdAmg equals largeAmountLimiter.maxMintingPerWindow, so large mintings
+            // should always be delayed
+            assert(delayed);
+            _addDelayedMinting(_transactionId, allowedAt);
+            emit LargeDirectMintingDelayed(_transactionId, _amount, allowedAt);
+            return true;
         } else {
             (bool delayedHourly, uint256 allowedAtHourly) = state.hourlyLimiter.recordMinting(amountAmg);
             (bool delayedDaily, uint256 allowedAtDaily) = state.dailyLimiter.recordMinting(amountAmg);

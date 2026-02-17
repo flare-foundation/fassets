@@ -624,15 +624,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
         it("should delay large minting separately from regular limits", async () => {
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(2000));
-            // make a payment above the large minting threshold (500 lots threshold, so mint 501 lots) - should be delayed
-            const [res, txHash] = await minter.directMintRaw(context.convertLotsToUBA(501), {
+            // make a payment above the large minting threshold (500 lots threshold) - should be delayed
+            const [res, txHash] = await minter.directMintRaw(context.convertLotsToUBA(500), {
                 memoData: PaymentReference.directMinting(minter.address),
                 executor: executorAddress1
             });
             expectEvent.notEmitted(res, 'DirectMintingExecuted');
             const delayedEvent = requiredEventArgs(res, 'LargeDirectMintingDelayed');
             assertWeb3Equal(delayedEvent.transactionId, txHash);
-            assertWeb3Equal(delayedEvent.amount, context.convertLotsToUBA(501));
+            assertWeb3Equal(delayedEvent.amount, context.convertLotsToUBA(500));
             // check delay state
             const delayState = await context.assetManager.directMintingDelayState(txHash);
             assert.isTrue(delayState[0]); // _isDelayed
@@ -797,6 +797,20 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // newFeeBIPS must be > currentFeeBIPS * 4 + 100
             const newFeeBIPS = currentFeeBIPS.muln(4).addn(101);
             const newMinimumFeeUBA = currentMinimumFeeUBA;
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingFee(newFeeBIPS, newMinimumFeeUBA, { from: governance }),
+                "IncreaseTooBig",
+                []
+            );
+        });
+
+        it("should reject minimum minting fee increase that is too large", async () => {
+            const currentFeeBIPS = toBN(await context.assetManager.getDirectMintingFeeBIPS());
+            const currentMinimumFeeUBA = toBN(await context.assetManager.getDirectMintingMinimumFeeUBA());
+            // try to increase by more than 4x + 100 BIPS
+            // newFeeBIPS must be > currentFeeBIPS * 4 + 100
+            const newFeeBIPS = currentFeeBIPS;
+            const newMinimumFeeUBA = currentMinimumFeeUBA.muln(4).add(toBNExp(1, 15));
             await expectRevert.custom(
                 context.assetManager.setDirectMintingFee(newFeeBIPS, newMinimumFeeUBA, { from: governance }),
                 "IncreaseTooBig",

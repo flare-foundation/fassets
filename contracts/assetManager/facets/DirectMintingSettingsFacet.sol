@@ -224,7 +224,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         rateLimited
     {
         DirectMinting.State storage state = DirectMinting.getState();
-        uint64 currentThresholdAmg = state.largeMintingLimiter.maxMintingPerWindow;
+        uint64 currentThresholdAmg = state.largeMintingThresholdAmg;
         uint64 currentDelaySeconds = state.largeMintingLimiter.windowSizeSeconds;
         uint64 newThresholdAmg = Conversion.convertUBAToAmg(_largeMintingThresholdUBA);
         // validate
@@ -234,6 +234,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         require(_largeMintingDelaySeconds <= currentDelaySeconds * 4 + 12 hours, IncreaseTooBig());
         require(_largeMintingDelaySeconds >= currentDelaySeconds / 4, DecreaseTooBig());
         // update
+        state.largeMintingThresholdAmg = newThresholdAmg;
         state.largeMintingLimiter.setMaxMintingPerWindow(newThresholdAmg);
         state.largeMintingLimiter.setWindowSizeSeconds(_largeMintingDelaySeconds.toUint64());
         emit IAssetManagerEvents.SettingChanged("directMintingLargeMintingThresholdUBA", _largeMintingThresholdUBA);

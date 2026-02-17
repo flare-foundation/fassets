@@ -38,7 +38,7 @@ library MintingRateLimiter {
         // record minting (even if it is going to be delayed)
         _state.mintedInCurrentWindow = _state.mintedInCurrentWindow + _amount;
         // delay if necessary
-        if (_state.mintedInCurrentWindow <= _state.maxMintingPerWindow) {
+        if (_state.mintedInCurrentWindow < _state.maxMintingPerWindow) {
             _delayed = false;
             _allowedAt = block.timestamp;
         } else {
