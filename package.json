@@ -31,7 +31,7 @@
     "tsrun": "yarn ts-node --files=./type-extensions.ts",
     "---------COMPILE---SCRIPTS": "",
     "clean": "env rm -rf cache artifacts cache-forge artifacts-forge build build-info typechain typechain-truffle",
-    "clean-all": "yarn clean && env rm -rf node_modules",
+    "clean-all": "yarn clean && env rm -rf node_modules/* node_modules/.*",
     "compile": "yarn hardhat compile && yarn typechain-truffle-v5",
     "c": "yarn compile",
     "cl": "yarn compile && yarn lint",

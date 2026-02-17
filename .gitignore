@@ -65,6 +65,11 @@ deployment/deploys/**/*-user*.json
 .env
 .idea
 
+## scratch files
+.scratch/
+.scratchfile
+.scratchfile.*
+
 ## Slither working files
 slither.json
 
