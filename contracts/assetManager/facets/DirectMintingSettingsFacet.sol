@@ -32,7 +32,6 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
     error DecreaseTooBig();
     error ValueTooHigh();
     error TimestampMustBeInThePast();
-    error InvalidPoolCollateralSetting();
     error DiamondNotInitialized();
 
     struct InitParams {
@@ -368,7 +367,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         CollateralTypeInt.Data storage poolCollateral = Globals.getPoolCollateral();
         // pool collateral must not use direct price pair for this to work
         // (it never makes sense anyway, as direct price pairs are only for stablecoins)
-        require(!poolCollateral.directPricePair, InvalidPoolCollateralSetting());
+        assert(!poolCollateral.directPricePair);
         return poolCollateral.assetFtsoSymbol;
     }
 
