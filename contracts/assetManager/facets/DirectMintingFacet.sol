@@ -33,6 +33,8 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
     error DirectMintingStillDelayed(uint256 allowedAt);
     error MissingMintingTagManager();
     error MissingSmartAccountManager();
+    error DirectMintingNotUnblocked();
+    error DirectMintingNotDelayed();
 
     function executeDirectMinting(
         IXRPPayment.Proof calldata _payment
@@ -57,10 +59,12 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         require(address(state.mintingTagManager) != address(0), MissingMintingTagManager());
         require(address(state.smartAccountManager) != address(0), MissingSmartAccountManager());
         (bool mintToSmartAccount, address recipient, address allowedExecutor) = _decodeTarget(_payment);
-        require(allowedExecutor == address(0) || allowedExecutor == msg.sender, InvalidExecutor());
+        require(allowedExecutor == address(0) || allowedExecutor == msg.sender || _othersCanExecute(_payment),
+            InvalidExecutor());
         // check rate limits
-        bool mintingDelayed = _checkRateLimits(_payment.data.requestBody.transactionId, receivedAmount);
-        if (mintingDelayed) {
+        DirectMintingDelayState mintingDelayed =
+            _checkRateLimits(_payment.data.requestBody.transactionId, receivedAmount);
+        if (mintingDelayed == DirectMintingDelayState.Delayed) {
             return;
         }
         // mark payment used
@@ -85,6 +89,23 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         }
     }
 
+    /**
+     * This method is not strictly necessary to allow an unblocked delayed minting to be executed.
+     * However, if the minter has set an allowed executor, it has the exclusive right
+     * to execute minting for fixed time after the minting is allowed to execute. This method makes sure
+     * that the exclusive period begins from the moment the minting was unblocked, not from later allowedAt.
+     * @param _transactionId transaction id of the delayed minting to mark as allowed
+     */
+    function markUnblockedDirectMintingAllowed(bytes32 _transactionId)
+        external
+    {
+        DirectMinting.State storage state = DirectMinting.getState();
+        DirectMinting.DelayedMinting storage delayed = state.delayedMintings[_transactionId];
+        require(delayed.allowedAt != 0 && delayed.allowedAt > block.timestamp, DirectMintingNotDelayed());
+        require(delayed.startedAt < state.unblockMintingsUntilTimestamp, DirectMintingNotUnblocked());
+        delayed.allowedAt = state.mintingsUnblockedAt;
+    }
+
     function directMintingPaymentAddress()
         external view
         returns (string memory)
@@ -94,13 +115,11 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
 
     function directMintingDelayState(bytes32 _transactionId)
         external view
-        returns (bool _isDelayed, bool _canBeExecuted, uint256 _allowedAt, uint256 _startedAt)
+        returns (DirectMintingDelayState _delayState, uint256 _allowedAt, uint256 _startedAt)
     {
         DirectMinting.State storage state = DirectMinting.getState();
         DirectMinting.DelayedMinting storage delayed = state.delayedMintings[_transactionId];
-        _isDelayed = delayed.allowedAt != 0;
-        _canBeExecuted = _isDelayed &&
-            (block.timestamp >= delayed.allowedAt || delayed.startedAt < state.unblockMintingsUntilTimestamp);
+        _delayState = _getDelayState(delayed);
         _allowedAt = delayed.allowedAt;
         _startedAt = delayed.startedAt;
     }
@@ -109,7 +128,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
 
     function _checkRateLimits(bytes32 _transactionId, uint256 _amount)
         private
-        returns (bool _delayed)
+        returns (DirectMintingDelayState)
     {
         DirectMinting.State storage state = DirectMinting.getState();
         // already delayed?
@@ -119,9 +138,8 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
             bool mintingsUnblocked = alreadyDelayed.startedAt < state.unblockMintingsUntilTimestamp;
             // initial delay emits event, but calling while still delayed just reverts to avoid multiple events
             require(delayFinished || mintingsUnblocked, DirectMintingStillDelayed(alreadyDelayed.allowedAt));
-            // delay finished - delete delay state and allow execution
-            delete state.delayedMintings[_transactionId];
-            return false;
+            // delay finished - allow execution
+            return DirectMintingDelayState.Released;
         }
         // large mintings have separate limiter
         uint64 amountAmg = Conversion.convertUBAToAmg(_amount);
@@ -132,7 +150,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
             assert(delayed);
             _addDelayedMinting(_transactionId, allowedAt);
             emit LargeDirectMintingDelayed(_transactionId, _amount, allowedAt);
-            return true;
+            return DirectMintingDelayState.Delayed;
         } else {
             (bool delayedHourly, uint256 allowedAtHourly) = state.hourlyLimiter.recordMinting(amountAmg);
             (bool delayedDaily, uint256 allowedAtDaily) = state.dailyLimiter.recordMinting(amountAmg);
@@ -140,10 +158,10 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
                 uint256 allowedAt = Math.max(allowedAtHourly, allowedAtDaily);
                 _addDelayedMinting(_transactionId, allowedAt);
                 emit DirectMintingDelayed(_transactionId, _amount, allowedAt);
-                return true;
+                return DirectMintingDelayState.Delayed;
             }
         }
-        return false;
+        return DirectMintingDelayState.NotDelayed;
     }
 
     function _addDelayedMinting(bytes32 _transactionId, uint256 _allowedAt)
@@ -154,6 +172,20 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
             startedAt: block.timestamp.toUint64(),
             allowedAt: _allowedAt.toUint64()
         });
+    }
+
+    function _getDelayState(DirectMinting.DelayedMinting storage _delayed)
+        private view
+        returns (DirectMintingDelayState)
+    {
+        DirectMinting.State storage state = DirectMinting.getState();
+        if (_delayed.allowedAt == 0) {
+            return DirectMintingDelayState.NotDelayed;
+        } else if (block.timestamp >= _delayed.allowedAt || _delayed.startedAt < state.unblockMintingsUntilTimestamp) {
+            return DirectMintingDelayState.Released;
+        } else {
+            return DirectMintingDelayState.Delayed;
+        }
     }
 
     function _decodeTarget(IXRPPayment.Proof calldata _payment)
@@ -273,5 +305,23 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         // prioritize system fee over executor fee
         uint256 executorFeeUBA = Conversion.convertAmgToUBA(state.executorFeeAmg);
         _executorFeeUBA = Math.min(executorFeeUBA, _receivedAmount - _mintingFeeUBA);
+    }
+
+    function _othersCanExecute(IXRPPayment.Proof calldata _payment)
+        private view
+        returns (bool)
+    {
+        DirectMinting.State storage state = DirectMinting.getState();
+        DirectMinting.DelayedMinting storage delayed = state.delayedMintings[_payment.data.requestBody.transactionId];
+        DirectMintingDelayState delayState = _getDelayState(delayed);
+        if (delayState == DirectMintingDelayState.NotDelayed) {
+            uint256 currentUnderlyingTimestamp = AssetManagerState.get().currentUnderlyingBlockTimestamp;
+            uint256 paymentTimestamp = _payment.data.responseBody.blockTimestamp;
+            // if not delayed, others can execute if the payment is old enough compared to current underlying block
+            return currentUnderlyingTimestamp >= paymentTimestamp + state.othersCanExecuteAfterSeconds;
+        } else {
+            // if delayed (and released), others can execute if the time since the execution was allowed is long enough
+            return block.timestamp >= delayed.allowedAt + state.othersCanExecuteAfterSeconds;
+        }
     }
 }

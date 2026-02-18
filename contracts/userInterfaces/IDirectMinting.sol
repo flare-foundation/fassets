@@ -8,6 +8,12 @@ import {IXRPPayment} from "../fdc/mockInterface/IXRPPayment.sol";
  * Direct minting interface.
  */
 interface IDirectMinting {
+    enum DirectMintingDelayState {
+        NotDelayed,
+        Delayed,
+        Released
+    }
+
     // Events
 
     event DirectMintingExecuted(
@@ -55,6 +61,16 @@ interface IDirectMinting {
         external;
 
     /**
+     * This method is not strictly necessary to allow an unblocked delayed minting to be executed.
+     * However, if the minter has set an allowed executor, it has the exclusive right
+     * to execute minting for fixed time after the minting is allowed to execute. This method makes sure
+     * that the exclusive period begins from the moment the minting was unblocked, not from later allowedAt.
+     * @param _transactionId transaction id of the delayed minting to mark as allowed
+     */
+    function markUnblockedDirectMintingAllowed(bytes32 _transactionId)
+        external;
+
+    /**
      * Gets the payment address to which the underlying assets must be sent for direct minting.
      */
     function directMintingPaymentAddress()
@@ -64,12 +80,11 @@ interface IDirectMinting {
     /**
      * Gets the delay state of a direct minting.
      * @param _transactionId the direct minting underlying payment transaction id
-     * @return _isDelayed whether the minting is delayed
-     * @return _canBeExecuted whether the minting can be executed now
+     * @return _delayState the delay state of the direct minting
      * @return _allowedAt the timestamp at which the minting can be executed
      * @return _startedAt the timestamp at which the minting was started
      */
     function directMintingDelayState(bytes32 _transactionId)
         external view
-        returns (bool _isDelayed, bool _canBeExecuted, uint256 _allowedAt, uint256 _startedAt);
+        returns (DirectMintingDelayState _delayState, uint256 _allowedAt, uint256 _startedAt);
 }

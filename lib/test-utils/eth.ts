@@ -1,3 +1,12 @@
+export function transactionReceipt(tx: Truffle.TransactionResponse<Truffle.AnyEvent>): TransactionReceipt {
+    return tx.receipt as TransactionReceipt;
+}
+
+export async function transactionTimestamp(tx: Truffle.TransactionResponse<Truffle.AnyEvent>): Promise<number> {
+    const receipt = tx.receipt as TransactionReceipt;
+    const block = await web3.eth.getBlock(receipt.blockNumber);
+    return Number(block.timestamp);
+}
 
 /**
  * @description Calc gas cost of a eth transaction.

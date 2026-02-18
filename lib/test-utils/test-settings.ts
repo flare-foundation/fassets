@@ -155,6 +155,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         directMintingMinimumFeeUBA: toBNExp(0.01 * ci.lotSize, ci.decimals),
         directMintingFeeBIPS: toBIPS("1%"),
         directMintingExecutorFeeUBA: toBNExp(0.0005 * ci.lotSize, ci.decimals),
+        directMintingOthersCanExecuteAfterSeconds: 2 * HOURS,
         directMintingHourlyLimitUBA: toBNExp(100 * ci.lotSize, ci.decimals),
         directMintingDailyLimitUBA: toBNExp(1000 * ci.lotSize, ci.decimals),
         directMintingLargeMintingThresholdUBA: toBNExp(500 * ci.lotSize, ci.decimals),

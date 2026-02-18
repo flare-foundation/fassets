@@ -7,16 +7,17 @@ import { MockCoreVaultBot } from "../../../lib/test-utils/actors/MockCoreVaultBo
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { executeTimelockedGovernanceCall } from "../../../lib/test-utils/contract-test-helpers";
+import { transactionTimestamp } from "../../../lib/test-utils/eth";
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { assignMintingTagManager, assignSmartAccountManagerMock } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
-import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
+import { assertWeb3Compare, assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
 import { TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { ContractWithEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BN_ONE, DAYS, HOURS, joinHexBytes, MAX_BIPS, requireNotNull, toBN, toBNExp, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { BN_ONE, DAYS, deepFormat, HOURS, joinHexBytes, MAX_BIPS, MINUTES, requireNotNull, toBN, toBNExp, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { CoreVaultManagerInstance, DirectMintingSettingsFacetInstance, MintingTagManagerInstance, SmartAccountManagerMockInstance } from "../../../typechain-truffle";
 import { DirectMintingExecutedToSmartAccount } from "../../../typechain-truffle/DirectMintingFacet";
@@ -24,6 +25,12 @@ import { DirectMintingExecuted } from "../../../typechain-truffle/IIAssetManager
 import { MintedToSmartAccount } from "../../../typechain-truffle/SmartAccountManagerMock";
 
 export type SmartAccountManagerMockEvents = import('../../../typechain-truffle/SmartAccountManagerMock').AllEvents;
+
+enum DirectMintingDelayState {
+    NotDelayed = 0,
+    Delayed = 1,
+    Released = 2
+}
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
     const governance = accounts[10];
@@ -275,6 +282,28 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
             await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
         });
+
+        it("after othersCanExecuteAfterSeconds, anyone can execute even with allowed executor set", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            //
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            // mint some fAssets with executor specified in memo
+            const memoData = PaymentReference.directMintingEx(minter.address, executorAddress1);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, memoData);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            // initially, only allowed executor can execute
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress2 }), "InvalidExecutor", []);
+            // wait for othersCanExecuteAfterSeconds to pass (2 hours as per test settings)
+            const othersCanExecuteAfter = toBN(context.initSettings.directMintingOthersCanExecuteAfterSeconds);
+            await time.increase(othersCanExecuteAfter);
+            // also advance the mock chain time and update the underlying block in the contract
+            mockChain.skipTime(othersCanExecuteAfter.toNumber());
+            await context.updateUnderlyingBlock();
+            // now anyone can execute
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress2 });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress2, totalMintingAmount);
+        });
     });
 
     describe("Invalid direct minting attempts", () => {
@@ -501,9 +530,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(delayedEvent.amount, totalMintingAmount);
             // check that delay state was recorded
             const delayState = await context.assetManager.directMintingDelayState(txHash2);
-            assert.isTrue(delayState[0]); // _isDelayed
-            assert.isFalse(delayState[1]); // _canBeExecuted
-            assertWeb3Equal(delayState[2], delayedEvent.executionAllowedAt); // _allowedAt
+            assertWeb3Equal(delayState[0], DirectMintingDelayState.Delayed); // _delayState
+            assertWeb3Equal(delayState[1], delayedEvent.executionAllowedAt); // _allowedAt
         });
 
         it("should allow executing delayed minting after delay period", async () => {
@@ -636,8 +664,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(delayedEvent.amount, context.convertLotsToUBA(500));
             // check delay state
             const delayState = await context.assetManager.directMintingDelayState(txHash);
-            assert.isTrue(delayState[0]); // _isDelayed
-            assert.isFalse(delayState[1]); // _canBeExecuted
+            assertWeb3Equal(delayState[0], DirectMintingDelayState.Delayed); // _delayState
         });
 
         it("should allow executing large delayed minting after delay period", async () => {
@@ -679,6 +706,110 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const mintingExecuted = requiredEventArgs(res3, 'DirectMintingExecutedToSmartAccount');
             const smartAccountReceived = requiredEventArgsFrom(res3, smartAccountManager, 'MintedToSmartAccount');
             await verifyDirectMintingToSmartAccounts(mintingExecuted, smartAccountReceived, txHash2, null, minter.underlyingAddress, executorAddress1, totalMintingAmount);
+        });
+
+        it("delayed minting with allowed executor has exclusive execution window after release", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // exceed the hourly limit to create a delayed minting with allowed executor
+            await minter.directMintRaw(context.convertLotsToUBA(95), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            // create delayed minting with allowed executor
+            const totalMintingAmount = context.convertLotsToUBA(10);
+            const memoData = PaymentReference.directMintingEx(minter.address, executorAddress1);
+            const [res2, txHash2] = await minter.directMintRaw(totalMintingAmount, {
+                memoData,
+                executor: executorAddress1
+            });
+            const delayedEvent = requiredEventArgs(res2, 'DirectMintingDelayed');
+            // advance time past the delay
+            await time.increaseTo(delayedEvent.executionAllowedAt);
+            // after delay is finished, other executors still can't execute (exclusive window for allowed executor)
+            const proof2 = await context.attestationProvider.proveXRPPayment(txHash2, null);
+            await expectRevert.custom(
+                context.assetManager.executeDirectMinting(proof2, { from: executorAddress2 }),
+                "InvalidExecutor",
+                []
+            );
+            // allowed executor can execute
+            const res3 = await context.assetManager.executeDirectMinting(proof2, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res3, 'DirectMintingExecuted');
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
+            // after othersCanExecuteAfterSeconds passes from the allowedAt time, others could execute (if it wasn't already executed)
+        });
+
+        it("governance can unblock delayed minting and allowed executor can execute immediately", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // exceed the hourly limit to create a delayed minting with allowed executor
+            await minter.directMintRaw(context.convertLotsToUBA(95), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            // create delayed minting with allowed executor
+            const totalMintingAmount = context.convertLotsToUBA(10);
+            const memoData = PaymentReference.directMintingEx(minter.address, executorAddress1);
+            const [res2, txHash2] = await minter.directMintRaw(totalMintingAmount, {
+                memoData,
+                executor: executorAddress1
+            });
+            expectEvent(res2, 'DirectMintingDelayed');
+            // governance unblocks all mintings
+            await time.increase(10); // wait a bit before unblocking
+            const unblockTime = await time.latest();
+            await context.assetManager.unblockDirectMintingsUntil(unblockTime, { from: governance });
+            // minting is unblocked, allowed executor can execute immediately
+            const proof2 = await context.attestationProvider.proveXRPPayment(txHash2, null);
+            const res3 = await context.assetManager.executeDirectMinting(proof2, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res3, 'DirectMintingExecuted');
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
+        });
+
+        it("governance can unblock delayed minting and anybody can call markUnblockedDirectMintingAllowed to adjust allowedAt time", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // exceed the hourly limit to create a delayed minting with allowed executor
+            const [, txHash1] = await minter.directMintRaw(context.convertLotsToUBA(95), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            // markUnblockedDirectMintingAllowed should fail for the minting that is not delayed
+            await expectRevert.custom(context.assetManager.markUnblockedDirectMintingAllowed(txHash1, { from: executorAddress2 }),
+                "DirectMintingNotDelayed", []);
+            // create delayed minting with allowed executor
+            const totalMintingAmount = context.convertLotsToUBA(10);
+            const memoData = PaymentReference.directMintingEx(minter.address, executorAddress1);
+            const [res2, txHash2, proof2] = await minter.directMintRaw(totalMintingAmount, {
+                memoData,
+                executor: executorAddress1
+            });
+            expectEvent(res2, 'DirectMintingDelayed');
+            // before unblocking, markUnblockedDirectMintingAllowed should fail
+            await expectRevert.custom(context.assetManager.markUnblockedDirectMintingAllowed(txHash2, { from: executorAddress2 }),
+                "DirectMintingNotUnblocked", []);
+            // governance unblocks all mintings
+            await time.increase(10); // wait a bit before unblocking
+            const unblockTime = await time.latest();
+            const resUnblock = await context.assetManager.unblockDirectMintingsUntil(unblockTime, { from: governance });
+            const unblockedAt = await transactionTimestamp(resUnblock);
+            const delayState1 = await context.assetManager.directMintingDelayState(txHash2);
+            // mark unblocked unblocked minting allowed to adjust the allowedAt time to the unblocked time (can be called by anyone)
+            await context.assetManager.markUnblockedDirectMintingAllowed(txHash2, { from: executorAddress2 });
+            const delayState2 = await context.assetManager.directMintingDelayState(txHash2);
+            assertWeb3Compare(delayState2[1], "<=", Number(delayState1[1]) - 0.5 * HOURS);
+            assertWeb3Equal(delayState2[1], unblockedAt);
+            // now th minting is already allowed, so trying to mark it again as allowed should fail
+            await expectRevert.custom(context.assetManager.markUnblockedDirectMintingAllowed(txHash2, { from: executorAddress2 }),
+                "DirectMintingNotDelayed", []);
+            // after less than 2 hours only allowed executor can execute
+            const exclusivePeriodSec = Number(context.initSettings.directMintingOthersCanExecuteAfterSeconds);
+            await time.increaseTo(unblockedAt + exclusivePeriodSec - 10 * MINUTES);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof2, { from: executorAddress2 }),
+                "InvalidExecutor", []);
+            // after 2 hours anybody can execute
+            await time.increase(10 * MINUTES);
+            const res3 = await context.assetManager.executeDirectMinting(proof2, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res3, 'DirectMintingExecuted');
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
         });
 
         it("should fail unblocking with future timestamp", async () => {
@@ -743,6 +874,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 minimumMintingFeeUBA: context.initSettings.directMintingMinimumFeeUBA,
                 mintingFeeBIPS: context.initSettings.directMintingFeeBIPS,
                 executorFeeUBA: context.initSettings.directMintingExecutorFeeUBA,
+                othersCanExecuteAfterSeconds: context.initSettings.directMintingOthersCanExecuteAfterSeconds,
                 hourlyLimitUBA: context.initSettings.directMintingHourlyLimitUBA,
                 dailyLimitUBA: context.initSettings.directMintingDailyLimitUBA,
                 largeMintingThresholdUBA: context.initSettings.directMintingLargeMintingThresholdUBA,
@@ -1035,6 +1167,45 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             );
         });
 
+        it("should allow governance to change othersCanExecuteAfterSeconds within limits", async () => {
+            const currentSeconds = toBN(await context.assetManager.getDirectMintingOthersCanExecuteAfterSeconds());
+            // increase by 2x (within 4x + 1 hour limit)
+            const newSeconds = currentSeconds.muln(2);
+            await context.assetManager.setDirectMintingOthersCanExecuteAfterSeconds(newSeconds, { from: governance });
+            assertWeb3Equal(await context.assetManager.getDirectMintingOthersCanExecuteAfterSeconds(), newSeconds);
+        });
+
+        it("should reject othersCanExecuteAfterSeconds that is too high", async () => {
+            const tooHighSeconds = toBN(1 * DAYS + 1);
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingOthersCanExecuteAfterSeconds(tooHighSeconds, { from: governance }),
+                "ValueTooHigh",
+                []
+            );
+        });
+
+        it("should reject othersCanExecuteAfterSeconds increase that is too large", async () => {
+            const currentSeconds = toBN(await context.assetManager.getDirectMintingOthersCanExecuteAfterSeconds());
+            // try to increase by more than 4x + 1 hour
+            const newSeconds = currentSeconds.muln(4).addn(1 * HOURS + 1);
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingOthersCanExecuteAfterSeconds(newSeconds, { from: governance }),
+                "IncreaseTooBig",
+                []
+            );
+        });
+
+        it("should reject othersCanExecuteAfterSeconds decrease that is too large", async () => {
+            const currentSeconds = toBN(await context.assetManager.getDirectMintingOthersCanExecuteAfterSeconds());
+            // try to decrease by more than 1/4
+            const newSeconds = currentSeconds.divn(5);
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingOthersCanExecuteAfterSeconds(newSeconds, { from: governance }),
+                "DecreaseTooBig",
+                []
+            );
+        });
+
         it("changed hourly limit should affect minting behavior", async () => {
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             // reduce hourly limit to 50 lots
@@ -1108,6 +1279,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert.custom(context.assetManager.setDirectMintingFeeReceiver(accounts[82]), "OnlyGovernance", []);
             await expectRevert.custom(context.assetManager.setDirectMintingFee(currentFeeBIPS, currentMinimumFeeUBA), "OnlyGovernance", []);
             await expectRevert.custom(context.assetManager.setDirectMintingExecutorFee(currentExecutorFeeUBA), "OnlyGovernance", []);
+            await expectRevert.custom(context.assetManager.setDirectMintingOthersCanExecuteAfterSeconds(toBN(2 * HOURS)), "OnlyGovernance", []);
             await expectRevert.custom(context.assetManager.setDirectMintingHourlyLimitUBA(currentHourlyLimitUBA), "OnlyGovernance", []);
             await expectRevert.custom(context.assetManager.setDirectMintingDailyLimitUBA(currentDailyLimitUBA), "OnlyGovernance", []);
             await expectRevert.custom(context.assetManager.setDirectMintingLargeMintingThrottling(currentLargeMintingThresholdUBA, currentLargeMintingDelaySeconds), "OnlyGovernance", []);
@@ -1151,6 +1323,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 (governance) => context.assetManager.setDirectMintingExecutorFee(currentExecutorFeeUBA, { from: governance }));
             assert.equal(timelocked, true);
 
+            await time.increase(DAYS + 1);
+            const currentOthersCanExecuteAfterSeconds = toBN(await context.assetManager.getDirectMintingOthersCanExecuteAfterSeconds());
+            timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+                (governance) => context.assetManager.setDirectMintingOthersCanExecuteAfterSeconds(currentOthersCanExecuteAfterSeconds, { from: governance }));
+            assert.equal(timelocked, true);
+
             // methods with onlyImmediateGovernance are NOT timelocked
             await time.increase(DAYS + 1);
             timelocked = await executeTimelockedGovernanceCall(context.assetManager,
@@ -1172,6 +1350,61 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             timelocked = await executeTimelockedGovernanceCall(context.assetManager,
                 (governance) => context.assetManager.unblockDirectMintingsUntil(pastTimestamp, { from: governance }));
             assert.equal(timelocked, false);
+        });
+
+        it("all rateLimited setting methods should reject a second call within minUpdateRepeatTimeSeconds", async () => {
+            const currentFeeBIPS = toBN(await context.assetManager.getDirectMintingFeeBIPS());
+            const currentMinimumFeeUBA = toBN(await context.assetManager.getDirectMintingMinimumFeeUBA());
+            const currentExecutorFeeUBA = toBN(await context.assetManager.getDirectMintingExecutorFeeUBA());
+            const currentOthersCanExecuteAfterSeconds = toBN(await context.assetManager.getDirectMintingOthersCanExecuteAfterSeconds());
+            const currentHourlyLimitUBA = toBN(await context.assetManager.getDirectMintingHourlyLimitUBA());
+            const currentDailyLimitUBA = toBN(await context.assetManager.getDirectMintingDailyLimitUBA());
+            const currentLargeMintingThresholdUBA = toBN(await context.assetManager.getDirectMintingLargeMintingThresholdUBA());
+            const currentLargeMintingDelaySeconds = toBN(await context.assetManager.getDirectMintingLargeMintingDelaySeconds());
+
+            // helper: call a rateLimited method, then immediately call it again and expect TooCloseToPreviousUpdate
+            async function testRateLimited(firstCall: () => Promise<unknown>, secondCall: () => Promise<unknown>) {
+                await firstCall();
+                await expectRevert.custom(secondCall(), "TooCloseToPreviousUpdate", []);
+            }
+
+            // each method is independently rate limited (keyed by msg.sig), so we can test them all in sequence
+            await testRateLimited(
+                () => context.assetManager.setMintingTagManager(accounts[70], { from: governance }),
+                () => context.assetManager.setMintingTagManager(accounts[71], { from: governance }),
+            );
+            await testRateLimited(
+                () => context.assetManager.setSmartAccountManager(accounts[70], { from: governance }),
+                () => context.assetManager.setSmartAccountManager(accounts[71], { from: governance }),
+            );
+            await testRateLimited(
+                () => context.assetManager.setDirectMintingFeeReceiver(accounts[70], { from: governance }),
+                () => context.assetManager.setDirectMintingFeeReceiver(accounts[71], { from: governance }),
+            );
+            await testRateLimited(
+                () => context.assetManager.setDirectMintingFee(currentFeeBIPS, currentMinimumFeeUBA, { from: governance }),
+                () => context.assetManager.setDirectMintingFee(currentFeeBIPS, currentMinimumFeeUBA, { from: governance }),
+            );
+            await testRateLimited(
+                () => context.assetManager.setDirectMintingExecutorFee(currentExecutorFeeUBA, { from: governance }),
+                () => context.assetManager.setDirectMintingExecutorFee(currentExecutorFeeUBA, { from: governance }),
+            );
+            await testRateLimited(
+                () => context.assetManager.setDirectMintingOthersCanExecuteAfterSeconds(currentOthersCanExecuteAfterSeconds, { from: governance }),
+                () => context.assetManager.setDirectMintingOthersCanExecuteAfterSeconds(currentOthersCanExecuteAfterSeconds, { from: governance }),
+            );
+            await testRateLimited(
+                () => context.assetManager.setDirectMintingHourlyLimitUBA(currentHourlyLimitUBA, { from: governance }),
+                () => context.assetManager.setDirectMintingHourlyLimitUBA(currentHourlyLimitUBA, { from: governance }),
+            );
+            await testRateLimited(
+                () => context.assetManager.setDirectMintingDailyLimitUBA(currentDailyLimitUBA, { from: governance }),
+                () => context.assetManager.setDirectMintingDailyLimitUBA(currentDailyLimitUBA, { from: governance }),
+            );
+            await testRateLimited(
+                () => context.assetManager.setDirectMintingLargeMintingThrottling(currentLargeMintingThresholdUBA, currentLargeMintingDelaySeconds, { from: governance }),
+                () => context.assetManager.setDirectMintingLargeMintingThrottling(currentLargeMintingThresholdUBA, currentLargeMintingDelaySeconds, { from: governance }),
+            );
         });
     });
 });

@@ -42,6 +42,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         uint256 minimumMintingFeeUBA;
         uint256 mintingFeeBIPS;
         uint256 executorFeeUBA;
+        uint256 othersCanExecuteAfterSeconds;
         uint256 hourlyLimitUBA;
         uint256 dailyLimitUBA;
         uint256 largeMintingThresholdUBA;
@@ -77,6 +78,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         state.minimumMintingFeeAmg = Conversion.convertUBAToAmg(_params.minimumMintingFeeUBA);
         state.mintingFeeBIPS = _params.mintingFeeBIPS.toUint16();
         state.executorFeeAmg = Conversion.convertUBAToAmg(_params.executorFeeUBA);
+        state.othersCanExecuteAfterSeconds = _params.othersCanExecuteAfterSeconds.toUint64();
         state.hourlyLimiter.initialize(1 hours, Conversion.convertUBAToAmg(_params.hourlyLimitUBA));
         state.dailyLimiter.initialize(1 days, Conversion.convertUBAToAmg(_params.dailyLimitUBA));
         uint64 largeMintingThresholdAmg = Conversion.convertUBAToAmg(_params.largeMintingThresholdUBA);
@@ -104,6 +106,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         require(_timestamp < block.timestamp, TimestampMustBeInThePast());
         state.unblockMintingsUntilTimestamp =
             Math.max(state.unblockMintingsUntilTimestamp, _timestamp).toUint64();
+        state.mintingsUnblockedAt = block.timestamp.toUint64();
         emit IDirectMinting.DirectMintingsUnblocked(_timestamp);
     }
 
@@ -180,6 +183,21 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         // update
         state.executorFeeAmg = executorFeeAmg;
         emit IAssetManagerEvents.SettingChanged("executorFeeUBA", _executorFeeUBA);
+    }
+
+    function setDirectMintingOthersCanExecuteAfterSeconds(uint256 _seconds)
+        external
+        onlyGovernance
+        rateLimited
+    {
+        DirectMinting.State storage state = DirectMinting.getState();
+        // validate
+        require(_seconds <= 1 days, ValueTooHigh());
+        require(_seconds >= state.othersCanExecuteAfterSeconds / 4, DecreaseTooBig());
+        require(_seconds <= state.othersCanExecuteAfterSeconds * 4 + 1 hours, IncreaseTooBig());
+        // update
+        state.othersCanExecuteAfterSeconds = _seconds.toUint64();
+        emit IAssetManagerEvents.SettingChanged("directMintingOthersCanExecuteAfterSeconds", _seconds);
     }
 
     function setDirectMintingHourlyLimitUBA(uint256 _hourlyLimitUBA)
@@ -296,6 +314,14 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
     {
         DirectMinting.State storage state = DirectMinting.getState();
         return Conversion.convertAmgToUBA(state.executorFeeAmg);
+    }
+
+    function getDirectMintingOthersCanExecuteAfterSeconds()
+        external view
+        returns (uint256)
+    {
+        DirectMinting.State storage state = DirectMinting.getState();
+        return state.othersCanExecuteAfterSeconds;
     }
 
     function getDirectMintingLargeMintingThresholdUBA()

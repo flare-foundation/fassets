@@ -21,11 +21,13 @@ library DirectMinting {
         uint64 minimumMintingFeeAmg;
         uint16 mintingFeeBIPS;
         uint64 executorFeeAmg;
+        uint64 othersCanExecuteAfterSeconds;
         MintingRateLimiter.State hourlyLimiter;
         MintingRateLimiter.State dailyLimiter;
         MintingRateLimiter.State largeMintingLimiter;
         uint64 largeMintingThresholdAmg;
         uint64 unblockMintingsUntilTimestamp;
+        uint64 mintingsUnblockedAt;
         mapping (bytes32 transactionId => DelayedMinting) delayedMintings;
     }
 

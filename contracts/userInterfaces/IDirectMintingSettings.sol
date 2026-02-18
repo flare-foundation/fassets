@@ -37,6 +37,9 @@ interface IDirectMintingSettings {
     function setDirectMintingDailyLimitUBA(uint256 _dailyLimitUBA)
         external;
 
+    function setDirectMintingOthersCanExecuteAfterSeconds(uint256 _seconds)
+        external;
+
     function setDirectMintingLargeMintingThrottling(
         uint256 _largeMintingThresholdUBA,
         uint256 _largeMintingDelaySeconds
@@ -69,6 +72,10 @@ interface IDirectMintingSettings {
         returns (uint256);
 
     function getDirectMintingExecutorFeeUBA()
+        external view
+        returns (uint256);
+
+    function getDirectMintingOthersCanExecuteAfterSeconds()
         external view
         returns (uint256);
 
