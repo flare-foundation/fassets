@@ -2,6 +2,7 @@
 pragma solidity ^0.8.27;
 
 import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IXRPPayment} from "../../fdc/mockInterface/IXRPPayment.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
@@ -32,10 +33,32 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
     using Agent for Agent.State;
     using PaymentConfirmations for PaymentConfirmations.State;
 
+    enum HasDestinationTag {
+        Unsupported,
+        No,
+        Yes
+    }
+
+    struct RedemptionPaymentData {
+        uint256 requestId;
+        bytes32 transactionId;
+        bytes32 paymentReference;
+        uint256 blockNumber;
+        uint256 blockTimestamp;
+        bytes32 sourceAddressHash;
+        bytes32 intendedReceivingAddressHash;
+        int256 spentAmount;
+        int256 receivedAmount;
+        uint8 status;
+        HasDestinationTag hasDestinationTag;
+        uint256 destinationTag;
+    }
+
     error InvalidReceivingAddressSelected();
     error SourceNotAgentsUnderlyingAddress();
     error RedemptionPaymentTooOld();
     error InvalidRedemptionReference();
+    error DestinationTagNotSupported();
 
     /**
      * After paying to the redeemer, the agent must call this method to unlock the collateral
@@ -60,32 +83,98 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
         notFullyEmergencyPaused
         nonReentrant
     {
-        Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId, true);
+        TransactionAttestation.verifyPayment(_payment);
+        IPayment.ResponseBody calldata rb = _payment.data.responseBody;
+        _confirmRedemptionPayment(RedemptionPaymentData({
+            requestId: _redemptionRequestId,
+            transactionId: _payment.data.requestBody.transactionId,
+            paymentReference: rb.standardPaymentReference,
+            blockNumber: rb.blockNumber,
+            blockTimestamp: rb.blockTimestamp,
+            sourceAddressHash: rb.sourceAddressHash,
+            intendedReceivingAddressHash: rb.intendedReceivingAddressHash,
+            spentAmount: rb.spentAmount,
+            receivedAmount: rb.receivedAmount,
+            status: rb.status,
+            hasDestinationTag: HasDestinationTag.Unsupported,   // only supported for IXRPPayment
+            destinationTag: 0
+        }));
+    }
+
+    /**
+     * After paying to the redeemer, the agent must call this method to unlock the collateral
+     * and to make sure that the redeemer cannot demand payment in collateral on timeout.
+     * The same method must be called for any payment status (SUCCESS, FAILED, BLOCKED).
+     * In case of FAILED, it just releases agent's underlying funds and the redeemer gets paid in collateral
+     * after calling redemptionPaymentDefault.
+     * In case of SUCCESS or BLOCKED, remaining underlying funds and collateral are released to the agent.
+     * If the agent doesn't confirm payment in enough time (several hours, setting confirmationByOthersAfterSeconds),
+     * anybody can do it and get rewarded from agent's vault.
+     * NOTE: the only difference between this method and `confirmRedemptionPayment` is that this one accepts
+     *   IXRPPayment proof type and supports destination tags.
+     * NOTE: may only be called by the owner of the agent vault in the redemption request
+     *   except if enough time has passed without confirmation - then it can be called by anybody
+     * @param _payment proof of the underlying payment (must contain exact `value - fee` amount and correct
+     *      payment reference)
+     * @param _redemptionRequestId id of an existing redemption request
+     */
+    function confirmXRPRedemptionPayment(
+        IXRPPayment.Proof calldata _payment,
+        uint256 _redemptionRequestId
+    )
+        external
+        notFullyEmergencyPaused
+        nonReentrant
+    {
+        TransactionAttestation.verifyXRPPayment(_payment);
+        IXRPPayment.ResponseBody calldata rb = _payment.data.responseBody;
+        _confirmRedemptionPayment(RedemptionPaymentData({
+            requestId: _redemptionRequestId,
+            transactionId: _payment.data.requestBody.transactionId,
+            paymentReference: _memoDataToPaymentReference(rb.hasMemoData, rb.firstMemoData),
+            blockNumber: rb.blockNumber,
+            blockTimestamp: rb.blockTimestamp,
+            sourceAddressHash: rb.sourceAddressHash,
+            intendedReceivingAddressHash: rb.intendedReceivingAddressHash,
+            spentAmount: rb.spentAmount,
+            receivedAmount: rb.receivedAmount,
+            status: rb.status,
+            hasDestinationTag: rb.hasDestinationTag ? HasDestinationTag.Yes : HasDestinationTag.No,
+            destinationTag: rb.destinationTag
+        }));
+    }
+
+    function _confirmRedemptionPayment(
+        RedemptionPaymentData memory _payment
+    )
+        private
+    {
+        Redemption.Request storage request = Redemptions.getRedemptionRequest(_payment.requestId, true);
         Agent.State storage agent = Agent.get(request.agentVault);
         // Usually, we require the agent to trigger confirmation.
         // But if the agent doesn't respond for long enough,
         // we allow anybody and that user gets rewarded from agent's vault.
         bool isAgent = Agents.isOwner(agent, msg.sender);
         require(isAgent || _othersCanConfirmPayment(request), Agents.OnlyAgentVaultOwner());
-        // verify transaction
-        TransactionAttestation.verifyPayment(_payment);
         // payment reference must match
-        require(_payment.data.responseBody.standardPaymentReference ==
-                PaymentReference.redemption(_redemptionRequestId),
-                InvalidRedemptionReference());
+        require(_payment.paymentReference == PaymentReference.redemption(_payment.requestId),
+            InvalidRedemptionReference());
         // we do not allow payments before the underlying block at requests, because the payer should have guessed
         // the payment reference, which is good for nothing except attack attempts
-        require(_payment.data.responseBody.blockNumber >= request.firstUnderlyingBlock,
-            RedemptionPaymentTooOld());
+        require(_payment.blockNumber >= request.firstUnderlyingBlock, RedemptionPaymentTooOld());
         // Agent's underlying address must be the selected source address. On utxo chains other addresses can also
         // be used for payment, but the spentAmount must be for agent's underlying address.
-        require(_payment.data.responseBody.sourceAddressHash == agent.underlyingAddressHash,
-            SourceNotAgentsUnderlyingAddress());
+        require(_payment.sourceAddressHash == agent.underlyingAddressHash, SourceNotAgentsUnderlyingAddress());
+        // If payment with tag is required, the tags must be supported, otherwise the confirmation reverts.
+        // However, if the tag is required and is supported but is not present, that does not revert but is
+        // considered invalid payment and is handled in `_validatePayment`.
+        require(!request.requiresDestinationTag || _payment.hasDestinationTag != HasDestinationTag.Unsupported,
+            DestinationTagNotSupported());
         // On UTXO chains, malicious submitter could select agent's return address as receiving address index in FDC
         // request, which would wrongly mark payment as FAILED because the receiver is not the redeemer.
         // Following check prevents this for common payments with single receiver while still allowing payments to
         // actually wrong address to be marked as invalid.
-        require(_payment.data.responseBody.intendedReceivingAddressHash != agent.underlyingAddressHash,
+        require(_payment.intendedReceivingAddressHash != agent.underlyingAddressHash,
             InvalidReceivingAddressSelected());
         // Valid payments are to correct destination, in time, and must have value at least the request payment value.
         (bool paymentValid, string memory failureReason) = _validatePayment(request, _payment);
@@ -95,39 +184,37 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
             // release agent collateral
             AgentBacking.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
             // mark and notify
-            if (_payment.data.responseBody.status == TransactionAttestation.PAYMENT_SUCCESS) {
+            if (_payment.status == TransactionAttestation.PAYMENT_SUCCESS) {
                 finalStatus = Redemption.Status.SUCCESSFUL;
                 emit IAssetManagerEvents.RedemptionPerformed(request.agentVault, request.redeemer,
-                    _redemptionRequestId, _payment.data.requestBody.transactionId, request.underlyingValueUBA,
-                    _payment.data.responseBody.spentAmount);
+                    _payment.requestId, _payment.transactionId, request.underlyingValueUBA, _payment.spentAmount);
                 if (request.transferToCoreVault) {
-                    CoreVaultClient.confirmTransferToCoreVault(_payment, agent, _redemptionRequestId);
+                    CoreVaultClient.confirmTransferToCoreVault(agent,
+                        _payment.requestId, _payment.transactionId, _payment.receivedAmount);
                 }
             } else {
-                assert(_payment.data.responseBody.status == TransactionAttestation.PAYMENT_BLOCKED);
+                assert(_payment.status == TransactionAttestation.PAYMENT_BLOCKED);
                 finalStatus = Redemption.Status.BLOCKED;
                 emit IAssetManagerEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer,
-                    _redemptionRequestId, _payment.data.requestBody.transactionId, request.underlyingValueUBA,
-                    _payment.data.responseBody.spentAmount);
+                    _payment.requestId, _payment.transactionId, request.underlyingValueUBA,_payment.spentAmount);
             }
             // charge the redemption pool fee share by re-minting some fassets
-            _mintPoolFee(agent, request, _redemptionRequestId);
+            _mintPoolFee(agent, request, _payment.requestId);
         } else {
             finalStatus = Redemption.Status.FAILED;
             // We do not allow retrying failed payments, so just default or cancel here if not defaulted already.
             if (request.status == Redemption.Status.ACTIVE) {
-                RedemptionDefaults.executeDefaultOrCancel(agent, request, _redemptionRequestId);
+                RedemptionDefaults.executeDefaultOrCancel(agent, request, _payment.requestId);
             }
             // notify
             emit IAssetManagerEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer,
-                _redemptionRequestId, _payment.data.requestBody.transactionId,
-                _payment.data.responseBody.spentAmount, failureReason);
+                _payment.requestId, _payment.transactionId, _payment.spentAmount, failureReason);
         }
         // agent has finished with redemption - account for used underlying balance and free the remainder
-        UnderlyingBalance.updateBalance(agent, -_payment.data.responseBody.spentAmount);
+        UnderlyingBalance.updateBalance(agent, -_payment.spentAmount);
         // record source decreasing transaction so that it cannot be challenged
-        AssetManagerState.State storage state = AssetManagerState.get();
-        state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
+        AssetManagerState.get().paymentConfirmations.confirmSourceDecreasingTransaction(
+            _payment.transactionId, _payment.sourceAddressHash);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
             AgentPayout.payForConfirmationByOthers(agent, msg.sender);
@@ -138,7 +225,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
         // redemption can make agent healthy, so check and pull out of liquidation
         Liquidation.endLiquidationIfHealthy(agent);
         // finish
-        Redemptions.finishRedemptionRequest(_redemptionRequestId, request, finalStatus);
+        Redemptions.finishRedemptionRequest(_payment.requestId, request, finalStatus);
     }
 
     function _mintPoolFee(
@@ -171,27 +258,35 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
 
     function _validatePayment(
         Redemption.Request storage request,
-        IPayment.Proof calldata _payment
+        RedemptionPaymentData memory _payment
     )
         private view
         returns (bool _paymentValid, string memory _failureReason)
     {
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA) - request.underlyingFeeUBA;
-        if (_payment.data.responseBody.status == TransactionAttestation.PAYMENT_FAILED) {
+        if (_payment.status == TransactionAttestation.PAYMENT_FAILED) {
             return (false, "transaction failed");
         }
-        if (_payment.data.responseBody.intendedReceivingAddressHash != request.redeemerUnderlyingAddressHash) {
+        if (_payment.intendedReceivingAddressHash != request.redeemerUnderlyingAddressHash) {
             return (false, "not redeemer's address");
         }
-        if (_payment.data.responseBody.receivedAmount < int256(paymentValueUBA)) { // paymentValueUBA < 2**128
+        if (_payment.receivedAmount < int256(paymentValueUBA)) { // paymentValueUBA < 2**128
             // for blocked payments, receivedAmount == 0, but it's still receiver's fault
-            if (_payment.data.responseBody.status != TransactionAttestation.PAYMENT_BLOCKED) {
+            if (_payment.status != TransactionAttestation.PAYMENT_BLOCKED) {
                 return (false, "redemption payment too small");
             }
         }
+        if (request.requiresDestinationTag) {
+            if (_payment.hasDestinationTag == HasDestinationTag.No) {
+                return (false, "destination tag required but not present");
+            }
+            if (_payment.destinationTag != request.destinationTag) {
+                return (false, "incorrect destination tag");
+            }
+        }
         if (!request.transferToCoreVault) {
-            if (_payment.data.responseBody.blockNumber > request.lastUnderlyingBlock &&
-                _payment.data.responseBody.blockTimestamp > request.lastUnderlyingTimestamp) {
+            if (_payment.blockNumber > request.lastUnderlyingBlock &&
+                _payment.blockTimestamp > request.lastUnderlyingTimestamp) {
                 return (false, "redemption payment too late");
             }
             if (request.status == Redemption.Status.DEFAULTED) {
@@ -212,5 +307,16 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
             }
         }
         return (true, "");
+    }
+
+    function _memoDataToPaymentReference(bool _hasMemoData, bytes calldata _memoData)
+        private pure
+        returns (bytes32)
+    {
+        if (_hasMemoData && _memoData.length == 32) {
+            return bytes32(_memoData);
+        } else {
+            return bytes32(0);
+        }
     }
 }

@@ -11,7 +11,6 @@ import {AgentCollateral} from "./AgentCollateral.sol";
 import {Redemptions} from "./Redemptions.sol";
 import {Agent} from "./data/Agent.sol";
 import {Collateral} from "./data/Collateral.sol";
-import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {Redemption} from "./data/Redemption.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {Globals} from "./Globals.sol";
@@ -61,17 +60,16 @@ library CoreVaultClient {
 
     // only called by RedemptionConfirmations.confirmRedemptionPayment, so all checks are done there
     function confirmTransferToCoreVault(
-        IPayment.Proof calldata _payment,
         Agent.State storage _agent,
-        uint256 _redemptionRequestId
+        uint256 _redemptionRequestId,
+        bytes32 _transactionId,
+        int256 _receivedAmount
     )
         internal
         onlyEnabled
     {
-        confirmCoreVaultPayment(
-            _payment.data.requestBody.transactionId,
-            _payment.data.responseBody.receivedAmount);
-        uint256 receivedAmount = _payment.data.responseBody.receivedAmount.toUint256();
+        confirmCoreVaultPayment(_transactionId, _receivedAmount);
+        uint256 receivedAmount = _receivedAmount.toUint256();
         emit ICoreVaultClient.TransferToCoreVaultSuccessful(_agent.vaultAddress(), _redemptionRequestId,
             receivedAmount);
     }

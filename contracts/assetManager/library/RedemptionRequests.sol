@@ -2,10 +2,12 @@
 pragma solidity ^0.8.27;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {StorageSlot} from "@openzeppelin/contracts/utils/StorageSlot.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {RedemptionTimeExtension} from "./data/RedemptionTimeExtension.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {IRedemptionWithTag} from "../../userInterfaces/IRedemptionWithTag.sol";
 import {Conversion} from "./Conversion.sol";
 import {Redemption} from "./data/Redemption.sol";
 import {Agent} from "./data/Agent.sol";
@@ -33,59 +35,79 @@ library RedemptionRequests {
         uint256 length;
     }
 
+    struct CreateRedemptionRequestArgs {
+        address agentVault;
+        uint64 valueAMG;
+        address redeemer;
+        string redeemerUnderlyingAddressString;
+        bool poolSelfClose;
+        address payable executor;
+        uint64 executorFeeNatGWei;
+        uint64 additionalPaymentTime;
+        bool transferToCoreVault;
+        bool requiresDestinationTag;
+        uint64 destinationTag;
+    }
+
     function createRedemptionRequest(
-        AgentRedemptionData memory _data,
-        address _redeemer,
-        string memory _redeemerUnderlyingAddressString,
-        bool _poolSelfClose,
-        address payable _executor,
-        uint64 _executorFeeNatGWei,
-        uint64 _additionalPaymentTime,
-        bool _transferToCoreVault
+        CreateRedemptionRequestArgs memory _args
     )
         internal
         returns (uint64 _requestId)
     {
-        require(_executorFeeNatGWei == 0 || _executor != address(0), ExecutorFeeWithoutExecutor());
+        require(_args.executorFeeNatGWei == 0 || _args.executor != address(0), ExecutorFeeWithoutExecutor());
         AssetManagerState.State storage state = AssetManagerState.get();
-        Agent.State storage agent = Agent.get(_data.agentVault);
+        Agent.State storage agent = Agent.get(_args.agentVault);
         // validate redemption address
-        require(bytes(_redeemerUnderlyingAddressString).length < 128, UnderlyingAddressTooLong());
-        bytes32 underlyingAddressHash = keccak256(bytes(_redeemerUnderlyingAddressString));
+        require(bytes(_args.redeemerUnderlyingAddressString).length < 128, UnderlyingAddressTooLong());
+        bytes32 underlyingAddressHash = keccak256(bytes(_args.redeemerUnderlyingAddressString));
         // both addresses must be normalized (agent's address is checked at vault creation,
         // and if redeemer address isn't normalized, the agent can trigger rejectInvalidRedemption),
         // so this comparison quarantees the redemption is not to the agent's address
         require(underlyingAddressHash != agent.underlyingAddressHash,
             CannotRedeemToAgentsAddress());
         // create request
-        uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_data.valueAMG).toUint128();
-        _requestId = _newRequestId(_poolSelfClose);
+        uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_args.valueAMG).toUint128();
+        _requestId = _newRequestId(_args.poolSelfClose);
         // create in-memory request and then put it to storage to not go out-of-stack
         Redemption.Request memory request;
         request.redeemerUnderlyingAddressHash = underlyingAddressHash;
         request.underlyingValueUBA = redeemedValueUBA;
         request.firstUnderlyingBlock = state.currentUnderlyingBlock;
         (request.lastUnderlyingBlock, request.lastUnderlyingTimestamp) =
-            _lastPaymentBlock(_data.agentVault, _additionalPaymentTime);
+            _lastPaymentBlock(_args.agentVault, _args.additionalPaymentTime);
         request.timestamp = block.timestamp.toUint64();
-        request.underlyingFeeUBA = _transferToCoreVault ?
+        request.underlyingFeeUBA = _args.transferToCoreVault ?
             0 : uint256(redeemedValueUBA).mulBips(Globals.getSettings().redemptionFeeBIPS).toUint128();
-        request.redeemer = _redeemer;
-        request.agentVault = _data.agentVault;
-        request.valueAMG = _data.valueAMG;
+        request.redeemer = _args.redeemer;
+        request.agentVault = _args.agentVault;
+        request.valueAMG = _args.valueAMG;
         request.status = Redemption.Status.ACTIVE;
-        request.poolSelfClose = _poolSelfClose;
-        request.executor = _executor;
-        request.executorFeeNatGWei = _executorFeeNatGWei;
-        request.redeemerUnderlyingAddressString = _redeemerUnderlyingAddressString;
-        request.transferToCoreVault = _transferToCoreVault;
+        request.poolSelfClose = _args.poolSelfClose;
+        request.executor = _args.executor;
+        request.executorFeeNatGWei = _args.executorFeeNatGWei;
+        request.redeemerUnderlyingAddressString = _args.redeemerUnderlyingAddressString;
+        request.transferToCoreVault = _args.transferToCoreVault;
         request.poolFeeShareBIPS = agent.redemptionPoolFeeShareBIPS;
+        request.requiresDestinationTag = _args.requiresDestinationTag;
+        request.destinationTag = _args.destinationTag;
         state.redemptionRequests[_requestId] = request;
         // decrease mintedAMG and mark it to redeemingAMG
         // do not add it to freeBalance yet (only after failed redemption payment)
-        AgentBacking.startRedeemingAssets(agent, _data.valueAMG, _poolSelfClose);
+        AgentBacking.startRedeemingAssets(agent, _args.valueAMG, _args.poolSelfClose);
         // emit event to remind agent to pay
-        _emitRedemptionRequestedEvent(request, _requestId, _redeemerUnderlyingAddressString);
+        _emitRedemptionRequestedEvent(request, _requestId, _args.redeemerUnderlyingAddressString);
+    }
+
+    bytes32 private constant REDEEM_WITH_TAG_SUPPORTED_SLOT =
+        keccak256("fasset.RedemptionRequestsFacet.redeemWithTagSupported");
+
+    function setRedeemWithTagSupported(bool _supported) internal {
+        StorageSlot.getBooleanSlot(REDEEM_WITH_TAG_SUPPORTED_SLOT).value = _supported;
+    }
+
+    function redeemWithTagSupported() internal view returns (bool) {
+        return StorageSlot.getBooleanSlot(REDEEM_WITH_TAG_SUPPORTED_SLOT).value;
     }
 
     function _emitRedemptionRequestedEvent(
@@ -95,19 +117,36 @@ library RedemptionRequests {
     )
         private
     {
-        emit IAssetManagerEvents.RedemptionRequested(
-            _request.agentVault,
-            _request.redeemer,
-            _requestId,
-            _redeemerUnderlyingAddressString,
-            _request.underlyingValueUBA,
-            _request.underlyingFeeUBA,
-            _request.firstUnderlyingBlock,
-            _request.lastUnderlyingBlock,
-            _request.lastUnderlyingTimestamp,
-            PaymentReference.redemption(_requestId),
-            _request.executor,
-            _request.executorFeeNatGWei * Conversion.GWEI);
+        if (_request.requiresDestinationTag) {
+            emit IRedemptionWithTag.RedemptionWithTagRequested(
+                _request.agentVault,
+                _request.redeemer,
+                _requestId,
+                _redeemerUnderlyingAddressString,
+                _request.underlyingValueUBA,
+                _request.underlyingFeeUBA,
+                _request.firstUnderlyingBlock,
+                _request.lastUnderlyingBlock,
+                _request.lastUnderlyingTimestamp,
+                PaymentReference.redemption(_requestId),
+                _request.executor,
+                _request.executorFeeNatGWei * Conversion.GWEI,
+                _request.destinationTag);
+        } else {
+            emit IAssetManagerEvents.RedemptionRequested(
+                _request.agentVault,
+                _request.redeemer,
+                _requestId,
+                _redeemerUnderlyingAddressString,
+                _request.underlyingValueUBA,
+                _request.underlyingFeeUBA,
+                _request.firstUnderlyingBlock,
+                _request.lastUnderlyingBlock,
+                _request.lastUnderlyingTimestamp,
+                PaymentReference.redemption(_requestId),
+                _request.executor,
+                _request.executorFeeNatGWei * Conversion.GWEI);
+        }
     }
 
     function _newRequestId(bool _poolSelfClose)

@@ -37,6 +37,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     error RedemptionOfZero();
     error RedeemZeroLots();
     error InvalidTicketId();
+    error RedeemWithTagNotSupported();
 
     /**
      * Redeem (up to) `_lots` lots of f-assets. The corresponding amount of the f-assets belonging
@@ -68,34 +69,50 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         nonReentrant
         returns (uint256 _redeemedAmountUBA)
     {
-        uint256 maxRedeemedTickets = Globals.getSettings().maxRedeemedTickets;
-        RedemptionRequests.AgentRedemptionList memory redemptionList = RedemptionRequests.AgentRedemptionList({
-            length: 0,
-            items: new RedemptionRequests.AgentRedemptionData[](maxRedeemedTickets)
-        });
-        uint256 redeemedLots = 0;
-        for (uint256 i = 0; i < maxRedeemedTickets && redeemedLots < _lots; i++) {
-            (bool queueEmpty, uint256 ticketRedeemedLots) = _redeemFirstTicket(_lots - redeemedLots, redemptionList);
-            if (queueEmpty) break;
-            redeemedLots += ticketRedeemedLots;
-        }
-        require(redeemedLots != 0, RedeemZeroLots());
-        uint256 executorFeeNatGWei = msg.value / Conversion.GWEI;
-        for (uint256 i = 0; i < redemptionList.length; i++) {
-            // distribute executor fee over redemption request with at most 1 gwei leftover
-            uint256 currentExecutorFeeNatGWei = executorFeeNatGWei / (redemptionList.length - i);
-            executorFeeNatGWei -= currentExecutorFeeNatGWei;
-            RedemptionRequests.createRedemptionRequest(redemptionList.items[i], msg.sender,
-                _redeemerUnderlyingAddressString, false, _executor, currentExecutorFeeNatGWei.toUint64(), 0, false);
-        }
-        // notify redeemer of incomplete requests
-        if (redeemedLots < _lots) {
-            emit IAssetManagerEvents.RedemptionRequestIncomplete(msg.sender, _lots - redeemedLots);
-        }
-        // burn the redeemed value of fassets
-        uint256 redeemedUBA = Conversion.convertLotsToUBA(redeemedLots);
-        Redemptions.burnFAssets(msg.sender, redeemedUBA);
-        return redeemedUBA;
+        return _redeem(_lots, _redeemerUnderlyingAddressString, _executor, false, 0);
+    }
+
+    /**
+     * Redeem (up to) `_lots` lots of f-assets. The corresponding amount of the f-assets belonging
+     * to the redeemer will be burned and the redeemer will get paid by the agent in underlying currency
+     * (or, in case of agent's payment default, by agent's collateral with a premium).
+     * NOTE: in some cases not all sent f-assets can be redeemed (either there are not enough tickets or
+     * more than a fixed limit of tickets should be redeemed). In this case only part of the approved assets
+     * are burned and redeemed and the redeemer can execute this method again for the remaining lots.
+     * In such a case the `RedemptionRequestIncomplete` event will be emitted, indicating the number
+     * of remaining lots.
+     * Agent receives redemption request id and instructions for underlying payment in
+     * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
+     * NOTE: if the underlying block isn't updated regularly, it can happen that there is no time for underlying
+     * payment. Since the agents cannot know when the next redemption will happen, they should regularly update the
+     * underlying time by obtaining fresh proof of latest underlying block and calling `updateCurrentBlock`.
+     * @param _lots number of lots to redeem
+     * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
+     * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
+     * @param _destinationTag the destination tag that is required in the redemption payment (only for XRP)
+     * @return _redeemedAmountUBA the actual redeemed amount; may be less than requested if there are not enough
+     *      redemption tickets available or the maximum redemption ticket limit is reached
+     */
+    function redeemWithTag(
+        uint256 _lots,
+        string memory _redeemerUnderlyingAddressString,
+        address payable _executor,
+        uint64 _destinationTag
+    )
+        external payable
+        notEmergencyPaused
+        nonReentrant
+        returns (uint256 _redeemedAmountUBA)
+    {
+        require(RedemptionRequests.redeemWithTagSupported(), RedeemWithTagNotSupported());
+        return _redeem(_lots, _redeemerUnderlyingAddressString, _executor, true, _destinationTag);
+    }
+
+    /**
+     * Only true on XRP network, because only other chains don't support destination tags.
+     */
+    function redeemWithTagSupported() external view returns (bool) {
+        return RedemptionRequests.redeemWithTagSupported();
     }
 
     /**
@@ -120,10 +137,21 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
         (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, false);
         // create redemption request
-        RedemptionRequests.AgentRedemptionData memory redemption =
-            RedemptionRequests.AgentRedemptionData(_agentVault, closedAMG);
-        RedemptionRequests.createRedemptionRequest(redemption, _receiver, _receiverUnderlyingAddress, true,
-            _executor, (msg.value / Conversion.GWEI).toUint64(), 0, false);
+        RedemptionRequests.createRedemptionRequest(
+            RedemptionRequests.CreateRedemptionRequestArgs({
+                agentVault: _agentVault,
+                valueAMG: closedAMG,
+                redeemer: _receiver,
+                redeemerUnderlyingAddressString: _receiverUnderlyingAddress,
+                poolSelfClose: true,
+                executor: _executor,
+                executorFeeNatGWei: (msg.value / Conversion.GWEI).toUint64(),
+                additionalPaymentTime: 0,
+                transferToCoreVault: false,
+                requiresDestinationTag: false,
+                destinationTag: 0
+            })
+        );
         // burn the closed assets
         Redemptions.burnFAssets(msg.sender, closedUBA);
     }
@@ -345,6 +373,60 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
             ticketId = nextTicketId;
         }
         emit IAssetManagerEvents.RedemptionTicketsConsolidated(firstTicketId, ticketId);
+    }
+
+    function _redeem(
+        uint256 _lots,
+        string memory _redeemerUnderlyingAddressString,
+        address payable _executor,
+        bool _requiresDestinationTag,
+        uint64 _destinationTag
+    )
+        private
+        returns (uint256)
+    {
+        uint256 maxRedeemedTickets = Globals.getSettings().maxRedeemedTickets;
+        RedemptionRequests.AgentRedemptionList memory redemptionList = RedemptionRequests.AgentRedemptionList({
+            length: 0,
+            items: new RedemptionRequests.AgentRedemptionData[](maxRedeemedTickets)
+        });
+        uint256 redeemedLots = 0;
+        for (uint256 i = 0; i < maxRedeemedTickets && redeemedLots < _lots; i++) {
+            (bool queueEmpty, uint256 ticketRedeemedLots) = _redeemFirstTicket(_lots - redeemedLots, redemptionList);
+            if (queueEmpty) break;
+            redeemedLots += ticketRedeemedLots;
+        }
+        require(redeemedLots != 0, RedeemZeroLots());
+        uint256 executorFeeNatGWei = msg.value / Conversion.GWEI;
+        for (uint256 i = 0; i < redemptionList.length; i++) {
+            // distribute executor fee over redemption request with at most 1 gwei leftover
+            uint256 currentExecutorFeeNatGWei = executorFeeNatGWei / (redemptionList.length - i);
+            executorFeeNatGWei -= currentExecutorFeeNatGWei;
+            RedemptionRequests.AgentRedemptionData memory data = redemptionList.items[i];
+            RedemptionRequests.createRedemptionRequest(
+                RedemptionRequests.CreateRedemptionRequestArgs({
+                    agentVault: data.agentVault,
+                    valueAMG: data.valueAMG,
+                    redeemer: msg.sender,
+                    redeemerUnderlyingAddressString: _redeemerUnderlyingAddressString,
+                    poolSelfClose: false,
+                    executor: _executor,
+                    executorFeeNatGWei: currentExecutorFeeNatGWei.toUint64(),
+                    additionalPaymentTime: 0,
+                    transferToCoreVault: false,
+                    requiresDestinationTag: _requiresDestinationTag,
+                    destinationTag: _destinationTag
+                })
+            );
+        }
+        // notify redeemer of incomplete requests
+        if (redeemedLots < _lots) {
+            emit IAssetManagerEvents.RedemptionRequestIncomplete(msg.sender, _lots - redeemedLots);
+        }
+        // burn the redeemed value of fassets
+        uint256 redeemedUBA = Conversion.convertLotsToUBA(redeemedLots);
+        Redemptions.burnFAssets(msg.sender, redeemedUBA);
+        return redeemedUBA;
     }
 
     function _redeemFirstTicket(

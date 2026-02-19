@@ -55,8 +55,23 @@ library PaymentConfirmations {
     )
         internal
     {
-        bytes32 txKey = transactionKey(_payment.data.responseBody.sourceAddressHash,
-            _payment.data.requestBody.transactionId);
+        confirmSourceDecreasingTransaction(_state,
+            _payment.data.requestBody.transactionId,
+            _payment.data.responseBody.sourceAddressHash);
+    }
+
+/**
+     * For source decreasing transaction, we record `(source address, tx hash)` pair, since illegal
+     * transactions on utxo chains can have multiple input addresses.
+     */
+    function confirmSourceDecreasingTransaction(
+        State storage _state,
+        bytes32 _transactionId,
+        bytes32 _sourceAddressHash
+    )
+        internal
+    {
+        bytes32 txKey = transactionKey(_sourceAddressHash, _transactionId);
         _recordPaymentVerification(_state, txKey);
     }
 

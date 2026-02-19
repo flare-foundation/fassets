@@ -108,9 +108,20 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
         // NOTE: there will be no redemption fee, so the agent needs enough free underlying for the
         // underlying transaction fee, otherwise they will go into full liquidation
         uint64 redemptionRequestId = RedemptionRequests.createRedemptionRequest(
-            RedemptionRequests.AgentRedemptionData(_agentVault, transferredAMG),
-            state.nativeAddress, underlyingAddress, false, payable(address(0)), 0,
-            state.transferTimeExtensionSeconds, true);
+            RedemptionRequests.CreateRedemptionRequestArgs({
+                agentVault: _agentVault,
+                valueAMG: transferredAMG,
+                redeemer: state.nativeAddress,
+                redeemerUnderlyingAddressString: underlyingAddress,
+                poolSelfClose: false,
+                executor: payable(address(0)),
+                executorFeeNatGWei: 0,
+                additionalPaymentTime: state.transferTimeExtensionSeconds,
+                transferToCoreVault: true,
+                requiresDestinationTag: false,
+                destinationTag: 0
+            })
+        );
         // set the active request
         agent.activeTransferToCoreVault = redemptionRequestId;
         // send event

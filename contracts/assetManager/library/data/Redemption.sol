@@ -33,5 +33,7 @@ library Redemption {
         string redeemerUnderlyingAddressString;
         bool transferToCoreVault;
         uint16 poolFeeShareBIPS;
+        bool requiresDestinationTag;
+        uint64 destinationTag;
     }
 }
