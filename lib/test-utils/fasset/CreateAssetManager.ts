@@ -17,8 +17,8 @@ export interface AssetManagerInitSettings extends AssetManagerSettings {
     coreVaultRedemptionFeeBIPS: BNish;
     coreVaultMinimumAmountLeftBIPS: BNish;
     coreVaultMinimumRedeemLots: BNish;
-    // direct minting
     coreVaultDonationTag: BNish;
+    // direct minting
     directMintingFeeReceiver: string;
     directMintingMinimumFeeUBA: BNish;
     directMintingFeeBIPS: BNish;
@@ -28,6 +28,8 @@ export interface AssetManagerInitSettings extends AssetManagerSettings {
     directMintingDailyLimitUBA: BNish;
     directMintingLargeMintingThresholdUBA: BNish;
     directMintingLargeMintingDelaySeconds: BNish;
+    // redeem with tag
+    redeemWithTagSupported: boolean;
 }
 
 const IIAssetManager = artifacts.require('IIAssetManager');
@@ -89,11 +91,17 @@ export async function newAssetManager(
         (c) => c.initCoreVaultFacet(ZERO_ADDRESS, assetManagerSettings.coreVaultNativeAddress,
             assetManagerSettings.coreVaultTransferTimeExtensionSeconds, assetManagerSettings.coreVaultTransferDefaultPenaltyBIPS, assetManagerSettings.coreVaultRedemptionFeeBIPS,
             assetManagerSettings.coreVaultMinimumAmountLeftBIPS, assetManagerSettings.coreVaultMinimumRedeemLots));
-    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("DirectMintingFacet"), ["IDirectMinting"]);
-    await deployAndInitFacet(governanceAddress, assetManager, artifacts.require("DirectMintingSettingsFacet"), ["IDirectMintingSettings"],
+    await deployAndInitFacets(governanceAddress, assetManager,
+        [
+            await deployFacet("DirectMintingFacet", selectorsForInterfaces("IDirectMinting")),
+            await deployFacet("DirectMintingSettingsFacet", selectorsForInterfaces("IDirectMintingSettings")),
+        ],
+        artifacts.require("DirectMintingAndRedemptionWithTagInit"),
         (c) => c.initialize({
-            mintingTagManager: ZERO_ADDRESS, // can be set later
+            // core vault additional settings
             coreVaultDonationTag: assetManagerSettings.coreVaultDonationTag,
+            // direct minting
+            mintingTagManager: ZERO_ADDRESS, // can be set later
             smartAccountManager: ZERO_ADDRESS,
             mintingFeeReceiver: assetManagerSettings.directMintingFeeReceiver,
             minimumMintingFeeUBA: assetManagerSettings.directMintingMinimumFeeUBA,
@@ -104,7 +112,10 @@ export async function newAssetManager(
             dailyLimitUBA: assetManagerSettings.directMintingDailyLimitUBA,
             largeMintingThresholdUBA: assetManagerSettings.directMintingLargeMintingThresholdUBA,
             largeMintingDelaySeconds: assetManagerSettings.directMintingLargeMintingDelaySeconds,
-        }));
+            // redeem with tag
+            redeemWithTagSupported: assetManagerSettings.redeemWithTagSupported
+        })
+    );
     // verify interface implementation
     await checkAllMethodsImplemented(assetManager, interfaceSelectors);
     // add to controller
@@ -135,9 +146,7 @@ export function contractAddress(contract: Truffle.ContractInstance | string): st
 }
 
 async function deployAndInitFacet<T extends Truffle.ContractInstance>(governanceAddress: string, assetManager: IIAssetManagerInstance, facetContract: Truffle.Contract<T>, interfaces: string[], init?: (c: T) => Promise<unknown>) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-    const interfaceAbis: AbiItem[] = interfaces.flatMap(it => contractMetadata(artifacts.require(it as any)).abi);
-    const interfaceSelectors = getInterfaceSelectorMap(interfaceAbis);
+    const interfaceSelectors = selectorsForInterfaces(...interfaces);
     const facetCut = await deployFacet(facetContract, interfaceSelectors);
     if (init) {
         const initFacet = await facetContract.at(facetCut.facetAddress);
@@ -146,6 +155,12 @@ async function deployAndInitFacet<T extends Truffle.ContractInstance>(governance
     } else {
         await assetManager.diamondCut([facetCut], ZERO_ADDRESS, "0x00000000", { from: governanceAddress });
     }
+}
+
+async function deployAndInitFacets<T extends Truffle.ContractInstance>(governanceAddress: string, assetManager: IIAssetManagerInstance, cuts: DiamondCut[], initFacetContract: Truffle.Contract<T>, init: (c: T) => Promise<unknown>) {
+    const initFacet = await initFacetContract.new() as T;
+    const initParameters = abiEncodeCall(initFacet, init);
+    await assetManager.diamondCut(cuts, initFacet.address, initParameters, { from: governanceAddress });
 }
 
 // simulate waiting for governance timelock
@@ -213,6 +228,15 @@ async function checkAllMethodsImplemented(loupe: IDiamondLoupeInstance, interfac
         const missing = Array.from(interfaceSelectorSet).map(sel => interfaceSelectors.get(sel)?.name);
         throw new Error(`Deployed facets are missing methods ${missing.join(", ")}`);
     }
+}
+
+function selectorsForInterfaces(...interfaceNames: string[]) {
+    const interfaceAbis: AbiItem[] = interfaceNames.flatMap(it => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+        const contract = artifacts.require(it as any) as Truffle.Contract<unknown>;
+        return contractMetadata(contract).abi;
+    });
+    return getInterfaceSelectorMap(interfaceAbis);
 }
 
 function getInterfaceSelectorMap(abiItems: AbiItem[]) {

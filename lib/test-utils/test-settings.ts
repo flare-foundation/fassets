@@ -18,6 +18,7 @@ import {
 import { AgentSettings, AssetManagerSettings, CollateralClass, CollateralType } from "../fasset/AssetManagerTypes";
 import { ChainInfo } from "../fasset/ChainInfo";
 import { AttestationHelper } from "../underlying-chain/AttestationHelper";
+import { SourceId } from "../underlying-chain/SourceId";
 import { findRequiredEvent } from "../utils/events/truffle";
 import { BNish, DAYS, HOURS, MINUTES, requireNotNull, toBIPS, toBN, toBNExp, toWei, WEEKS, ZERO_ADDRESS } from "../utils/helpers";
 import { web3DeepNormalize } from "../utils/web3normalize";
@@ -149,8 +150,8 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         coreVaultRedemptionFeeBIPS: toBIPS("1%"),
         coreVaultMinimumAmountLeftBIPS: 0,
         coreVaultMinimumRedeemLots: 10,
-        // direct minting settings
         coreVaultDonationTag: 1,
+        // direct minting settings
         directMintingFeeReceiver: ZERO_ADDRESS,
         directMintingMinimumFeeUBA: toBNExp(0.01 * ci.lotSize, ci.decimals),
         directMintingFeeBIPS: toBIPS("1%"),
@@ -160,6 +161,8 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         directMintingDailyLimitUBA: toBNExp(1000 * ci.lotSize, ci.decimals),
         directMintingLargeMintingThresholdUBA: toBNExp(500 * ci.lotSize, ci.decimals),
         directMintingLargeMintingDelaySeconds: 3600,
+        // redemption with tag
+        redeemWithTagSupported: [SourceId.XRP, SourceId.testXRP].includes(ci.chainId),
     };
     return Object.assign(result, options ?? {});
 }

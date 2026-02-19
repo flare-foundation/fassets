@@ -175,7 +175,15 @@ contract CoreVaultClientSettingsFacet is AssetManagerBase, GovernedProxyImplemen
         return state.nativeAddress;
     }
 
-    function getCoreVaultTransferTimeExtensionSeconds()
+     function getCoreVaultDonationTag()
+        external view
+        returns (uint256)
+    {
+        CoreVaultClient.State storage state = CoreVaultClient.getState();
+        return state.coreVaultDonationTag;
+    }
+
+   function getCoreVaultTransferTimeExtensionSeconds()
         external view
         returns (uint256)
     {

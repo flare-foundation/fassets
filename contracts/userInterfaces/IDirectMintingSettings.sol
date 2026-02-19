@@ -51,10 +51,6 @@ interface IDirectMintingSettings {
         external view
         returns (address);
 
-    function getCoreVaultDonationTag()
-        external view
-        returns (uint256);
-
     function getSmartAccountManager()
         external view
         returns (address);

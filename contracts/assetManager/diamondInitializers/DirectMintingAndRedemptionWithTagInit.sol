@@ -1,0 +1,108 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.27;
+
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {IMintingTagManager} from "../../userInterfaces/IMintingTagManager.sol";
+import {IDirectMinting} from "../../userInterfaces/IDirectMinting.sol";
+import {IDirectMintingSettings} from "../../userInterfaces/IDirectMintingSettings.sol";
+import {ICoreVaultClient} from "../../userInterfaces/ICoreVaultClient.sol";
+import {ICoreVaultClientSettings} from "../../userInterfaces/ICoreVaultClientSettings.sol";
+import {IRedemptionWithTag} from "../../userInterfaces/IRedemptionWithTag.sol";
+import {ISmartAccountManagerMock} from "../mock/ISmartAccountManagerMock.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {LibDiamond} from "../../diamond/library/LibDiamond.sol";
+import {Conversion} from "../library/Conversion.sol";
+import {DirectMinting} from "../library/DirectMinting.sol";
+import {MintingRateLimiter} from "../library/data/MintingRateLimiter.sol";
+import {RedemptionRequests} from "../library/RedemptionRequests.sol";
+import {CoreVaultClient} from "../library/CoreVaultClient.sol";
+
+
+contract DirectMintingAndRedemptionWithTagInit {
+    using SafeCast for uint256;
+    using MintingRateLimiter for MintingRateLimiter.State;
+
+    error AlreadyInitialized();
+    error DiamondNotInitialized();
+
+    struct InitParams {
+        // core vault new setting
+        uint256 coreVaultDonationTag;
+        // direct minting settings
+        address mintingTagManager;
+        address smartAccountManager;
+        address mintingFeeReceiver;
+        uint256 minimumMintingFeeUBA;
+        uint256 mintingFeeBIPS;
+        uint256 executorFeeUBA;
+        uint256 othersCanExecuteAfterSeconds;
+        uint256 hourlyLimitUBA;
+        uint256 dailyLimitUBA;
+        uint256 largeMintingThresholdUBA;
+        uint256 largeMintingDelaySeconds;
+        // redemption with tag settings
+        bool redeemWithTagSupported;
+    }
+
+    // prevent initialization of implementation contract
+
+    constructor() {
+        DirectMinting.getState().initialized = true;
+    }
+
+    // initialization
+
+    function initialize(
+        InitParams calldata _params
+    )
+        external
+    {
+        _ensureSingleInitialization();
+        _updateInterfacesAtDeploy();
+        _initDirectMinting(_params);
+        _initRedemptionWithTag(_params);
+        _updateCoreVaultClient(_params);
+    }
+
+    function _ensureSingleInitialization() private {
+        DirectMinting.State storage state = DirectMinting.getState();
+        require(!state.initialized, AlreadyInitialized());
+        state.initialized = true;
+    }
+
+    function _updateInterfacesAtDeploy() private {
+        LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
+        require(ds.supportedInterfaces[type(IERC165).interfaceId], DiamondNotInitialized());
+        // DirectMinting interfaces added
+        ds.supportedInterfaces[type(IDirectMinting).interfaceId] = true;
+        ds.supportedInterfaces[type(IDirectMintingSettings).interfaceId] = true;
+        ds.supportedInterfaces[type(IRedemptionWithTag).interfaceId] = true;
+        ds.supportedInterfaces[type(ICoreVaultClient).interfaceId] = true;  // changed
+        ds.supportedInterfaces[type(ICoreVaultClientSettings).interfaceId] = true;  // changed
+    }
+
+    function _initDirectMinting(InitParams calldata _params) private {
+        DirectMinting.State storage state = DirectMinting.getState();
+        state.mintingTagManager = IMintingTagManager(_params.mintingTagManager);
+        state.smartAccountManager = ISmartAccountManagerMock(_params.smartAccountManager);
+        state.mintingFeeReceiver = _params.mintingFeeReceiver;
+        state.minimumMintingFeeAmg = Conversion.convertUBAToAmg(_params.minimumMintingFeeUBA);
+        state.mintingFeeBIPS = _params.mintingFeeBIPS.toUint16();
+        state.executorFeeAmg = Conversion.convertUBAToAmg(_params.executorFeeUBA);
+        state.othersCanExecuteAfterSeconds = _params.othersCanExecuteAfterSeconds.toUint64();
+        state.hourlyLimiter.initialize(1 hours, Conversion.convertUBAToAmg(_params.hourlyLimitUBA));
+        state.dailyLimiter.initialize(1 days, Conversion.convertUBAToAmg(_params.dailyLimitUBA));
+        uint64 largeMintingThresholdAmg = Conversion.convertUBAToAmg(_params.largeMintingThresholdUBA);
+        state.largeMintingLimiter.initialize(_params.largeMintingDelaySeconds.toUint64(), largeMintingThresholdAmg);
+        state.largeMintingThresholdAmg = largeMintingThresholdAmg;
+    }
+
+    function _initRedemptionWithTag(InitParams calldata _params) private {
+        RedemptionRequests.setRedeemWithTagSupported(_params.redeemWithTagSupported);
+    }
+
+    function _updateCoreVaultClient(InitParams calldata _params) private {
+        CoreVaultClient.State storage state = CoreVaultClient.getState();
+        state.coreVaultDonationTag = _params.coreVaultDonationTag.toUint32();
+    }
+}

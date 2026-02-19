@@ -193,12 +193,11 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         returns (bool _mintToSmartAccount, address _targetAddress, address _allowedExecutor)
     {
         IXRPPayment.ResponseBody calldata body = _payment.data.responseBody;
-        DirectMinting.State storage state = DirectMinting.getState();
         // has registered tag (ignore memo data in this case)
         if (body.hasDestinationTag) {
             uint256 destinationTag = body.destinationTag;
             // forbid core vault donation tag - it should be confirmed using method confirmCoreVaultDonation
-            require(destinationTag != state.coreVaultDonationTag, PaymentIsCoreVaultDonation());
+            require(destinationTag != CoreVaultClient.coreVaultDonationTag(), PaymentIsCoreVaultDonation());
             address registeredAddress = DirectMinting.mintingRecipientForTag(destinationTag);
             if (registeredAddress != address(0)) {
                 return (false, registeredAddress, DirectMinting.allowedExecutorForTag(body.destinationTag));

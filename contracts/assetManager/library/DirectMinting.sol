@@ -15,7 +15,6 @@ library DirectMinting {
     struct State {
         bool initialized;
         IMintingTagManager mintingTagManager;
-        uint32 coreVaultDonationTag;
         ISmartAccountManagerMock smartAccountManager;
         address mintingFeeReceiver;
         uint64 minimumMintingFeeAmg;

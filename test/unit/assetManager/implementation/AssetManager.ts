@@ -274,8 +274,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             resInitSettings.coreVaultRedemptionFeeBIPS = await assetManager.getCoreVaultRedemptionFeeBIPS();
             resInitSettings.coreVaultMinimumAmountLeftBIPS = await assetManager.getCoreVaultMinimumAmountLeftBIPS();
             resInitSettings.coreVaultMinimumRedeemLots = await assetManager.getCoreVaultMinimumRedeemLots();
-            // add DirectMintingFacet settings
             resInitSettings.coreVaultDonationTag = await assetManager.getCoreVaultDonationTag();
+            // add DirectMintingFacet settings
             resInitSettings.directMintingFeeReceiver = await assetManager.getDirectMintingFeeReceiver();
             resInitSettings.directMintingMinimumFeeUBA = await assetManager.getDirectMintingMinimumFeeUBA();
             resInitSettings.directMintingFeeBIPS = await assetManager.getDirectMintingFeeBIPS();
@@ -285,6 +285,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             resInitSettings.directMintingDailyLimitUBA = await assetManager.getDirectMintingDailyLimitUBA();
             resInitSettings.directMintingLargeMintingThresholdUBA = await assetManager.getDirectMintingLargeMintingThresholdUBA();
             resInitSettings.directMintingLargeMintingDelaySeconds = await assetManager.getDirectMintingLargeMintingDelaySeconds();
+            // add RedeemWithTag settings
+            resInitSettings.redeemWithTagSupported = await assetManager.redeemWithTagSupported();
             //
             assertWeb3DeepEqual(resSettings, settings);
             assert.equal(await assetManager.assetManagerController(), assetManagerController);
@@ -1978,6 +1980,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const ICoreVaultClientSettings = artifacts.require("ICoreVaultClientSettings");
             const IDirectMinting = artifacts.require("IDirectMinting");
             const IDirectMintingSettings = artifacts.require("IDirectMintingSettings");
+            const IRedemptionWithTag = artifacts.require("IRedemptionWithTag");
             const IISettingsManagement = artifacts.require("IISettingsManagement");
             const IAgentAlwaysAllowedMinters = artifacts.require("IAgentAlwaysAllowedMinters");
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IERC165)));
@@ -1990,8 +1993,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, ICoreVaultClientSettings)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IDirectMinting)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IDirectMintingSettings)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IAssetManager,
-                [IERC165, IDiamondLoupe, IAgentPing, IRedemptionTimeExtension, ICoreVaultClient, ICoreVaultClientSettings, IDirectMinting, IDirectMintingSettings, IAgentAlwaysAllowedMinters])));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IRedemptionWithTag)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IAssetManager, [
+                IERC165, IDiamondLoupe, IAgentPing, IRedemptionTimeExtension, ICoreVaultClient, ICoreVaultClientSettings, IDirectMinting,
+                IDirectMintingSettings, IRedemptionWithTag, IAgentAlwaysAllowedMinters
+            ])));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IIAssetManager,
                 [IAssetManager, IGoverned, IDiamondCut, IISettingsManagement])));
             assert.isFalse(await assetManager.supportsInterface('0xFFFFFFFF'));     // must not support invalid interface

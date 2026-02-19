@@ -27,7 +27,6 @@ import {AgentPayout} from "../library/AgentPayout.sol";
 import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {TransactionAttestation} from "../library/TransactionAttestation.sol";
 import {Globals} from "../library/Globals.sol";
-import {DirectMinting} from "../library/DirectMinting.sol";
 
 
 contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultClient {
@@ -308,7 +307,7 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
             || msg.sender == _payment.data.requestBody.preferredProofPresenter,
             InvalidExecutor());
         require(_payment.data.responseBody.hasDestinationTag &&
-            _payment.data.responseBody.destinationTag == DirectMinting.getState().coreVaultDonationTag,
+            _payment.data.responseBody.destinationTag == CoreVaultClient.coreVaultDonationTag(),
             NotACoreVaultDonation());
         require(_payment.data.responseBody.receivedAmount > 0, AmountNotPositive());
         // mark payment used

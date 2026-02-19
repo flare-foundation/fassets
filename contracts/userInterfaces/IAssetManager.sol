@@ -23,6 +23,7 @@ import {ICoreVaultClientSettings} from "./ICoreVaultClientSettings.sol";
 import {IAgentAlwaysAllowedMinters} from "./IAgentAlwaysAllowedMinters.sol";
 import {IDirectMinting} from "./IDirectMinting.sol";
 import {IDirectMintingSettings} from "./IDirectMintingSettings.sol";
+import {IRedemptionWithTag} from "./IRedemptionWithTag.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
@@ -39,7 +40,8 @@ interface IAssetManager is
     ICoreVaultClientSettings,
     IAgentAlwaysAllowedMinters,
     IDirectMinting,
-    IDirectMintingSettings
+    IDirectMintingSettings,
+    IRedemptionWithTag
 {
     ////////////////////////////////////////////////////////////////////////////////////
     // Basic system information

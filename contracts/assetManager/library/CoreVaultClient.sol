@@ -39,6 +39,9 @@ library CoreVaultClient {
         bool initialized;
         uint64 newTransferFromCoreVaultId;
         uint64 newRedemptionFromCoreVaultId;
+
+        // extra settings
+        uint32 coreVaultDonationTag;
     }
 
     // core vault may not be enabled on all chains
@@ -186,6 +189,14 @@ library CoreVaultClient {
             return bytes32(0);
         }
         return state.coreVaultManager.coreVaultAddressHash();
+    }
+
+    function coreVaultDonationTag()
+        internal view
+        returns (uint256)
+    {
+        State storage state = getState();
+        return state.coreVaultDonationTag;
     }
 
     function _minimumRemainingAfterTransferAMG(

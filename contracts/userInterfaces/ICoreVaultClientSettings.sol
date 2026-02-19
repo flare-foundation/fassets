@@ -34,6 +34,10 @@ interface ICoreVaultClientSettings {
         external view
         returns (address);
 
+    function getCoreVaultDonationTag()
+        external view
+        returns (uint256);
+
     function getCoreVaultTransferTimeExtensionSeconds()
         external view
         returns (uint256);
