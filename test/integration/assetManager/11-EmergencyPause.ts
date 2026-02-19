@@ -34,7 +34,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
     async function initialize() {
         commonContext = await CommonContext.createTest(governance);
-        context = await AssetContext.createTest(commonContext, testChainInfo.eth);
+        context = await AssetContext.createTest(commonContext, testChainInfo.xrp);
         await context.assetManagerController.addEmergencyPauseSender(emergencyAddress1, { from: governance });
         return { commonContext, context };
     }
@@ -47,7 +47,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
     describe("simple scenarios - emergency pause", () => {
         it("pause mint and redeem", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-            const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.underlyingAmount(10000));
+            const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.underlyingAmount(100000));
             const redeemer = await Redeemer.create(context, userAddress2, underlyingUser2);
             await agent.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
             mockChain.mine(10);
@@ -80,7 +80,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
         it("pause liquidation", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-            const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.underlyingAmount(10000));
+            const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.underlyingAmount(100000));
             const redeemer = await Redeemer.create(context, userAddress1, underlyingUser1);
             const liquidator = await Liquidator.create(context, userAddress1);
             //
@@ -92,8 +92,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await minter.performMinting(agent.vaultAddress, lots);
             await agent.checkAgentInfo({ status: AgentStatus.NORMAL }, "reset");
             // price change
-            await context.priceStore.setCurrentPrice("NAT", 200, 0);
-            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 200, 0);
+            await context.priceStore.setCurrentPrice("NAT", 20, 0);
+            await context.priceStore.setCurrentPriceFromTrustedProviders("NAT", 20, 0);
             //  pause stops liquidation
             await context.assetManagerController.emergencyPauseStartOperations([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             await expectRevert.custom(liquidator.startLiquidation(agent), "EmergencyPauseActive", []);
@@ -114,7 +114,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
         it("pause everything, including transfers", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-            const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.underlyingAmount(10000));
+            const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.underlyingAmount(100000));
             const redeemer = await Redeemer.create(context, userAddress2, underlyingUser2);
             await agent.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
             mockChain.mine(10);
@@ -143,7 +143,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await agent.depositCollateralLotsAndMakeAvailable(20);
             const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
             await agent2.depositCollateralLots(20);
-            const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.underlyingAmount(10000));
+            const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.underlyingAmount(100000));
             const redeemer = await Redeemer.create(context, userAddress2, underlyingUser2);
             const liquidator = await Liquidator.create(context, userAddress2);
             mockChain.mine(10);
@@ -156,6 +156,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // cannot start mint or redeem
             await expectRevert.custom(minter.reserveCollateral(agent.vaultAddress, 1), "EmergencyPauseActive", []);
             await expectRevert.custom(redeemer.requestRedemption(1), "EmergencyPauseActive", []);
+            // cannot start redeem with tag
+            await expectRevert.custom(redeemer.requestRedemptionWithTag(1, 14), "EmergencyPauseActive", []);
             // cannot self close
             await expectRevert.custom(agent.selfClose(lotSize), "EmergencyPauseActive", []);
             // cannot liquidate
@@ -227,7 +229,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.assignCoreVaultManager();
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             await agent.depositCollateralLotsAndMakeAvailable(20);
-            const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.underlyingAmount(10000));
+            const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.underlyingAmount(100000));
             const redeemer = await Redeemer.create(context, userAddress2, underlyingUser2);
             const challenger = await Challenger.create(context, userAddress2);
             mockChain.mine(10);
@@ -258,6 +260,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert.custom(redeemer.redemptionPaymentDefault(rrq), "EmergencyPauseActive", []);
             await expectRevert.custom(agent.finishRedemptionWithoutPayment(rrq), "EmergencyPauseActive", []);
             await expectRevert.custom(agent.rejectInvalidRedemption(invalidRrq), "EmergencyPauseActive", []);
+            await expectRevert.custom(agent.confirmXRPRedemptionPayment(redeemTx, rrq), "EmergencyPauseActive", []);
             // cannot self close
             await expectRevert.custom(agent.selfClose(1000), "EmergencyPauseActive", []);
             // cannot end liquidation

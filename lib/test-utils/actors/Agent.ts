@@ -406,6 +406,11 @@ export class Agent extends AssetContextClient {
         return await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerWorkAddress });
     }
 
+    async confirmXRPRedemptionPayment(transactionHash: string, request: EventArgs<RedemptionRequested>) {
+        const proof = await this.attestationProvider.proveXRPPayment(transactionHash, null);
+        return await this.assetManager.confirmXRPRedemptionPayment(proof, request.requestId, { from: this.ownerWorkAddress });
+    }
+
     async redemptionPaymentDefault(request: EventArgs<RedemptionRequested>) {
         const res = await Agent.executeRedemptionPaymentDefault(this.context, request, this.ownerWorkAddress);
         return requiredEventArgs(res, 'RedemptionDefault');
