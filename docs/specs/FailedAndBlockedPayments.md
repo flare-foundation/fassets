@@ -1,6 +1,6 @@
 # Failed and blocked payments
 
-Certain chains record and charge for the failed transactions. Sometimes, the transaction failure can be attributed to the sender (**failed payment**) and sometimes to the receiver of the payment (**blocked payment**). Blocking payments can serve as a type of attack on the FAsset participants, so it is essential for the FAsset system to correctly analyse reasons for failed payments, otherwise a receiver of a payment can block a payment to their address on the underlying chain and block valid operations.
+Certain chains record and charge for the failed transactions. Sometimes, the transaction failure can be attributed to the sender (**failed payment**) and sometimes to the receiver of the payment (**blocked payment**). Blocking payments can serve as a type of attack on the FAsset participants, so it is essential for the FAsset system to correctly analyze reasons for failed payments, otherwise a receiver of a payment can block a payment to their address on the underlying chain and block valid operations.
 
 ## Failed payments in minting
 
@@ -20,4 +20,6 @@ If payment fails due to the receiver (blocked payment), the Flare data connector
 
 If the underlying address has invalid format or checksum, the payments to that address fail without leaving any trace. This is an issue for minting and redemption, since the redeemer can provide the agent with an invalid redemption address, upon which the agent’s payment fails. Because there is no trace of the payment being blocked, the redeemer can thus force the agent to pay in collateral with premium. A similar issue is if the agent provides invalid address, in which case the minter’s payment fails without a trace and the agent collects the collateral reservation fee.
 
-For this reason the FAsset system requires an instance of `AddressValidator` contract for every supported chain. It checks that the provided address (in `createAgent` and `redeem` calls) is valid. It also normalises the address if there are multiple possible encodings of the same value (e.g. hexadecimal encoding can be uppercase or lowercase).
+For this reason the FAsset system requires an FDC `AddressValidity` proof for the underlying address in `createAgentVault` calls.
+
+Additionally, a malicious redeemer could send invalid underlying address as a target of redemption. For this case, the agent can reject the redemption by presenting an `AddressValidity` proof from the FDC (see "Rejecting redemption with invalid address" in the Redemption section).

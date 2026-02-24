@@ -18,7 +18,11 @@ Although the FAsset system is designed in such a way that the agents don’t nee
 
 The agent owner registry also contains the agent’s **name**, **description**, **icon url** and (optionally) **terms of use url**. These are set by the governance when the agent is added and can be changed later by the governance.
 
-Optionally, the governance can set a **manager** (typically a smaller multisig) to be able to manage the agent owner registry. If it is not set, only the governance can do it.
+Optionally, the governance can set a **manager** (typically a smaller multisig) to be able to manage the agent owner registry (adding and removing agents). If it is not set, only the governance can do it.
+
+## Always-allowed minters
+
+An agent that is not on the publicly available agents list (or has left it) can still allow specific addresses to mint against their vault. This is done through the **always-allowed minters** mechanism. The agent owner can add or remove addresses from their always-allowed minters list. Addresses on this list can mint against the agent’s vault even if the agent is not publicly available. This allows the agent to operate a private vault with select counterparties.
 
 ## Agent’s underlying address
 
@@ -69,3 +73,7 @@ At this point the agent has pulled out all the funds belonging to them. If they 
 
 7) Wait for all the remaining collateral providers to redeem their collateral pool tokens (exit from the pool). Note that at this point, self-close exit is not possible anymore, but it is not an issue, since the ordinary exit will always work when there are no backed FAssets (see section “Exiting collateral pool” for explanation).
 8) Execute “destroy agent”. This deletes agent vault and collateral pool contracts and all agent related data.
+
+## Agent ping (liveness check)
+
+The FAsset system provides a simple mechanism to check whether an agent bot is live and responsive. Anyone can call `agentPing` for an agent vault with a query value, which emits an `AgentPing` event (however, to avoid DOS-ing agents, the agent bot is advised to only respond to pings from known addresses). The agent's bot is expected to observe these events and respond by calling `agentPingResponse`, which emits an `AgentPingResponse` event. The `agentPingResponse` call can provide some data about the agent bot in the `response` field (e.g. make and version of the agent bot software). This mechanism is purely event-based and has no on-chain state effects - it simply allows monitoring whether an agent's bot infrastructure is operational.

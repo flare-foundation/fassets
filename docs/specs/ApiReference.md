@@ -73,7 +73,7 @@ Some asset manager settings are immutable, and the others can be changed by the 
 
 **assetManagerController** *[changeable by address updater]* - address of the asset manager controller contract (instance of `AssetManagerController`), which is the contract that can change settings of the asset manager.
 
-**priceReader** *[timelocked]* - the contract that reads prices from the FTSO system in an FTSO version independent way.
+**priceReader** *[timelocked]* - the contract that reads prices from the FTSO system in an FTSO version independent way (typically an instance of `FtsoV2PriceStore`).
 
 **agentVaultFactory** *[timelocked]* - factory contract for creating new agent vaults (instance of `IAgentVaultFactory`).
 
@@ -84,8 +84,6 @@ Some asset manager settings are immutable, and the others can be changed by the 
 **agentOwnerRegistry** *[timelocked]* - the contract (instance of `IAgentOwnerRegistry`) that contains a list of allowed agent owner's management addresses and mappings from management to work address.
 
 **scProofVerifier** *[timelocked]* - a contract (instance of `ISCProofVerifier`) that verifies and decodes Flare data connector proofs.
-
-**underlyingAddressValidator** *[timelocked]* - validator contract (instance of `IAddressValidator`) for addresses on the underlying chain. Typically, each chain has different rules, so every asset manager will have a different instance of address validator. See section “Address validation” for explanation.
 
 **liquidationStrategy** *[timelocked]* - external (dynamically loaded) library for calculation of liquidation factors (instance of `ILiquidationStrategy`, as library).
 
@@ -111,7 +109,7 @@ AMG is used internally instead of UBA so that minted quantities fit into 64 bits
 
 **mintingCapAMG** *[rate-limited]* - maximum minted amount of the FAsset. When set to 0, there is no limit. The minting cap is the mechanism that will be enabled initially to limit the possible losses during the beta phase. Later it will be removed or set to a very high value.
 
-**minUnderlyingBackingBIPS** *[timelocked]* - the percentage of backed FAssets that the agent must hold in their underlying address.
+**minUnderlyingBackingBIPS** *[timelocked]* - the percentage of backed FAssets that the agent must hold in their underlying address to facilitate redemptions. When set to 0, agents can transfer all backing to the core vault (used during system wind-down).
 
 **mintingPoolHoldingsRequiredBIPS** *[rate-limited]* - The minimum amount of pool tokens the agent must hold to be able to mint: the NAT value of all backed FAssets together with new ones times this percentage must be smaller than the agent's pool tokens' amount converted to NAT.
 
@@ -171,15 +169,13 @@ AMG is used internally instead of UBA so that minted quantities fit into 64 bits
 
 **emergencyPauseDurationResetAfterSeconds** - The amount of time since the last emergency pause after which the total pause duration counter will reset automatically.
 
-**redemptionPaymentExtensionSeconds** - When there are many redemption requests to an agent in a short time, it may be impossible for the agent to keep up with redemption payments (since consecutive transactions from a single underlying address are much slower than redemption requests that can originate from many addresses). For this reason, each simultaneous request adds this amount of seconds to redemption payment time (cumulative). As time passes without new requests, the redemption payment time slowly diminishes again to the default value.
-
-**cancelCollateralReservationAfterSeconds** - The amount of time after which the collateral reservation can be canceled by the minter if the handshake is not completed.
+**redemptionPaymentExtensionSeconds** - When there are many redemption requests to an agent in a short time, it may be impossible for the agent to keep up with redemption payments (since consecutive transactions from a single underlying address are much slower than redemption requests that can originate from many addresses). For this reason, each simultaneous request adds this amount of seconds to redemption payment time (cumulative). As time passes without new requests, the redemption payment time slowly diminishes again to the default value. This setting is managed by the `RedemptionTimeExtensionFacet` and is stored separately from other settings.
 
 ### Agent settings
 
 There are several parameters that the agent must define at agent vault creation. All settings except `vaultCollateralToken` can be changed later, but the changes must first be announced and then the agent must wait some system-defined time (e.g. 1 day) before the actual change. This time-lock is in place to protect the collateral providers from potential negative effects of the setting changes.
 
-**vaultCollateralToken** - Address of ERC20 token used as agent’s vault collateral. Must be selected from a system defined list (usually it will include USDC, USDT, WETH). Can only be changed if the used token is deprecated.
+**vaultCollateralToken** - Address of ERC20 token used as agent’s vault collateral. Must be selected from a system defined list (currently, there is only USDT0 on Flare and USDX on Songbird). Can only be changed if the used token is deprecated.
 
 **poolTokenSuffix** - The suffix that is appended to the pool token name and symbol (after the global asset manager’s pool token suffix) that identifies a new vault's collateral pool token. Must be unique within an asset manager.
 
@@ -195,6 +191,24 @@ There are several parameters that the agent must define at agent vault creation.
 **buyFAssetByAgentFactorBIPS** - The factor set by the agent to multiply the price at which agent buys FAssets from collateral providers on self-close exit (when requested or the redeemed amount is less than 1 lot).
 
 **poolExitCollateralRatioBIPS** - The minimum collateral ratio above which a staker can exit the pool  (this is CR that must be left after exit). The setting value must be higher than the system minimum collateral ratio for pool collateral.
+
+### Core vault client settings
+
+These settings are managed by the `CoreVaultClientSettingsFacet` and stored separately from the main asset manager settings. They are changed directly by governance (not through the AssetManagerController).
+
+**coreVaultManager** - Address of the CoreVaultManager contract. Once set, it cannot be disabled (set to zero). Changed by governance.
+
+**coreVaultNativeAddress** - The native address on the Flare/Songbird chain used for core vault operations (e.g., paying small penalty for transfer underlying payment failure). Changed by immediate governance.
+
+**minimumAmountLeftBIPS** - Minimum percentage of an agent's backed amount that must remain on the agent's underlying address after a transfer to core vault. This ensures enough liquidity remains for regular redemptions. Changed by immediate governance.
+
+**transferTimeExtensionSeconds** - Extra time given to agents for core vault transfer payments beyond the normal payment time. Changed by immediate governance.
+
+**transferDefaultPenaltyBIPS** - Penalty percentage applied when a core vault transfer defaults, paid from agent vault to `coreVaultNativeAddress`. Changed by immediate governance.
+
+**redemptionFeeBIPS** - Fee percentage deducted from direct redemptions from the core vault. Changed by immediate governance.
+
+**minimumRedeemLots** - Minimum number of lots that must be redeemed in a single direct redemption from core vault. This bound is reduced when the total amount in the CV is below it (to allow clearing the CV). Changed by immediate governance.
 
 ### Collateral type settings
 
@@ -228,11 +242,25 @@ In particular, the following important contracts are documented there:
 
 Public methods of asset manager contract are listed and documented in the file [https://github.com/flare-labs-ltd/fassets/blob/main/contracts/userInterfaces/IAssetManager.sol](https://github.com/flare-labs-ltd/fassets/blob/main/contracts/userInterfaces/IAssetManager.sol)
 
-All asset manager events are documented in the file
-[https://github.com/flare-labs-ltd/fassets/blob/main/contracts/userInterfaces/IAssetManagerEvents.sol](https://github.com/flare-labs-ltd/fassets/blob/main/contracts/userInterfaces/IAssetManagerEvents.sol)
+Most asset manager events are documented in the file
+[https://github.com/flare-labs-ltd/fassets/blob/main/contracts/userInterfaces/IAssetManagerEvents.sol](https://github.com/flare-labs-ltd/fassets/blob/main/contracts/userInterfaces/IAssetManagerEvents.sol),
+except for events that are defined in ICoreVaultClient, IAgentPing and IGoverned.
+
 
 Agent vault methods (only useful for agents) are documented in
 [https://github.com/flare-labs-ltd/fassets/blob/main/contracts/userInterfaces/IAgentVault.sol](https://github.com/flare-labs-ltd/fassets/blob/main/contracts/userInterfaces/IAgentVault.sol)
+
+Core vault client methods are documented in
+[https://github.com/flare-labs-ltd/fassets/blob/main/contracts/userInterfaces/ICoreVaultClient.sol](https://github.com/flare-labs-ltd/fassets/blob/main/contracts/userInterfaces/ICoreVaultClient.sol)
+
+Core vault client settings methods are documented in
+[https://github.com/flare-labs-ltd/fassets/blob/main/contracts/userInterfaces/ICoreVaultClientSettings.sol](https://github.com/flare-labs-ltd/fassets/blob/main/contracts/userInterfaces/ICoreVaultClientSettings.sol)
+
+Agent ping interface is documented in
+[https://github.com/flare-labs-ltd/fassets/blob/main/contracts/userInterfaces/IAgentPing.sol](https://github.com/flare-labs-ltd/fassets/blob/main/contracts/userInterfaces/IAgentPing.sol)
+
+Redemption time extension interface is documented in
+[https://github.com/flare-labs-ltd/fassets/blob/main/contracts/userInterfaces/IRedemptionTimeExtension.sol](https://github.com/flare-labs-ltd/fassets/blob/main/contracts/userInterfaces/IRedemptionTimeExtension.sol)
 
 ### Collateral pool
 

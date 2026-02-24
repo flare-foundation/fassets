@@ -2,12 +2,12 @@
 
 ## Overview
 
-The FAsset contracts are used to mint representations of assets from other XRP chain on Flare (or Songbird). The original assets are deposited to the address of an agent and can later be redeemed. The minted FAssets are secured by collateral, which is in the form of ERC20 tokens on Flare/Songbird chain and native tokens (FLR on Flare, SGB on Songbird). The collateral is locked in contracts that guarantee that minted tokens can always be either redeemed for underlying assets or compensated by collateral.
+The FAsset contracts are used to mint representations of assets from non-smart-contract chains (e.g. XRP, BTC, DOGE) on Flare (or Songbird). The original assets are deposited to the address of an agent and can later be redeemed. The minted FAssets are secured by collateral, which is in the form of ERC20 tokens on Flare/Songbird chain and native tokens (FLR on Flare, SGB on Songbird). The collateral is locked in contracts that guarantee that minted tokens can always be either redeemed for underlying assets or compensated by collateral.
 
 Two novel protocols, available on Flare and Songbird blockchains, enable the FAsset system to operate:
 
-* **FTSO** contracts which provide decentralised price feeds for multiple tokens.
-* Flare’s **Flare data connector**, which bridges payment data from any connected chain.
+* **FTSO** (Flare Time Series Oracle) contracts which provide decentralized price feeds for multiple tokens. Prices are stored in the **FtsoV2PriceStore** contract, which caches FTSO v2 prices on-chain.
+* **FDC** (Flare Data Connector), which bridges payment data from any connected chain via attestation proofs.
 
 ## Off chain Actors and their roles
 
@@ -25,15 +25,19 @@ An agent is expected to hold the deposited underlying assets at all times. Since
 
 ## Code architecture
 
-The FAsset system is implemented as two contracts per asset: the asset manager contract and the FAsset token contract. Per each agent there are three more contracts: the agent vault contract, the collateral pool contract, and the corresponding collateral pool token contract.
+The FAsset system is implemented as two contracts per asset: the asset manager contract and the FAsset token contract. Per each agent there are three more contracts: the agent vault contract, the collateral pool contract, and the corresponding collateral pool token contract. Additionally, there is optionally a single **CoreVaultManager** contract per asset that manages underlying assets held in a multisig-controlled core vault on the underlying chain (currently only XRP core vault is supported).
 
 The asset manager contract has minting / burning rights on the FAsset token contract and also controls the transfer of collateral tokens from the agent's vault and collateral pool. Most of the user interactions (minting, redeeming, etc.) go through the asset manager, except for collateral providers that interact directly with the collateral pool.
+
+The asset manager contract is implemented as an **EIP-2535 Diamond proxy**, split into multiple facets due to its size.
+
+Settings for multiple asset managers are managed by a single **AssetManagerController** contract, which holds a list of all asset managers and routes governance calls with timelock.
 
 ## Terminology
 
 #### Underlying chain / underlying address / underlying currency
 
-In the context of this document we use **underlying chains** or **underlying addresses** to describe the chains that are connected to this chain. So an underlying chain could is XRP. Analogously, the **underlying address** would be the XRP address and so forth. For the currency on the underlying chain that gets wrapped to FAssets, we use terms **underlying currency** or **underlying assets**.
+In the context of this document we use **underlying chains** or **underlying addresses** to describe the chains that are connected to this chain. So an underlying chain could be XRP, BTC, or DOGE. Analogously, the **underlying address** would be the XRP address and so forth. For the currency on the underlying chain that gets wrapped to FAssets, we use terms **underlying currency** or **underlying assets**.
 
 #### Native chain and SGB / FLR
 
@@ -47,7 +51,7 @@ Each minted asset (fXrp) is backed by two kinds of collateral: the agent vault h
 
 The ratio between the collateral value and the FAsset value is called **collateral ratio** (**CR**) and is used many times throughout this document. There are two collateral ratios corresponding to the two collateral kinds, **vault CR** and **pool CR**.
 
-For example, for backing 100$ of fXRP the agent will need at least 150$ of USDC (or some other stablecoins) in the agent’s vault and 200$ of FLR in the collateral pool. In this case, the vault CR is 1.5 and the pool CR is 2.0.
+For example, for backing 100$ worth of FXRP the agent may have 150$ of USDC (or some other stablecoins) in the agent’s vault and 200$ of FLR in the collateral pool. In this case, the vault CR is 1.5 and the pool CR is 2.0.
 
 #### Payment reference
 
@@ -59,4 +63,4 @@ Payments that involve two actors (minter/agent or redeemer/agent) will have uniq
 
 To prevent situations where the underlying transaction fees are higher than minting/redemption fees and to avoid having a large number of very small redemption tickets, all minting and redemptions must be in a whole number of lots. Lots will be defined by governance and will be quite large, e.g. the equivalent of 1000 USD or more. (*Note that examples in this document are usually NOT using lots*.)
 
-The lot size can be updated over time to reflect price fluctuations of the underlying asset. It can only be modified by a governance call and only by a limited amount in one day.
+The lot size can be updated over time to reflect price fluctuations of the underlying asset. It can only be modified by a governance call through the AssetManagerController with a timelock (there are also other limitations - the change can only be done once per day and the change ratio is limited).

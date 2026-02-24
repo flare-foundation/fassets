@@ -1,20 +1,24 @@
-# Tracking balance on the underlying chain
+# Tracking the underlying chain
 
-As defined above, an agent is required to keep for each FAsset they are backing, a certain percentage of underlying assets. This is **NOT** enforced by any locking scheme on the underlying chain but rather by balance tracking on the FAsset contract.
+The state of the underlying chain is tracked in the contracts by providing Flare Data Connector proofs of transactions and underlying block height.
+
+As mentioned in the Agents section, an agent is required to keep for each FAsset they are backing, a certain percentage of underlying assets. This is **NOT** enforced by any locking scheme on the underlying chain but rather by balance tracking on the FAsset contract.
 
 Each agent has one dedicated address on an underlying chain. Balance of that address will be tracked. For balance tracking, the system must receive reports per each payment in and out of this address.
 
 Payments received to an agent's address will be part of the minting process and will be updated during the minting flow.
 
-Outgoing payments can be either legal payments, where the agent is sending out funds that they are eligible to send, or illegal payments which should be penalised.
+Outgoing payments can be either legal payments, where the agent is sending out funds that they are eligible to send, or illegal payments which should be penalized.
 
-## Challengers
+## Underlying block tracking
 
-A very important role is the challengers role. They are essential for maintaining the health of the FAsset system. The challenger's role is to monitor the agent’s underlying address and point out illegal operations that can make the agent’s underlying backing too low. Agent's vault collateral will be utilised to reward the challenger that correctly reported an illegal operation. A detailed list of the illegal operations is below.
+The FAsset system needs to track the current block number and timestamp of the underlying chain. This tracking is not automatic - it must be updated by external calls. Anyone can call `updateCurrentBlock` with a `ConfirmedBlockHeightExists` proof from the Flare Data Connector to update the tracked block. The current underlying block information can be read via `currentUnderlyingBlock`.
+
+Usually, the block is updated by various bots: standard agent bots update it, and there is an independent "timekeeper bot" which can be deployed to update the block regularly. However, minters and agents are advised to check the current underlying block in the FAsset system and update it if necessary, since the time allowed for payments is counted from the current proved block height.
 
 ## Chain fees and the underlying balance
 
-Fees on the underlying chain (known as gas on smart contract chains) can create issues for the system. Part of tracking the agent’s underlying balance involves tracking its spent fees on the underlying chain. Large fee spendings can cause an address to have less assets than it should.
+Fees on the underlying chain (known as gas on smart contract chains) can create issues for the system. Part of tracking the agent’s underlying balance involves tracking its spent fees on the underlying chain. Large fee spending(s) can cause an address to have less assets than it should.
 
 ### Underlying balance top-up
 
@@ -25,7 +29,7 @@ An agent must make sure that the payment plus transaction fee for a redemption n
 
 ### Enforcing the underlying balance
 
-As mentioned, it is rather difficult to enforce an agent to maintain the required balance at any point at time. This will be done utilising external actors named challengers by encouraging them to report illegal outgoing payments.
+As mentioned, it is rather difficult to enforce an agent to maintain the required balance at any point at time. This will be done utilizing external actors named challengers by encouraging them to report illegal outgoing payments.
 
 Once such payment is reported, the agent’s position will be fully liquidated and the challenger will be paid a reward.
 
@@ -54,11 +58,13 @@ Part of the funds on the underlying address may be legally withdrawn by the agen
 
 ### Underlying withdrawal flow
 
-Before withdrawing underlying assets, the agent must announce a withdrawal (no need to announce a value). This generates a payment reference that has to be used in the withdrawal payment. Afterwards, the agent must present the proof of the payment. If the agent doesn't present the proof, anybody can do it after a while against some reward from the agent's vault. Withdrawal announcement is cleared when the proof is presented.
+Before withdrawing underlying assets, the agent must call `announceUnderlyingWithdrawal` (no need to announce a value). This generates a payment reference that has to be used in the withdrawal payment, and emits an `UnderlyingWithdrawalAnnounced` event. Afterwards, the agent must present the proof of the payment via `confirmUnderlyingWithdrawal`. If the agent doesn't present the proof, anybody can do it after `confirmationByOthersAfterSeconds` and get some reward from the agent's vault. Withdrawal announcement is cleared when the proof is presented, or it can be cancelled by the agent via `cancelUnderlyingWithdrawal` if no payment has been made.
 
 Only one withdrawal announcement can be active per agent at any time - this is a precaution against the agent overwhelming the balance tracking system with many simultaneous small withdrawals. (This is actually the reason why withdrawal announcements are necessary.)
 
-## Illegal payment challenges
+## Challengers
+
+A very important role is the challengers role. They are essential for maintaining the health of the FAsset system. The challenger's role is to monitor the agent’s underlying address and point out illegal operations that can make the agent’s underlying backing too low. Agent's vault collateral will be utilized to reward the challenger that correctly reported an illegal operation. A detailed list of the illegal operations is below.
 
 Any challenger can report illegal payments from an underlying address and get paid in return. The underlying chains have many payment types and more types might be added. To reduce complexity on the Flare data connector, not all payment types are supported. This means a challenger can not report any illegal payment. Instead the challenger can report any activity on an underlying address, even if the details (amount etc) of the Tx can’t be reported. To support this each chain will have two types of proofs. Payment proof will include detailed data while illegal activity proof will only include the Tx hash and source address (but if the Tx  is actually a legal payment, it will also contain the payment reference and amount, to prevent punishing legal payments).
 
@@ -74,7 +80,7 @@ The agent could try to avoid this check by using a valid payment reference, but 
 
 Third problem is that we cannot exactly prescribe in advance the amount paid from the underlying address. The reason for this are transaction fees (gas), which are unpredictable and can be quite high. Instead of inventing an artificial limit, we allow redemption payment to consume the redemption value plus the free underlying balance. And if there are several not-yet-confirmed redemptions, they can all together consume the sum of their redemption values plus free balance (which has to be split between them). So the third challenge type catches one or more valid payments which together make the *free underlying balance negative*.
 
-Please note that there is no challenge against a wrong destination address in the redemption payment. Since FAssets were burned at the start of the redemption process, they don’t need backing anymore. Such transactions will simply be recognised as failed redemption payments and the redeemer will be able to present the non-payment proof and get paid in collateral with premium (just as if the agent didn’t pay at all, which we cannot prevent).
+Please note that there is no challenge against a wrong destination address in the redemption payment. Since FAssets were burned at the start of the redemption process, they don’t need backing anymore. Such transactions will simply be recognized as failed redemption payments and the redeemer will be able to present the non-payment proof and get paid in collateral with premium (just as if the agent didn’t pay at all, which we cannot prevent).
 
 ### Illegal payment
 
@@ -89,7 +95,7 @@ Simple “illegal payment” is a payment from the agent’s underlying address 
 
 ### Double payment
 
-An agent might try to abuse a redemption request to pay to the redeemer and - with the same payment reference - to pay something to the agent's own address (or even to pay the redeemer twice if they are redeeming against themselves). This would normally be detected after one payment is reported, since then the request is deleted and the other payment becomes illegal, but this may take time if the agent delays with the confirmation. Double payment challenge  allows catching this scenario as soon as the payments are finalised.
+An agent might try to abuse a redemption request to pay to the redeemer and - with the same payment reference - to pay something to the agent's own address (or even to pay the redeemer twice if they are redeeming against themselves). This would normally be detected after one payment is reported, since then the request is deleted and the other payment becomes illegal, but this may take time if the agent delays with the confirmation. Double payment challenge  allows catching this scenario as soon as the payments are finalized.
 
 #### Double payment flow
 
@@ -98,7 +104,7 @@ An agent might try to abuse a redemption request to pay to the redeemer and - wi
 
 ### Payments make free underlying balance negative
 
-It can happen that one or several otherwise legal payments make the balance on the agent’s underlying address too small, or equivalently make the free underlying balance negative. As with double payment challenge, this would normally be detected after all payments are confirmed, but in this way it can be caught as soon as the payments are finalised.
+It can happen that one or several otherwise legal payments make the balance on the agent’s underlying address too small, or equivalently make the free underlying balance negative. As with double payment challenge, this would normally be detected after all payments are confirmed, but in this way it can be caught as soon as the payments are finalized.
 
 #### Payments make free underlying balance negative flow
 

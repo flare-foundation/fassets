@@ -5,11 +5,12 @@
 Any user (**minter**) can start the minting operation. Minting flow is as follows:
 
 * The minter picks an agent of their choice from the publicly available agent list. The minter will typically choose the agent based on the minting fee or the amount of free collateral (which must be enough for the minting).
-* Minter sends a Collateral Reservation Transaction (CRT) which includes:
+* Minter calls `reserveCollateral` (Collateral Reservation Transaction, CRT) which includes:
   * address of the chosen agent,
   * number of lots to mint (see the documentation for lots below),
-  * collateral reservation fee (CRF) to compensate for the locked collateral,
-  * optionally an **executor** address which can trigger minting execution once the underlying payment is finalized and proved - this allows a minting UI to execute payment on the users behalf, sparing the user extra operations after finalization time (which can be as long as 1 hour). If the executor is used, the minter should send some more FLR/SGB with the request to compensate the executor (the amount is agreed off-chain).
+  * maximum minting fee in BIPS (`_maxMintingFeeBIPS`) - the transaction reverts if the agent's fee exceeds this, protecting the minter from sudden fee changes,
+  * collateral reservation fee (CRF) to compensate for the locked collateral, paid in the native currency (FLR/SGB),
+  * optionally an **executor** address which can trigger minting execution once the underlying payment is finalized and proved - this allows a minting UI to execute payment on the user's behalf, sparing the user extra operations after finalization time (which can be as long as 1 hour). If the executor is used, the minter should send some more FLR/SGB with the request to compensate the executor (the amount is agreed off-chain).
 * The contract will lock the agent's collateral in the amount needed to back the whole minting until the underlying payment is proved or disproved.
 * Collateral reservation response is an event issued by the contract which includes:
   * The **agent’s address** to which the minter should send funds on the underlying chain.
@@ -28,7 +29,7 @@ Any user (**minter**) can start the minting operation. Minting flow is as follow
 
 **Collateral Reservation Fee** (CRF) will be paid at the collateral reservation request. This will be used in case the minter doesn't pay on the underlying chain, to compensate the agent and the collateral providers for the time their collateral was locked and waiting for the minting to be completed (correct transaction being proved on the underlying chain). CRF will be paid in the native currency (SGB or FLR) and the amount is defined as a percentage of the minted value, converted to FLR/SGB. For underlying chains where proving a payment takes longer, the fee could be higher. The CRF percentage will be defined by governance and will be the same for all agents.
 
-The amount of the collateral reservation fee can be obtained by calling `collateralReservationFee`. If the amount paid in `reserveCollateral` is more than required, the remainder is the executor’s fee if the minting is executed by an executor, otherwise it is paid back to the user.
+The amount of the collateral reservation fee can be obtained by calling `collateralReservationFee`. If the amount paid in `reserveCollateral` is more than the collateral reservation fee, the remainder is the executor’s fee if the minting is executed by an executor, otherwise it is paid back to the user.
 
 At the successful end of the mining or in case of minting payment failure, the CRF is paid to the agent and the pool (in the same share as minting fee).
 
@@ -49,7 +50,7 @@ The minting fee is the main source of revenue for the agent and the collateral p
 * Proving payment step (4) involves a few internal operations:
   * minter sends the attestation request
   * attestation providers attest the payment happened.
-  * data is finalised if enough attesters attest with the same data.
+  * data is finalized if enough attesters attest with the same data.
 
 ### State after minting
 
@@ -57,7 +58,7 @@ The minting fee is the main source of revenue for the agent and the collateral p
 
 ## Minting failure
 
-For executing (finalising) the minting, the minter has to prove they successfully paid the agent on the underlying chain. If the payment was not done in the time frame defined by the underlying chain block and timestamp, the agent has to prove non-payment for releasing their collateral. Once non-payment was proven, the Agent’s collateral that was reserved with the CRT call is freed and the agent receives the collateral reservation fee.
+For executing (finalizing) the minting, the minter has to prove they successfully paid the agent on the underlying chain. If the payment was not done in the time frame defined by the underlying chain block and timestamp, the agent has to prove non-payment for releasing their collateral. Once non-payment was proven, the Agent’s collateral that was reserved with the CRT call is freed and the agent receives the collateral reservation fee.
 
 Note that the requirement here is to **successfully prove the payment**, meaning it is not enough to complete the payment.
 
@@ -72,15 +73,15 @@ For proving non-payment a special attestation type exists for the Flare data con
   * Block 100
   * Timestamp 11:00 AM
 * Block 101 is mined with timestamp 10:59 (payment can still happen)
-* Block 102 is mined with timestamp 11:04 (once this block is finalised non payment can be proved)
+* Block 102 is mined with timestamp 11:04 (once this block is finalized non payment can be proved)
 * Block 109 is mined - here we assume 7 blocks on bitcoin are enough to assume finality
 * Agent sends a non payment attestation request with relevant payment details - payment reference, required payment amount, last block (100) and last timestamp (11:00).
-* Attestation providers attest that block 102 is finalised, has both number and timestamp larger than required, and that until this block the required payment was not done (or was not ok, e.g. the amount was too small).
+* Attestation providers attest that block 102 is finalized, has both number and timestamp larger than required, and that until this block the required payment was not done (or was not ok, e.g. the amount was too small).
 * Mint payment failure can be submitted to the FAsset system with the above non payment proof.
 
 ### Minter must make sure the underlying block is correct
 
-The last time for minter to pay the underlying assets is calculated as the current underlying block/timestamp plus a certain (governance defined) amount of blocks or a certain amount of time - whichever is longer. The problem is, the current block/timestamp as seen by the FAsset system can be quite far in the past, since it cannot be updated automatically by the FAsset contract - it has to be updated by an external call (by presenting a Flare data connector proof of a finalised block).
+The last time for minter to pay the underlying assets is calculated as the current underlying block/timestamp plus a certain (governance defined) amount of blocks or a certain amount of time - whichever is longer. The problem is, the current block/timestamp as seen by the FAsset system can be quite far in the past, since it cannot be updated automatically by the FAsset contract - it has to be updated by an external call (by presenting a Flare data connector proof of a finalized block).
 
 Usually, the block is updated by various bots and every time the FDC proof  of payment transaction is brought to the asset manager- agent bots also have incentive to update it because the same issue affects redemptions; and there is an independent “timekeeper bot” which can be deployed to update the block every few minutes. However, the minter is still advised to check the current underlying block in the FAsset system and update it if necessary. (The minter can also update the underlying block every time before minting, but that prolongs the time of minting by the time to obtain the Flare data connector proof of the current block, so it’s not necessarily the best strategy.)
 
@@ -105,7 +106,7 @@ In the future there will likely be a method to obtain Flare data connector proof
 The duration of the minting process depends mainly on the underlying chain speed. Maximum time is the sum of:
 
 1) system defined maximum time for deposit; it is a few underlying blocks or a few minutes (whichever is longer),
-2) the chain finalisation time,
+2) the chain finalization time,
 3) Flare data connector proof time (3-5 minutes, independent of the underlying chain).
 
 On fast chains like XRP the maximum total time is below 10 minutes. Successful mintings may take less time if the minter pays quickly (only part 1 is shorter), but for payment failures the agent needs to wait the full time before being able to get the non-payment proof.
@@ -120,7 +121,7 @@ For handling these issues, a unique payment reference is generated at the collat
 
 ## Self Minting
 
-Self minting involves one actor as both the agent and the minter. After setting up their vault, the agent can state if they want to lend their collateral or only utilise it for self minting. If a vault is limited to self minting, only the agent can mint against their collateral. Self minting can also be done against a vault that was defined as a public vault, but only by the vault's owner.
+Self minting involves one actor as both the agent and the minter. After setting up their vault, the agent can state if they want to lend their collateral or only utilize it for self minting. If a vault is limited to self minting, only the agent can mint against their collateral. Self minting can also be done against a vault that was defined as a public vault, but only by the vault's owner.
 
 The flow for self minting is very similar to a normal minting flow, but it is performed in a single step (no collateral reservation request) - the agent first pays on the underlying chain and then executes minting. A self-minting operation adds a ticket to the redemption queue the same way any minting does.
 

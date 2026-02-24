@@ -14,7 +14,7 @@ Any user holding FAssets can start a redemption process. The redeemer sends in F
    * the last underlying block and the last underlying timestamp to complete the payment,
    * optionally an **executor** address which can trigger redemption default if the agent doesn’t pay in the underlying - this allows a minting UI to execute redemption default on the users behalf, sparing the user extra operations after redemption default time (which can be several hours). If the executor is used, the redeemer should send some FLR/SGB with the request to compensate the executor (the amount is agreed off-chain).
 5) Every agent pays the redeemer on the underlying chain with a payment reference included with their payment as a memo field. The agent can pay the redemption from any address - not only the agent’s underlying address.
-6) Once payment is performed and finalised, the agent uses the Flare data connector to prove the payment.
+6) Once payment is performed and finalized, the agent uses the Flare data connector to prove the payment.
 7) Once the payment proof is presented to the FAsset system, the agent’s (and pool) collateral that was backing those FAssets is freed.
 
 ### Redemption flow diagram
@@ -53,11 +53,17 @@ When the payment proofs are not available anymore (typically 14 days after the p
 
 Since an agent vault has only one underlying address, there is some limit on the number of transactions that can be paid per minute. On the other hand, redemption requests to an agent with a large position can arrive from multiple addresses, which is much faster, plus the Flare/Songbird chain is faster than most. Therefore it would be possible to DDOS an agent and force them to miss the redemption payment time, triggering redemption payment defaults and obtaining collateral with premium.
 
-To prevent this, some extra time is added to each redemption when there are many redemptions to the same agent in a short time period. This is done in such a way that every single redemption payment has some minimum time (e.g. 30s or 1min, depending on the underlying chain) before the next one has to be paid, without eventually running out of time. (The exact formula used is similar to the leaky bucket algorithm used in rate limiters.)
+To prevent this, some extra time is added to each redemption when there are many redemptions to the same agent in a short time period. Each simultaneous request adds `redemptionPaymentExtensionSeconds` to the redemption payment time (cumulative). As time passes without new requests, the redemption payment time slowly diminishes back to the default value. The exact formula used is similar to the leaky bucket algorithm used in rate limiters.
+
+The `redemptionPaymentExtensionSeconds` setting is managed separately from other settings by the `RedemptionTimeExtensionFacet` (stored in its own diamond storage slot) and can be changed by governance through the AssetManagerController with rate-limiting constraints.
 
 ### Redeemer blocked by the stablecoin operator
 
 If the redeemer is blocked by the stablecoin operator, it may happen that the redemption default payment is impossible in vault collateral. In this case the redeemer is paid in pool collateral, but only under two conditions: the agent must have enough pool tokens that can be slashed and the payment must not push the pool into liquidation.
+
+### Rejecting redemption with invalid address
+
+A malicious redeemer could try to force redemption payment default by providing an invalid target underlying address. In this case, the agent can reject the redemption by presenting an `AddressValidity` proof from the Flare Data Connector showing that the address is invalid. On successful rejection, the redemption is considered fulfilled and the agents collateral is released. This is handled by the `rejectInvalidRedemption` method.
 
 ## Redemption fee
 
@@ -65,7 +71,7 @@ The redemption fee is the portion of the underlying asset that is not returned t
 
 Imagine the following flow:
 
-1) Agent is minted against: 100 fXRP and gets paid 100 XRP + 2 XRP fee.
+1) Agent is minted against: 100 FXRP and gets paid 100 XRP + 2 XRP fee.
 2) The Agent withdraws the fee and their address now holds 100 XRP.
 3) The agent is redeemed against so they have to pay out 100 XRP.
 4) But if they do pay the full 100 XRP, they will have no gas to pay for the transaction. The redemption fee comes to solve this problem. The fee creates a margin between the redeemed amount and the underlying asset value to be paid. This margin allows the agent to cover gas costs, while a portion is converted into fAssets and allocated to the pool.

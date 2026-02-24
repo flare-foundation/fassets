@@ -4,23 +4,23 @@ The Core Vault is the FAsset system vault on the underlying network, where the a
 
 ## Transfer to core vault
 
-* Agent manually requests transfer of the underlying asset on Flare network to the Core Vault
-  * There is a system setting that indicates the percentage of “agent’s minting capacity” (calculated from the amount of agent’s collateral) that has to remain on the agent’s address after the transfer - this should ensure redemptions are still possible.
-  * Core vault has a predefined address on the underlying chain.
-  * Both this fields can be edited by FAsset governance
-* Agent creates a redemption request on Flare network
-  * The request has the same structure as any other redemption request and follows all of the same reservation rules (rules are here to prevent another tx to use the same collateral).
-  * Agent creates the redemption request to the predefined CV address (on the underlying chain).
-  * Only flare governance can edit this field. We use the same code as for all other parameter settings.
-  * The agent’s collateral is locked at this time.
-* Agent send underlying assets to CVs address as a valid payment transaction with FAsset system provided valid transaction reference
-* Agent sends the proof of the payment to the system
-  * When an agent sends the payment proof to the Fasset system, their collateral is released.
-  * This proof can be sent by anyone.
+* Agent calls `transferToCoreVault` on Flare network specifying the amount of underlying assets to transfer.
+  * There is a system setting (`minUnderlyingBackingBIPS`) that indicates the percentage of backed FAssets that has to remain on the agent’s underlying address after the transfer - this ensures redemptions are still possible. The maximum transferable amount can be queried via `maximumTransferToCoreVault`.
+  * Core vault has a predefined address on the underlying chain, managed in the CoreVaultManager.
+  * Both fields can be edited by FAsset governance.
+* The system creates a special redemption request internally (a transfer request).
+  * The request has the same structure as any other redemption request and follows all of the same reservation rules (rules are here to prevent another tx from using the same collateral).
+  * The request is directed to the predefined CV address on the underlying chain.
+  * Only one transfer to core vault can be active per agent at any time.
+  * The agent’s collateral is locked at this time, just like for ordinary redemptions.
+* Agent sends underlying assets to the CV address as a valid payment transaction with the payment reference provided by the system.
+* Agent sends the proof of the payment to the system (`confirmRedemptionPayment`).
+  * When the payment proof is confirmed, the agent’s collateral is released and the transferred amount is accounted in the CoreVaultManager.
+  * This proof can be sent by anyone after `confirmationByOthersAfterSeconds`.
 * Unlike ordinary redemption requests, a transfer request never defaults. The agent can either
-  * pay and confirm payment, to have the collateral released (confirmation can also be done by 3rd party if the payment was made from the vault address), or
-  * After several hours (longer than normal payment time) the time for payment will end and the agent can call redemptionPaymentDefault. However, unlike the ordinary redemptions, no collateral is paid out - instead, a redemption ticket is recreated for the agent (at the end of the queue).
-    If the agent doesn’t call default in enough time (confirmationByOthersAfterSeconds since transfer request), anybody can call default and get some reward from the agent’s vault (just like for redemption payment confirmations by others).
+  * pay and confirm payment, to have the collateral released (confirmation can also be done by a 3rd party if the payment was made from the vault address), or
+  * After several hours (longer than normal payment time) the time for payment will end and the agent can call `redemptionPaymentDefault`. However, unlike ordinary redemptions, no collateral is paid out (except for a small failure penalty) - instead, a redemption ticket is recreated for the agent (at the end of the queue).
+    If the agent doesn’t call default in enough time (`confirmationByOthersAfterSeconds` since transfer request), anybody can call default and get some reward from the agent’s vault (just like for redemption payment confirmations by others).
 
 ## Return from core vault
 
@@ -28,24 +28,26 @@ There are 2 ways agents can get underlying assets back from the CV. One way is t
 
 ### Request for return process:
 
-* Agent requests return from Core Vault as a special “minting request”
-* A collateral reservation is created (like for minting, but with extra flag that it is a CV return transaction)
-* An event is triggered by the FAsset system. Those events are consumed by the CV operators that will take action based on the event observed.
-* CV transfers the requested amount to the agents underlying address (vault underlying address)
-* CV executor (or the agent) presents a proof of payment to the asset manager; at this point a redemption ticket (for internal bookkeeping) is created for the agent. From this point forward the agent can redeem.
-* CV has unlimited time to honor the request for return of the underlying assets. We need to make sure this is honored every operation day, since the agent’s collateral is locked.
+* Agent calls `requestReturnFromCoreVault` specifying the number of lots to return.
+* A collateral reservation is created (similar to minting, but flagged as a core vault return). The agent’s collateral is locked.
+* An event is triggered by the CoreVaultManager. These events are consumed by the CV operators who will take action based on the event observed.
+* The request is forwarded to the CoreVaultManager, which may merge it with other pending requests to the same agent.
+* Before the request is processed, the agent can cancel it via `cancelReturnFromCoreVault`, releasing the reserved collateral.
+* Request is processed by the core vault triggering address calling `triggerInstructions`, which updates CV accounting and triggers `TransferRequest` event. These events are consumed by the CV operators who will take action based on the event observed.
+* CV transfers the requested amount to the agent’s underlying address (vault underlying address).
+* The agent (or anyone) presents a proof of payment to the asset manager via `confirmCoreVaultReturnPayment`; at this point a redemption ticket is created for the agent. From this point forward the agent can redeem.
+* CV has in principle unlimited time to honor the request for return of the underlying assets, but will typically respond in less than 15 minutes. We need to make sure (off-chain) that this payments are fast, since the agent’s collateral is locked during this time.
 
 ### Redeeming from core vault directly:
 
-* User A presents its own fXRP, there is a lower bound to how much it can be redeemed directly. The user’s underlying address must be pre-approved by the governance.
-* System burns the presented fXRP
-* An event is triggered by the FAsset system. This event holds information about the balance of fXRP burned by the user A with a destination of the user’s underlying address.
-* CV has unlimited time to honor the redemption directly to agents ower address
-* This kind of redemptions have lower priority as the request for return requests.
+* A user calls `redeemFromCoreVault` with a number of lots and their underlying address. There is a lower bound (`minimumRedeemLots`) on how much can be redeemed directly, though this bound is reduced when the total amount in the CV is below it (to allow clearing the CV). The user’s underlying address must be in the `allowedDestinations` list in the CoreVaultManager, pre-approved by the governance.
+* System burns the presented FXRP (a redemption fee is deducted, defined by `redemptionFeeBIPS` in the core vault client settings).
+* A `CoreVaultRedemptionRequested` event is triggered. This event holds information about the balance of FXRP burned by the user with a destination of the user’s underlying address and a payment reference.
+* The request is forwarded to the CoreVaultManager, which may merge it with other pending requests to the same destination.
+* CV has unlimited time to honor the redemption directly to the user’s underlying address.
+* This kind of redemptions have lower priority than return requests.
 
-Direct redemptions can now be done to any user's underlying address, as long as it is pre-approved by the governance.
-
-Sending and receiving to the core vault must be able to be stopped by the governance transaction. This would be used in an event that CV is compromised.
+Sending and receiving to the core vault can be stopped by the governance. The CoreVaultManager has the emergency pause mechanism (that has to be called independently from the one in asset manager). This would be used in an event that CV is compromised.
 
 ## Technical design for XRP CV
 
@@ -66,13 +68,13 @@ Core vault is a classic multisig address setup by flare on the XRPL. The setup i
 4. Flare sets up a signer list (SignerListSet transaction type) with adding **Msig members** list with equal weight (1).
 5. Flare disables master key (AccountSet transaction type) so only msig signers can transact.
 
-The msig address will only do 2 types of transactions: Payment transaction back to agents addresses, and EschrowCreate transactions, which creates an escrow.
+The msig address will only do 2 types of transactions: Payment transaction back to agents addresses, and EscrowCreate transactions, which creates an escrow.
 
 We create escrow transactions in order to minimize the amount of xrp that can be spent by the multisig at any given time to reduce the risk. We do that by time locking the funds in the escrow with a safe custodian address as a destination. Until the deadline time only the safe custodian will get access to held funds if preimages are released, otherwise the funds are returned to the multisig address after the time period has passed. Escrows are created such that on each operation day, one lot of size L is released. Preimages are secrets, that when presented escrow transactions can be finalised and funds get immediately transferred to custodian account.
 
 ### Payment transaction:
 
-Payment transactions will be of classic transactions that will look something like that
+Payment transaction will be a classic transaction that will look something like that
 
     {
         Account: 'rf7duEoHnFve36dMN6c6NvvP4FChFMake8',

@@ -19,7 +19,7 @@ How the liquidation collateral payment is divided between the agent and the pool
 1) The one whose collateral ratio caused the liquidation (the agent or the pool) should pay more.
 2) However, paying more from the collateral with CR below minimal will prolong the liquidation, burn more FAssets, and release more collateral to the market.
 3) The agent keeps the underlying funds on their address, so at least the full value of these funds should be paid in the agent’s collateral, as long as the agent’s CR is above 1.
-4) We want to release as little collateral as possible (especially FLR/SGB) to the market to prevent price drops which could lower the CR further and potentially destabilise the system.
+4) We want to release as little collateral as possible (especially FLR/SGB) to the market to prevent price drops which could lower the CR further and potentially destabilize the system.
 
 The current implementation simply pays a fixed ratio (>= 1.0) of the payment from the agent’s collateral and the rest from the pool collateral. If there is not enough of one kind of collateral, more is paid from the other.
 
@@ -64,7 +64,7 @@ If the safety vault CR is 1.45 or less, the agent is now out of liquidation. How
 
 Note that quite a large proportion of backed fBTC got burned, almost 50%. This depends on the safety CR setting - with safety CR of 1.4 we would need to burn 40% and with (lowest possible) safety CR of 1.3, we would need to burn only 20% (but would risk going back to liquidation after smallest further price movement).
 
-### Example 2 - large price m ovement
+### Example 2 - large price movement
 
 With the same initial assumptions as before, assume now that the price of BTC jumps from $20k to $30k. Then no partial amount of liquidation can bring the agent back to safety (even if the safety CR is 1.3), so all the agent-backed FAssets have to be liquidated.
 
@@ -89,20 +89,21 @@ For example, if hypothetically BTC price jumps from $20k to $100k, total CR in t
 
 Liquidation is triggered by external actors such as the liquidators / challengers. Without external triggers the liquidation will not start. External triggers are required for:
 
-* Triggering liquidation start for an agent - this is actually triggered automatically by the first liquidation, but can also be done with a separate method. A reason why the liquidator would want to trigger liquidation mode separately is in order to wait for a better premium.
-* Turning off the liquidation state for an agent (in some cases; see below).
-* For full liquidation, there is no need for special triggers, since liquidation start is triggered automatically when the proof of illegal activity is presented.
+* Triggering liquidation start for an agent - this can be done by calling `startLiquidation`, or it is triggered automatically by calling `liquidate` (which combines start and execution in one step). A reason why the liquidator would want to trigger liquidation mode separately is in order to wait for a better premium.
+* Turning off the liquidation state for an agent - by calling `endLiquidation` (see below).
+* For full liquidation, there is no need for special triggers, since liquidation start is triggered automatically by the challenge system when the proof of illegal activity is presented.
 
 ### Remove an agent from liquidation state
 
-Once the agent liquidation state is set, it will remain so until set to false.
+Once the agent liquidation state is set, it will remain so until explicitly ended.
 
-The liquidation state flag can be set to false with the following triggers / conditions:
+The liquidation state can be ended with the following triggers / conditions:
 
-* A liquidation makes the agent’s position healthy again (sets the CR above safety CR).
+* A `liquidate` call automatically ends liquidation if the agent’s position becomes healthy (both vault CR and pool CR above their respective safety CRs).
 * The agent deposits more collateral which sets its CR above the safety CR.
 * The agent does a self-close operation which sets its CR above the safety CR.
-* The agent or someone on their behalf sets the liquidation state to false, after the price has moved so that the agent's position is healthy again (above safety CR).
+* A redemption or a transfer to core vault ends, releasing locked agent's collateral.
+* The agent or someone on their behalf calls `endLiquidation` (callable by anybody), after the price has moved so that the agent's position is healthy again (above safety CR).
 
 ### Agent has to be very attentive to their state
 
