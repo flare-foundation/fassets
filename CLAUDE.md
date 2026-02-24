@@ -63,18 +63,36 @@ Each facet in `contracts/assetManager/` corresponds to a logical module:
 
 | Facet | Responsibility |
 |---|---|
-| `MintingFacet` | Collateral reservation and minting execution |
-| `RedemptionRequestsFacet` | Initiating redemptions |
+| `CollateralReservationsFacet` | Collateral reservations for minting |
+| `MintingFacet` | Minting and self-minting execution |
+| `MintingDefaultsFacet` | Handling minting defaults |
+| `RedemptionRequestsFacet` | Initiating redemptions, rejecting redemptions with invalid address, agent's self-close |
 | `RedemptionConfirmationsFacet` | Confirming redemptions via FDC attestations |
 | `RedemptionDefaultsFacet` | Handling defaulted redemptions |
-| `LiquidationFacet` | Liquidating undercollateralized agents |
-| `ChallengesFacet` | Challenging illegal payments and double payments |
-| `AgentVaultManagementFacet` | Agent creation, deposits, withdrawals |
-| `CollateralTypesFacet` | Vault collateral management |
-| `SettingsManagementFacet` | Governance-controlled settings updates |
+| `LiquidationFacet` | Liquidating undercollateralized agents and agents in full liquidation |
+| `ChallengesFacet` | Challenging illegal payments and double payments (triggers full liquidation if successful) |
+| `AgentVaultManagementFacet` | Agent creation and destruction |
+| `CollateralTypesFacet` | Vault collateral management - adding, removing and updating settings for collateral tokens |
+| `SettingsManagementFacet` | Governance-controlled settings updates - all methods are called through AssetManagerController |
 | `CoreVaultClientFacet` | Integration with CoreVaultManager |
+| `CoreVaultClientSettingsFacet` | Manage settings for `CoreVaultClientFacet` |
 | `EmergencyPauseFacet` | Emergency pause mechanism |
-| `SystemStateManagementFacet` | Attaching to controller, underlying block updates |
+| `SystemStateManagementFacet` | Attaching to controller, minting pause |
+| `AgentAlwaysAllowedMintersFacet` | Support for agent allowing certain addresses to mint from non-public vault |
+| `AgentCollateralFacet` | Deposits and withdrawals to/from agent vault |
+| `AgentInfoFacet` | Return detailed info about agent vault |
+| `AgentPingFacet` | Sending events to check for agent bots' liveness and receiving replies |
+| `AgentSettingsFacet` | Agent owners modifying settings of their vaults |
+| `AgentVaultAndPoolSupportFacet` | Internal methods called from agent vault or pool |
+| `AssetManagerBase` | Base contract inherited by all facets - mostly modifiers |
+| `AssetManagerDiamondCutFacet` | Diamond cut with timelock |
+| `AssetManagerInit` | Initializer (not exposed through diamond proxy, only called at initial deploy) |
+| `AvailableAgentsFacet` | Reading and updating list of publicly available agents |
+| `RedemptionTimeExtensionFacet` | Extend agent's redemption payment time where many redemption requests arrive in short period |
+| `SettingsReaderFacet` | Methods to read full asset manager settings structure and some getters for more commonly needed individual settings |
+| `SystemInfoFacet` | Reading system state - collateral reservations, redemption queue, redemption requests |
+| `UnderlyingBalanceFacet` | Proving topups and withdrawals to/from agent vault underlying address |
+| `UnderlyingTimekeepingFacet` | Updating underlying block and timestamp tracking |
 
 Facet implementations live in `contracts/assetManager/facets/` and share business logic libraries in `contracts/assetManager/library/`.
 
@@ -86,10 +104,11 @@ Facet implementations live in `contracts/assetManager/facets/` and share busines
 - **`AssetManagerController`** (`contracts/assetManagerController/implementation/AssetManagerController.sol`) — governance-controlled registry; all settings changes to AssetManager are routed through here with timelock
 - **`AgentOwnerRegistry`** (`contracts/agentOwnerRegistry/implementation/AgentOwnerRegistry.sol`) — whitelisting of agent owners; maps management address → work address
 - **`FAsset`** (via `contracts/fassetToken/`) — the ERC20 f-asset token (e.g., FXRP)
+- **`FtsoV2PriceStore`** (via `contracts/ftso/implementation/FtsoV2PriceStore.sol`) — The store for prices from FTSOv2 (prices are obtained externally and added here with proof)
 
 ### Governance
 
-Governance follows the `GovernedBase` pattern (`contracts/governance/implementation/`). `AssetManagerController` and `CoreVaultManager` use UUPS upgradeable proxies. Settings changes go through a timelock governed by the governance multisig.
+Governance follows the `GovernedBase` pattern (`contracts/governance/implementation/`). `AssetManagerController`, `CoreVaultManager` and `FtsoV2PriceStore` use UUPS upgradeable proxies. Settings changes and contract/facet upgrading go through a timelock governed by the governance multisig.
 
 ### Library Organization
 
@@ -103,13 +122,13 @@ Business logic is factored into libraries under `contracts/assetManager/library/
 
 ### Unit of Account
 
-The system uses "AMG" (Asset Minting Granularity) as an internal unit for the underlying asset amount. Conversions between underlying lots, AMG, and token wei are done in `Conversion.sol`.
+The system uses "UBA" for the minimal unit of underlying assets and "AMG" (Asset Minting Granularity) as an internal unit for the underlying asset amount (amounts in AMG must always fit in 64 bits). Conversions between underlying lots, UBA, AMG, and token wei are done in `Conversion.sol`.
 
 ### Test Structure
 
 - `test/unit/` — Hardhat/Truffle unit tests per contract module
 - `test/integration/` — Hardhat integration tests
-- `test/e2e-simulation/` — full FAsset simulation (`yarn test_e2e`)
+- `test/e2e-simulation/` — randomized long-running FAsset simulation on Hardhat (`yarn test_e2e`)
 - `test-forge/` — Foundry tests for `collateralPool`, `coreVaultManager`, `ftso`
 
 Forge tests use `lib/forge-std/`. Initialize with `git submodule update --init --recursive` before running `forge build`.
