@@ -10,5 +10,6 @@
 - [Tracking the underlying chain](./TrackingUnderlyingChain.md)
 - [Liquidation](./Liquidation.md)
 - [Core vault](./CoreVault.md)
+- [Direct minting](./DirectMinting.md)
 - [Upgrading, pausing and winding down](./PauseAndUpgrade.md)
 - [API reference](./ApiReference.md)

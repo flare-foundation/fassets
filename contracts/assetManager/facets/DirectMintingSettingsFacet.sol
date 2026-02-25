@@ -123,7 +123,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         require(executorFeeAmg <= state.executorFeeAmg * 4 + _usd5InAssetAmg(1e5), IncreaseTooBig());
         // update
         state.executorFeeAmg = executorFeeAmg;
-        emit IAssetManagerEvents.SettingChanged("executorFeeUBA", _executorFeeUBA);
+        emit IAssetManagerEvents.SettingChanged("directMintingExecutorFeeUBA", _executorFeeUBA);
     }
 
     function setDirectMintingOthersCanExecuteAfterSeconds(uint256 _seconds)

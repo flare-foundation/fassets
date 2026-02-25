@@ -88,3 +88,9 @@ An agent can self close their position or part of their position. This is simila
 Self close can also be used by the agent to stop liquidations, since it reduces the amount of FAssets the agent is backing.
 
 The self-closed amount need not be a whole number of lots and can even be less than one lot. Therefore self-closing is the preferred way to redeem an agent's dust.
+
+## Redeem with tag
+
+This is a small addition to `redeem` functionality that allows redeemer to request that an XRP destination tag is added to the redemption payment.
+Since it requires different FDC proof type, there are new methods `redeemWithTag` and `confirmXRPRedemptionPayment`, and a new event `RedemptionWithTagRequested` is emitted.
+It only works on XRP chain, so a flag `redeemWithTagSuppported` is added that signifies the support.

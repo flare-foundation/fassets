@@ -1,6 +1,5 @@
 # General rules
 
-- Always ask for clarification if you think you don't understand something.
 - Never commit anything.
 - Never read or write any file outside the project folder or the open vscode workspace.
 - Never read `.env` file, `secrets.json` file, or any file matching `secrets-*.json`.
