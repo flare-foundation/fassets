@@ -82,3 +82,6 @@ airdrop/files
 # Foundry
 cache-forge/
 artifacts-forge/
+
+# Claude
+.claude/settings.local.json

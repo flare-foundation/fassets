@@ -6,19 +6,26 @@
     "words": [
         "abicoder",
         "bips",
+        "collateralized",
         "CRBIPS",
         "Delegators",
         "fasset",
         "fassets",
         "FTSO",
         "ftsos",
+        "FXRP",
         "IERC",
         "keccak",
         "mintings",
+        "msig",
         "multicollateral",
+        "outpayments",
+        "overcollateralized",
+        "preimages",
         "prng",
         "Reentrancy",
         "selfdestruct",
+        "skyfall",
         "solhint",
         "sstore",
         "stablecoins",
@@ -29,7 +36,10 @@
         "topup",
         "topups",
         "undelegate",
+        "USDX",
         "utxo",
-        "wnat"
+        "UUPS",
+        "wnat",
+        "XRPL"
     ]
 }

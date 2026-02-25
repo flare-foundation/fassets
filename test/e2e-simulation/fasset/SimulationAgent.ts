@@ -168,7 +168,7 @@ export class SimulationAgent extends SimulationActor {
         const amountUBA = randomBN(ownersAssets);
         if (this.avoidErrors && amountUBA.isZero()) return;
         await agent.selfClose(amountUBA)
-            .catch(e => scope.exitOnExpectedError(e, ["FAssetBalanceTooLow", "RedeemZeroLots"]));
+            .catch(e => scope.exitOnExpectedError(e, ["FAssetBalanceTooLow", "RedeemZeroLots", "SelfCloseOfZero"]));
     }
 
     async convertDustToTicket(scope: EventScope): Promise<void> {
@@ -286,7 +286,7 @@ export class SimulationAgent extends SimulationActor {
         if (transferLots.eqn(0)) return;
         const transferAmount = transferLots.mul(this.context.lotSize());
         await agent.startTransferToCoreVault(transferAmount)
-            .catch(e => scope.exitOnExpectedError(e, ["InvalidAgentStatus", "TransferAlreadyActive", "TooLittleMintingLeftAfterTransfer"]));
+            .catch(e => scope.exitOnExpectedError(e, ["InvalidAgentStatus", "TransferAlreadyActive", "TooLittleMintingLeftAfterTransfer", "NothingMinted"]));
     }
 
     async returnFromCoreVault(scope: EventScope) {
@@ -330,7 +330,8 @@ export class SimulationAgent extends SimulationActor {
             await agent.withdrawPoolFees(poolFeeBalance)
                 .catch(e => scope.handleExpectedErrors(e, { exit: ['free f-asset balance too small'] }));
             // self-close agent fee fassets
-            await agent.selfClose(poolFeeBalance);
+            await agent.selfClose(poolFeeBalance)
+                .catch(e => scope.handleExpectedErrors(e, { continue: ["SelfCloseOfZero"] }));
         }
         // conditionally wait until all the agent's tickets are redeemed
         const waitForRedemptions = coinFlip(0.9);
