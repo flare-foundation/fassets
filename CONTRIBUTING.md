@@ -142,7 +142,7 @@ contracts/mintingTagManager/**/*
 
 ### Explicit scope
 
-Complete list of **163** in-scope Solidity files:
+Complete list of **160** in-scope Solidity files:
 
 ```
 contracts/agentOwnerRegistry/implementation/AgentOwnerRegistry.sol
@@ -313,6 +313,9 @@ Mock contracts (used only in tests) are **excluded**:
 
 ```
 contracts/**/mock/**/*
+contracts/openzeppelin/token/*
+contracts/openzeppelin/utils/*
+contracts/utils/Imports_Solidity_0_6.sol
 ```
 
 ### Deployment parameters
