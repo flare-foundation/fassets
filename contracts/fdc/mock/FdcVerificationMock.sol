@@ -7,6 +7,7 @@ import {IPayment, IBalanceDecreasingTransaction, IReferencedPaymentNonexistence,
     from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {IRelay} from "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
 import {IXRPPayment} from "../mockInterface/IXRPPayment.sol";
+import {IXRPPaymentNonexistence} from "../mockInterface/IXRPPaymentNonexistence.sol";
 import {IFdcVerification} from "../mockInterface/IFdcVerification.sol";
 
 
@@ -119,6 +120,19 @@ contract FdcVerificationMock is IFdcVerification {
         returns (bool _proved)
     {
         return _proof.data.attestationType == bytes32("XRPPayment") &&
+            _proof.merkleProof.verifyCalldata(
+                relay.merkleRoots(fdcProtocolId, _proof.data.votingRound),
+                keccak256(abi.encode(_proof.data))
+            );
+    }
+
+    function verifyXRPPaymentNonexistence(
+        IXRPPaymentNonexistence.Proof calldata _proof
+    )
+        external view
+        returns (bool _proved)
+    {
+        return _proof.data.attestationType == bytes32("XRPPaymentNonexistence") &&
             _proof.merkleProof.verifyCalldata(
                 relay.merkleRoots(fdcProtocolId, _proof.data.votingRound),
                 keccak256(abi.encode(_proof.data))

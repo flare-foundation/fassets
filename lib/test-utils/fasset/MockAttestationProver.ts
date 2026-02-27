@@ -1,4 +1,4 @@
-import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence, XRPPayment } from "@flarenetwork/js-flare-common";
+import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence, XRPPayment, XRPPaymentNonexistence } from "@flarenetwork/js-flare-common";
 import Web3 from "web3";
 import { AttestationHelper } from "../../underlying-chain/AttestationHelper";
 import { TX_FAILED, TX_SUCCESS, TxInputOutput } from "../../underlying-chain/interfaces/IBlockChain";
@@ -160,6 +160,45 @@ export class MockAttestationProver {
                     && transaction.status !== TX_FAILED
                     && totalReceivedValue(transaction, destinationAddressHash, "intended").gte(amount)
                     && (!checkSourceAddresses || sourceAddressesRoot === AttestationHelper.merkleRootOfAddresses(transaction.inputs.map(input => input[0])));
+                if (found) {
+                    return [true, startBlock, bn];
+                }
+            }
+        }
+        return [false, startBlock, -1];  // not found, but also didn't find overflow block
+    }
+
+    xrpPaymentNonexistence(destinationAddressHash: string, memoDataHash: string | null, destinationTag: number | null, amount: BN, startBlock: number, endBlock: number, endTimestamp: number): XRPPaymentNonexistence.ResponseBody {
+        // if payment is found, return null
+        const [found, lowerBoundaryBlockNumber, overflowBlock] = this.findXRPPayment(destinationAddressHash, memoDataHash, destinationTag, amount, startBlock, endBlock, endTimestamp);
+        if (found) {
+            throw new MockAttestationProverError(`AttestationProver.xrpPaymentNonexistence: transaction found with memoDataHash ${memoDataHash} and destinationTag ${destinationTag}`);
+        }
+        if (lowerBoundaryBlockNumber === -1) {
+            throw new MockAttestationProverError(`AttestationProver.xrpPaymentNonexistence: all blocks too old`);    // cannot really happen
+        }
+        if (overflowBlock === -1) {
+            throw new MockAttestationProverError(`AttestationProver.xrpPaymentNonexistence: overflow block not found`);
+        }
+        // fill result
+        return {
+            minimalBlockTimestamp: String(this.chain.blocks[lowerBoundaryBlockNumber].timestamp),
+            firstOverflowBlockNumber: String(overflowBlock),
+            firstOverflowBlockTimestamp: String(this.chain.blocks[overflowBlock].timestamp),
+        };
+    }
+
+    private findXRPPayment(destinationAddressHash: string, memoDataHash: string | null, destinationTag: number | null, amount: BN, startBlock: number, endBlock: number, endTimestamp: number): [boolean, number, number] {
+        for (let bn = startBlock; bn < this.chain.blocks.length; bn++) {
+            const block = this.chain.blocks[bn];
+            if (bn > endBlock && block.timestamp > endTimestamp) {
+                return [false, startBlock, bn];  // end search when both blockNumber and blockTimestamp are over the limits
+            }
+            for (const transaction of block.transactions) {
+                const found = (memoDataHash == null || (transaction.reference && Web3.utils.soliditySha3Raw(transaction.reference) === memoDataHash))
+                    && (destinationTag == null || transaction.destinationTag === destinationTag)
+                    && transaction.status !== TX_FAILED
+                    && totalReceivedValue(transaction, destinationAddressHash, "intended").gte(amount);
                 if (found) {
                     return [true, startBlock, bn];
                 }

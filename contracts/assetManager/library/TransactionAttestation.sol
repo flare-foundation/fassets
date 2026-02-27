@@ -2,7 +2,7 @@
 pragma solidity ^0.8.27;
 
 import {IFdcVerification, IPayment, IBalanceDecreasingTransaction, IConfirmedBlockHeightExists,
-        IReferencedPaymentNonexistence, IAddressValidity, IXRPPayment}
+        IReferencedPaymentNonexistence, IAddressValidity, IXRPPayment, IXRPPaymentNonexistence}
     from "../../fdc/mock/FdcVerificationMock.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {Globals} from "./Globals.sol";
@@ -95,6 +95,17 @@ library TransactionAttestation {
         IFdcVerification fdcVerification = IFdcVerification(_settings.fdcVerification);
         require(_proof.data.sourceId == _settings.chainId, InvalidChain());
         require(fdcVerification.verifyReferencedPaymentNonexistence(_proof), NonPaymentNotProven());
+    }
+
+    function verifyXRPPaymentNonexistence(
+        IXRPPaymentNonexistence.Proof calldata _proof
+    )
+        internal view
+    {
+        AssetManagerSettings.Data storage _settings = Globals.getSettings();
+        IFdcVerification fdcVerification = IFdcVerification(_settings.fdcVerification);
+        require(_proof.data.sourceId == _settings.chainId, InvalidChain());
+        require(fdcVerification.verifyXRPPaymentNonexistence(_proof), NonPaymentNotProven());
     }
 
     function verifyAddressValidity(

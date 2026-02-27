@@ -1,4 +1,4 @@
-import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MerkleTree, Payment, ReferencedPaymentNonexistence, XRPPayment } from "@flarenetwork/js-flare-common";
+import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MerkleTree, Payment, ReferencedPaymentNonexistence, XRPPayment, XRPPaymentNonexistence } from "@flarenetwork/js-flare-common";
 import { requireNotNull, ZERO_ADDRESS, ZERO_BYTES32 } from "../utils/helpers";
 import { SourceId } from "./SourceId";
 import { IBlockChain, TxInputOutput } from "./interfaces/IBlockChain";
@@ -132,6 +132,38 @@ export class AttestationHelper {
         return requireNotNull(tree.root);
     }
 
+    async requestXRPPaymentNonexistenceProof(destinationAddress: string, paymentReference: string | null, destinationTag: number | null, amount: BN, startBlock: number, endBlock: number, endTimestamp: number, preferredProofPresenter?: string): Promise<AttestationRequestId | null> {
+        let overflowBlock = await this.chain.getBlockAt(endBlock + 1);
+        while (overflowBlock != null && overflowBlock.timestamp <= endTimestamp) {
+            overflowBlock = await this.chain.getBlockAt(overflowBlock.number + 1);
+        }
+        if (overflowBlock == null) {
+            throw new AttestationHelperError(`overflow block not found (overflowBlock ${endBlock + 1}, endTimestamp ${endTimestamp}, height ${await this.chain.getBlockHeight()})`);
+        }
+        const finalizationBlock = await this.chain.getBlockAt(overflowBlock.number + this.chain.finalizationBlocks);
+        if (finalizationBlock == null) {
+            throw new AttestationHelperError(`finalization block not found (block ${overflowBlock.number}, height ${await this.chain.getBlockHeight()})`);
+        }
+        const request: XRPPaymentNonexistence.Request = {
+            attestationType: XRPPaymentNonexistence.TYPE,
+            sourceId: this.chainId,
+            messageIntegrityCode: ZERO_BYTES32,
+            requestBody: {
+                minimalBlockNumber: String(startBlock),
+                deadlineBlockNumber: String(endBlock),
+                deadlineTimestamp: String(endTimestamp),
+                destinationAddressHash: web3.utils.keccak256(destinationAddress),
+                amount: String(amount),
+                checkFirstMemoData: paymentReference !== null,
+                firstMemoDataHash: paymentReference !== null ? web3.utils.soliditySha3Raw(paymentReference) : ZERO_BYTES32,
+                checkDestinationTag: destinationTag !== null,
+                destinationTag: String(destinationTag ?? 0),
+                preferredProofPresenter: preferredProofPresenter ?? ZERO_ADDRESS,
+            },
+        };
+        return await this.client.submitRequest(request);
+    }
+
     async requestConfirmedBlockHeightExistsProof(queryWindow: number): Promise<AttestationRequestId | null> {
         const blockHeight = await this.chain.getBlockHeight();
         const finalizationBlock = await this.chain.getBlockAt(blockHeight);
@@ -175,6 +207,10 @@ export class AttestationHelper {
     }
 
     async obtainReferencedPaymentNonexistenceProof(round: number, requestData: string): Promise<ReferencedPaymentNonexistence.Proof | AttestationNotProved> {
+        return await this.client.obtainProof(round, requestData);
+    }
+
+    async obtainXRPPaymentNonexistenceProof(round: number, requestData: string): Promise<XRPPaymentNonexistence.Proof | AttestationNotProved> {
         return await this.client.obtainProof(round, requestData);
     }
 
@@ -234,6 +270,19 @@ export class AttestationHelper {
         const result = await this.client.obtainProof(request.round, request.data);
         if (!attestationProved(result)) {
             throw new AttestationHelperError("referencedPaymentNonexistence: not proved")
+        }
+        return result;
+    }
+
+    async proveXRPPaymentNonexistence(destinationAddress: string, paymentReference: string | null, destinationTag: number | null, amount: BN, startBlock: number, endBlock: number, endTimestamp: number, preferredProofPresenter?: string): Promise<XRPPaymentNonexistence.Proof> {
+        const request = await this.requestXRPPaymentNonexistenceProof(destinationAddress, paymentReference, destinationTag, amount, startBlock, endBlock, endTimestamp, preferredProofPresenter);
+        if (request == null) {
+            throw new AttestationHelperError("xrpPaymentNonexistence: not proved")
+        }
+        await this.client.waitForRoundFinalization(request.round);
+        const result = await this.client.obtainProof(request.round, request.data);
+        if (!attestationProved(result)) {
+            throw new AttestationHelperError("xrpPaymentNonexistence: not proved")
         }
         return result;
     }

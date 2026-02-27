@@ -1,4 +1,4 @@
-import { ARBase, ARESBase, AddressValidity, AttestationDefinitionStore, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MIC_SALT, MerkleTree, Payment, ReferencedPaymentNonexistence, XRPPayment, decodeAttestationName } from "@flarenetwork/js-flare-common";
+import { ARBase, ARESBase, AddressValidity, AttestationDefinitionStore, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MIC_SALT, MerkleTree, Payment, ReferencedPaymentNonexistence, XRPPayment, XRPPaymentNonexistence, decodeAttestationName } from "@flarenetwork/js-flare-common";
 import { FdcHubMockInstance, RelayMockInstance } from "../../../typechain-truffle";
 import { AttestationRequest } from "../../../typechain-truffle/IFdcHub";
 import { SourceId } from "../../underlying-chain/SourceId";
@@ -177,7 +177,7 @@ export class MockFlareDataConnectorClient implements IFlareDataConnectorClient {
         // calculate hash for Merkle tree - requires correct flareDataConnectorRound field
         const hash = this.definitionStore.attestationResponseHash(response);
         if (hash == null) {
-            throw new FlareDataConnectorClientError(`FlareDataConnectorClient: invalid attestation reponse`);
+            throw new FlareDataConnectorClientError(`FlareDataConnectorClient: invalid attestation response`);
         }
         return { response, hash };
     }
@@ -225,6 +225,13 @@ export class MockFlareDataConnectorClient implements IFlareDataConnectorClient {
                 const request = parsedRequest.requestBody as ReferencedPaymentNonexistence.RequestBody;
                 return prover.referencedPaymentNonexistence(request.destinationAddressHash, request.standardPaymentReference, toBN(request.amount),
                     toNumber(request.minimalBlockNumber), toNumber(request.deadlineBlockNumber), toNumber(request.deadlineTimestamp), request.checkSourceAddresses, request.sourceAddressesRoot);
+            }
+            case XRPPaymentNonexistence.TYPE: {
+                const request = parsedRequest.requestBody as XRPPaymentNonexistence.RequestBody;
+                const memoDataHash = request.checkFirstMemoData ? request.firstMemoDataHash : null;
+                const destinationTag = request.checkDestinationTag ? Number(request.destinationTag) : null;
+                return prover.xrpPaymentNonexistence(request.destinationAddressHash, memoDataHash, destinationTag, toBN(request.amount),
+                    toNumber(request.minimalBlockNumber), toNumber(request.deadlineBlockNumber), toNumber(request.deadlineTimestamp));
             }
             case ConfirmedBlockHeightExists.TYPE: {
                 const request = parsedRequest.requestBody as ConfirmedBlockHeightExists.RequestBody;
