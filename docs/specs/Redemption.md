@@ -92,5 +92,5 @@ The self-closed amount need not be a whole number of lots and can even be less t
 ## Redeem with tag
 
 This is a small addition to `redeem` functionality that allows redeemer to request that an XRP destination tag is added to the redemption payment.
-Since it requires different FDC proof type, there are new methods `redeemWithTag` and `confirmXRPRedemptionPayment`, and a new event `RedemptionWithTagRequested` is emitted.
-It only works on XRP chain, so a flag `redeemWithTagSuppported` is added that signifies the support.
+Since it requires different FDC proof type, which supports destination tag, there are new methods `redeemWithTag`, `confirmXRPRedemptionPayment`, and `xrpRedemptionPaymentDefault`. A new event `RedemptionWithTagRequested` is emitted on a successful request for redemption with tag.
+It only works on XRP chain, so a flag `redeemWithTagSupported` is added that signifies the support.

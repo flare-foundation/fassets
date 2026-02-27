@@ -2,6 +2,7 @@
 pragma solidity >=0.7.6 <0.9;
 
 import {IXRPPayment} from "../fdc/mockInterface/IXRPPayment.sol";
+import {IXRPPaymentNonexistence} from "../fdc/mockInterface/IXRPPaymentNonexistence.sol";
 
 
 /**
@@ -79,6 +80,24 @@ interface IRedemptionWithTag {
      */
     function confirmXRPRedemptionPayment(
         IXRPPayment.Proof calldata _payment,
+        uint256 _redemptionRequestId
+    ) external;
+
+    /**
+     * If the agent doesn't transfer the redeemed underlying assets in time (until the last allowed block on
+     * the underlying chain), the redeemer calls this method and receives payment in collateral (with some extra).
+     * The agent can also call default if the redeemer is unresponsive, to payout the redeemer and free the
+     * remaining collateral.
+     * NOTE: the only difference between this method and `confirmRedemptionPayment` is that this one accepts
+     *   IXRPPayment proof type and supports destination tags.
+     * NOTE: may only be called by the redeemer (= creator of the redemption request),
+     *   the executor appointed by the redeemer,
+     *   or the agent owner (= owner of the agent vault in the redemption request)
+     * @param _proof proof that the agent didn't pay with correct payment reference on the underlying chain
+     * @param _redemptionRequestId id of an existing redemption request
+     */
+    function xrpRedemptionPaymentDefault(
+        IXRPPaymentNonexistence.Proof calldata _proof,
         uint256 _redemptionRequestId
     ) external;
 

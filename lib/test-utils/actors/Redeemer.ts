@@ -54,4 +54,10 @@ export class Redeemer extends AssetContextClient {
         const res = await Agent.executeRedemptionPaymentDefault(this.context, request, executorAddress);
         return requiredEventArgs(res, 'RedemptionDefault');
     }
+
+    async xrpRedemptionPaymentDefault(request: EventArgs<RedemptionWithTagRequested>) {
+        const executorAddress = request.executor !== ZERO_ADDRESS ? request.executor : this.address;
+        const res = await Agent.executeXRPRedemptionPaymentDefault(this.context, request, executorAddress);
+        return requiredEventArgs(res, 'RedemptionDefault');
+    }
 }

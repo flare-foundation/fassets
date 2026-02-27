@@ -3,6 +3,7 @@ pragma solidity ^0.8.27;
 
 import {IReferencedPaymentNonexistence, IConfirmedBlockHeightExists}
     from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IXRPPaymentNonexistence} from "../../fdc/mockInterface/IXRPPaymentNonexistence.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
@@ -29,6 +30,8 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
     error RedemptionNonPaymentMismatch();
     error InvalidRedemptionStatus();
     error SourceAddressesNotSupported();
+    error DestinationTagNotSupported();
+    error InvalidProofPresenter();
 
     /**
      * If the agent doesn't transfer the redeemed underlying assets in time (until the last allowed block on
@@ -52,8 +55,8 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
     {
         require(!_proof.data.requestBody.checkSourceAddresses, SourceAddressesNotSupported());
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId, true);
-        Agent.State storage agent = Agent.get(request.agentVault);
         require(request.status == Redemption.Status.ACTIVE, InvalidRedemptionStatus());
+        require(!request.requiresDestinationTag, DestinationTagNotSupported());
         // verify transaction
         TransactionAttestation.verifyReferencedPaymentNonexistence(_proof);
         // check non-payment proof
@@ -67,15 +70,75 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
             RedemptionDefaultTooEarly());
         require(_proof.data.requestBody.minimalBlockNumber <= request.firstUnderlyingBlock,
             RedemptionNonPaymentProofWindowTooShort());
+        // FDC request is valid, execute default
+        _executePaymentDefault(request, _redemptionRequestId);
+    }
+
+    /**
+     * If the agent doesn't transfer the redeemed underlying assets in time (until the last allowed block on
+     * the underlying chain), the redeemer calls this method and receives payment in collateral (with some extra).
+     * The agent can also call default if the redeemer is unresponsive, to payout the redeemer and free the
+     * remaining collateral.
+     * NOTE: the only difference between this method and `confirmRedemptionPayment` is that this one accepts
+     *   IXRPPayment proof type and supports destination tags.
+     * NOTE: may only be called by the redeemer (= creator of the redemption request),
+     *   the executor appointed by the redeemer,
+     *   or the agent owner (= owner of the agent vault in the redemption request)
+     * @param _proof proof that the agent didn't pay with correct payment reference on the underlying chain
+     * @param _redemptionRequestId id of an existing redemption request
+     */
+    function xrpRedemptionPaymentDefault(
+        IXRPPaymentNonexistence.Proof calldata _proof,
+        uint256 _redemptionRequestId
+    )
+        external
+        notFullyEmergencyPaused
+        nonReentrant
+    {
+        Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId, true);
+        require(request.status == Redemption.Status.ACTIVE, InvalidRedemptionStatus());
+        // verify transaction
+        TransactionAttestation.verifyXRPPaymentNonexistence(_proof);
+        // check the presenter
+        IXRPPaymentNonexistence.RequestBody calldata rqb = _proof.data.requestBody;
+        require(rqb.preferredProofPresenter == address(0) || rqb.preferredProofPresenter == msg.sender,
+            InvalidProofPresenter());
+        // check non-payment proof
+        bool paymentReferenceMatches = rqb.checkFirstMemoData &&
+            rqb.firstMemoDataHash == keccak256(abi.encodePacked(PaymentReference.redemption(_redemptionRequestId)));
+        bool destinationTagMatches = request.requiresDestinationTag
+            ? rqb.checkDestinationTag && rqb.destinationTag == request.destinationTag
+            : !rqb.checkDestinationTag;
+        require(paymentReferenceMatches &&
+            destinationTagMatches &&
+            rqb.destinationAddressHash == request.redeemerUnderlyingAddressHash &&
+            rqb.amount == request.underlyingValueUBA - request.underlyingFeeUBA,
+            RedemptionNonPaymentMismatch());
+        require(_proof.data.responseBody.firstOverflowBlockNumber > request.lastUnderlyingBlock &&
+            _proof.data.responseBody.firstOverflowBlockTimestamp > request.lastUnderlyingTimestamp,
+            RedemptionDefaultTooEarly());
+        require(rqb.minimalBlockNumber <= request.firstUnderlyingBlock,
+            RedemptionNonPaymentProofWindowTooShort());
+        // FDC request is valid, execute default
+        _executePaymentDefault(request, _redemptionRequestId);
+    }
+
+    function _executePaymentDefault(
+        Redemption.Request storage _request,
+        uint256 _redemptionRequestId
+    )
+        private
+    {
+        Agent.State storage agent = Agent.get(_request.agentVault);
         // We allow only redeemers or agents to trigger redemption default, since they may want
         // to do it at some particular time. (Agent might want to call default to unstick redemption when
         // the redeemer is unresponsive.)
         // The exception is transfer to core vault, where anybody can call default after enough time.
-        bool expectedSender = msg.sender == request.redeemer || msg.sender == request.executor ||
+        bool expectedSender = msg.sender == _request.redeemer || msg.sender == _request.executor ||
             Agents.isOwner(agent, msg.sender);
-        require(expectedSender || _othersCanConfirmDefault(request), OnlyRedeemerExecutorOrAgent());
+        require(expectedSender || _othersCanConfirmDefault(_request), OnlyRedeemerExecutorOrAgent());
         // pay redeemer in collateral / cancel transfer to core vault
-        RedemptionDefaults.executeDefaultOrCancel(agent, request, _redemptionRequestId);
+        RedemptionDefaults.executeDefaultOrCancel(agent, _request, _redemptionRequestId);
         // in case of confirmation by other for core vault transfer, pay the reward
         if (!expectedSender) {
             AgentPayout.payForConfirmationByOthers(agent, msg.sender);
@@ -84,9 +147,9 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         Liquidation.endLiquidationIfHealthy(agent);
         // pay the executor if the executor called this
         // guarded against reentrancy in RedemptionDefaultsFacet
-        Redemptions.payOrBurnExecutorFee(request);
+        Redemptions.payOrBurnExecutorFee(_request);
         // don't finish redemption request at end - the agent might still confirm failed payment
-        request.status = Redemption.Status.DEFAULTED;
+        _request.status = Redemption.Status.DEFAULTED;
     }
 
     /**

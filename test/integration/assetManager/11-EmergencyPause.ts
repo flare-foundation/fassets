@@ -236,10 +236,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.updateUnderlyingBlock();
             const lotSize = context.lotSize();
             await minter.performMinting(agent.vaultAddress, 5);
-            await minter.transferFAsset(redeemer.address, lotSize.muln(2));
+            await minter.transferFAsset(redeemer.address, lotSize.muln(5));
             // start a minting and a redemption
             const crt = await minter.reserveCollateral(agent.vaultAddress, 2);
             const [[rrq]] = await redeemer.requestRedemption(1);
+            const [[rrqTag]] = await redeemer.requestRedemptionWithTag(1, 123);
             const invRedRes = await context.assetManager.redeem(1, "MY_INVALID_ADDRESS", ZERO_ADDRESS, { from: redeemer.address });
             const [invalidRrq] = filterEvents(invRedRes, 'RedemptionRequested').map(e => e.args);
             const undWithdr = await agent.announceUnderlyingWithdrawal();
@@ -260,7 +261,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert.custom(redeemer.redemptionPaymentDefault(rrq), "EmergencyPauseActive", []);
             await expectRevert.custom(agent.finishRedemptionWithoutPayment(rrq), "EmergencyPauseActive", []);
             await expectRevert.custom(agent.rejectInvalidRedemption(invalidRrq), "EmergencyPauseActive", []);
-            await expectRevert.custom(agent.confirmXRPRedemptionPayment(redeemTx, rrq), "EmergencyPauseActive", []);
+            await expectRevert.custom(agent.confirmXRPRedemptionPayment(redeemTx, rrqTag), "EmergencyPauseActive", []);
+            await expectRevert.custom(redeemer.xrpRedemptionPaymentDefault(rrqTag), "EmergencyPauseActive", []);
             // cannot self close
             await expectRevert.custom(agent.selfClose(1000), "EmergencyPauseActive", []);
             // cannot end liquidation

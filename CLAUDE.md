@@ -43,6 +43,9 @@ yarn size
 
 # Generate coverage report
 yarn test-with-coverage
+
+# Generate coverage report for a single test file
+yarn coverage test/unit/assetManager/someTest.ts
 ```
 
 ## Architecture
@@ -106,10 +109,6 @@ Facet implementations live in `contracts/assetManager/facets/` and share busines
 - **`FAsset`** (via `contracts/fassetToken/`) — the ERC20 f-asset token (e.g., FXRP)
 - **`FtsoV2PriceStore`** (via `contracts/ftso/implementation/FtsoV2PriceStore.sol`) — The store for prices from FTSOv2 (prices are obtained externally and added here with proof)
 
-### Governance
-
-Governance follows the `GovernedBase` pattern (`contracts/governance/implementation/`). `AssetManagerController`, `CoreVaultManager` and `FtsoV2PriceStore` use UUPS upgradeable proxies. Settings changes and contract/facet upgrading go through a timelock governed by the governance multisig.
-
 ### Library Organization
 
 Business logic is factored into libraries under `contracts/assetManager/library/`:
@@ -120,20 +119,26 @@ Business logic is factored into libraries under `contracts/assetManager/library/
 - `TransactionAttestation.sol` — FDC attestation verification
 - `data/` — storage structs (Agent, Redemption, CollateralReservation, etc.)
 
-### Unit of Account
+### Governance
+
+Governance follows the `GovernedBase` pattern (`contracts/governance/implementation/`). `AssetManagerController`, `CoreVaultManager` and `FtsoV2PriceStore` use UUPS upgradeable proxies. Settings changes and contract/facet upgrading go through a timelock governed by the governance multisig.
+
+### Unit of Accounting
 
 The system uses "UBA" for the minimal unit of underlying assets and "AMG" (Asset Minting Granularity) as an internal unit for the underlying asset amount (amounts in AMG must always fit in 64 bits). Conversions between underlying lots, UBA, AMG, and token wei are done in `Conversion.sol`.
 
-### Test Structure
+## Test Structure
 
 - `test/unit/` — Hardhat/Truffle unit tests per contract module
 - `test/integration/` — Hardhat integration tests
 - `test/e2e-simulation/` — randomized long-running FAsset simulation on Hardhat (`yarn test_e2e`)
 - `test-forge/` — Foundry tests for `collateralPool`, `coreVaultManager`, `ftso`
 
+Integration tests use support classes from `lib/test-utils/actors` for simplified initialization and multi-step process invocation. See e.g `11-EmergencyPause.ts` or `12-CoreVault.ts` for examples. Attestation proofs are obtained from AttestationHelper. Never modify obtained proofs - it will just make proof invalid (it contains merkle proof of validity).
+
 Forge tests use `lib/forge-std/`. Initialize with `git submodule update --init --recursive` before running `forge build`.
 
-### Deployment
+## Deployment
 
 `deployment/` contains TypeScript deployment scripts. Per-network configs are under `deployment/config/<network>/`. Deployed contract addresses are tracked in `deployment/deploys/<network>.json`. The `DEPLOY_PROFILE` env var selects which config to use.
 
@@ -142,6 +147,10 @@ Forge tests use `lib/forge-std/`. Initialize with `git submodule update --init -
 - **Flare** (mainnet, chainId 14) and **Songbird** (canary, chainId 19)
 - **Coston** (Songbird testnet, chainId 16) and **Coston2** (Flare testnet, chainId 114)
 
-### Audit Scope
+## Audit Scope
 
 The in-scope contracts are under: `agentOwnerRegistry`, `agentVault`, `assetManager`, `assetManagerController`, `collateralPool`, `coreVaultManager`, `diamond`, `fassetToken`, `flareSmartContracts`, `ftso`, `governance`, `userInterfaces`, `utils`. Previous audit reports are in `audit/`.
+
+## Documentation
+
+The complete specification for the system is in the folder `docs/specs`. The documentation is organized by protocol flow (e.g., minting, redemption, liquidation).

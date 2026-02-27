@@ -4,7 +4,6 @@ import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
-import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { expectEvent, expectRevert } from "../../../lib/test-utils/test-helpers";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
@@ -30,7 +29,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
     let commonContext: CommonContext;
     let context: AssetContext;
-    let mockChain: MockChain;
 
     async function initialize() {
         commonContext = await CommonContext.createTest(governance);
@@ -40,7 +38,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
     beforeEach(async () => {
         ({ commonContext, context } = await loadFixtureCopyVars(initialize));
-        mockChain = context.chain as MockChain;
     });
 
     // Helper: set up an agent with collateral and mint fAssets to the minter.
@@ -61,8 +58,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             request.paymentReference,
             { destinationTag: Number(request.destinationTag) }
         );
-        const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
-        return await context.assetManager.confirmXRPRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress });
+        return await agent.confirmXRPRedemptionPayment(txHash, request);
     }
 
     describe("Successful redemption with tag", () => {
@@ -244,6 +240,408 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert.custom(
                 context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress }),
                 "DestinationTagNotSupported",
+                []
+            );
+        });
+    });
+
+    describe("Redemption default with tag (xrpRedemptionPaymentDefault)", () => {
+        it("agent doesn't pay for redeemWithTag → xrpRedemptionPaymentDefault emits RedemptionDefault", async () => {
+            const { agent, minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const destinationTag = 12345;
+            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
+            // verify collateral before default
+            const vaultCollateralToken = agent.vaultCollateralToken();
+            const startVaultCollateralBalance = await vaultCollateralToken.balanceOf(redeemer.address);
+            const startPoolBalance = await context.wNat.balanceOf(redeemer.address);
+            // skip to expiration and call default
+            context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+            const defaultEvent = await redeemer.xrpRedemptionPaymentDefault(request);
+            assertWeb3Equal(defaultEvent.agentVault, agent.vaultAddress);
+            assertWeb3Equal(defaultEvent.redeemer, redeemer.address);
+            assertWeb3Equal(defaultEvent.requestId, request.requestId);
+            // verify redeemer received collateral
+            const endVaultCollateralBalance = await vaultCollateralToken.balanceOf(redeemer.address);
+            const endPoolBalance = await context.wNat.balanceOf(redeemer.address);
+            assertWeb3Equal(endVaultCollateralBalance.sub(startVaultCollateralBalance), defaultEvent.redeemedVaultCollateralWei);
+            assertWeb3Equal(endPoolBalance.sub(startPoolBalance), defaultEvent.redeemedPoolCollateralWei);
+        });
+
+        it("xrpRedemptionPaymentDefault works for normal redemption (no tag)", async () => {
+            await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
+            //
+            const [requests] = await redeemer.requestRedemption(3);
+            const request = requests[0];
+            // skip to expiration and call xrpRedemptionPaymentDefault with no tag
+            context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+            const proof = await context.attestationProvider.proveXRPPaymentNonexistence(
+                request.paymentAddress,
+                request.paymentReference,
+                null,   // no destination tag
+                request.valueUBA.sub(request.feeUBA),
+                request.firstUnderlyingBlock.toNumber(),
+                request.lastUnderlyingBlock.toNumber(),
+                request.lastUnderlyingTimestamp.toNumber()
+            );
+            const defaultRes = await context.assetManager.xrpRedemptionPaymentDefault(proof, request.requestId,
+                { from: redeemer.address });
+            requiredEventArgs(defaultRes, 'RedemptionDefault');
+        });
+
+        it("cannot use regular redemptionPaymentDefault for redeemWithTag request", async () => {
+            const { minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const destinationTag = 42;
+            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
+            // skip to expiration and try to call regular redemptionPaymentDefault
+            context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+            const proof = await context.attestationProvider.proveReferencedPaymentNonexistence(
+                request.paymentAddress,
+                request.paymentReference,
+                request.valueUBA.sub(request.feeUBA),
+                request.firstUnderlyingBlock.toNumber(),
+                request.lastUnderlyingBlock.toNumber(),
+                request.lastUnderlyingTimestamp.toNumber()
+            );
+            await expectRevert.custom(
+                context.assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemer.address }),
+                "DestinationTagNotSupported",
+                []
+            );
+        });
+
+        it("xrpRedemptionPaymentDefault reverts when called too early (RedemptionDefaultTooEarly)", async () => {
+            const { minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const destinationTag = 99;
+            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
+            // mine enough blocks so proof can be generated, but use shortened deadline
+            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment * 25; i++) {
+                await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
+            }
+            const proof = await context.attestationProvider.proveXRPPaymentNonexistence(
+                request.paymentAddress,
+                request.paymentReference,
+                Number(request.destinationTag),
+                request.valueUBA.sub(request.feeUBA),
+                request.firstUnderlyingBlock.toNumber(),
+                request.lastUnderlyingBlock.toNumber() - 1,
+                request.lastUnderlyingTimestamp.toNumber() - context.chainInfo.blockTime
+            );
+            await expectRevert.custom(
+                context.assetManager.xrpRedemptionPaymentDefault(proof, request.requestId, { from: redeemer.address }),
+                "RedemptionDefaultTooEarly",
+                []
+            );
+        });
+
+        it("xrpRedemptionPaymentDefault reverts for already-defaulted redemption (InvalidRedemptionStatus)", async () => {
+            const { minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const destinationTag = 42;
+            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
+            // default once successfully
+            context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+            await redeemer.xrpRedemptionPaymentDefault(request);
+            // try to default again — generate a new proof (chain has already advanced)
+            const proof2 = await context.attestationProvider.proveXRPPaymentNonexistence(
+                request.paymentAddress,
+                request.paymentReference,
+                Number(request.destinationTag),
+                request.valueUBA.sub(request.feeUBA),
+                request.firstUnderlyingBlock.toNumber(),
+                request.lastUnderlyingBlock.toNumber(),
+                request.lastUnderlyingTimestamp.toNumber()
+            );
+            await expectRevert.custom(
+                context.assetManager.xrpRedemptionPaymentDefault(proof2, request.requestId, { from: redeemer.address }),
+                "InvalidRedemptionStatus",
+                []
+            );
+        });
+
+        it("xrpRedemptionPaymentDefault reverts for already-confirmed redemption (InvalidRequestId)", async () => {
+            const { agent, minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const destinationTag = 42;
+            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
+            // agent pays and confirms successfully — request is finished and deleted
+            await performAndConfirmXRPRedemptionWithTag(agent, request);
+            // try to default after confirmation — use a different address so the mock prover
+            // doesn't find the actual payment
+            context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+            const proof = await context.attestationProvider.proveXRPPaymentNonexistence(
+                "NonExistentAddress",
+                request.paymentReference,
+                Number(request.destinationTag),
+                request.valueUBA.sub(request.feeUBA),
+                request.firstUnderlyingBlock.toNumber(),
+                request.lastUnderlyingBlock.toNumber(),
+                request.lastUnderlyingTimestamp.toNumber()
+            );
+            await expectRevert.custom(
+                context.assetManager.xrpRedemptionPaymentDefault(proof, request.requestId, { from: redeemer.address }),
+                "InvalidRequestId",
+                []
+            );
+        });
+
+        it("xrpRedemptionPaymentDefault reverts with RedemptionNonPaymentMismatch for wrong payment reference", async () => {
+            const { minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const destinationTag = 42;
+            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
+            context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+            // generate proof with a wrong payment reference
+            const wrongReference = "0x" + "ab".repeat(32);
+            const proof = await context.attestationProvider.proveXRPPaymentNonexistence(
+                request.paymentAddress,
+                wrongReference,
+                Number(request.destinationTag),
+                request.valueUBA.sub(request.feeUBA),
+                request.firstUnderlyingBlock.toNumber(),
+                request.lastUnderlyingBlock.toNumber(),
+                request.lastUnderlyingTimestamp.toNumber()
+            );
+            await expectRevert.custom(
+                context.assetManager.xrpRedemptionPaymentDefault(proof, request.requestId, { from: redeemer.address }),
+                "RedemptionNonPaymentMismatch",
+                []
+            );
+        });
+
+        it("xrpRedemptionPaymentDefault reverts with RedemptionNonPaymentMismatch for wrong destination tag", async () => {
+            const { minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const destinationTag = 42;
+            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
+            context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+            // generate proof with wrong destination tag
+            const proof = await context.attestationProvider.proveXRPPaymentNonexistence(
+                request.paymentAddress,
+                request.paymentReference,
+                destinationTag + 1,
+                request.valueUBA.sub(request.feeUBA),
+                request.firstUnderlyingBlock.toNumber(),
+                request.lastUnderlyingBlock.toNumber(),
+                request.lastUnderlyingTimestamp.toNumber()
+            );
+            await expectRevert.custom(
+                context.assetManager.xrpRedemptionPaymentDefault(proof, request.requestId, { from: redeemer.address }),
+                "RedemptionNonPaymentMismatch",
+                []
+            );
+        });
+
+        it("xrpRedemptionPaymentDefault reverts with RedemptionNonPaymentMismatch for wrong destination address", async () => {
+            const { minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const destinationTag = 42;
+            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
+            context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+            // generate proof with a wrong destination address
+            const proof = await context.attestationProvider.proveXRPPaymentNonexistence(
+                "WrongAddress",
+                request.paymentReference,
+                Number(request.destinationTag),
+                request.valueUBA.sub(request.feeUBA),
+                request.firstUnderlyingBlock.toNumber(),
+                request.lastUnderlyingBlock.toNumber(),
+                request.lastUnderlyingTimestamp.toNumber()
+            );
+            await expectRevert.custom(
+                context.assetManager.xrpRedemptionPaymentDefault(proof, request.requestId, { from: redeemer.address }),
+                "RedemptionNonPaymentMismatch",
+                []
+            );
+        });
+
+        it("xrpRedemptionPaymentDefault reverts with RedemptionNonPaymentMismatch for wrong amount", async () => {
+            const { minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const destinationTag = 42;
+            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
+            context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+            // generate proof with wrong amount (1 less than expected)
+            const proof = await context.attestationProvider.proveXRPPaymentNonexistence(
+                request.paymentAddress,
+                request.paymentReference,
+                Number(request.destinationTag),
+                request.valueUBA.sub(request.feeUBA).subn(1),
+                request.firstUnderlyingBlock.toNumber(),
+                request.lastUnderlyingBlock.toNumber(),
+                request.lastUnderlyingTimestamp.toNumber()
+            );
+            await expectRevert.custom(
+                context.assetManager.xrpRedemptionPaymentDefault(proof, request.requestId, { from: redeemer.address }),
+                "RedemptionNonPaymentMismatch",
+                []
+            );
+        });
+
+        it("xrpRedemptionPaymentDefault reverts with RedemptionNonPaymentProofWindowTooShort", async () => {
+            const { minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const destinationTag = 42;
+            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
+            context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+            // generate proof with startBlock after request.firstUnderlyingBlock
+            const proof = await context.attestationProvider.proveXRPPaymentNonexistence(
+                request.paymentAddress,
+                request.paymentReference,
+                Number(request.destinationTag),
+                request.valueUBA.sub(request.feeUBA),
+                request.firstUnderlyingBlock.toNumber() + 1,
+                request.lastUnderlyingBlock.toNumber(),
+                request.lastUnderlyingTimestamp.toNumber()
+            );
+            await expectRevert.custom(
+                context.assetManager.xrpRedemptionPaymentDefault(proof, request.requestId, { from: redeemer.address }),
+                "RedemptionNonPaymentProofWindowTooShort",
+                []
+            );
+        });
+    });
+
+    describe("preferredProofPresenter for XRP proofs", () => {
+        it("confirmXRPRedemptionPayment succeeds when preferredProofPresenter matches sender", async () => {
+            const { agent, minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const destinationTag = 42;
+            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
+            // agent pays with correct tag
+            const paymentAmount = request.valueUBA.sub(request.feeUBA);
+            const txHash = await agent.performPayment(
+                request.paymentAddress, paymentAmount, request.paymentReference,
+                { destinationTag: Number(request.destinationTag) }
+            );
+            // generate proof with preferredProofPresenter set to agent owner
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, agent.ownerWorkAddress);
+            const confirmRes = await context.assetManager.confirmXRPRedemptionPayment(proof, request.requestId,
+                { from: agent.ownerWorkAddress });
+            requiredEventArgs(confirmRes, 'RedemptionPerformed');
+        });
+
+        it("confirmXRPRedemptionPayment reverts with InvalidProofPresenter when sender doesn't match", async () => {
+            const { agent, minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const destinationTag = 42;
+            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
+            // agent pays with correct tag
+            const paymentAmount = request.valueUBA.sub(request.feeUBA);
+            const txHash = await agent.performPayment(
+                request.paymentAddress, paymentAmount, request.paymentReference,
+                { destinationTag: Number(request.destinationTag) }
+            );
+            // generate proof with preferredProofPresenter set to a different address
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, redeemerAddress2);
+            await expectRevert.custom(
+                context.assetManager.confirmXRPRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress }),
+                "InvalidProofPresenter",
+                []
+            );
+        });
+
+        it("xrpRedemptionPaymentDefault succeeds when preferredProofPresenter matches sender", async () => {
+            const { minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const destinationTag = 42;
+            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
+            context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+            // generate proof with preferredProofPresenter set to redeemer
+            const proof = await context.attestationProvider.proveXRPPaymentNonexistence(
+                request.paymentAddress,
+                request.paymentReference,
+                Number(request.destinationTag),
+                request.valueUBA.sub(request.feeUBA),
+                request.firstUnderlyingBlock.toNumber(),
+                request.lastUnderlyingBlock.toNumber(),
+                request.lastUnderlyingTimestamp.toNumber(),
+                redeemer.address
+            );
+            const defaultRes = await context.assetManager.xrpRedemptionPaymentDefault(proof, request.requestId,
+                { from: redeemer.address });
+            requiredEventArgs(defaultRes, 'RedemptionDefault');
+        });
+
+        it("xrpRedemptionPaymentDefault reverts with InvalidProofPresenter when sender doesn't match", async () => {
+            const { minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const destinationTag = 42;
+            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
+            context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+            // generate proof with preferredProofPresenter set to a different address
+            const proof = await context.attestationProvider.proveXRPPaymentNonexistence(
+                request.paymentAddress,
+                request.paymentReference,
+                Number(request.destinationTag),
+                request.valueUBA.sub(request.feeUBA),
+                request.firstUnderlyingBlock.toNumber(),
+                request.lastUnderlyingBlock.toNumber(),
+                request.lastUnderlyingTimestamp.toNumber(),
+                redeemerAddress2
+            );
+            await expectRevert.custom(
+                context.assetManager.xrpRedemptionPaymentDefault(proof, request.requestId, { from: redeemer.address }),
+                "InvalidProofPresenter",
                 []
             );
         });

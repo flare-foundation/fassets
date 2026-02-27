@@ -1,5 +1,5 @@
 import { AgentVaultInstance, CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
-import { AgentSettingChangeAnnounced, CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/IIAssetManager";
+import { AgentSettingChangeAnnounced, CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionPaymentFailed, RedemptionRequested, RedemptionWithTagRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/IIAssetManager";
 import { AgentInfo, AgentSetting, AgentSettings, AgentStatus, RedemptionTicketInfo } from "../../fasset/AssetManagerTypes";
 import { AssetManagerEvents } from "../../fasset/IAssetContext";
 import { PaymentReference } from "../../fasset/PaymentReference";
@@ -406,7 +406,7 @@ export class Agent extends AssetContextClient {
         return await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerWorkAddress });
     }
 
-    async confirmXRPRedemptionPayment(transactionHash: string, request: EventArgs<RedemptionRequested>) {
+    async confirmXRPRedemptionPayment(transactionHash: string, request: EventArgs<RedemptionWithTagRequested>) {
         const proof = await this.attestationProvider.proveXRPPayment(transactionHash, null);
         return await this.assetManager.confirmXRPRedemptionPayment(proof, request.requestId, { from: this.ownerWorkAddress });
     }
@@ -430,6 +430,18 @@ export class Agent extends AssetContextClient {
             request.lastUnderlyingBlock.toNumber(),
             request.lastUnderlyingTimestamp.toNumber());
         return await context.assetManager.redemptionPaymentDefault(proof, request.requestId, { from: from });
+    }
+
+    static async executeXRPRedemptionPaymentDefault(context: AssetContext, request: EventArgs<RedemptionWithTagRequested>, from: string) {
+        const proof = await context.attestationProvider.proveXRPPaymentNonexistence(
+            request.paymentAddress,
+            request.paymentReference,
+            Number(request.destinationTag),
+            request.valueUBA.sub(request.feeUBA),
+            request.firstUnderlyingBlock.toNumber(),
+            request.lastUnderlyingBlock.toNumber(),
+            request.lastUnderlyingTimestamp.toNumber());
+        return await context.assetManager.xrpRedemptionPaymentDefault(proof, request.requestId, { from: from });
     }
 
     async finishRedemptionWithoutPayment(request: EventArgs<RedemptionRequested>): Promise<EventArgs<RedemptionDefault> | undefined> {
