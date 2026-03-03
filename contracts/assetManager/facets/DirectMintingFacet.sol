@@ -58,6 +58,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         // (so direct minting won't stop working once it works).
         require(address(state.mintingTagManager) != address(0), MissingMintingTagManager());
         require(address(state.smartAccountManager) != address(0), MissingSmartAccountManager());
+        _validateTagAndMemoData(_payment);
         (bool mintToSmartAccount, address recipient, address allowedExecutor) = _decodeTarget(_payment);
         require(allowedExecutor == address(0) || allowedExecutor == msg.sender || _othersCanExecute(_payment),
             InvalidExecutor());
@@ -188,6 +189,24 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         }
     }
 
+    // forbid dangerous tags/memo fields that could be used to steal assets
+    function _validateTagAndMemoData(IXRPPayment.Proof calldata _payment)
+        private view
+    {
+        IXRPPayment.ResponseBody calldata body = _payment.data.responseBody;
+        if (body.hasDestinationTag) {
+            uint256 destinationTag = body.destinationTag;
+            // forbid core vault donation tag - it should be confirmed using method confirmCoreVaultDonation
+            require(destinationTag != CoreVaultClient.coreVaultDonationTag(), PaymentIsCoreVaultDonation());
+        }
+        if (body.hasMemoData && body.firstMemoData.length == 32) {
+            bytes32 paymentReference = bytes32(body.firstMemoData);
+            // forbid REDEMPTION payment reference, because it could be used to steal agents' core vault deposits
+            require(!PaymentReference.isValid(paymentReference, PaymentReference.REDEMPTION),
+                ForbiddenPaymentReference());
+        }
+    }
+
     function _decodeTarget(IXRPPayment.Proof calldata _payment)
         private view
         returns (bool _mintToSmartAccount, address _targetAddress, address _allowedExecutor)
@@ -196,8 +215,6 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         // has registered tag (ignore memo data in this case)
         if (body.hasDestinationTag) {
             uint256 destinationTag = body.destinationTag;
-            // forbid core vault donation tag - it should be confirmed using method confirmCoreVaultDonation
-            require(destinationTag != CoreVaultClient.coreVaultDonationTag(), PaymentIsCoreVaultDonation());
             address registeredAddress = DirectMinting.mintingRecipientForTag(destinationTag);
             if (registeredAddress != address(0)) {
                 return (false, registeredAddress, DirectMinting.allowedExecutorForTag(body.destinationTag));
@@ -213,9 +230,6 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
                     return (false, address(uint160(addressNumeric)), address(0));
                 }
             }
-            // forbid REDEMPTION payment reference, because it could be used to steal agents' core vault deposits
-            require(!PaymentReference.isValid(paymentReference, PaymentReference.REDEMPTION),
-                ForbiddenPaymentReference());
         } else if (body.hasMemoData && body.firstMemoData.length == 48) {
             uint64 prefix = uint64(bytes8(body.firstMemoData[0:8]));
             if (prefix == PaymentReference.DIRECT_MINTING_EX) {

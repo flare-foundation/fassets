@@ -372,6 +372,141 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
             await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenPaymentReference", []);
         });
+
+        it("should prevent agent using CV transfer redemption payment as direct minting by adding a destination tag", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            // make agent available with collateral and perform standard minting
+            await agent.depositCollateralLotsAndMakeAvailable(100);
+            const [minted] = await minter.performMinting(agent.vaultAddress, 10);
+            await context.updateUnderlyingBlock();
+            // register a minting tag for the agent owner so that direct minting resolves via destination tag
+            const tagPrice = await mintingTagManager.reservationFee();
+            const tagRes = await mintingTagManager.reserve({ from: agentOwner1, value: tagPrice });
+            const tagId = requiredEventArgs(tagRes, 'MintingTagReserved').tag;
+            await mintingTagManager.setMintingRecipient(tagId, agentOwner1, { from: agentOwner1 });
+            // agent starts transfer to core vault - this creates a redemption request
+            const info = await agent.getAgentInfo();
+            const rdreqs = await agent.startTransferToCoreVault(info.mintedUBA);
+            assert.equal(rdreqs.length, 1);
+            const rdreq = rdreqs[0];
+            // agent makes underlying payment to core vault with BOTH:
+            //   - the registered minting tag (destination tag) so direct minting resolves target via tag
+            //   - the REDEMPTION payment reference in memo matching the CV transfer redemption request
+            // This is the attack: the payment satisfies both direct minting (to get free FXRP) and
+            // the redemption request (so it can't be challenged or defaulted).
+            const redemptionPaymentReference = rdreq.paymentReference;
+            const paymentAmount = rdreq.valueUBA.sub(rdreq.feeUBA);
+            const txHash = await agent.performPayment(
+                coreVaultUnderlyingAddress,
+                paymentAmount,
+                redemptionPaymentReference,
+                { destinationTag: Number(tagId) }
+            );
+            // the fix: executeDirectMinting must revert because memo data contains a REDEMPTION payment reference
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(
+                context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }),
+                "ForbiddenPaymentReference", []
+            );
+            // verify why this attack is dangerous without the fix:
+            // 1. The payment exists on chain, so a redemption default (non-existence proof) cannot be obtained
+            //    - skipping time past the redemption deadline
+            context.skipToExpiration(rdreq.lastUnderlyingBlock, rdreq.lastUnderlyingTimestamp);
+            await context.updateUnderlyingBlock();
+            await expectRevert(
+                context.attestationProvider.proveReferencedPaymentNonexistence(
+                    rdreq.paymentAddress,
+                    rdreq.paymentReference,
+                    rdreq.valueUBA.sub(rdreq.feeUBA),
+                    rdreq.firstUnderlyingBlock.toNumber(),
+                    rdreq.lastUnderlyingBlock.toNumber(),
+                    rdreq.lastUnderlyingTimestamp.toNumber()
+                ),
+                "not proved"
+            );
+            // 2. An illegal payment challenge also fails because the redemption request is active
+            //    for this agent with matching payment reference
+            const bdtProof = await context.attestationProvider.proveBalanceDecreasingTransaction(txHash, agent.underlyingAddress);
+            await expectRevert.custom(
+                context.assetManager.illegalPaymentChallenge(bdtProof, agent.vaultAddress, { from: challengerAddress1 }),
+                "MatchingRedemptionActive", []
+            );
+            // 3. The agent can still confirm the redemption payment since the underlying payment is valid
+            const confirmTx = await agent.confirmRedemptionPayment(txHash, rdreq);
+            const performed = requiredEventArgs(confirmTx, "RedemptionPerformed");
+            assertWeb3Equal(performed.transactionHash, txHash);
+            expectEvent(confirmTx, "TransferToCoreVaultSuccessful");
+        });
+
+        it("should not allow the same payment to be used as both CV transfer redemption and core vault donation", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            // make agent available with collateral and perform standard minting
+            await agent.depositCollateralLotsAndMakeAvailable(100);
+            await minter.performMinting(agent.vaultAddress, 10);
+            await context.updateUnderlyingBlock();
+            // agent starts transfer to core vault - this creates a redemption request
+            const info = await agent.getAgentInfo();
+            const rdreqs = await agent.startTransferToCoreVault(info.mintedUBA);
+            assert.equal(rdreqs.length, 1);
+            const rdreq = rdreqs[0];
+            // agent makes underlying payment to core vault with BOTH:
+            //   - the core vault donation tag (destination tag)
+            //   - the REDEMPTION payment reference in memo matching the CV transfer redemption request
+            // This attempts to use the same payment for both CV transfer confirmation and donation.
+            const coreVaultDonationTag = Number(await context.assetManager.getCoreVaultDonationTag());
+            const paymentAmount = rdreq.valueUBA.sub(rdreq.feeUBA);
+            const txHash = await agent.performPayment(
+                coreVaultUnderlyingAddress,
+                paymentAmount,
+                rdreq.paymentReference,
+                { destinationTag: coreVaultDonationTag }
+            );
+            // agent confirms the CV transfer redemption payment - this succeeds
+            const confirmTx = await agent.confirmRedemptionPayment(txHash, rdreq);
+            expectEvent(confirmTx, "TransferToCoreVaultSuccessful");
+            // attempting to also confirm as a donation must fail
+            const donationProof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(
+                context.assetManager.confirmCoreVaultDonation(donationProof, { from: executorAddress1 }),
+                "AlreadyConfirmed", []
+            );
+        });
+
+        it("should not allow the same payment to be used as both CV transfer redemption and core vault donation (reverse order)", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            // make agent available with collateral and perform standard minting
+            await agent.depositCollateralLotsAndMakeAvailable(100);
+            await minter.performMinting(agent.vaultAddress, 10);
+            await context.updateUnderlyingBlock();
+            // agent starts transfer to core vault - this creates a redemption request
+            const info = await agent.getAgentInfo();
+            const rdreqs = await agent.startTransferToCoreVault(info.mintedUBA);
+            assert.equal(rdreqs.length, 1);
+            const rdreq = rdreqs[0];
+            // agent makes underlying payment to core vault with BOTH:
+            //   - the core vault donation tag (destination tag)
+            //   - the REDEMPTION payment reference in memo matching the CV transfer redemption request
+            // This attempts to use the same payment for both CV transfer confirmation and donation.
+            const coreVaultDonationTag = Number(await context.assetManager.getCoreVaultDonationTag());
+            const paymentAmount = rdreq.valueUBA.sub(rdreq.feeUBA);
+            const txHash = await agent.performPayment(
+                coreVaultUnderlyingAddress,
+                paymentAmount,
+                rdreq.paymentReference,
+                { destinationTag: coreVaultDonationTag }
+            );
+            // attempting to confirm as a donation succeeds
+            const donationProof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await context.assetManager.confirmCoreVaultDonation(donationProof, { from: executorAddress1 });
+            // agent tries to confirm the CV transfer redemption payment - this must fail
+            await expectRevert.custom(
+                agent.confirmRedemptionPayment(txHash, rdreq),
+                "AlreadyConfirmed", []
+            );
+        });
     });
 
     describe("Direct minting to smart accounts", () => {
