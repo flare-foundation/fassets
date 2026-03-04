@@ -712,40 +712,40 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
     });
 
-    describe("Minimum redemption amount", () => {
-        it("should set minimum redemption amount UBA", async () => {
-            const currentMinimum = await context.assetManager.minimumRedemptionAmountUBA();
+    describe("Minimum redeem with tag amount", () => {
+        it("should set minimum redeem with tag amount UBA", async () => {
+            const currentMinimum = await context.assetManager.minimumRedeemWithTagAmountUBA();
             const newMinimum = currentMinimum.muln(2);
-            const res = await waitForTimelock(context.assetManager.setMinimumRedemptionAmountUBA(newMinimum, { from: governance }), context.assetManager, governance);
-            expectEvent(res, "SettingChanged", { name: "minimumRedemptionAmountUBA", value: newMinimum });
-            assertWeb3Equal(await context.assetManager.minimumRedemptionAmountUBA(), newMinimum);
+            const res = await waitForTimelock(context.assetManager.setMinimumRedeemWithTagAmountUBA(newMinimum, { from: governance }), context.assetManager, governance);
+            expectEvent(res, "SettingChanged", { name: "minimumRedeemWithTagAmountUBA", value: newMinimum });
+            assertWeb3Equal(await context.assetManager.minimumRedeemWithTagAmountUBA(), newMinimum);
         });
 
-        it("should set minimum redemption amount UBA to zero", async () => {
-            const res = await waitForTimelock(context.assetManager.setMinimumRedemptionAmountUBA(0, { from: governance }), context.assetManager, governance);
-            expectEvent(res, "SettingChanged", { name: "minimumRedemptionAmountUBA", value: toBN(0) });
-            assertWeb3Equal(await context.assetManager.minimumRedemptionAmountUBA(), 0);
+        it("should set minimum redeem with tag amount UBA to zero", async () => {
+            const res = await waitForTimelock(context.assetManager.setMinimumRedeemWithTagAmountUBA(0, { from: governance }), context.assetManager, governance);
+            expectEvent(res, "SettingChanged", { name: "minimumRedeemWithTagAmountUBA", value: toBN(0) });
+            assertWeb3Equal(await context.assetManager.minimumRedeemWithTagAmountUBA(), 0);
         });
 
-        it("should revert setting minimum redemption amount UBA when value too big", async () => {
+        it("should revert setting minimum redeem with tag amount UBA when value too big", async () => {
             const tooBig = context.convertLotsToUBA(11);
             await expectRevert.custom(
-                waitForTimelock(context.assetManager.setMinimumRedemptionAmountUBA(tooBig, { from: governance }), context.assetManager, governance),
+                waitForTimelock(context.assetManager.setMinimumRedeemWithTagAmountUBA(tooBig, { from: governance }), context.assetManager, governance),
                 "ValueTooBig", []);
         });
 
-        it("should revert setting minimum redemption amount UBA when increase too big", async () => {
-            const currentMinimum = await context.assetManager.minimumRedemptionAmountUBA();
+        it("should revert setting minimum redeem with tag amount UBA when increase too big", async () => {
+            const currentMinimum = await context.assetManager.minimumRedeemWithTagAmountUBA();
             const tooBig = currentMinimum.muln(6);
             await expectRevert.custom(
-                waitForTimelock(context.assetManager.setMinimumRedemptionAmountUBA(tooBig, { from: governance }), context.assetManager, governance),
+                waitForTimelock(context.assetManager.setMinimumRedeemWithTagAmountUBA(tooBig, { from: governance }), context.assetManager, governance),
                 "IncreaseTooBig", []);
         });
 
-        it("should revert setting minimum redemption amount UBA if not from governance", async () => {
-            const currentMinimum = await context.assetManager.minimumRedemptionAmountUBA();
+        it("should revert setting minimum redeem with tag amount UBA if not from governance", async () => {
+            const currentMinimum = await context.assetManager.minimumRedeemWithTagAmountUBA();
             await expectRevert.custom(
-                context.assetManager.setMinimumRedemptionAmountUBA(currentMinimum, { from: redeemerAddress1 }),
+                context.assetManager.setMinimumRedeemWithTagAmountUBA(currentMinimum, { from: redeemerAddress1 }),
                 "OnlyGovernance", []);
         });
 
@@ -754,7 +754,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
-            const minimumUBA = await context.assetManager.minimumRedemptionAmountUBA();
+            const minimumUBA = await context.assetManager.minimumRedeemWithTagAmountUBA();
             const tooSmall = minimumUBA.subn(1);
             await expectRevert.custom(
                 context.assetManager.redeemWithTag(tooSmall, redeemer.underlyingAddress, ZERO_ADDRESS, 42,
@@ -764,21 +764,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             );
         });
 
-        it("ordinary redeem reverts with RedemptionTooSmall when amount is below minimum set via setMinimumRedemptionAmountUBA", async () => {
+        it("ordinary redeem is not limited by minimumRedeemWithTagAmountUBA", async () => {
             const { minter } = await setupAgentAndMint(3);
             const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
             // increase minimum to 2 lots
             const twoLotsUBA = context.convertLotsToUBA(2);
-            await waitForTimelock(context.assetManager.setMinimumRedemptionAmountUBA(twoLotsUBA, { from: governance }), context.assetManager, governance);
-            // try to redeem 1 lot (below new minimum)
-            await expectRevert.custom(
-                context.assetManager.redeem(1, redeemer.underlyingAddress, ZERO_ADDRESS,
-                    { from: redeemer.address }),
-                "RedemptionTooSmall",
-                []
-            );
-            // redeem 2 lots should succeed
-            const [requests] = await redeemer.requestRedemption(2);
+            await waitForTimelock(context.assetManager.setMinimumRedeemWithTagAmountUBA(twoLotsUBA, { from: governance }), context.assetManager, governance);
+            // redeem 1 lot should still succeed (ordinary redeem is not limited)
+            const [requests] = await redeemer.requestRedemption(1);
             assert.equal(requests.length, 1);
         });
 
@@ -787,20 +780,20 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
-            const minimumUBA = await context.assetManager.minimumRedemptionAmountUBA();
+            const minimumUBA = await context.assetManager.minimumRedeemWithTagAmountUBA();
             const res = await context.assetManager.redeemWithTag(minimumUBA, redeemer.underlyingAddress, ZERO_ADDRESS, 42,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             assertWeb3Equal(request.valueUBA, minimumUBA);
         });
 
-        it("redeemWithTag respects updated minimum set via setMinimumRedemptionAmountUBA", async () => {
+        it("redeemWithTag respects updated minimum", async () => {
             const { agent, minter, minted } = await setupAgentAndMint(3);
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // increase minimum to 2 lots
             const twoLotsUBA = context.convertLotsToUBA(2);
-            await waitForTimelock(context.assetManager.setMinimumRedemptionAmountUBA(twoLotsUBA, { from: governance }), context.assetManager, governance);
+            await waitForTimelock(context.assetManager.setMinimumRedeemWithTagAmountUBA(twoLotsUBA, { from: governance }), context.assetManager, governance);
             // try to redeem 1.5 lots — was above old minimum (1 lot) but below new minimum (2 lots)
             const oneAndHalfLotsUBA = context.convertLotsToUBA(3).divn(2);
             await expectRevert.custom(

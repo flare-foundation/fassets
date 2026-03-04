@@ -26,7 +26,7 @@ contract RedemptionSettingsFacet is AssetManagerBase, GovernedProxyImplementatio
 
     // setter
 
-    function setMinimumRedemptionAmountUBA(uint256 _valueUBA)
+    function setMinimumRedeemWithTagAmountUBA(uint256 _valueUBA)
         external
         onlyGovernance
         rateLimited
@@ -35,16 +35,16 @@ contract RedemptionSettingsFacet is AssetManagerBase, GovernedProxyImplementatio
         // validate
         uint64 valueAMG = Conversion.convertUBAToAmg(_valueUBA);
         require(valueAMG <= settings.lotSizeAMG * uint256(10), ValueTooBig());
-        uint64 minimumRedemptionAmountAMG = RedemptionRequests.getSettings().minimumRedemptionAmountAMG;
-        require(valueAMG <= minimumRedemptionAmountAMG * uint256(4) + settings.lotSizeAMG, IncreaseTooBig());
+        uint64 currentAMG = RedemptionRequests.getSettings().minimumRedeemWithTagAmountAMG;
+        require(valueAMG <= currentAMG * uint256(4) + settings.lotSizeAMG, IncreaseTooBig());
         // update
-        RedemptionRequests.getSettings().minimumRedemptionAmountAMG = valueAMG;
-        emit IAssetManagerEvents.SettingChanged("minimumRedemptionAmountUBA", _valueUBA);
+        RedemptionRequests.getSettings().minimumRedeemWithTagAmountAMG = valueAMG;
+        emit IAssetManagerEvents.SettingChanged("minimumRedeemWithTagAmountUBA", _valueUBA);
     }
 
     // getters
 
-    function minimumRedemptionAmountUBA() external view returns (uint256) {
-        return Conversion.convertAmgToUBA(RedemptionRequests.minimumRedemptionAmountAMG());
+    function minimumRedeemWithTagAmountUBA() external view returns (uint256) {
+        return Conversion.convertAmgToUBA(RedemptionRequests.minimumRedeemWithTagAmountAMG());
     }
 }

@@ -109,6 +109,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     {
         require(RedemptionRequests.redeemWithTagSupported(), RedeemWithTagNotSupported());
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
+        require(amountAMG >= RedemptionRequests.minimumRedeemWithTagAmountAMG(), RedemptionTooSmall());
         return _redeem(amountAMG, 1, _redeemerUnderlyingAddressString, _executor, true, _destinationTag);
     }
 
@@ -390,7 +391,6 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         private
         returns (uint256)
     {
-        require(_amountAMG >= RedemptionRequests.minimumRedemptionAmountAMG(), RedemptionTooSmall());
         uint256 maxRedeemedTickets = Globals.getSettings().maxRedeemedTickets;
         RedemptionRequests.AgentRedemptionList memory redemptionList = RedemptionRequests.AgentRedemptionList({
             length: 0,

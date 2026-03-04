@@ -30,7 +30,7 @@ export interface AssetManagerInitSettings extends AssetManagerSettings {
     directMintingLargeMintingDelaySeconds: BNish;
     // redeem with tag
     redeemWithTagSupported: boolean;
-    minimumRedemptionAmountUBA: BNish;
+    minimumRedeemWithTagAmountUBA: BNish;
 }
 
 const IIAssetManager = artifacts.require('IIAssetManager');
@@ -116,7 +116,7 @@ export async function newAssetManager(
             largeMintingDelaySeconds: assetManagerSettings.directMintingLargeMintingDelaySeconds,
             // redeem with tag
             redeemWithTagSupported: assetManagerSettings.redeemWithTagSupported,
-            minimumRedemptionAmountUBA: assetManagerSettings.minimumRedemptionAmountUBA,
+            minimumRedeemWithTagAmountUBA: assetManagerSettings.minimumRedeemWithTagAmountUBA,
         })
     );
     // verify interface implementation

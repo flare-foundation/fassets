@@ -7,20 +7,20 @@ pragma solidity >=0.7.6 <0.9;
  */
 interface IRedemptionSettings {
     /**
-     * Minimum redemption amount in UBA for redemption with tag.
-     * Redemption requests with smaller amount will be rejected.
+     * Minimum amount in UBA for redemption with tag.
+     * Redemption with tag requests with smaller amount will be rejected.
      */
-    function minimumRedemptionAmountUBA()
+    function minimumRedeemWithTagAmountUBA()
         external view
         returns (uint256);
 
     /**
-     * Set the minimum redemption amount in UBA.
-     * Redemption requests with smaller amount will be rejected.
+     * Set the minimum amount in UBA for redemption with tag.
+     * Redemption with tag requests with smaller amount will be rejected.
      * NOTE: may only be called by the governance.
-     * @param _valueUBA the new minimum redemption amount in UBA;
+     * @param _valueUBA the new minimum redeem with tag amount in UBA;
      *      must be at most 10 lots (in UBA)
      */
-    function setMinimumRedemptionAmountUBA(uint256 _valueUBA)
+    function setMinimumRedeemWithTagAmountUBA(uint256 _valueUBA)
         external;
 }

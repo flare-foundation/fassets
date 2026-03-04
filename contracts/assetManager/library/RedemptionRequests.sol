@@ -26,7 +26,7 @@ library RedemptionRequests {
 
     struct Settings {
         bool redeemWithTagSupported;
-        uint64 minimumRedemptionAmountAMG;
+        uint64 minimumRedeemWithTagAmountAMG;
     }
 
     struct AgentRedemptionData {
@@ -107,8 +107,8 @@ library RedemptionRequests {
         return getSettings().redeemWithTagSupported;
     }
 
-    function minimumRedemptionAmountAMG() internal view returns (uint64) {
-        return getSettings().minimumRedemptionAmountAMG;
+    function minimumRedeemWithTagAmountAMG() internal view returns (uint64) {
+        return getSettings().minimumRedeemWithTagAmountAMG;
     }
 
     function _emitRedemptionRequestedEvent(

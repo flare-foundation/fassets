@@ -46,7 +46,7 @@ contract DirectMintingAndRedemptionWithTagInit {
         uint256 largeMintingDelaySeconds;
         // redemption with tag settings
         bool redeemWithTagSupported;
-        uint256 minimumRedemptionAmountUBA;
+        uint256 minimumRedeemWithTagAmountUBA;
     }
 
     // prevent initialization of implementation contract
@@ -107,9 +107,9 @@ contract DirectMintingAndRedemptionWithTagInit {
         RedemptionRequests.Settings storage settings = RedemptionRequests.getSettings();
         settings.redeemWithTagSupported = _params.redeemWithTagSupported;
         AssetManagerSettings.Data storage assetManagerSettings = Globals.getSettings();
-        uint64 minimumRedemptionAmountAMG = Conversion.convertUBAToAmg(_params.minimumRedemptionAmountUBA);
-        require(minimumRedemptionAmountAMG <= assetManagerSettings.lotSizeAMG * 10, ValueTooHigh());
-        settings.minimumRedemptionAmountAMG = minimumRedemptionAmountAMG;
+        uint64 minimumRedeemWithTagAmountAMG = Conversion.convertUBAToAmg(_params.minimumRedeemWithTagAmountUBA);
+        require(minimumRedeemWithTagAmountAMG <= assetManagerSettings.lotSizeAMG * 10, ValueTooHigh());
+        settings.minimumRedeemWithTagAmountAMG = minimumRedeemWithTagAmountAMG;
     }
 
     function _updateCoreVaultClient(InitParams calldata _params) private {
