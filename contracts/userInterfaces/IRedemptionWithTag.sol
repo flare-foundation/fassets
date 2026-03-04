@@ -33,20 +33,29 @@ interface IRedemptionWithTag {
         uint256 destinationTag);
 
     /**
+     * In case there were not enough tickets or more than allowed number would have to be redeemed,
+     * only partial redemption is done and the `remainingAmountUBA` lots of the fassets are returned to
+     * the redeemer.
+     */
+    event RedemptionWithTagIncomplete(
+        address indexed redeemer,
+        uint256 remainingAmountUBA);
+
+    /**
      * Redeem (up to) `_lots` lots of f-assets. The corresponding amount of the f-assets belonging
      * to the redeemer will be burned and the redeemer will get paid by the agent in underlying currency
      * (or, in case of agent's payment default, by agent's collateral with a premium).
      * NOTE: in some cases not all sent f-assets can be redeemed (either there are not enough tickets or
      * more than a fixed limit of tickets should be redeemed). In this case only part of the approved assets
-     * are burned and redeemed and the redeemer can execute this method again for the remaining lots.
-     * In such a case the `RedemptionRequestIncomplete` event will be emitted, indicating the number
-     * of remaining lots.
+     * are burned and redeemed and the redeemer can execute this method again for the remaining amount.
+     * In such a case the `RedemptionRequestIncomplete` event will be emitted, indicating the remaining amount.
      * Agent receives redemption request id and instructions for underlying payment in
      * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
      * NOTE: if the underlying block isn't updated regularly, it can happen that there is no time for underlying
      * payment. Since the agents cannot know when the next redemption will happen, they should regularly update the
      * underlying time by obtaining fresh proof of latest underlying block and calling `updateCurrentBlock`.
-     * @param _lots number of lots to redeem
+     * @param _amountUBA amount of redeemer's FAssets that will be burned; this is NOT the amount of assets
+     *      that will be received by the redeemer - the redemption fee will be subtracted
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
      * @param _destinationTag the destination tag that is required in the redemption payment (only for XRP)
@@ -54,7 +63,7 @@ interface IRedemptionWithTag {
      *      redemption tickets available or the maximum redemption ticket limit is reached
      */
     function redeemWithTag(
-        uint256 _lots,
+        uint256 _amountUBA,
         string memory _redeemerUnderlyingAddressString,
         address payable _executor,
         uint64 _destinationTag
@@ -108,4 +117,12 @@ interface IRedemptionWithTag {
     function redeemWithTagSupported()
         external view
         returns (bool);
+
+    /**
+     * Minimum redemption amount in UBA for redemption with tag.
+     * Redemption requests with smaller amount will be rejected.
+     */
+    function minimumRedemptionAmountUBA()
+        external view
+        returns (uint256);
 }

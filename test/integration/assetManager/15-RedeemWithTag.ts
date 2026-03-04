@@ -9,7 +9,8 @@ import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-s
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { BN_ZERO, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { filterEvents } from "../../../lib/utils/events/truffle";
 import { RedemptionWithTagRequested } from "../../../typechain-truffle/IIAssetManager";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
@@ -72,7 +73,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 42;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             assertWeb3Equal(request.agentVault, agent.vaultAddress);
@@ -90,12 +91,33 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 12345;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             // agent pays with the correct destination tag and confirms
             const confirmRes = await performAndConfirmXRPRedemptionWithTag(agent, request);
             requiredEventArgs(confirmRes, 'RedemptionPerformed');
+        });
+
+        it("redeemWithTag works with non-whole-lot amounts", async () => {
+            const { agent, minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const destinationTag = 42;
+            // redeem 1.5 lots — not a whole-lot amount
+            const redeemAmountUBA = context.convertLotsToUBA(3).divn(2); // 1.5 lots
+            const res = await context.assetManager.redeemWithTag(redeemAmountUBA, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
+            assertWeb3Equal(request.valueUBA, redeemAmountUBA);
+            assertWeb3Equal(request.destinationTag, destinationTag);
+            // agent pays with the correct destination tag and confirms
+            const confirmRes = await performAndConfirmXRPRedemptionWithTag(agent, request);
+            requiredEventArgs(confirmRes, 'RedemptionPerformed');
+            await agent.checkAgentInfo({
+                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA).sub(redeemAmountUBA)
+            });
         });
 
         it("normal redeem (no tag) can be confirmed with confirmXRPRedemptionPayment", async () => {
@@ -122,13 +144,55 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const destinationTag = 77;
             const executorFeeNatWei = 1e9; // 1 gwei (contract stores fee in gwei units)
             const res = await context.assetManager.redeemWithTag(
-                3, redeemer.underlyingAddress, redeemerAddress2, destinationTag,
+                context.convertLotsToUBA(3), redeemer.underlyingAddress, redeemerAddress2, destinationTag,
                 { from: redeemer.address, value: String(executorFeeNatWei) }
             );
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             assertWeb3Equal(request.destinationTag, destinationTag);
             assertWeb3Equal(request.executor, redeemerAddress2);
             assertWeb3Equal(request.executorFeeNatWei, executorFeeNatWei);
+        });
+
+        it("redeemWithTag emits RedemptionWithTagIncomplete when too many tickets", async () => {
+            const N = 25;
+            const MT = 20;  // maxRedeemedTickets from test settings
+            const fullAgentCollateral = toWei(3e8);
+            const agents: Agent[] = [];
+            const underlyingAddress = (i: number) => `${underlyingAgent1}_vault_${i}`;
+            for (let i = 0; i < N; i++) {
+                const agent = await Agent.createTest(context, agentOwner1, underlyingAddress(i));
+                await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+                agents.push(agent);
+            }
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(N * 3));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            // perform minting — 1 lot from each agent creates 25 separate tickets
+            let totalMinted = BN_ZERO;
+            for (const agent of agents) {
+                await context.updateUnderlyingBlock();
+                const crt = await minter.reserveCollateral(agent.vaultAddress, 1);
+                const txHash = await minter.performMintingPayment(crt);
+                const minted = await minter.executeMinting(crt, txHash);
+                totalMinted = totalMinted.add(toBN(minted.mintedAmountUBA));
+            }
+            // redeemer gets all f-assets
+            await context.fAsset.transfer(redeemer.address, totalMinted, { from: minter.address });
+            // try to redeem all N lots via redeemWithTag — only MT tickets can be processed
+            const destinationTag = 42;
+            await context.updateUnderlyingBlock();
+            const res = await context.assetManager.redeemWithTag(totalMinted, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+                { from: redeemer.address });
+            // should have created MT redemption requests
+            const requests = filterEvents(res, 'RedemptionWithTagRequested').map(e => e.args);
+            assert.equal(requests.length, MT);
+            // should emit RedemptionWithTagIncomplete with remaining amount in UBA
+            // note: each ticket redeems slightly more than 1 lot due to dust (pool fee)
+            const redeemedUBA = requests.reduce((sum, r) => sum.add(toBN(r.valueUBA)), BN_ZERO);
+            const incomplete = requiredEventArgs(res, 'RedemptionWithTagIncomplete');
+            assertWeb3Equal(incomplete.redeemer, redeemer.address);
+            assertWeb3Equal(incomplete.remainingAmountUBA, totalMinted.sub(redeemedUBA));
+            // must NOT emit the lots-based RedemptionRequestIncomplete event
+            expectEvent.notEmitted(res, 'RedemptionRequestIncomplete');
         });
     });
 
@@ -139,7 +203,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 12345;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             // agent pays without any destination tag
@@ -159,7 +223,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 12345;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             // agent pays with a different destination tag
@@ -181,7 +245,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, 99,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, 99,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             // agent pays with the correct destination tag but omits the payment reference (no memo)
@@ -203,7 +267,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, 99,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, 99,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             // agent pays with correct destination tag but a short (2-byte) memo instead of 32-byte payment reference
@@ -226,7 +290,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 42;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             // agent pays with correct tag
@@ -252,7 +316,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 12345;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             // verify collateral before default
@@ -300,7 +364,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 42;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             // skip to expiration and try to call regular redemptionPaymentDefault
@@ -326,7 +390,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 99;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             // mine enough blocks so proof can be generated, but use shortened deadline
@@ -355,7 +419,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 42;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             // default once successfully
@@ -384,7 +448,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 42;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             // agent pays and confirms successfully — request is finished and deleted
@@ -414,7 +478,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 42;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
@@ -442,7 +506,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 42;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
@@ -469,7 +533,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 42;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
@@ -496,7 +560,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 42;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
@@ -523,7 +587,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 42;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
@@ -552,7 +616,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 42;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             // agent pays with correct tag
@@ -574,7 +638,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 42;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             // agent pays with correct tag
@@ -598,7 +662,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 42;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
@@ -624,7 +688,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
             const destinationTag = 42;
-            const res = await context.assetManager.redeemWithTag(3, redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+            const res = await context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
@@ -656,7 +720,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         it("redeemWithTag reverts with RedeemWithTagNotSupported on non-XRP chain", async () => {
             const btcContext = await AssetContext.createTest(commonContext, testChainInfo.btc);
             await expectRevert.custom(
-                btcContext.assetManager.redeemWithTag(3, underlyingRedeemer1, ZERO_ADDRESS, 42, { from: redeemerAddress1 }),
+                btcContext.assetManager.redeemWithTag(context.convertLotsToUBA(3), underlyingRedeemer1, ZERO_ADDRESS, 42, { from: redeemerAddress1 }),
                 "RedeemWithTagNotSupported",
                 []
             );

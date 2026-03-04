@@ -240,7 +240,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // start a minting and a redemption
             const crt = await minter.reserveCollateral(agent.vaultAddress, 2);
             const [[rrq]] = await redeemer.requestRedemption(1);
-            const [[rrqTag]] = await redeemer.requestRedemptionWithTag(1, 123);
+            const [[rrqTag]] = await redeemer.requestRedemptionWithTag(lotSize.muln(1), 123);
             const invRedRes = await context.assetManager.redeem(1, "MY_INVALID_ADDRESS", ZERO_ADDRESS, { from: redeemer.address });
             const [invalidRrq] = filterEvents(invRedRes, 'RedemptionRequested').map(e => e.args);
             const undWithdr = await agent.announceUnderlyingWithdrawal();

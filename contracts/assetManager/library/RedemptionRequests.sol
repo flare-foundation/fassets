@@ -2,7 +2,6 @@
 pragma solidity ^0.8.27;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {StorageSlot} from "@openzeppelin/contracts/utils/StorageSlot.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {RedemptionTimeExtension} from "./data/RedemptionTimeExtension.sol";
@@ -24,6 +23,11 @@ library RedemptionRequests {
     error CannotRedeemToAgentsAddress();
     error UnderlyingAddressTooLong();
     error ExecutorFeeWithoutExecutor();
+
+    struct Settings {
+        bool redeemWithTagSupported;
+        uint64 minimumRedemptionAmountAMG;
+    }
 
     struct AgentRedemptionData {
         address agentVault;
@@ -99,15 +103,12 @@ library RedemptionRequests {
         _emitRedemptionRequestedEvent(request, _requestId, _args.redeemerUnderlyingAddressString);
     }
 
-    bytes32 private constant REDEEM_WITH_TAG_SUPPORTED_SLOT =
-        keccak256("fasset.RedemptionRequestsFacet.redeemWithTagSupported");
-
-    function setRedeemWithTagSupported(bool _supported) internal {
-        StorageSlot.getBooleanSlot(REDEEM_WITH_TAG_SUPPORTED_SLOT).value = _supported;
+    function redeemWithTagSupported() internal view returns (bool) {
+        return getSettings().redeemWithTagSupported;
     }
 
-    function redeemWithTagSupported() internal view returns (bool) {
-        return StorageSlot.getBooleanSlot(REDEEM_WITH_TAG_SUPPORTED_SLOT).value;
+    function minimumRedemptionAmountAMG() internal view returns (uint64) {
+        return getSettings().minimumRedemptionAmountAMG;
     }
 
     function _emitRedemptionRequestedEvent(
@@ -178,5 +179,18 @@ library RedemptionRequests {
             state.currentUnderlyingBlock + blockshift + settings.underlyingBlocksForPayment;
         _lastUnderlyingTimestamp =
             state.currentUnderlyingBlockTimestamp + timeshift + settings.underlyingSecondsForPayment;
+    }
+
+    bytes32 internal constant SETTINGS_POSITION = keccak256("fasset.RedemptionRequests.Settings");
+
+    function getSettings()
+        internal pure
+        returns (Settings storage settings)
+    {
+        bytes32 position = SETTINGS_POSITION;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            settings.slot := position
+        }
     }
 }

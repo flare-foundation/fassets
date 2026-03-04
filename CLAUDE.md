@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+The package manager used in the project is `yarn`.
+
 ```bash
 # Install dependencies
 yarn --frozen-lockfile

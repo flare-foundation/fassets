@@ -38,7 +38,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
     async function initialize() {
         commonContext = await CommonContext.createTest(governance);
-        context = await AssetContext.createTest(commonContext, testChainInfo.eth);
+        context = await AssetContext.createTest(commonContext, testChainInfo.eth, {
+            testSettings: {
+                minimumRedemptionAmountUBA: 0,
+            }
+        });
         return { commonContext, context };
     }
 

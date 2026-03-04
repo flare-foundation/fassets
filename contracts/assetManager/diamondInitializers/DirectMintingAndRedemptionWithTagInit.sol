@@ -16,6 +16,8 @@ import {DirectMinting} from "../library/DirectMinting.sol";
 import {MintingRateLimiter} from "../library/data/MintingRateLimiter.sol";
 import {RedemptionRequests} from "../library/RedemptionRequests.sol";
 import {CoreVaultClient} from "../library/CoreVaultClient.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {Globals} from "../library/Globals.sol";
 
 
 contract DirectMintingAndRedemptionWithTagInit {
@@ -24,6 +26,7 @@ contract DirectMintingAndRedemptionWithTagInit {
 
     error AlreadyInitialized();
     error DiamondNotInitialized();
+    error ValueTooHigh();
 
     struct InitParams {
         // core vault new setting
@@ -42,6 +45,7 @@ contract DirectMintingAndRedemptionWithTagInit {
         uint256 largeMintingDelaySeconds;
         // redemption with tag settings
         bool redeemWithTagSupported;
+        uint256 minimumRedemptionAmountUBA;
     }
 
     // prevent initialization of implementation contract
@@ -98,7 +102,12 @@ contract DirectMintingAndRedemptionWithTagInit {
     }
 
     function _initRedemptionWithTag(InitParams calldata _params) private {
-        RedemptionRequests.setRedeemWithTagSupported(_params.redeemWithTagSupported);
+        RedemptionRequests.Settings storage settings = RedemptionRequests.getSettings();
+        settings.redeemWithTagSupported = _params.redeemWithTagSupported;
+        AssetManagerSettings.Data storage assetManagerSettings = Globals.getSettings();
+        uint64 minimumRedemptionAmountAMG = Conversion.convertUBAToAmg(_params.minimumRedemptionAmountUBA);
+        require(minimumRedemptionAmountAMG <= assetManagerSettings.lotSizeAMG * 10, ValueTooHigh());
+        settings.minimumRedemptionAmountAMG = minimumRedemptionAmountAMG;
     }
 
     function _updateCoreVaultClient(InitParams calldata _params) private {

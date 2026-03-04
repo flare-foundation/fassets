@@ -1015,6 +1015,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 largeMintingThresholdUBA: context.initSettings.directMintingLargeMintingThresholdUBA,
                 largeMintingDelaySeconds: context.initSettings.directMintingLargeMintingDelaySeconds,
                 redeemWithTagSupported: true,
+                minimumRedemptionAmountUBA: context.initSettings.minimumRedemptionAmountUBA,
             }));
         }
 

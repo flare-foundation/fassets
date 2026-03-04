@@ -287,6 +287,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             resInitSettings.directMintingLargeMintingDelaySeconds = await assetManager.getDirectMintingLargeMintingDelaySeconds();
             // add RedeemWithTag settings
             resInitSettings.redeemWithTagSupported = await assetManager.redeemWithTagSupported();
+            resInitSettings.minimumRedemptionAmountUBA = await assetManager.minimumRedemptionAmountUBA();
             //
             assertWeb3DeepEqual(resSettings, settings);
             assert.equal(await assetManager.assetManagerController(), assetManagerController);

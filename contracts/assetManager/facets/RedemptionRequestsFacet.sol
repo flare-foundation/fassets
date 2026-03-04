@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IAddressValidity} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
@@ -12,10 +11,11 @@ import {AgentPayout} from "../library/AgentPayout.sol";
 import {Globals} from "../library/Globals.sol";
 import {RedemptionRequests} from "../library/RedemptionRequests.sol";
 import {Agent} from "../library/data/Agent.sol";
-import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
+import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {IRedemptionWithTag} from "../../userInterfaces/IRedemptionWithTag.sol";
 import {Conversion} from "../library/Conversion.sol";
 import {Redemptions} from "../library/Redemptions.sol";
 import {Liquidation} from "../library/Liquidation.sol";
@@ -36,6 +36,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     error InvalidRedemptionStatus();
     error RedemptionOfZero();
     error RedeemZeroLots();
+    error RedemptionTooSmall();
     error InvalidTicketId();
     error RedeemWithTagNotSupported();
 
@@ -69,7 +70,9 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         nonReentrant
         returns (uint256 _redeemedAmountUBA)
     {
-        return _redeem(_lots, _redeemerUnderlyingAddressString, _executor, false, 0);
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        uint64 amountAMG = (_lots * settings.lotSizeAMG).toUint64();
+        return _redeem(amountAMG, settings.lotSizeAMG, _redeemerUnderlyingAddressString, _executor, false, 0);
     }
 
     /**
@@ -78,15 +81,15 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
      * (or, in case of agent's payment default, by agent's collateral with a premium).
      * NOTE: in some cases not all sent f-assets can be redeemed (either there are not enough tickets or
      * more than a fixed limit of tickets should be redeemed). In this case only part of the approved assets
-     * are burned and redeemed and the redeemer can execute this method again for the remaining lots.
-     * In such a case the `RedemptionRequestIncomplete` event will be emitted, indicating the number
-     * of remaining lots.
+     * are burned and redeemed and the redeemer can execute this method again for the remaining amount.
+     * In such a case the `RedemptionRequestIncomplete` event will be emitted, indicating remaining amount.
      * Agent receives redemption request id and instructions for underlying payment in
      * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
      * NOTE: if the underlying block isn't updated regularly, it can happen that there is no time for underlying
      * payment. Since the agents cannot know when the next redemption will happen, they should regularly update the
      * underlying time by obtaining fresh proof of latest underlying block and calling `updateCurrentBlock`.
-     * @param _lots number of lots to redeem
+     * @param _amountUBA amount of redeemer's FAssets that will be burned; this is NOT the amount of assets
+     *      that will be received by the redeemer - the redemption fee will be subtracted
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
      * @param _destinationTag the destination tag that is required in the redemption payment (only for XRP)
@@ -94,7 +97,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
      *      redemption tickets available or the maximum redemption ticket limit is reached
      */
     function redeemWithTag(
-        uint256 _lots,
+        uint256 _amountUBA,
         string memory _redeemerUnderlyingAddressString,
         address payable _executor,
         uint64 _destinationTag
@@ -105,7 +108,8 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         returns (uint256 _redeemedAmountUBA)
     {
         require(RedemptionRequests.redeemWithTagSupported(), RedeemWithTagNotSupported());
-        return _redeem(_lots, _redeemerUnderlyingAddressString, _executor, true, _destinationTag);
+        uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
+        return _redeem(amountAMG, 1, _redeemerUnderlyingAddressString, _executor, true, _destinationTag);
     }
 
     /**
@@ -113,6 +117,14 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
      */
     function redeemWithTagSupported() external view returns (bool) {
         return RedemptionRequests.redeemWithTagSupported();
+    }
+
+    /**
+     * Minimum redemption amount in UBA for redemption with tag.
+     * Redemption requests with smaller amount will be rejected.
+     */
+    function minimumRedemptionAmountUBA() external view returns (uint256) {
+        return Conversion.convertAmgToUBA(RedemptionRequests.minimumRedemptionAmountAMG());
     }
 
     /**
@@ -376,7 +388,8 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     }
 
     function _redeem(
-        uint256 _lots,
+        uint64 _amountAMG,
+        uint64 _granularityAMG,
         string memory _redeemerUnderlyingAddressString,
         address payable _executor,
         bool _requiresDestinationTag,
@@ -385,18 +398,20 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         private
         returns (uint256)
     {
+        require(_amountAMG >= RedemptionRequests.minimumRedemptionAmountAMG(), RedemptionTooSmall());
         uint256 maxRedeemedTickets = Globals.getSettings().maxRedeemedTickets;
         RedemptionRequests.AgentRedemptionList memory redemptionList = RedemptionRequests.AgentRedemptionList({
             length: 0,
             items: new RedemptionRequests.AgentRedemptionData[](maxRedeemedTickets)
         });
-        uint256 redeemedLots = 0;
-        for (uint256 i = 0; i < maxRedeemedTickets && redeemedLots < _lots; i++) {
-            (bool queueEmpty, uint256 ticketRedeemedLots) = _redeemFirstTicket(_lots - redeemedLots, redemptionList);
+        uint64 redeemedAMG = 0;
+        for (uint256 i = 0; i < maxRedeemedTickets && redeemedAMG < _amountAMG; i++) {
+            (bool queueEmpty, uint64 ticketRedeemedAMG) =
+                _redeemFirstTicket(_amountAMG - redeemedAMG, _granularityAMG, redemptionList);
             if (queueEmpty) break;
-            redeemedLots += ticketRedeemedLots;
+            redeemedAMG += ticketRedeemedAMG;
         }
-        require(redeemedLots != 0, RedeemZeroLots());
+        require(redeemedAMG != 0, RedeemZeroLots());
         uint256 executorFeeNatGWei = msg.value / Conversion.GWEI;
         for (uint256 i = 0; i < redemptionList.length; i++) {
             // distribute executor fee over redemption request with at most 1 gwei leftover
@@ -420,24 +435,30 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
             );
         }
         // notify redeemer of incomplete requests
-        if (redeemedLots < _lots) {
-            emit IAssetManagerEvents.RedemptionRequestIncomplete(msg.sender, _lots - redeemedLots);
+        if (redeemedAMG < _amountAMG) {
+            if (_granularityAMG == 1) {
+                uint256 remainingUBA = Conversion.convertAmgToUBA(_amountAMG - redeemedAMG);
+                emit IRedemptionWithTag.RedemptionWithTagIncomplete(msg.sender, remainingUBA);
+            } else {
+                uint64 remainingLots = (_amountAMG - redeemedAMG) / _granularityAMG;
+                emit IAssetManagerEvents.RedemptionRequestIncomplete(msg.sender, remainingLots);
+            }
         }
         // burn the redeemed value of fassets
-        uint256 redeemedUBA = Conversion.convertLotsToUBA(redeemedLots);
+        uint256 redeemedUBA = Conversion.convertAmgToUBA(redeemedAMG);
         Redemptions.burnFAssets(msg.sender, redeemedUBA);
         return redeemedUBA;
     }
 
     function _redeemFirstTicket(
-        uint256 _lots,
+        uint64 _amountAMG,
+        uint64 _granularityAMG,
         RedemptionRequests.AgentRedemptionList memory _list
     )
         private
-        returns (bool _queueEmpty, uint256 _redeemedLots)
+        returns (bool _queueEmpty, uint64 _redeemedAMG)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint64 ticketId = state.redemptionQueue.firstTicketId;
         if (ticketId == 0) {
             return (true, 0);    // empty redemption queue
@@ -445,11 +466,11 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         RedemptionQueue.Ticket storage ticket = state.redemptionQueue.getTicket(ticketId);
         address agentVault = ticket.agentVault;
         Agent.State storage agent = Agent.get(agentVault);
-        uint256 maxRedeemLots = (ticket.valueAMG + agent.dustAMG) / settings.lotSizeAMG;
+        uint64 maxRedeemAMG = ticket.valueAMG + agent.dustAMG;
+        maxRedeemAMG -= maxRedeemAMG % _granularityAMG;  // round down to the nearest multiple of granularity
         _queueEmpty = false;
-        _redeemedLots = Math.min(_lots, maxRedeemLots);
-        if (_redeemedLots > 0) {
-            uint64 redeemedAMG = Conversion.convertLotsToAMG(_redeemedLots);
+        _redeemedAMG = _amountAMG <= maxRedeemAMG ? _amountAMG : maxRedeemAMG;
+        if (_redeemedAMG > 0) {
             // find list index for ticket's agent
             uint256 index = 0;
             while (index < _list.length && _list.items[index].agentVault != agentVault) {
@@ -457,15 +478,15 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
             }
             // add to list item or create new item
             if (index < _list.length) {
-                _list.items[index].valueAMG = _list.items[index].valueAMG + redeemedAMG;
+                _list.items[index].valueAMG = _list.items[index].valueAMG + _redeemedAMG;
             } else {
                 _list.items[_list.length++] = RedemptionRequests.AgentRedemptionData({
                     agentVault: agentVault,
-                    valueAMG: redeemedAMG
+                    valueAMG: _redeemedAMG
                 });
             }
             // _removeFromTicket may delete ticket data, so we call it at end
-            Redemptions.removeFromTicket(ticketId, redeemedAMG);
+            Redemptions.removeFromTicket(ticketId, _redeemedAMG);
         } else {
             // this will just convert ticket to dust
             Redemptions.removeFromTicket(ticketId, 0);

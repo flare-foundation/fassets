@@ -163,6 +163,7 @@ export function createTestSettings(contracts: TestSettingsCommonContracts, ci: T
         directMintingLargeMintingDelaySeconds: 3600,
         // redemption with tag
         redeemWithTagSupported: [SourceId.XRP, SourceId.testXRP].includes(ci.chainId),
+        minimumRedemptionAmountUBA: toBNExp(ci.lotSize, ci.decimals),
     };
     return Object.assign(result, options ?? {});
 }
