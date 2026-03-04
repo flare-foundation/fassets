@@ -82,7 +82,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
      * NOTE: in some cases not all sent f-assets can be redeemed (either there are not enough tickets or
      * more than a fixed limit of tickets should be redeemed). In this case only part of the approved assets
      * are burned and redeemed and the redeemer can execute this method again for the remaining amount.
-     * In such a case the `RedemptionRequestIncomplete` event will be emitted, indicating remaining amount.
+     * In such a case the `RedemptionWithTagIncomplete` event will be emitted, indicating remaining amount.
      * Agent receives redemption request id and instructions for underlying payment in
      * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
      * NOTE: if the underlying block isn't updated regularly, it can happen that there is no time for underlying
