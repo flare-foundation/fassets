@@ -8,6 +8,7 @@ import {IDirectMintingSettings} from "../../userInterfaces/IDirectMintingSetting
 import {ICoreVaultClient} from "../../userInterfaces/ICoreVaultClient.sol";
 import {ICoreVaultClientSettings} from "../../userInterfaces/ICoreVaultClientSettings.sol";
 import {IRedemptionWithTag} from "../../userInterfaces/IRedemptionWithTag.sol";
+import {IRedemptionSettings} from "../../userInterfaces/IRedemptionSettings.sol";
 import {ISmartAccountManagerMock} from "../mock/ISmartAccountManagerMock.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {LibDiamond} from "../../diamond/library/LibDiamond.sol";
@@ -81,6 +82,7 @@ contract DirectMintingAndRedemptionWithTagInit {
         ds.supportedInterfaces[type(IDirectMinting).interfaceId] = true;
         ds.supportedInterfaces[type(IDirectMintingSettings).interfaceId] = true;
         ds.supportedInterfaces[type(IRedemptionWithTag).interfaceId] = true;
+        ds.supportedInterfaces[type(IRedemptionSettings).interfaceId] = true;
         ds.supportedInterfaces[type(ICoreVaultClient).interfaceId] = true;  // changed
         ds.supportedInterfaces[type(ICoreVaultClientSettings).interfaceId] = true;  // changed
     }

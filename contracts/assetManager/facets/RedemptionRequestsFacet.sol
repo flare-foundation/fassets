@@ -120,14 +120,6 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     }
 
     /**
-     * Minimum redemption amount in UBA for redemption with tag.
-     * Redemption requests with smaller amount will be rejected.
-     */
-    function minimumRedemptionAmountUBA() external view returns (uint256) {
-        return Conversion.convertAmgToUBA(RedemptionRequests.minimumRedemptionAmountAMG());
-    }
-
-    /**
      * Create a redemption from a single agent. Used in self-close exit from the collateral pool.
      * Note: only collateral pool can call this method.
      */

@@ -96,6 +96,7 @@ export async function newAssetManager(
         [
             await deployFacet("DirectMintingFacet", selectorsForInterfaces("IDirectMinting")),
             await deployFacet("DirectMintingSettingsFacet", selectorsForInterfaces("IDirectMintingSettings")),
+            await deployFacet("RedemptionSettingsFacet", selectorsForInterfaces("IRedemptionSettings")),
         ],
         artifacts.require("DirectMintingAndRedemptionWithTagInit"),
         (c) => c.initialize({

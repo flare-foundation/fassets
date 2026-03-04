@@ -118,11 +118,4 @@ interface IRedemptionWithTag {
         external view
         returns (bool);
 
-    /**
-     * Minimum redemption amount in UBA for redemption with tag.
-     * Redemption requests with smaller amount will be rejected.
-     */
-    function minimumRedemptionAmountUBA()
-        external view
-        returns (uint256);
 }
