@@ -156,8 +156,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // cannot start mint or redeem
             await expectRevert.custom(minter.reserveCollateral(agent.vaultAddress, 1), "EmergencyPauseActive", []);
             await expectRevert.custom(redeemer.requestRedemption(1), "EmergencyPauseActive", []);
+            // cannot start redeem amount
+            await expectRevert.custom(redeemer.requestRedemptionAnyAmount(context.convertLotsToUBA(1)), "EmergencyPauseActive", []);
             // cannot start redeem with tag
-            await expectRevert.custom(redeemer.requestRedemptionWithTag(1, 14), "EmergencyPauseActive", []);
+            await expectRevert.custom(redeemer.requestRedemptionWithTag(context.convertLotsToUBA(1), 14), "EmergencyPauseActive", []);
             // cannot self close
             await expectRevert.custom(agent.selfClose(lotSize), "EmergencyPauseActive", []);
             // cannot liquidate
