@@ -3,14 +3,14 @@ pragma solidity >=0.7.6 <0.9;
 
 
 /**
- * Redemption settings interface.
+ * Extended redemption settings interface.
  */
-interface IRedemptionSettings {
+interface IRedeemExtendedSettings {
     /**
      * Minimum amount in UBA for redemption with tag.
      * Redemption with tag requests with smaller amount will be rejected.
      */
-    function minimumRedeemWithTagAmountUBA()
+    function minimumRedeemAmountUBA()
         external view
         returns (uint256);
 
@@ -21,6 +21,6 @@ interface IRedemptionSettings {
      * @param _valueUBA the new minimum redeem with tag amount in UBA;
      *      must be at most 10 lots (in UBA)
      */
-    function setMinimumRedeemWithTagAmountUBA(uint256 _valueUBA)
+    function setMinimumRedeemAmountUBA(uint256 _valueUBA)
         external;
 }

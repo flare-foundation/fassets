@@ -6,9 +6,10 @@ import {IXRPPaymentNonexistence} from "../fdc/mockInterface/IXRPPaymentNonexiste
 
 
 /**
- * Core vault
+ * Extended redemption interface - supports UBA-based redemption (redeemAmount) and
+ * XRP destination tag redemption (redeemWithTag).
  */
-interface IRedemptionWithTag {
+interface IRedeemExtended {
     /**
      * Redeemer started the redemption with tag process and provided fassets.
      * The amount of fassets corresponding to valueUBA was burned.
@@ -34,21 +35,45 @@ interface IRedemptionWithTag {
 
     /**
      * In case there were not enough tickets or more than allowed number would have to be redeemed,
-     * only partial redemption is done and the `remainingAmountUBA` lots of the fassets are returned to
+     * only partial redemption is done and the `remainingAmountUBA` of the fassets are returned to
      * the redeemer.
+     * Emitted by `redeemWithTag` and `redeemAmount`.
      */
-    event RedemptionWithTagIncomplete(
+    event RedemptionAmountIncomplete(
         address indexed redeemer,
         uint256 remainingAmountUBA);
 
     /**
-     * Redeem (up to) `_lots` lots of f-assets. The corresponding amount of the f-assets belonging
+     * Redeem (up to) `_amountUBA` FAssets. Like `redeem`, but accepts an arbitrary amount in UBA
+     * instead of whole lots. Like `redeem`, does not require a destination tag.
+     * NOTE: in some cases not all sent FAssets can be redeemed (either there are not enough tickets or
+     * more than a fixed limit of tickets should be redeemed). In this case only part of the approved assets
+     * are burned and redeemed and the redeemer can execute this method again for the remaining amount.
+     * In such a case the `RedemptionAmountIncomplete` event will be emitted, indicating remaining amount.
+     * Agent receives redemption request id and instructions for underlying payment in
+     * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
+     * @param _amountUBA amount of redeemer's FAssets that will be burned; this is NOT the amount of assets
+     *      that will be received by the redeemer - the redemption fee will be subtracted
+     * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
+     * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
+     * @return _redeemedAmountUBA the actual redeemed amount; may be less than requested if there are not enough
+     *      redemption tickets available or the maximum redemption ticket limit is reached
+     */
+    function redeemAmount(
+        uint256 _amountUBA,
+        string memory _redeemerUnderlyingAddressString,
+        address payable _executor
+    ) external payable
+        returns (uint256 _redeemedAmountUBA);
+
+    /**
+     * Redeem (up to) `_amountUBA` f-assets. The corresponding amount of the f-assets belonging
      * to the redeemer will be burned and the redeemer will get paid by the agent in underlying currency
      * (or, in case of agent's payment default, by agent's collateral with a premium).
      * NOTE: in some cases not all sent f-assets can be redeemed (either there are not enough tickets or
      * more than a fixed limit of tickets should be redeemed). In this case only part of the approved assets
      * are burned and redeemed and the redeemer can execute this method again for the remaining amount.
-     * In such a case the `RedemptionWithTagIncomplete` event will be emitted, indicating the remaining amount.
+     * In such a case the `RedemptionAmountIncomplete` event will be emitted, indicating the remaining amount.
      * Agent receives redemption request id and instructions for underlying payment in
      * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
      * NOTE: if the underlying block isn't updated regularly, it can happen that there is no time for underlying

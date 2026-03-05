@@ -15,7 +15,7 @@ import {SafePct} from "../../utils/library/SafePct.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
-import {IRedemptionWithTag} from "../../userInterfaces/IRedemptionWithTag.sol";
+import {IRedeemExtended} from "../../userInterfaces/IRedeemExtended.sol";
 import {Conversion} from "../library/Conversion.sol";
 import {Redemptions} from "../library/Redemptions.sol";
 import {Liquidation} from "../library/Liquidation.sol";
@@ -41,10 +41,10 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     error RedeemWithTagNotSupported();
 
     /**
-     * Redeem (up to) `_lots` lots of f-assets. The corresponding amount of the f-assets belonging
+     * Redeem (up to) `_lots` lots of FAssets. The corresponding amount of the FAssets belonging
      * to the redeemer will be burned and the redeemer will get paid by the agent in underlying currency
      * (or, in case of agent's payment default, by agent's collateral with a premium).
-     * NOTE: in some cases not all sent f-assets can be redeemed (either there are not enough tickets or
+     * NOTE: in some cases not all sent FAssets can be redeemed (either there are not enough tickets or
      * more than a fixed limit of tickets should be redeemed). In this case only part of the approved assets
      * are burned and redeemed and the redeemer can execute this method again for the remaining lots.
      * In such a case the `RedemptionRequestIncomplete` event will be emitted, indicating the number
@@ -76,13 +76,13 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     }
 
     /**
-     * Redeem (up to) `_lots` lots of f-assets. The corresponding amount of the f-assets belonging
+     * Redeem (up to) `_amountUBA` FAssets. The corresponding amount of the FAssets belonging
      * to the redeemer will be burned and the redeemer will get paid by the agent in underlying currency
      * (or, in case of agent's payment default, by agent's collateral with a premium).
-     * NOTE: in some cases not all sent f-assets can be redeemed (either there are not enough tickets or
+     * NOTE: in some cases not all sent FAssets can be redeemed (either there are not enough tickets or
      * more than a fixed limit of tickets should be redeemed). In this case only part of the approved assets
      * are burned and redeemed and the redeemer can execute this method again for the remaining amount.
-     * In such a case the `RedemptionWithTagIncomplete` event will be emitted, indicating remaining amount.
+     * In such a case the `RedemptionAmountIncomplete` event will be emitted, indicating remaining amount.
      * Agent receives redemption request id and instructions for underlying payment in
      * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
      * NOTE: if the underlying block isn't updated regularly, it can happen that there is no time for underlying
@@ -109,8 +109,39 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     {
         require(RedemptionRequests.redeemWithTagSupported(), RedeemWithTagNotSupported());
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        require(amountAMG >= RedemptionRequests.minimumRedeemWithTagAmountAMG(), RedemptionTooSmall());
+        require(amountAMG >= RedemptionRequests.minimumRedeemAmountAMG(), RedemptionTooSmall());
         return _redeem(amountAMG, 1, _redeemerUnderlyingAddressString, _executor, true, _destinationTag);
+    }
+
+    /**
+     * Redeem (up to) `_amountUBA` FAssets. Like `redeem`, but accepts an arbitrary amount in UBA
+     * instead of whole lots. Like `redeem`, does not require a destination tag.
+     * NOTE: in some cases not all sent FAssets can be redeemed (either there are not enough tickets or
+     * more than a fixed limit of tickets should be redeemed). In this case only part of the approved assets
+     * are burned and redeemed and the redeemer can execute this method again for the remaining amount.
+     * In such a case the `RedemptionAmountIncomplete` event will be emitted, indicating remaining amount.
+     * Agent receives redemption request id and instructions for underlying payment in
+     * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
+     * @param _amountUBA amount of redeemer's FAssets that will be burned; this is NOT the amount of assets
+     *      that will be received by the redeemer - the redemption fee will be subtracted
+     * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
+     * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
+     * @return _redeemedAmountUBA the actual redeemed amount; may be less than requested if there are not enough
+     *      redemption tickets available or the maximum redemption ticket limit is reached
+     */
+    function redeemAmount(
+        uint256 _amountUBA,
+        string memory _redeemerUnderlyingAddressString,
+        address payable _executor
+    )
+        external payable
+        notEmergencyPaused
+        nonReentrant
+        returns (uint256 _redeemedAmountUBA)
+    {
+        uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
+        require(amountAMG >= RedemptionRequests.minimumRedeemAmountAMG(), RedemptionTooSmall());
+        return _redeem(amountAMG, 1, _redeemerUnderlyingAddressString, _executor, false, 0);
     }
 
     /**
@@ -430,7 +461,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         if (redeemedAMG < _amountAMG) {
             if (_granularityAMG == 1) {
                 uint256 remainingUBA = Conversion.convertAmgToUBA(_amountAMG - redeemedAMG);
-                emit IRedemptionWithTag.RedemptionWithTagIncomplete(msg.sender, remainingUBA);
+                emit IRedeemExtended.RedemptionAmountIncomplete(msg.sender, remainingUBA);
             } else {
                 uint64 remainingLots = (_amountAMG - redeemedAMG) / _granularityAMG;
                 emit IAssetManagerEvents.RedemptionRequestIncomplete(msg.sender, remainingLots);

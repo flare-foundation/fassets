@@ -17,9 +17,9 @@ import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder"
 import { TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { ContractWithEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BN_ONE, DAYS, deepFormat, HOURS, joinHexBytes, MAX_BIPS, MINUTES, requireNotNull, toBN, toBNExp, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { BN_ONE, DAYS, HOURS, joinHexBytes, MAX_BIPS, MINUTES, requireNotNull, toBN, toBNExp, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
-import { CoreVaultManagerInstance, DirectMintingAndRedemptionWithTagInitInstance, DirectMintingSettingsFacetInstance, MintingTagManagerInstance, SmartAccountManagerMockInstance } from "../../../typechain-truffle";
+import { CoreVaultManagerInstance, DirectMintingAndRedeemExtendedInitInstance, MintingTagManagerInstance, SmartAccountManagerMockInstance } from "../../../typechain-truffle";
 import { DirectMintingExecutedToSmartAccount } from "../../../typechain-truffle/DirectMintingFacet";
 import { DirectMintingExecuted } from "../../../typechain-truffle/IIAssetManager";
 import { MintedToSmartAccount } from "../../../typechain-truffle/SmartAccountManagerMock";
@@ -1000,7 +1000,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
     });
 
     describe("Initialization guards", () => {
-        async function initializeSettingsFacet(initializer: DirectMintingAndRedemptionWithTagInitInstance) {
+        async function initializeSettingsFacet(initializer: DirectMintingAndRedeemExtendedInitInstance) {
             await initializer.initialize(web3DeepNormalize({
                 coreVaultDonationTag: context.initSettings.coreVaultDonationTag,
                 mintingTagManager: ZERO_ADDRESS, // can be set later
@@ -1015,22 +1015,22 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 largeMintingThresholdUBA: context.initSettings.directMintingLargeMintingThresholdUBA,
                 largeMintingDelaySeconds: context.initSettings.directMintingLargeMintingDelaySeconds,
                 redeemWithTagSupported: true,
-                minimumRedeemWithTagAmountUBA: context.initSettings.minimumRedeemWithTagAmountUBA,
+                minimumRedeemAmountUBA: context.initSettings.minimumRedeemAmountUBA,
             }));
         }
 
-        const DirectMintingAndRedemptionWithTagInit = artifacts.require("DirectMintingAndRedemptionWithTagInit");
+        const DirectMintingAndRedeemExtendedInit = artifacts.require("DirectMintingAndRedeemExtendedInit");
         const ERC1967Proxy = artifacts.require("ERC1967Proxy");
 
         it("should not re-initialize deployed facet", async () => {
-            const settingsFacet = await DirectMintingAndRedemptionWithTagInit.new();
+            const settingsFacet = await DirectMintingAndRedeemExtendedInit.new();
             await expectRevert.custom(initializeSettingsFacet(settingsFacet), "AlreadyInitialized", []);
         });
 
         it("should not initialize if diamond proxy not initialized", async () => {
-            const settingsFacet = await DirectMintingAndRedemptionWithTagInit.new();
+            const settingsFacet = await DirectMintingAndRedeemExtendedInit.new();
             const settingsProxy = await ERC1967Proxy.new(settingsFacet.address, "0x");
-            const settingsProxyInstance = await DirectMintingAndRedemptionWithTagInit.at(settingsProxy.address);
+            const settingsProxyInstance = await DirectMintingAndRedeemExtendedInit.at(settingsProxy.address);
             await expectRevert.custom(initializeSettingsFacet(settingsProxyInstance), "DiamondNotInitialized", []);
         });
     });

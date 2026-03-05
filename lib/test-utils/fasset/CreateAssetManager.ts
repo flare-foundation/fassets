@@ -30,7 +30,7 @@ export interface AssetManagerInitSettings extends AssetManagerSettings {
     directMintingLargeMintingDelaySeconds: BNish;
     // redeem with tag
     redeemWithTagSupported: boolean;
-    minimumRedeemWithTagAmountUBA: BNish;
+    minimumRedeemAmountUBA: BNish;
 }
 
 const IIAssetManager = artifacts.require('IIAssetManager');
@@ -96,9 +96,9 @@ export async function newAssetManager(
         [
             await deployFacet("DirectMintingFacet", selectorsForInterfaces("IDirectMinting")),
             await deployFacet("DirectMintingSettingsFacet", selectorsForInterfaces("IDirectMintingSettings")),
-            await deployFacet("RedemptionSettingsFacet", selectorsForInterfaces("IRedemptionSettings")),
+            await deployFacet("RedeemExtendedSettingsFacet", selectorsForInterfaces("IRedeemExtendedSettings")),
         ],
-        artifacts.require("DirectMintingAndRedemptionWithTagInit"),
+        artifacts.require("DirectMintingAndRedeemExtendedInit"),
         (c) => c.initialize({
             // core vault additional settings
             coreVaultDonationTag: assetManagerSettings.coreVaultDonationTag,
@@ -116,7 +116,7 @@ export async function newAssetManager(
             largeMintingDelaySeconds: assetManagerSettings.directMintingLargeMintingDelaySeconds,
             // redeem with tag
             redeemWithTagSupported: assetManagerSettings.redeemWithTagSupported,
-            minimumRedeemWithTagAmountUBA: assetManagerSettings.minimumRedeemWithTagAmountUBA,
+            minimumRedeemAmountUBA: assetManagerSettings.minimumRedeemAmountUBA,
         })
     );
     // verify interface implementation

@@ -287,7 +287,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             resInitSettings.directMintingLargeMintingDelaySeconds = await assetManager.getDirectMintingLargeMintingDelaySeconds();
             // add RedeemWithTag settings
             resInitSettings.redeemWithTagSupported = await assetManager.redeemWithTagSupported();
-            resInitSettings.minimumRedeemWithTagAmountUBA = await assetManager.minimumRedeemWithTagAmountUBA();
+            resInitSettings.minimumRedeemAmountUBA = await assetManager.minimumRedeemAmountUBA();
             //
             assertWeb3DeepEqual(resSettings, settings);
             assert.equal(await assetManager.assetManagerController(), assetManagerController);
@@ -1981,10 +1981,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const ICoreVaultClientSettings = artifacts.require("ICoreVaultClientSettings");
             const IDirectMinting = artifacts.require("IDirectMinting");
             const IDirectMintingSettings = artifacts.require("IDirectMintingSettings");
-            const IRedemptionWithTag = artifacts.require("IRedemptionWithTag");
+            const IRedeemExtended = artifacts.require("IRedeemExtended");
             const IISettingsManagement = artifacts.require("IISettingsManagement");
             const IAgentAlwaysAllowedMinters = artifacts.require("IAgentAlwaysAllowedMinters");
-            const IRedemptionSettings = artifacts.require("IRedemptionSettings");
+            const IRedeemExtendedSettings = artifacts.require("IRedeemExtendedSettings");
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IERC165)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IDiamondLoupe)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IDiamondCut)));
@@ -1995,11 +1995,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, ICoreVaultClientSettings)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IDirectMinting)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IDirectMintingSettings)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IRedemptionWithTag)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IRedemptionSettings)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IRedeemExtended)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IRedeemExtendedSettings)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IAssetManager, [
                 IERC165, IDiamondLoupe, IAgentPing, IRedemptionTimeExtension, ICoreVaultClient, ICoreVaultClientSettings, IDirectMinting,
-                IDirectMintingSettings, IRedemptionWithTag, IRedemptionSettings, IAgentAlwaysAllowedMinters
+                IDirectMintingSettings, IRedeemExtended, IRedeemExtendedSettings, IAgentAlwaysAllowedMinters
             ])));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceIdLog(verbose, IIAssetManager,
                 [IAssetManager, IGoverned, IDiamondCut, IISettingsManagement])));

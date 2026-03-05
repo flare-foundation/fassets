@@ -4,7 +4,7 @@ Any user holding FAssets can start a redemption process. The redeemer sends in F
 
 ## Redemption flow
 
-1) The redeemer starts the redemption for a whole number of lots (or any amount in case of redeeming with tag).
+1) The redeemer starts the redemption for a whole number of lots for `redeem` or any amount for `redeemAmount` and `redeemWithTag`.
 2) System chooses one or more redemption tickets from the front of the redemption FIFO queue. The number of chosen redemption tickets is capped (to avoid high gas consumption) so if the redemption amount requires too many tickets, only partial redemption will be performed.
 3) The system burns FAssets from the redeemer’s account in the amount of the total of the selected redemption tickets. (If there are not enough FAssets on the redeemer’s account, the redemption fails immediately.)
 4) For every agent participating in the redemption, the system issues an event with redemption payment information:
@@ -89,11 +89,17 @@ Self close can also be used by the agent to stop liquidations, since it reduces 
 
 The self-closed amount need not be a whole number of lots and can even be less than one lot. Therefore self-closing is the preferred way to redeem an agent's dust.
 
+## Redeem any amount
+
+Unlike ordinary `redeem`, the `redeemAmount` method allows redeeming **any amount** of FAssets, not only whole lots. This is useful for users who want to redeem amounts of FAssets that are not whole number of lots, e.g. to redeem yields.
+
+However, to prevent very small redemptions that would cost agents more than the received fee, no redemption can be smaller than `minimumRedeemAmountUBA` (a system setting).
+
 ## Redeem with tag
 
-This is a small addition to `redeem` functionality that allows redeemer to request that an XRP destination tag is added to the redemption payment.
+This is a small addition to `redeem` functionality that allows redeemer to request that an XRP destination tag is added to the redemption payment. This is useful for users who want to redeem to an exchange.
 
-Unlike ordinary redeem, it also allows redeeming **any amount** of FAssets, not only whole lots. However, to prevent very small redemptions that would cost agents more than the received fee, no redemption can be smaller than `minimumRedeemWithTagAmountUBA` (a system setting).
+Like `redeemAmount`, it also allows redeeming any amount of FAssets, not only whole lots.
 
 Since redemption with tag requires a new FDC proof type which supports destination tag and since the redeem amount is not a whole number of lots, there are new methods `redeemWithTag`, `confirmXRPRedemptionPayment`, and `xrpRedemptionPaymentDefault`. A new event `RedemptionWithTagRequested` is emitted on a successful request for redemption with tag.
 It only works on XRP chain, so a flag `redeemWithTagSupported` is added that signifies the support.

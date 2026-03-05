@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
-import {IRedemptionSettings} from "../../userInterfaces/IRedemptionSettings.sol";
+import {IRedeemExtendedSettings} from "../../userInterfaces/IRedeemExtendedSettings.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Globals} from "../library/Globals.sol";
 import {Conversion} from "../library/Conversion.sol";
@@ -13,7 +13,7 @@ import {GovernedProxyImplementation} from "../../governance/implementation/Gover
 import {SettingsUpdater} from "../library/SettingsUpdater.sol";
 
 
-contract RedemptionSettingsFacet is AssetManagerBase, GovernedProxyImplementation, IRedemptionSettings {
+contract RedeemExtendedSettingsFacet is AssetManagerBase, GovernedProxyImplementation, IRedeemExtendedSettings {
     using SafeCast for uint256;
 
     error ValueTooBig();
@@ -26,7 +26,7 @@ contract RedemptionSettingsFacet is AssetManagerBase, GovernedProxyImplementatio
 
     // setter
 
-    function setMinimumRedeemWithTagAmountUBA(uint256 _valueUBA)
+    function setMinimumRedeemAmountUBA(uint256 _valueUBA)
         external
         onlyGovernance
         rateLimited
@@ -35,16 +35,16 @@ contract RedemptionSettingsFacet is AssetManagerBase, GovernedProxyImplementatio
         // validate
         uint64 valueAMG = Conversion.convertUBAToAmg(_valueUBA);
         require(valueAMG <= settings.lotSizeAMG * uint256(10), ValueTooBig());
-        uint64 currentAMG = RedemptionRequests.getSettings().minimumRedeemWithTagAmountAMG;
+        uint64 currentAMG = RedemptionRequests.getSettings().minimumRedeemAmountAMG;
         require(valueAMG <= currentAMG * uint256(4) + settings.lotSizeAMG, IncreaseTooBig());
         // update
-        RedemptionRequests.getSettings().minimumRedeemWithTagAmountAMG = valueAMG;
-        emit IAssetManagerEvents.SettingChanged("minimumRedeemWithTagAmountUBA", _valueUBA);
+        RedemptionRequests.getSettings().minimumRedeemAmountAMG = valueAMG;
+        emit IAssetManagerEvents.SettingChanged("minimumRedeemAmountUBA", _valueUBA);
     }
 
     // getters
 
-    function minimumRedeemWithTagAmountUBA() external view returns (uint256) {
-        return Conversion.convertAmgToUBA(RedemptionRequests.minimumRedeemWithTagAmountAMG());
+    function minimumRedeemAmountUBA() external view returns (uint256) {
+        return Conversion.convertAmgToUBA(RedemptionRequests.minimumRedeemAmountAMG());
     }
 }

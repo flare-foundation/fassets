@@ -6,7 +6,7 @@ import {SafePct} from "../../utils/library/SafePct.sol";
 import {AssetManagerState} from "./data/AssetManagerState.sol";
 import {RedemptionTimeExtension} from "./data/RedemptionTimeExtension.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
-import {IRedemptionWithTag} from "../../userInterfaces/IRedemptionWithTag.sol";
+import {IRedeemExtended} from "../../userInterfaces/IRedeemExtended.sol";
 import {Conversion} from "./Conversion.sol";
 import {Redemption} from "./data/Redemption.sol";
 import {Agent} from "./data/Agent.sol";
@@ -26,7 +26,7 @@ library RedemptionRequests {
 
     struct Settings {
         bool redeemWithTagSupported;
-        uint64 minimumRedeemWithTagAmountAMG;
+        uint64 minimumRedeemAmountAMG;
     }
 
     struct AgentRedemptionData {
@@ -107,8 +107,8 @@ library RedemptionRequests {
         return getSettings().redeemWithTagSupported;
     }
 
-    function minimumRedeemWithTagAmountAMG() internal view returns (uint64) {
-        return getSettings().minimumRedeemWithTagAmountAMG;
+    function minimumRedeemAmountAMG() internal view returns (uint64) {
+        return getSettings().minimumRedeemAmountAMG;
     }
 
     function _emitRedemptionRequestedEvent(
@@ -119,7 +119,7 @@ library RedemptionRequests {
         private
     {
         if (_request.requiresDestinationTag) {
-            emit IRedemptionWithTag.RedemptionWithTagRequested(
+            emit IRedeemExtended.RedemptionWithTagRequested(
                 _request.agentVault,
                 _request.redeemer,
                 _requestId,

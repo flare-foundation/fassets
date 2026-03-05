@@ -152,7 +152,7 @@ contracts/agentVault/implementation/AgentVaultFactory.sol
 contracts/agentVault/interfaces/IIAgentVault.sol
 contracts/agentVault/interfaces/IIAgentVaultFactory.sol
 contracts/assetManager/diamondInitializers/AssetManagerInit.sol
-contracts/assetManager/diamondInitializers/DirectMintingAndRedemptionWithTagInit.sol
+contracts/assetManager/diamondInitializers/DirectMintingAndRedeemExtendedInit.sol
 contracts/assetManager/facets/AgentAlwaysAllowedMintersFacet.sol
 contracts/assetManager/facets/AgentCollateralFacet.sol
 contracts/assetManager/facets/AgentInfoFacet.sol
@@ -296,7 +296,7 @@ contracts/userInterfaces/IDirectMintingSettings.sol
 contracts/userInterfaces/IFAsset.sol
 contracts/userInterfaces/IMintingTagManager.sol
 contracts/userInterfaces/IRedemptionTimeExtension.sol
-contracts/userInterfaces/IRedemptionWithTag.sol
+contracts/userInterfaces/IRedeemExtended.sol
 contracts/utils/interfaces/IUpgradableContractFactory.sol
 contracts/utils/interfaces/IUpgradableProxy.sol
 contracts/utils/interfaces/IUUPSUpgradeable.sol

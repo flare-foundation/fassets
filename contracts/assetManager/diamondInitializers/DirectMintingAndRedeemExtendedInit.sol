@@ -7,8 +7,8 @@ import {IDirectMinting} from "../../userInterfaces/IDirectMinting.sol";
 import {IDirectMintingSettings} from "../../userInterfaces/IDirectMintingSettings.sol";
 import {ICoreVaultClient} from "../../userInterfaces/ICoreVaultClient.sol";
 import {ICoreVaultClientSettings} from "../../userInterfaces/ICoreVaultClientSettings.sol";
-import {IRedemptionWithTag} from "../../userInterfaces/IRedemptionWithTag.sol";
-import {IRedemptionSettings} from "../../userInterfaces/IRedemptionSettings.sol";
+import {IRedeemExtended} from "../../userInterfaces/IRedeemExtended.sol";
+import {IRedeemExtendedSettings} from "../../userInterfaces/IRedeemExtendedSettings.sol";
 import {ISmartAccountManagerMock} from "../mock/ISmartAccountManagerMock.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {LibDiamond} from "../../diamond/library/LibDiamond.sol";
@@ -21,7 +21,7 @@ import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettin
 import {Globals} from "../library/Globals.sol";
 
 
-contract DirectMintingAndRedemptionWithTagInit {
+contract DirectMintingAndRedeemExtendedInit {
     using SafeCast for uint256;
     using MintingRateLimiter for MintingRateLimiter.State;
 
@@ -46,7 +46,7 @@ contract DirectMintingAndRedemptionWithTagInit {
         uint256 largeMintingDelaySeconds;
         // redemption with tag settings
         bool redeemWithTagSupported;
-        uint256 minimumRedeemWithTagAmountUBA;
+        uint256 minimumRedeemAmountUBA;
     }
 
     // prevent initialization of implementation contract
@@ -81,8 +81,8 @@ contract DirectMintingAndRedemptionWithTagInit {
         // DirectMinting interfaces added
         ds.supportedInterfaces[type(IDirectMinting).interfaceId] = true;
         ds.supportedInterfaces[type(IDirectMintingSettings).interfaceId] = true;
-        ds.supportedInterfaces[type(IRedemptionWithTag).interfaceId] = true;
-        ds.supportedInterfaces[type(IRedemptionSettings).interfaceId] = true;
+        ds.supportedInterfaces[type(IRedeemExtended).interfaceId] = true;
+        ds.supportedInterfaces[type(IRedeemExtendedSettings).interfaceId] = true;
         ds.supportedInterfaces[type(ICoreVaultClient).interfaceId] = true;  // changed
         ds.supportedInterfaces[type(ICoreVaultClientSettings).interfaceId] = true;  // changed
     }
@@ -107,9 +107,9 @@ contract DirectMintingAndRedemptionWithTagInit {
         RedemptionRequests.Settings storage settings = RedemptionRequests.getSettings();
         settings.redeemWithTagSupported = _params.redeemWithTagSupported;
         AssetManagerSettings.Data storage assetManagerSettings = Globals.getSettings();
-        uint64 minimumRedeemWithTagAmountAMG = Conversion.convertUBAToAmg(_params.minimumRedeemWithTagAmountUBA);
-        require(minimumRedeemWithTagAmountAMG <= assetManagerSettings.lotSizeAMG * 10, ValueTooHigh());
-        settings.minimumRedeemWithTagAmountAMG = minimumRedeemWithTagAmountAMG;
+        uint64 minimumRedeemAmountAMG = Conversion.convertUBAToAmg(_params.minimumRedeemAmountUBA);
+        require(minimumRedeemAmountAMG <= assetManagerSettings.lotSizeAMG * 10, ValueTooHigh());
+        settings.minimumRedeemAmountAMG = minimumRedeemAmountAMG;
     }
 
     function _updateCoreVaultClient(InitParams calldata _params) private {

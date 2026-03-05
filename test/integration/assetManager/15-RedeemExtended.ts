@@ -154,7 +154,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(request.executorFeeNatWei, executorFeeNatWei);
         });
 
-        it("redeemWithTag emits RedemptionWithTagIncomplete when too many tickets", async () => {
+        it("redeemWithTag emits RedemptionAmountIncomplete when too many tickets", async () => {
             const N = 25;
             const MT = 20;  // maxRedeemedTickets from test settings
             const fullAgentCollateral = toWei(3e8);
@@ -186,10 +186,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // should have created MT redemption requests
             const requests = filterEvents(res, 'RedemptionWithTagRequested').map(e => e.args);
             assert.equal(requests.length, MT);
-            // should emit RedemptionWithTagIncomplete with remaining amount in UBA
+            // should emit RedemptionAmountIncomplete with remaining amount in UBA
             // note: each ticket redeems slightly more than 1 lot due to dust (pool fee)
             const redeemedUBA = requests.reduce((sum, r) => sum.add(toBN(r.valueUBA)), BN_ZERO);
-            const incomplete = requiredEventArgs(res, 'RedemptionWithTagIncomplete');
+            const incomplete = requiredEventArgs(res, 'RedemptionAmountIncomplete');
             assertWeb3Equal(incomplete.redeemer, redeemer.address);
             assertWeb3Equal(incomplete.remainingAmountUBA, totalMinted.sub(redeemedUBA));
             // must NOT emit the lots-based RedemptionRequestIncomplete event
@@ -714,38 +714,38 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
     describe("Minimum redeem with tag amount", () => {
         it("should set minimum redeem with tag amount UBA", async () => {
-            const currentMinimum = await context.assetManager.minimumRedeemWithTagAmountUBA();
+            const currentMinimum = await context.assetManager.minimumRedeemAmountUBA();
             const newMinimum = currentMinimum.muln(2);
-            const res = await waitForTimelock(context.assetManager.setMinimumRedeemWithTagAmountUBA(newMinimum, { from: governance }), context.assetManager, governance);
-            expectEvent(res, "SettingChanged", { name: "minimumRedeemWithTagAmountUBA", value: newMinimum });
-            assertWeb3Equal(await context.assetManager.minimumRedeemWithTagAmountUBA(), newMinimum);
+            const res = await waitForTimelock(context.assetManager.setMinimumRedeemAmountUBA(newMinimum, { from: governance }), context.assetManager, governance);
+            expectEvent(res, "SettingChanged", { name: "minimumRedeemAmountUBA", value: newMinimum });
+            assertWeb3Equal(await context.assetManager.minimumRedeemAmountUBA(), newMinimum);
         });
 
         it("should set minimum redeem with tag amount UBA to zero", async () => {
-            const res = await waitForTimelock(context.assetManager.setMinimumRedeemWithTagAmountUBA(0, { from: governance }), context.assetManager, governance);
-            expectEvent(res, "SettingChanged", { name: "minimumRedeemWithTagAmountUBA", value: toBN(0) });
-            assertWeb3Equal(await context.assetManager.minimumRedeemWithTagAmountUBA(), 0);
+            const res = await waitForTimelock(context.assetManager.setMinimumRedeemAmountUBA(0, { from: governance }), context.assetManager, governance);
+            expectEvent(res, "SettingChanged", { name: "minimumRedeemAmountUBA", value: toBN(0) });
+            assertWeb3Equal(await context.assetManager.minimumRedeemAmountUBA(), 0);
         });
 
         it("should revert setting minimum redeem with tag amount UBA when value too big", async () => {
             const tooBig = context.convertLotsToUBA(11);
             await expectRevert.custom(
-                waitForTimelock(context.assetManager.setMinimumRedeemWithTagAmountUBA(tooBig, { from: governance }), context.assetManager, governance),
+                waitForTimelock(context.assetManager.setMinimumRedeemAmountUBA(tooBig, { from: governance }), context.assetManager, governance),
                 "ValueTooBig", []);
         });
 
         it("should revert setting minimum redeem with tag amount UBA when increase too big", async () => {
-            const currentMinimum = await context.assetManager.minimumRedeemWithTagAmountUBA();
+            const currentMinimum = await context.assetManager.minimumRedeemAmountUBA();
             const tooBig = currentMinimum.muln(6);
             await expectRevert.custom(
-                waitForTimelock(context.assetManager.setMinimumRedeemWithTagAmountUBA(tooBig, { from: governance }), context.assetManager, governance),
+                waitForTimelock(context.assetManager.setMinimumRedeemAmountUBA(tooBig, { from: governance }), context.assetManager, governance),
                 "IncreaseTooBig", []);
         });
 
         it("should revert setting minimum redeem with tag amount UBA if not from governance", async () => {
-            const currentMinimum = await context.assetManager.minimumRedeemWithTagAmountUBA();
+            const currentMinimum = await context.assetManager.minimumRedeemAmountUBA();
             await expectRevert.custom(
-                context.assetManager.setMinimumRedeemWithTagAmountUBA(currentMinimum, { from: redeemerAddress1 }),
+                context.assetManager.setMinimumRedeemAmountUBA(currentMinimum, { from: redeemerAddress1 }),
                 "OnlyGovernance", []);
         });
 
@@ -754,7 +754,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
-            const minimumUBA = await context.assetManager.minimumRedeemWithTagAmountUBA();
+            const minimumUBA = await context.assetManager.minimumRedeemAmountUBA();
             const tooSmall = minimumUBA.subn(1);
             await expectRevert.custom(
                 context.assetManager.redeemWithTag(tooSmall, redeemer.underlyingAddress, ZERO_ADDRESS, 42,
@@ -764,12 +764,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             );
         });
 
-        it("ordinary redeem is not limited by minimumRedeemWithTagAmountUBA", async () => {
+        it("ordinary redeem is not limited by minimumRedeemAmountUBA", async () => {
             const { minter } = await setupAgentAndMint(3);
             const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
             // increase minimum to 2 lots
             const twoLotsUBA = context.convertLotsToUBA(2);
-            await waitForTimelock(context.assetManager.setMinimumRedeemWithTagAmountUBA(twoLotsUBA, { from: governance }), context.assetManager, governance);
+            await waitForTimelock(context.assetManager.setMinimumRedeemAmountUBA(twoLotsUBA, { from: governance }), context.assetManager, governance);
             // redeem 1 lot should still succeed (ordinary redeem is not limited)
             const [requests] = await redeemer.requestRedemption(1);
             assert.equal(requests.length, 1);
@@ -780,7 +780,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             //
-            const minimumUBA = await context.assetManager.minimumRedeemWithTagAmountUBA();
+            const minimumUBA = await context.assetManager.minimumRedeemAmountUBA();
             const res = await context.assetManager.redeemWithTag(minimumUBA, redeemer.underlyingAddress, ZERO_ADDRESS, 42,
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
@@ -793,7 +793,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // increase minimum to 2 lots
             const twoLotsUBA = context.convertLotsToUBA(2);
-            await waitForTimelock(context.assetManager.setMinimumRedeemWithTagAmountUBA(twoLotsUBA, { from: governance }), context.assetManager, governance);
+            await waitForTimelock(context.assetManager.setMinimumRedeemAmountUBA(twoLotsUBA, { from: governance }), context.assetManager, governance);
             // try to redeem 1.5 lots — was above old minimum (1 lot) but below new minimum (2 lots)
             const oneAndHalfLotsUBA = context.convertLotsToUBA(3).divn(2);
             await expectRevert.custom(
@@ -806,6 +806,128 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const res = await context.assetManager.redeemWithTag(twoLotsUBA, redeemer.underlyingAddress, ZERO_ADDRESS, 42,
                 { from: redeemer.address });
             requiredEventArgs(res, 'RedemptionWithTagRequested');
+        });
+    });
+
+    describe("redeemAmount (UBA-based redeem without tag)", () => {
+        it("redeemAmount emits RedemptionRequested event (not RedemptionWithTagRequested)", async () => {
+            const { agent, minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const redeemAmountUBA = context.convertLotsToUBA(2);
+            const res = await context.assetManager.redeemAmount(redeemAmountUBA, redeemer.underlyingAddress, ZERO_ADDRESS,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionRequested');
+            assertWeb3Equal(request.agentVault, agent.vaultAddress);
+            assertWeb3Equal(request.redeemer, redeemer.address);
+            assertWeb3Equal(request.valueUBA, redeemAmountUBA);
+            // must NOT emit the tag-based event
+            expectEvent.notEmitted(res, 'RedemptionWithTagRequested');
+        });
+
+        it("redeemAmount works with non-whole-lot amounts", async () => {
+            const { agent, minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const redeemAmountUBA = context.convertLotsToUBA(3).divn(2); // 1.5 lots
+            const res = await context.assetManager.redeemAmount(redeemAmountUBA, redeemer.underlyingAddress, ZERO_ADDRESS,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionRequested');
+            assertWeb3Equal(request.valueUBA, redeemAmountUBA);
+            // confirm with regular confirmRedemptionPayment (no tag)
+            const paymentAmount = request.valueUBA.sub(request.feeUBA);
+            const txHash = await agent.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
+            const proof = await context.attestationProvider.provePayment(txHash, agent.underlyingAddress, request.paymentAddress);
+            const confirmRes = await context.assetManager.confirmRedemptionPayment(proof, request.requestId,
+                { from: agent.ownerWorkAddress });
+            requiredEventArgs(confirmRes, 'RedemptionPerformed');
+            await agent.checkAgentInfo({
+                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA).sub(redeemAmountUBA)
+            });
+        });
+
+        it("redeemAmount emits RedemptionAmountIncomplete when too many tickets", async () => {
+            const N = 25;
+            const MT = 20;  // maxRedeemedTickets from test settings
+            const fullAgentCollateral = toWei(3e8);
+            const agents: Agent[] = [];
+            const underlyingAddress = (i: number) => `${underlyingAgent1}_vault_${i}`;
+            for (let i = 0; i < N; i++) {
+                const agent = await Agent.createTest(context, agentOwner1, underlyingAddress(i));
+                await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+                agents.push(agent);
+            }
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(N * 3));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            // perform minting — 1 lot from each agent creates 25 separate tickets
+            let totalMinted = BN_ZERO;
+            for (const agent of agents) {
+                await context.updateUnderlyingBlock();
+                const crt = await minter.reserveCollateral(agent.vaultAddress, 1);
+                const txHash = await minter.performMintingPayment(crt);
+                const minted = await minter.executeMinting(crt, txHash);
+                totalMinted = totalMinted.add(toBN(minted.mintedAmountUBA));
+            }
+            // redeemer gets all f-assets
+            await context.fAsset.transfer(redeemer.address, totalMinted, { from: minter.address });
+            // try to redeem all N lots via redeemAmount — only MT tickets can be processed
+            await context.updateUnderlyingBlock();
+            const res = await context.assetManager.redeemAmount(totalMinted, redeemer.underlyingAddress, ZERO_ADDRESS,
+                { from: redeemer.address });
+            // should have created MT redemption requests (regular, not tag)
+            const requests = filterEvents(res, 'RedemptionRequested').map(e => e.args);
+            assert.equal(requests.length, MT);
+            // should emit RedemptionAmountIncomplete with remaining amount in UBA
+            const redeemedUBA = requests.reduce((sum, r) => sum.add(toBN(r.valueUBA)), BN_ZERO);
+            const incomplete = requiredEventArgs(res, 'RedemptionAmountIncomplete');
+            assertWeb3Equal(incomplete.redeemer, redeemer.address);
+            assertWeb3Equal(incomplete.remainingAmountUBA, totalMinted.sub(redeemedUBA));
+            // must NOT emit the lots-based RedemptionRequestIncomplete event
+            expectEvent.notEmitted(res, 'RedemptionRequestIncomplete');
+        });
+
+        it("redeemAmount reverts if below minimumRedeemAmountUBA", async () => {
+            const { minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            // increase minimum to 2 lots
+            const twoLotsUBA = context.convertLotsToUBA(2);
+            await waitForTimelock(context.assetManager.setMinimumRedeemAmountUBA(twoLotsUBA, { from: governance }), context.assetManager, governance);
+            // redeemAmount with 1 lot should revert
+            const oneLotUBA = context.convertLotsToUBA(1);
+            await expectRevert(context.assetManager.redeemAmount(oneLotUBA, redeemer.underlyingAddress, ZERO_ADDRESS,
+                { from: redeemer.address }), "RedemptionTooSmall");
+        });
+
+        it("redeemAmount succeeds at exactly minimumRedeemAmountUBA", async () => {
+            const { minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            // increase minimum to 2 lots
+            const twoLotsUBA = context.convertLotsToUBA(2);
+            await waitForTimelock(context.assetManager.setMinimumRedeemAmountUBA(twoLotsUBA, { from: governance }), context.assetManager, governance);
+            // redeemAmount with exactly 2 lots should succeed
+            const res = await context.assetManager.redeemAmount(twoLotsUBA, redeemer.underlyingAddress, ZERO_ADDRESS,
+                { from: redeemer.address });
+            requiredEventArgs(res, 'RedemptionRequested');
+        });
+
+        it("redeemAmount works on non-XRP chain (no tag support needed)", async () => {
+            const btcContext = await AssetContext.createTest(commonContext, testChainInfo.btc);
+            const agent = await Agent.createTest(btcContext, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(btcContext, minterAddress1, underlyingMinter1, btcContext.convertLotsToUBA(9));
+            await agent.depositCollateralLotsAndMakeAvailable(6);
+            const [minted] = await minter.performMinting(agent.vaultAddress, 3);
+            const redeemer = await Redeemer.create(btcContext, redeemerAddress1, underlyingRedeemer1);
+            await btcContext.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const redeemAmountUBA = btcContext.convertLotsToUBA(3).divn(2); // 1.5 lots
+            const res = await btcContext.assetManager.redeemAmount(redeemAmountUBA, redeemer.underlyingAddress, ZERO_ADDRESS,
+                { from: redeemer.address });
+            const request = requiredEventArgs(res, 'RedemptionRequested');
+            assertWeb3Equal(request.valueUBA, redeemAmountUBA);
         });
     });
 

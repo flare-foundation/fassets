@@ -40,7 +40,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         commonContext = await CommonContext.createTest(governance);
         context = await AssetContext.createTest(commonContext, testChainInfo.eth, {
             testSettings: {
-                minimumRedeemWithTagAmountUBA: 0,
+                minimumRedeemAmountUBA: 0,
             }
         });
         return { commonContext, context };
