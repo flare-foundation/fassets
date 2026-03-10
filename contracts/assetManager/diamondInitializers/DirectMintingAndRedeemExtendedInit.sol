@@ -49,10 +49,11 @@ contract DirectMintingAndRedeemExtendedInit {
         uint256 minimumRedeemAmountUBA;
     }
 
-    // prevent initialization of implementation contract
+    // prevent initialization or upgrade of implementation contract
 
     constructor() {
-        DirectMinting.getState().initialized = true;
+        DirectMinting.State storage state = DirectMinting.getState();
+        state.version = type(uint8).max;
     }
 
     // initialization
@@ -71,8 +72,8 @@ contract DirectMintingAndRedeemExtendedInit {
 
     function _ensureSingleInitialization() private {
         DirectMinting.State storage state = DirectMinting.getState();
-        require(!state.initialized, AlreadyInitialized());
-        state.initialized = true;
+        require(state.version == 0, AlreadyInitialized());
+        state.version = 1;
     }
 
     function _updateInterfacesAtDeploy() private {
@@ -99,7 +100,7 @@ contract DirectMintingAndRedeemExtendedInit {
         state.hourlyLimiter.initialize(1 hours, Conversion.convertUBAToAmg(_params.hourlyLimitUBA));
         state.dailyLimiter.initialize(1 days, Conversion.convertUBAToAmg(_params.dailyLimitUBA));
         uint64 largeMintingThresholdAmg = Conversion.convertUBAToAmg(_params.largeMintingThresholdUBA);
-        state.largeMintingLimiter.initialize(_params.largeMintingDelaySeconds.toUint64(), largeMintingThresholdAmg);
+        state.largeMintingDelaySeconds = _params.largeMintingDelaySeconds.toUint64();
         state.largeMintingThresholdAmg = largeMintingThresholdAmg;
     }
 

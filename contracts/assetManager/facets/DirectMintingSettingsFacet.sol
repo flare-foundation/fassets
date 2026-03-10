@@ -183,7 +183,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
     {
         DirectMinting.State storage state = DirectMinting.getState();
         uint64 currentThresholdAmg = state.largeMintingThresholdAmg;
-        uint64 currentDelaySeconds = state.largeMintingLimiter.windowSizeSeconds;
+        uint64 currentDelaySeconds = state.largeMintingDelaySeconds;
         uint64 newThresholdAmg = Conversion.convertUBAToAmg(_largeMintingThresholdUBA);
         // validate
         require(newThresholdAmg <= currentThresholdAmg * 10 + _usd5InAssetAmg(1000e5), IncreaseTooBig());
@@ -193,8 +193,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         require(_largeMintingDelaySeconds >= currentDelaySeconds / 4, DecreaseTooBig());
         // update
         state.largeMintingThresholdAmg = newThresholdAmg;
-        state.largeMintingLimiter.setMaxMintingPerWindow(newThresholdAmg);
-        state.largeMintingLimiter.setWindowSizeSeconds(_largeMintingDelaySeconds.toUint64());
+        state.largeMintingDelaySeconds = _largeMintingDelaySeconds.toUint64();
         emit IAssetManagerEvents.SettingChanged("directMintingLargeMintingThresholdUBA", _largeMintingThresholdUBA);
         emit IAssetManagerEvents.SettingChanged("directMintingLargeMintingDelaySeconds", _largeMintingDelaySeconds);
     }
@@ -270,7 +269,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         returns (uint256)
     {
         DirectMinting.State storage state = DirectMinting.getState();
-        return state.largeMintingLimiter.windowSizeSeconds;
+        return state.largeMintingDelaySeconds;
     }
 
     function getDirectMintingHourlyLimitUBA()

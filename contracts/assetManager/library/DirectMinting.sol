@@ -13,7 +13,7 @@ library DirectMinting {
     }
 
     struct State {
-        bool initialized;
+        uint8 version;
         IMintingTagManager mintingTagManager;
         ISmartAccountManagerMock smartAccountManager;
         address mintingFeeReceiver;
@@ -23,8 +23,8 @@ library DirectMinting {
         uint64 othersCanExecuteAfterSeconds;
         MintingRateLimiter.State hourlyLimiter;
         MintingRateLimiter.State dailyLimiter;
-        MintingRateLimiter.State largeMintingLimiter;
         uint64 largeMintingThresholdAmg;
+        uint64 largeMintingDelaySeconds;
         uint64 unblockMintingsUntilTimestamp;
         uint64 mintingsUnblockedAt;
         mapping (bytes32 transactionId => DelayedMinting) delayedMintings;

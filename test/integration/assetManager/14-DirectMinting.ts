@@ -819,6 +819,65 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, context.convertLotsToUBA(501));
         });
 
+        it("hourly limiter delay should grow as the exceeding amount increases", async () => {
+            // hourly limit is 100 lots, window size is 1 hour
+            // The delay formula: allowedAt = windowStart + windowSize * mintedInWindow / maxPerWindow
+            // So minting more lots increases the delay proportionally
+            const minter1 = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(500));
+            const minter2 = await Minter.createTest(context, minterAddress2, underlyingMinter2, context.convertLotsToUBA(500));
+            // First scenario: mint 110 lots total (10 lots over limit)
+            const [res1] = await minter1.directMintRaw(context.convertLotsToUBA(110), {
+                memoData: PaymentReference.directMinting(minter1.address),
+                executor: executorAddress1
+            });
+            const delayed1 = requiredEventArgs(res1, 'DirectMintingDelayed');
+            const startedAt1 = await time.latest();
+            const delay1 = delayed1.executionAllowedAt.sub(startedAt1);
+            // Second scenario: in same window, mint 90 more lots (now 200 total, 100 lots over limit)
+            const [res2] = await minter2.directMintRaw(context.convertLotsToUBA(90), {
+                memoData: PaymentReference.directMinting(minter2.address),
+                executor: executorAddress1
+            });
+            const delayed2 = requiredEventArgs(res2, 'DirectMintingDelayed');
+            const startedAt2 = await time.latest();
+            const delay2 = delayed2.executionAllowedAt.sub(startedAt2);
+            // The second minting should have a longer delay than the first
+            assertWeb3Compare(delay2, ">", delay1);
+            // Verify minted amounts are tracked correctly
+            const hourlyLimiterState = await context.assetManager.getDirectMintingHourlyLimiterState();
+            assertWeb3Equal(hourlyLimiterState[1], context.convertLotsToUBA(200)); // 110 + 90 minted
+        });
+
+        it("large minting delay should stay the same regardless of amount", async () => {
+            // large minting threshold is 500 lots, delay is fixed at 3600 seconds
+            const minter1 = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(2000));
+            const minter2 = await Minter.createTest(context, minterAddress2, underlyingMinter2, context.convertLotsToUBA(2000));
+            // Mint 500 lots (at threshold) - should be delayed with fixed delay
+            const [res1, txHash1] = await minter1.directMintRaw(context.convertLotsToUBA(500), {
+                memoData: PaymentReference.directMinting(minter1.address),
+                executor: executorAddress1
+            });
+            const delayed1 = requiredEventArgs(res1, 'LargeDirectMintingDelayed');
+            const startedAt1 = await time.latest();
+            // execute the first minting so it doesn't block
+            await time.increaseTo(delayed1.executionAllowedAt);
+            const proof1 = await context.attestationProvider.proveXRPPayment(txHash1, null);
+            await context.assetManager.executeDirectMinting(proof1, { from: executorAddress1 });
+            // Mint 1000 lots (2x threshold) - should also be delayed with the same fixed delay
+            const [res2] = await minter2.directMintRaw(context.convertLotsToUBA(1000), {
+                memoData: PaymentReference.directMinting(minter2.address),
+                executor: executorAddress1
+            });
+            const delayed2 = requiredEventArgs(res2, 'LargeDirectMintingDelayed');
+            const startedAt2 = await time.latest();
+            // Both delays should be the same fixed duration (largeMintingDelaySeconds = 3600)
+            const delay1 = delayed1.executionAllowedAt.sub(startedAt1);
+            const delay2 = delayed2.executionAllowedAt.sub(startedAt2);
+            assertWeb3Equal(delay1, delay2);
+            // Verify both delays equal largeMintingDelaySeconds
+            assertWeb3Equal(delay1, context.initSettings.directMintingLargeMintingDelaySeconds);
+        });
+
         it("should mint to smart account when delayed minting has no valid payment reference", async () => {
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             // exceed the hourly limit to create a delayed minting
