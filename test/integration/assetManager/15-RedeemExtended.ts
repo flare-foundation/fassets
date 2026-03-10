@@ -610,8 +610,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
     });
 
-    describe("preferredProofPresenter for XRP proofs", () => {
-        it("confirmXRPRedemptionPayment succeeds when preferredProofPresenter matches sender", async () => {
+    describe("proofOwner for XRP proofs", () => {
+        it("confirmXRPRedemptionPayment succeeds when proofOwner matches sender", async () => {
             const { agent, minter, minted } = await setupAgentAndMint(3);
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
@@ -626,14 +626,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 request.paymentAddress, paymentAmount, request.paymentReference,
                 { destinationTag: Number(request.destinationTag) }
             );
-            // generate proof with preferredProofPresenter set to agent owner
+            // generate proof with proofOwner set to agent owner
             const proof = await context.attestationProvider.proveXRPPayment(txHash, agent.ownerWorkAddress);
             const confirmRes = await context.assetManager.confirmXRPRedemptionPayment(proof, request.requestId,
                 { from: agent.ownerWorkAddress });
             requiredEventArgs(confirmRes, 'RedemptionPerformed');
         });
 
-        it("confirmXRPRedemptionPayment reverts with InvalidProofPresenter when sender doesn't match", async () => {
+        it("confirmXRPRedemptionPayment reverts with OnlyProofOwner when sender doesn't match", async () => {
             const { agent, minter, minted } = await setupAgentAndMint(3);
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
@@ -648,16 +648,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 request.paymentAddress, paymentAmount, request.paymentReference,
                 { destinationTag: Number(request.destinationTag) }
             );
-            // generate proof with preferredProofPresenter set to a different address
+            // generate proof with proofOwner set to a different address
             const proof = await context.attestationProvider.proveXRPPayment(txHash, redeemerAddress2);
             await expectRevert.custom(
                 context.assetManager.confirmXRPRedemptionPayment(proof, request.requestId, { from: agent.ownerWorkAddress }),
-                "InvalidProofPresenter",
+                "OnlyProofOwner",
                 []
             );
         });
 
-        it("xrpRedemptionPaymentDefault succeeds when preferredProofPresenter matches sender", async () => {
+        it("xrpRedemptionPaymentDefault succeeds when proofOwner matches sender", async () => {
             const { minter, minted } = await setupAgentAndMint(3);
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
@@ -667,7 +667,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
-            // generate proof with preferredProofPresenter set to redeemer
+            // generate proof with proofOwner set to redeemer
             const proof = await context.attestationProvider.proveXRPPaymentNonexistence(
                 request.paymentAddress,
                 request.paymentReference,
@@ -683,7 +683,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             requiredEventArgs(defaultRes, 'RedemptionDefault');
         });
 
-        it("xrpRedemptionPaymentDefault reverts with InvalidProofPresenter when sender doesn't match", async () => {
+        it("xrpRedemptionPaymentDefault reverts with OnlyProofOwner when sender doesn't match", async () => {
             const { minter, minted } = await setupAgentAndMint(3);
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
@@ -693,7 +693,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
             context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
-            // generate proof with preferredProofPresenter set to a different address
+            // generate proof with proofOwner set to a different address
             const proof = await context.attestationProvider.proveXRPPaymentNonexistence(
                 request.paymentAddress,
                 request.paymentReference,
@@ -706,7 +706,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             );
             await expectRevert.custom(
                 context.assetManager.xrpRedemptionPaymentDefault(proof, request.requestId, { from: redeemer.address }),
-                "InvalidProofPresenter",
+                "OnlyProofOwner",
                 []
             );
         });

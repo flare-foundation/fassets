@@ -54,7 +54,7 @@ export class AttestationHelper {
         return await this.client.submitRequest(request);
     }
 
-    async requestXRPPaymentProof(transactionHash: string, preferredProofPresenter: string | null): Promise<AttestationRequestId | null> {
+    async requestXRPPaymentProof(transactionHash: string, proofOwner: string | null): Promise<AttestationRequestId | null> {
         await this.findFinalizedTransaction(transactionHash);   // verify existence
         const request: XRPPayment.Request = {
             attestationType: XRPPayment.TYPE,
@@ -62,7 +62,7 @@ export class AttestationHelper {
             messageIntegrityCode: ZERO_BYTES32,
             requestBody: {
                 transactionId: transactionHash,
-                preferredProofPresenter: preferredProofPresenter ?? ZERO_ADDRESS,
+                proofOwner: proofOwner ?? ZERO_ADDRESS,
             },
         };
         return await this.client.submitRequest(request);
@@ -132,7 +132,7 @@ export class AttestationHelper {
         return requireNotNull(tree.root);
     }
 
-    async requestXRPPaymentNonexistenceProof(destinationAddress: string, paymentReference: string | null, destinationTag: number | null, amount: BN, startBlock: number, endBlock: number, endTimestamp: number, preferredProofPresenter?: string): Promise<AttestationRequestId | null> {
+    async requestXRPPaymentNonexistenceProof(destinationAddress: string, paymentReference: string | null, destinationTag: number | null, amount: BN, startBlock: number, endBlock: number, endTimestamp: number, proofOwner?: string): Promise<AttestationRequestId | null> {
         let overflowBlock = await this.chain.getBlockAt(endBlock + 1);
         while (overflowBlock != null && overflowBlock.timestamp <= endTimestamp) {
             overflowBlock = await this.chain.getBlockAt(overflowBlock.number + 1);
@@ -158,7 +158,7 @@ export class AttestationHelper {
                 firstMemoDataHash: paymentReference !== null ? web3.utils.soliditySha3Raw(paymentReference) : ZERO_BYTES32,
                 checkDestinationTag: destinationTag !== null,
                 destinationTag: String(destinationTag ?? 0),
-                preferredProofPresenter: preferredProofPresenter ?? ZERO_ADDRESS,
+                proofOwner: proofOwner ?? ZERO_ADDRESS,
             },
         };
         return await this.client.submitRequest(request);
@@ -235,8 +235,8 @@ export class AttestationHelper {
         return result;
     }
 
-    async proveXRPPayment(transactionHash: string, preferredProofPresenter: string | null): Promise<XRPPayment.Proof> {
-        const request = await this.requestXRPPaymentProof(transactionHash, preferredProofPresenter);
+    async proveXRPPayment(transactionHash: string, proofOwner: string | null): Promise<XRPPayment.Proof> {
+        const request = await this.requestXRPPaymentProof(transactionHash, proofOwner);
         if (request == null) {
             throw new AttestationHelperError("xrpPayment: not proved")
         }
@@ -274,8 +274,8 @@ export class AttestationHelper {
         return result;
     }
 
-    async proveXRPPaymentNonexistence(destinationAddress: string, paymentReference: string | null, destinationTag: number | null, amount: BN, startBlock: number, endBlock: number, endTimestamp: number, preferredProofPresenter?: string): Promise<XRPPaymentNonexistence.Proof> {
-        const request = await this.requestXRPPaymentNonexistenceProof(destinationAddress, paymentReference, destinationTag, amount, startBlock, endBlock, endTimestamp, preferredProofPresenter);
+    async proveXRPPaymentNonexistence(destinationAddress: string, paymentReference: string | null, destinationTag: number | null, amount: BN, startBlock: number, endBlock: number, endTimestamp: number, proofOwner?: string): Promise<XRPPaymentNonexistence.Proof> {
+        const request = await this.requestXRPPaymentNonexistenceProof(destinationAddress, paymentReference, destinationTag, amount, startBlock, endBlock, endTimestamp, proofOwner);
         if (request == null) {
             throw new AttestationHelperError("xrpPaymentNonexistence: not proved")
         }

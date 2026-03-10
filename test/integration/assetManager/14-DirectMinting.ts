@@ -276,7 +276,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, memoData);
             const proof = await context.attestationProvider.proveXRPPayment(txHash, executorAddress1);
             // try to execute direct minting with different executor - should fail
-            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress2 }), "InvalidExecutor", []);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress2 }), "OnlyProofOwner", []);
             // execute with correct executor should succeed
             const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
             const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');

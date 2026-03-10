@@ -59,7 +59,6 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
     error RedemptionPaymentTooOld();
     error InvalidRedemptionReference();
     error DestinationTagNotSupported();
-    error InvalidProofPresenter();
 
     /**
      * After paying to the redeemer, the agent must call this method to unlock the collateral
@@ -128,9 +127,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
         nonReentrant
     {
         TransactionAttestation.verifyXRPPayment(_payment);
-        if (_payment.data.requestBody.preferredProofPresenter != address(0)) {
-            require(msg.sender == _payment.data.requestBody.preferredProofPresenter, InvalidProofPresenter());
-        }
+        TransactionAttestation.verifyProofOwnership(_payment.data.requestBody.proofOwner);
         IXRPPayment.ResponseBody calldata rb = _payment.data.responseBody;
         _confirmRedemptionPayment(RedemptionPaymentData({
             requestId: _redemptionRequestId,

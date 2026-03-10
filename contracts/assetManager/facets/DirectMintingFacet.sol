@@ -45,12 +45,10 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         nonReentrant
     {
         TransactionAttestation.verifyXRPPaymentSuccess(_payment);
+        TransactionAttestation.verifyProofOwnership(_payment.data.requestBody.proofOwner);
         DirectMinting.State storage state = DirectMinting.getState();
         require(_payment.data.responseBody.receivingAddressHash == CoreVaultClient.coreVaultUnderlyingAddressHash(),
             InvalidReceivingAddress());
-        if (_payment.data.requestBody.preferredProofPresenter != address(0)) {
-            require(msg.sender == _payment.data.requestBody.preferredProofPresenter, InvalidExecutor());
-        }
         require(_payment.data.responseBody.receivedAmount > 0, AmountNotPositive());
         uint256 receivedAmount = uint256(_payment.data.responseBody.receivedAmount);
         // MintingTagManager and smartAccountManager need not exist at deploy time, so they are checked here

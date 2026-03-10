@@ -74,12 +74,12 @@ interface IXRPPayment {
     /**
      * @notice Request body for Payment attestation type
      * @param transactionId ID of the payment transaction.
-     * @param preferredProofPresenter Address that is allowed to execute the method that requires this attestation.
+     * @param proofOwner Address that is allowed to execute the method that requires this attestation.
      *  If zero, any address can execute.
      */
     struct RequestBody {
         bytes32 transactionId;
-        address preferredProofPresenter;
+        address proofOwner;
     }
 
     /**

@@ -301,11 +301,9 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
         nonReentrant
     {
         TransactionAttestation.verifyXRPPaymentSuccess(_payment);
+        TransactionAttestation.verifyProofOwnership(_payment.data.requestBody.proofOwner);
         require(_payment.data.responseBody.receivingAddressHash == CoreVaultClient.coreVaultUnderlyingAddressHash(),
             InvalidReceivingAddress());
-        require(_payment.data.requestBody.preferredProofPresenter == address(0)
-            || msg.sender == _payment.data.requestBody.preferredProofPresenter,
-            InvalidExecutor());
         require(_payment.data.responseBody.hasDestinationTag &&
             _payment.data.responseBody.destinationTag == CoreVaultClient.coreVaultDonationTag(),
             NotACoreVaultDonation());

@@ -31,7 +31,6 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
     error InvalidRedemptionStatus();
     error SourceAddressesNotSupported();
     error DestinationTagNotSupported();
-    error InvalidProofPresenter();
 
     /**
      * If the agent doesn't transfer the redeemed underlying assets in time (until the last allowed block on
@@ -99,11 +98,9 @@ contract RedemptionDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         require(request.status == Redemption.Status.ACTIVE, InvalidRedemptionStatus());
         // verify transaction
         TransactionAttestation.verifyXRPPaymentNonexistence(_proof);
-        // check the presenter
-        IXRPPaymentNonexistence.RequestBody calldata rqb = _proof.data.requestBody;
-        require(rqb.preferredProofPresenter == address(0) || rqb.preferredProofPresenter == msg.sender,
-            InvalidProofPresenter());
+        TransactionAttestation.verifyProofOwnership(_proof.data.requestBody.proofOwner);
         // check non-payment proof
+        IXRPPaymentNonexistence.RequestBody calldata rqb = _proof.data.requestBody;
         bool paymentReferenceMatches = rqb.checkFirstMemoData &&
             rqb.firstMemoDataHash == keccak256(abi.encodePacked(PaymentReference.redemption(_redemptionRequestId)));
         bool destinationTagMatches = request.requiresDestinationTag

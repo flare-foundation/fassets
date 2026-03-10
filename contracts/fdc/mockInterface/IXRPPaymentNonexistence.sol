@@ -110,7 +110,7 @@ interface IXRPPaymentNonexistence {
         bytes32 firstMemoDataHash;
         bool checkDestinationTag;
         uint256 destinationTag;
-        address preferredProofPresenter;
+        address proofOwner;
     }
 
     /**

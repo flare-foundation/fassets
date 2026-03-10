@@ -15,6 +15,7 @@ library TransactionAttestation {
     uint8 internal constant PAYMENT_FAILED = 1;
     uint8 internal constant PAYMENT_BLOCKED = 2;
 
+    error OnlyProofOwner();
     error PaymentFailed();
     error InvalidChain();
     error LegalPaymentNotProven();
@@ -23,6 +24,19 @@ library TransactionAttestation {
     error NonPaymentNotProven();
     error AddressValidityNotProven();
 
+
+    /**
+     * Validate that `proofOwner` field in the request body of the attestation proof (for various proof types)
+     * is either zero (which means that anyone can use the proof) or equal to the address of the caller.
+     * This ensures that only the account that paid for the FDC request can use the proof.
+     */
+    function verifyProofOwnership(
+        address _proofOwner
+    )
+        internal view
+    {
+        require(_proofOwner == address(0) || _proofOwner == msg.sender, OnlyProofOwner());
+    }
 
     function verifyPaymentSuccess(
         IPayment.Proof calldata _proof
