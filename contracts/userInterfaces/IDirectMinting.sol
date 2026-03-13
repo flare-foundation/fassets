@@ -58,7 +58,7 @@ interface IDirectMinting {
      * @param _payment the XRP payment proof data
      */
     function executeDirectMinting(IXRPPayment.Proof calldata _payment)
-        external;
+        external payable;
 
     /**
      * This method is not strictly necessary to allow an unblocked delayed minting to be executed.

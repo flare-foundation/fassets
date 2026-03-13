@@ -65,21 +65,21 @@ export class Minter extends AssetContextClient {
         await this.context.assetManager.confirmCoreVaultDonation(proof);
     }
 
-    async directMintRaw(amount: BNish, options?: { memoData?: string, destinationTag?: number, executor?: string }) {
+    async directMintRaw(amount: BNish, options?: { memoData?: string, destinationTag?: number, executor?: string, value?: BNish }) {
         const paymentAddress = await this.context.assetManager.directMintingPaymentAddress();
         const txHash = await this.performPayment(paymentAddress, amount, options?.memoData ?? null, { destinationTag: options?.destinationTag });
         const proof = await this.context.attestationProvider.proveXRPPayment(txHash, null);
-        const res = await this.context.assetManager.executeDirectMinting(proof, { from: options?.executor ?? this.address });
+        const res = await this.context.assetManager.executeDirectMinting(proof, { from: options?.executor ?? this.address, value: options?.value != null ? toBN(options.value) : undefined });
         return [res, txHash, proof] as const;
     }
 
-    async directMint(amount: BNish, options?: { memoData?: string, destinationTag?: number, executor?: string }) {
+    async directMint(amount: BNish, options?: { memoData?: string, destinationTag?: number, executor?: string, value?: BNish }) {
         const [res, txHash] = await this.directMintRaw(amount, options);
         const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
         return [mintingExecuted, txHash] as const;
     }
 
-    async directMintToSmartAccount(amount: BNish, options?: { memoData?: string, destinationTag?: number, executor?: string }) {
+    async directMintToSmartAccount(amount: BNish, options?: { memoData?: string, destinationTag?: number, executor?: string, value?: BNish }) {
         const [res, txHash] = await this.directMintRaw(amount, options);
         const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecutedToSmartAccount');
         return [mintingExecuted, txHash] as const;

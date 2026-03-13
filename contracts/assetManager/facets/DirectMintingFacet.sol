@@ -35,11 +35,12 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
     error MissingSmartAccountManager();
     error DirectMintingNotUnblocked();
     error DirectMintingNotDelayed();
+    error NoValueExpected();
 
     function executeDirectMinting(
         IXRPPayment.Proof calldata _payment
     )
-        external
+        external payable
         onlyAttached
         notEmergencyPaused
         nonReentrant
@@ -79,11 +80,13 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
             // If the total payment is less than the system fee, everything goes to the fee receiver and no further
             // actions are done, to prevent smart accounts users from sending very small amounts to avoid paying fee.
             // Executor also gets nothing in this case since the minting fee has priority over the executor fee.
+            require(msg.value == 0, NoValueExpected());
             emit DirectMintingPaymentTooSmallForFee(_payment.data.requestBody.transactionId,
                 receivedAmount, Conversion.convertAmgToUBA(state.minimumMintingFeeAmg));
         } else if (mintToSmartAccount) {
             _mintToSmartAccounts(_payment, receivedAmount, mintingFeeUBA);
         } else {
+            require(msg.value == 0, NoValueExpected());
             _mintToRecipient(_payment, recipient, receivedAmount, mintingFeeUBA, executorFeeUBA);
         }
     }
@@ -277,7 +280,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         uint256 mintedAmountUBA = _receivedAmountUBA - _mintingFeeUBA;
         _mintFAssets(address(state.smartAccountManager), mintedAmountUBA);
         // notify smart account manager
-        state.smartAccountManager.mintedFAssets(
+        state.smartAccountManager.mintedFAssets{ value: msg.value }(
             _payment.data.requestBody.transactionId,
             _payment.data.responseBody.sourceAddress,
             mintedAmountUBA,

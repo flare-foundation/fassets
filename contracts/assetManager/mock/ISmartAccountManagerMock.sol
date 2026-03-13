@@ -9,5 +9,5 @@ interface ISmartAccountManagerMock {
         uint256 _underlyingTimestamp,
         bytes calldata _memoData,
         address _executor
-    ) external;
+    ) external payable;
 }

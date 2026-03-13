@@ -11,7 +11,8 @@ contract SmartAccountManagerMock is ISmartAccountManagerMock {
         string sourceAddress,
         uint256 amount,
         uint256 underlyingTimestamp,
-        bytes memoData
+        bytes memoData,
+        uint256 nativeValueReceived
     );
 
     IFAsset public immutable fAsset;
@@ -29,8 +30,8 @@ contract SmartAccountManagerMock is ISmartAccountManagerMock {
         uint256 _underlyingTimestamp,
         bytes calldata _memoData,
         address _executor
-    ) external {
+    ) external payable {
         fAsset.transfer(_executor, _amount);
-        emit MintedToSmartAccount(_transactionId, _sourceAddress, _amount, _underlyingTimestamp, _memoData);
+        emit MintedToSmartAccount(_transactionId, _sourceAddress, _amount, _underlyingTimestamp, _memoData, msg.value);
     }
 }

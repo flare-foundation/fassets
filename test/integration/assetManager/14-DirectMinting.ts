@@ -587,6 +587,103 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
     });
 
+    describe("Native value forwarding in direct minting", () => {
+        it("should forward native value to smart account manager when minting to smart accounts (no memo)", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            const nativeValue = toBNExp(1, 18); // 1 NAT
+            // mint to smart account (no memo data => goes to smart account manager)
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, null);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1, value: nativeValue });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecutedToSmartAccount');
+            const smartAccountReceived = requiredEventArgsFrom(res, smartAccountManager, 'MintedToSmartAccount');
+            // verify the smart account manager received the native value
+            assertWeb3Equal(smartAccountReceived.nativeValueReceived, nativeValue);
+            await verifyDirectMintingToSmartAccounts(mintingExecuted, smartAccountReceived, txHash, null, minter.underlyingAddress, executorAddress1, totalMintingAmount);
+        });
+
+        it("should forward native value to smart account manager when minting with unrecognized memo data", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            const nativeValue = toBNExp(5, 17); // 0.5 NAT
+            const memoData = "0x12345678"; // unrecognized memo data => goes to smart account manager
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, memoData);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1, value: nativeValue });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecutedToSmartAccount');
+            const smartAccountReceived = requiredEventArgsFrom(res, smartAccountManager, 'MintedToSmartAccount');
+            assertWeb3Equal(smartAccountReceived.nativeValueReceived, nativeValue);
+            await verifyDirectMintingToSmartAccounts(mintingExecuted, smartAccountReceived, txHash, memoData, minter.underlyingAddress, executorAddress1, totalMintingAmount);
+        });
+
+        it("should revert with NoValueExpected when minting by payment reference with non-zero value", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            const nativeValue = toBNExp(1, 18);
+            const paymentReference = PaymentReference.directMinting(minter.address);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, paymentReference);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(
+                context.assetManager.executeDirectMinting(proof, { from: executorAddress1, value: nativeValue }),
+                "NoValueExpected", []);
+        });
+
+        it("should revert with NoValueExpected when minting by tag with non-zero value", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            const nativeValue = toBNExp(1, 18);
+            // reserve minting tag and set recipient
+            const tagPrice = await mintingTagManager.reservationFee();
+            const tagRes = await mintingTagManager.reserve({ from: minter.address, value: tagPrice });
+            const tagId = requiredEventArgs(tagRes, 'MintingTagReserved').tag;
+            await mintingTagManager.setMintingRecipient(tagId, minter.address, { from: minter.address });
+            // mint with tag (resolves to recipient, not smart account)
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, null, { destinationTag: Number(tagId) });
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(
+                context.assetManager.executeDirectMinting(proof, { from: executorAddress1, value: nativeValue }),
+                "NoValueExpected", []);
+        });
+
+        it("should revert with NoValueExpected when minting by extended payment reference with non-zero value", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            const nativeValue = toBNExp(1, 18);
+            const memoData = PaymentReference.directMintingEx(minter.address, executorAddress1);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, memoData);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(
+                context.assetManager.executeDirectMinting(proof, { from: executorAddress1, value: nativeValue }),
+                "NoValueExpected", []);
+        });
+
+        it("should revert with NoValueExpected when payment is too small for fee and non-zero value is sent", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const totalMintingAmount = toBN(context.initSettings.directMintingMinimumFeeUBA).subn(1); // below minimum fee
+            const nativeValue = toBNExp(1, 18);
+            // with payment reference (non-smart-account path)
+            const paymentReference = PaymentReference.directMinting(minter.address);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, paymentReference);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(
+                context.assetManager.executeDirectMinting(proof, { from: executorAddress1, value: nativeValue }),
+                "NoValueExpected", []);
+        });
+
+        it("should revert with NoValueExpected when payment too small for fee goes to smart account path with non-zero value", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const totalMintingAmount = toBN(context.initSettings.directMintingMinimumFeeUBA).subn(1); // below minimum fee
+            const nativeValue = toBNExp(1, 18);
+            // no memo data => would go to smart account path, but fee is too small so it hits paymentTooSmall branch first
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, null);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(
+                context.assetManager.executeDirectMinting(proof, { from: executorAddress1, value: nativeValue }),
+                "NoValueExpected", []);
+        });
+    });
+
     describe("Edge cases for direct minting fees", () => {
         it("minter and executor get nothing if fee is smaller than minimum minting fee", async () => {
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
