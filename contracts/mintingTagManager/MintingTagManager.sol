@@ -3,6 +3,7 @@ pragma solidity ^0.8.27;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ERC721} from  "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC721Enumerable} from  "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 import {GovernedBase} from "../governance/implementation/GovernedBase.sol";
 import {GovernedUUPSProxyImplementation} from "../governance/implementation/GovernedUUPSProxyImplementation.sol";
@@ -12,7 +13,7 @@ import {ReentrancyGuard} from "../openzeppelin/security/ReentrancyGuard.sol";
 
 
 contract MintingTagManager is
-    ERC721,
+    ERC721Enumerable,
     GovernedUUPSProxyImplementation,
     IMintingTagManager,
     ReentrancyGuard
@@ -135,6 +136,18 @@ contract MintingTagManager is
      */
     function symbol() public view virtual override returns (string memory) {
         return _symbol;
+    }
+
+    function reservedTagsForOwner(address _owner)
+        external view
+        returns (uint256[] memory)
+    {
+        uint256 count = balanceOf(_owner);
+        uint256[] memory result = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
+            result[i] = tokenOfOwnerByIndex(_owner, i);
+        }
+        return result;
     }
 
     function mintingRecipient(uint256 _mintingTag)

@@ -262,6 +262,73 @@ contract("MintingTagManager", function (accounts) {
         );
     });
 
+    it("should return empty array for owner with no tags", async () => {
+        const tags = await mintingTagManager.reservedTagsForOwner(tagOwner);
+        assert.equal(tags.length, 0);
+    });
+
+    it("should return single tag for owner with one reservation", async () => {
+        const res = await mintingTagManager.reserve({ from: tagOwner, value: reservationFee });
+        const reserved = requiredEventArgs(res, "MintingTagReserved");
+        const tags = await mintingTagManager.reservedTagsForOwner(tagOwner);
+        assert.equal(tags.length, 1);
+        assertWeb3Equal(tags[0], reserved.tag);
+    });
+
+    it("should return multiple tags for owner with several reservations", async () => {
+        const count = 3;
+        const expectedTags: string[] = [];
+        for (let i = 0; i < count; i++) {
+            const res = await mintingTagManager.reserve({ from: tagOwner, value: reservationFee });
+            const reserved = requiredEventArgs(res, "MintingTagReserved");
+            expectedTags.push(reserved.tag.toString());
+        }
+        const tags = await mintingTagManager.reservedTagsForOwner(tagOwner);
+        assert.equal(tags.length, count);
+        for (let i = 0; i < count; i++) {
+            assertWeb3Equal(tags[i], expectedTags[i]);
+        }
+    });
+
+    it("should update reservedTagsForOwner after transfer", async () => {
+        const newOwner = accounts[2];
+        const res = await mintingTagManager.reserve({ from: tagOwner, value: reservationFee });
+        const reserved = requiredEventArgs(res, "MintingTagReserved");
+        // before transfer
+        let tags = await mintingTagManager.reservedTagsForOwner(tagOwner);
+        assert.equal(tags.length, 1);
+        assertWeb3Equal(tags[0], reserved.tag);
+        let newOwnerTags = await mintingTagManager.reservedTagsForOwner(newOwner);
+        assert.equal(newOwnerTags.length, 0);
+        // transfer
+        await mintingTagManager.transfer(newOwner, reserved.tag, { from: tagOwner });
+        // after transfer
+        tags = await mintingTagManager.reservedTagsForOwner(tagOwner);
+        assert.equal(tags.length, 0);
+        newOwnerTags = await mintingTagManager.reservedTagsForOwner(newOwner);
+        assert.equal(newOwnerTags.length, 1);
+        assertWeb3Equal(newOwnerTags[0], reserved.tag);
+    });
+
+    it("should return correct tags for multiple owners", async () => {
+        const owner2 = accounts[2];
+        const res1 = await mintingTagManager.reserve({ from: tagOwner, value: reservationFee });
+        const tag1 = requiredEventArgs(res1, "MintingTagReserved").tag;
+        const res2 = await mintingTagManager.reserve({ from: owner2, value: reservationFee });
+        const tag2 = requiredEventArgs(res2, "MintingTagReserved").tag;
+        const res3 = await mintingTagManager.reserve({ from: tagOwner, value: reservationFee });
+        const tag3 = requiredEventArgs(res3, "MintingTagReserved").tag;
+        // tagOwner has tags 1 and 3
+        const ownerTags = await mintingTagManager.reservedTagsForOwner(tagOwner);
+        assert.equal(ownerTags.length, 2);
+        assertWeb3Equal(ownerTags[0], tag1);
+        assertWeb3Equal(ownerTags[1], tag3);
+        // owner2 has tag 2
+        const owner2Tags = await mintingTagManager.reservedTagsForOwner(owner2);
+        assert.equal(owner2Tags.length, 1);
+        assertWeb3Equal(owner2Tags[0], tag2);
+    });
+
     it("changing executor twice is a no-op and does not reset the delay", async () => {
         const res = await mintingTagManager.reserve({ from: tagOwner, value: reservationFee });
         const reserved = requiredEventArgs(res, "MintingTagReserved");
