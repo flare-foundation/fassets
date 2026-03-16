@@ -5,7 +5,7 @@ import {IReferencedPaymentNonexistence}
     from "@flarenetwork/flare-periphery-contracts/flare/IReferencedPaymentNonexistence.sol";
 import {IConfirmedBlockHeightExists}
     from "@flarenetwork/flare-periphery-contracts/flare/IConfirmedBlockHeightExists.sol";
-import {IXRPPaymentNonexistence} from "../../fdc/mockInterface/IXRPPaymentNonexistence.sol";
+import {IXRPPaymentNonexistence} from "@flarenetwork/flare-periphery-contracts/flare/IXRPPaymentNonexistence.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";

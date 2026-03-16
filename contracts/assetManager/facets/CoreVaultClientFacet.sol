@@ -2,7 +2,7 @@
 pragma solidity ^0.8.27;
 
 import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IPayment.sol";
-import {IXRPPayment} from "../../fdc/mockInterface/IXRPPayment.sol";
+import {IXRPPayment} from "@flarenetwork/flare-periphery-contracts/flare/IXRPPayment.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ICoreVaultClient} from "../../userInterfaces/ICoreVaultClient.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";

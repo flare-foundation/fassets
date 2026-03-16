@@ -2,7 +2,7 @@
 pragma solidity >=0.7.6 <0.9;
 
 import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IPayment.sol";
-import {IXRPPayment} from "../fdc/mockInterface/IXRPPayment.sol";
+import {IXRPPayment} from "@flarenetwork/flare-periphery-contracts/flare/IXRPPayment.sol";
 
 
 /**

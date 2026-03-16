@@ -250,9 +250,6 @@ contracts/fassetToken/interfaces/IICheckPointable.sol
 contracts/fassetToken/interfaces/IIFAsset.sol
 contracts/fassetToken/library/CheckPointHistory.sol
 contracts/fassetToken/library/CheckPointsByAddress.sol
-contracts/fdc/mockInterface/IFdcVerification.sol
-contracts/fdc/mockInterface/IXRPPayment.sol
-contracts/fdc/mockInterface/IXRPPaymentVerification.sol
 contracts/flareSmartContracts/implementation/AddressUpdatable.sol
 contracts/flareSmartContracts/interfaces/IAddressUpdatable.sol
 contracts/flareSmartContracts/interfaces/IWNat.sol

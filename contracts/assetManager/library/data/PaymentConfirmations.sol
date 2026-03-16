@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IPayment.sol";
 import {IBalanceDecreasingTransaction}
     from "@flarenetwork/flare-periphery-contracts/flare/IBalanceDecreasingTransaction.sol";
-import {IXRPPayment} from "../../../fdc/mockInterface/IXRPPayment.sol";
+import {IXRPPayment} from "@flarenetwork/flare-periphery-contracts/flare/IXRPPayment.sol";
 
 
 library PaymentConfirmations {

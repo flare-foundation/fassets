@@ -13,9 +13,9 @@ import {IAddressValidity} from "@flarenetwork/flare-periphery-contracts/flare/IA
 import {IEVMTransaction} from "@flarenetwork/flare-periphery-contracts/flare/IEVMTransaction.sol";
 import {IWeb2Json} from "@flarenetwork/flare-periphery-contracts/flare/IWeb2Json.sol";
 import {IRelay} from "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
-import {IXRPPayment} from "../mockInterface/IXRPPayment.sol";
-import {IXRPPaymentNonexistence} from "../mockInterface/IXRPPaymentNonexistence.sol";
-import {IFdcVerification} from "../mockInterface/IFdcVerification.sol";
+import {IXRPPayment} from "@flarenetwork/flare-periphery-contracts/flare/IXRPPayment.sol";
+import {IXRPPaymentNonexistence} from "@flarenetwork/flare-periphery-contracts/flare/IXRPPaymentNonexistence.sol";
+import {IFdcVerification} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 
 
 contract FdcVerificationMock is IFdcVerification {
@@ -107,7 +107,7 @@ contract FdcVerificationMock is IFdcVerification {
             );
     }
 
-    function verifyJsonApi(
+    function verifyWeb2Json(
         IWeb2Json.Proof calldata _proof
     )
         external view

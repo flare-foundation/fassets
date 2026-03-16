@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
-import {IXRPPayment} from "../../fdc/mockInterface/IXRPPayment.sol";
+import {IXRPPayment} from "@flarenetwork/flare-periphery-contracts/flare/IXRPPayment.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
