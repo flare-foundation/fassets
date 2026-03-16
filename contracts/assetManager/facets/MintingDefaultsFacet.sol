@@ -2,8 +2,10 @@
 pragma solidity ^0.8.27;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {IReferencedPaymentNonexistence, IConfirmedBlockHeightExists}
-    from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IReferencedPaymentNonexistence}
+    from "@flarenetwork/flare-periphery-contracts/flare/IReferencedPaymentNonexistence.sol";
+import {IConfirmedBlockHeightExists}
+    from "@flarenetwork/flare-periphery-contracts/flare/IConfirmedBlockHeightExists.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {IIAgentVault} from "../../agentVault/interfaces/IIAgentVault.sol";

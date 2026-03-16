@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {IPayment, IBalanceDecreasingTransaction}
-    from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IPayment.sol";
+import {IBalanceDecreasingTransaction}
+    from "@flarenetwork/flare-periphery-contracts/flare/IBalanceDecreasingTransaction.sol";
 
 
 library PaymentConfirmations {

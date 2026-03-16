@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IPayment.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ICoreVaultClient} from "../../userInterfaces/ICoreVaultClient.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";

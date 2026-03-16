@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import {IAssetManager} from "../../userInterfaces/IAssetManager.sol";
 import {IFAsset} from "../../userInterfaces/IFAsset.sol";
-import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IPayment.sol";
 
 
 

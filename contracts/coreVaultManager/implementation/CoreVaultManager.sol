@@ -7,7 +7,8 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {GovernedUUPSProxyImplementation} from "../../governance/implementation/GovernedUUPSProxyImplementation.sol";
 import {AddressUpdatable} from "../../flareSmartContracts/implementation/AddressUpdatable.sol";
 import {IICoreVaultManager} from "../interfaces/IICoreVaultManager.sol";
-import {IFdcVerification, IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IPayment.sol";
+import {IFdcVerification} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 import {GovernedBase} from "../../governance/implementation/GovernedBase.sol";
 import {IIAddressUpdatable}

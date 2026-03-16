@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {IReferencedPaymentNonexistence, IConfirmedBlockHeightExists}
-    from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IReferencedPaymentNonexistence}
+    from "@flarenetwork/flare-periphery-contracts/flare/IReferencedPaymentNonexistence.sol";
+import {IConfirmedBlockHeightExists}
+    from "@flarenetwork/flare-periphery-contracts/flare/IConfirmedBlockHeightExists.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {ReentrancyGuard} from "../../openzeppelin/security/ReentrancyGuard.sol";

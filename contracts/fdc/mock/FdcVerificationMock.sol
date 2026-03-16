@@ -1,10 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import {IFdcVerification, IPayment, IBalanceDecreasingTransaction, IReferencedPaymentNonexistence,
-        IConfirmedBlockHeightExists, IAddressValidity, IEVMTransaction, IWeb2Json}
-    from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IPayment.sol";
+import {IBalanceDecreasingTransaction}
+    from "@flarenetwork/flare-periphery-contracts/flare/IBalanceDecreasingTransaction.sol";
+import {IReferencedPaymentNonexistence}
+    from "@flarenetwork/flare-periphery-contracts/flare/IReferencedPaymentNonexistence.sol";
+import {IConfirmedBlockHeightExists}
+    from "@flarenetwork/flare-periphery-contracts/flare/IConfirmedBlockHeightExists.sol";
+import {IAddressValidity} from "@flarenetwork/flare-periphery-contracts/flare/IAddressValidity.sol";
+import {IEVMTransaction} from "@flarenetwork/flare-periphery-contracts/flare/IEVMTransaction.sol";
+import {IWeb2Json} from "@flarenetwork/flare-periphery-contracts/flare/IWeb2Json.sol";
+import {IFdcVerification} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
 import {IRelay} from "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
 
 

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {IConfirmedBlockHeightExists} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IConfirmedBlockHeightExists}
+    from "@flarenetwork/flare-periphery-contracts/flare/IConfirmedBlockHeightExists.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {UnderlyingBlockUpdater} from "../library/UnderlyingBlockUpdater.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
