@@ -916,10 +916,10 @@
   dependencies:
     "@openzeppelin/contracts" "^4.6.0"
 
-"@flarenetwork/js-flare-common@^0.0.1":
-  version "0.0.1"
-  resolved "https://registry.yarnpkg.com/@flarenetwork/js-flare-common/-/js-flare-common-0.0.1.tgz#337e84a8cd436a37f0da9efdfa158001957eb1cb"
-  integrity sha512-TY/aNE9N6p/D2GYMt/Z0nhjWOueFTd5+2iK+NHbYnBx1aHE31bFYXIwH8rNK1Y2AfCNMEmNJ+uXjAKa0Wu7udA==
+"@flarenetwork/js-flare-common@0.0.2":
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/@flarenetwork/js-flare-common/-/js-flare-common-0.0.2.tgz#aaaa4d8025f77929c614a61395e2de1d5ae1a414"
+  integrity sha512-xmNt7sDRtySYZ7/dmTC6oUy0GGTTvCrY2wtKzJ7jlv7iqQFAdYUmGKcdKAaLzHoWvlEL4Xpz4dmKc+wds46ntw==
   dependencies:
     ethers "^6.14.4"
 
@@ -3743,9 +3743,9 @@ ethers@^5.7.2:
     "@ethersproject/wordlists" "5.7.0"
 
 ethers@^6.14.4:
-  version "6.14.4"
-  resolved "https://registry.yarnpkg.com/ethers/-/ethers-6.14.4.tgz#0f6fbc562a8425c7c888da307fa71ef796be0c04"
-  integrity sha512-Jm/dzRs2Z9iBrT6e9TvGxyb5YVKAPLlpna7hjxH7KH/++DSh2T/JVmQUv7iHI5E55hDbp/gEVvstWYXVxXFzsA==
+  version "6.16.0"
+  resolved "https://registry.yarnpkg.com/ethers/-/ethers-6.16.0.tgz#fff9b4f05d7a359c774ad6e91085a800f7fccf65"
+  integrity sha512-U1wulmetNymijEhpSEQ7Ct/P/Jw9/e7R1j5XIbPRydgV2DjLVMsULDlNksq3RQnFgKoLlZf88ijYtWEXcPa07A==
   dependencies:
     "@adraffy/ens-normalize" "1.10.1"
     "@noble/curves" "1.2.0"
