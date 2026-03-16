@@ -3,37 +3,32 @@ pragma solidity 0.8.27;
 
 import {Test} from "forge-std/Test.sol";
 import {CoreVaultManager} from "../../../contracts/coreVaultManager/implementation/CoreVaultManager.sol";
-import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IPayment.sol";
-import {IPaymentVerification} from "@flarenetwork/flare-periphery-contracts/flare/IPaymentVerification.sol";
 
 contract CoreVaultManagerHandler is Test {
     CoreVaultManager public coreVaultManager;
-    address public fdcVerificationMock;
     address public governance;
     address public assetManager;
     bytes32 public chainId;
     string public coreVaultAddress;
-    bytes32 public coreVaultAddressHash;
     string[] public allowedDestinations;
     uint128 public availableFunds; // ghost variable to available funds
     bytes32[] private preimageHashes;
     uint128 public setEscrowsFinishedAmount;
+    // transaction confirmation tracking is now done in asset manager, so mock it here
+    mapping(bytes32 => bool) confirmedTransactions;
 
     constructor(
         CoreVaultManager _coreVaultManager,
-        address _fdcVerificationMock,
         address _governance,
         address _assetManager,
         bytes32 _chainId,
         string memory _coreVaultAddress
     ) {
         coreVaultManager = _coreVaultManager;
-        fdcVerificationMock = _fdcVerificationMock;
         governance = _governance;
         assetManager = _assetManager;
         chainId = _chainId;
         coreVaultAddress = _coreVaultAddress;
-        coreVaultAddressHash = keccak256(bytes(_coreVaultAddress));
 
         allowedDestinations.push("destination1");
         vm.prank(governance);
@@ -52,28 +47,18 @@ contract CoreVaultManagerHandler is Test {
     }
 
     function confirmPayment(uint64 _receivedAmount, bytes32 _transactionId) public {
+        if (coreVaultManager.confirmedPayments(_transactionId)) return;
 
-        // Construct a valid IPayment.Proof
-        IPayment.Proof memory proof;
-        proof.data.responseBody.status = 0;
-        proof.data.sourceId = chainId;
-        proof.data.responseBody.receivingAddressHash = coreVaultAddressHash;
-        proof.data.responseBody.receivedAmount = int256(uint256(_receivedAmount));
-        proof.data.requestBody.transactionId = _transactionId;
-
-        vm.mockCall(
-            fdcVerificationMock,
-            abi.encodeWithSelector(IPaymentVerification.verifyPayment.selector, proof),
-            abi.encode(true)
-        );
-
+        availableFunds += _receivedAmount;
         uint128 availableBefore = coreVaultManager.availableFunds();
-        uint128 increaseAmount = coreVaultManager.confirmedPayments(_transactionId) ? 0 : _receivedAmount;
-        if (!coreVaultManager.confirmedPayments(_transactionId)) {
-            availableFunds += _receivedAmount;
+        // transaction confirmation tracking is now done in asset manager
+        if (confirmedTransactions[_transactionId]) {
+            return;
         }
-        coreVaultManager.confirmPayment(proof);
-        assertEq(availableBefore + increaseAmount, coreVaultManager.availableFunds());
+        confirmedTransactions[_transactionId] = true;
+        vm.prank(assetManager);
+        coreVaultManager.confirmPayment(_transactionId, int256(uint256(_receivedAmount)));
+        assertEq(availableBefore + _receivedAmount, coreVaultManager.availableFunds());
     }
 
     function requestTransferFromCoreVault(

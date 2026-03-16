@@ -4,9 +4,7 @@ pragma solidity 0.8.27;
 import {Test} from "forge-std/Test.sol";
 import {CoreVaultManager} from "../../../contracts/coreVaultManager/implementation/CoreVaultManager.sol";
 import {CoreVaultManagerProxy} from "../../../contracts/coreVaultManager/implementation/CoreVaultManagerProxy.sol";
-import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IPayment.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
-import {IPaymentVerification} from "@flarenetwork/flare-periphery-contracts/flare/IPaymentVerification.sol";
 import {CoreVaultManagerHandler} from "./CoreVaultManagerHandler.t.sol";
 
 // solhint-disable func-name-mixedcase
@@ -25,7 +23,6 @@ contract CoreVaultManagerTest is Test {
     address[] private contractAddresses;
 
     bytes32 private chainId = "0x72";
-    bytes32 private coreVaultAddressHash;
     address private assetManager;
     string private custodianAddress;
     string private coreVaultAddress;
@@ -36,8 +33,6 @@ contract CoreVaultManagerTest is Test {
         assetManager = makeAddr("assetManager");
         custodianAddress = "custodianAddress";
         coreVaultAddress = "coreVaultAddress";
-        coreVaultAddressHash = keccak256(bytes(coreVaultAddress));
-
         governance = makeAddr("governance");
         addressUpdater = makeAddr("addressUpdater");
         fdcVerificationMock = makeAddr("fdcVerificationMock");
@@ -70,7 +65,6 @@ contract CoreVaultManagerTest is Test {
 
         handler = new CoreVaultManagerHandler(
             coreVaultManager,
-            fdcVerificationMock,
             governance,
             assetManager,
             chainId,
@@ -95,30 +89,17 @@ contract CoreVaultManagerTest is Test {
     function fuzz_confirmPayment(uint128 _receivedAmount, bytes32 _transactionId) public {
         vm.assume(_receivedAmount > 0);
 
-        IPayment.Proof memory proof;
-        proof.data.responseBody.status = 0;
-        proof.data.sourceId = chainId;
-        proof.data.responseBody.receivingAddressHash = coreVaultAddressHash;
-        proof.data.responseBody.receivedAmount = int256(uint256(_receivedAmount));
-        proof.data.requestBody.transactionId = _transactionId;
-
-        vm.mockCall(
-            fdcVerificationMock,
-            abi.encodeWithSelector(IPaymentVerification.verifyPayment.selector, proof),
-            abi.encode(true)
-        );
-
         // First call
         uint128 initialFunds = coreVaultManager.availableFunds();
-        coreVaultManager.confirmPayment(proof);
+        vm.prank(assetManager);
+        coreVaultManager.confirmPayment(_transactionId, int256(uint256(_receivedAmount)));
         assertEq(coreVaultManager.availableFunds(), initialFunds + _receivedAmount);
         assertTrue(coreVaultManager.confirmedPayments(_transactionId));
 
-        // Second call (same transactionId)
-        initialFunds = coreVaultManager.availableFunds();
-        coreVaultManager.confirmPayment(proof);
-        assertEq(coreVaultManager.availableFunds(), initialFunds, "availableFunds should not increase");
-        assertTrue(coreVaultManager.confirmedPayments(_transactionId));
+        // Second call (same transactionId) should revert
+        vm.prank(assetManager);
+        vm.expectRevert();
+        coreVaultManager.confirmPayment(_transactionId, int256(uint256(_receivedAmount)));
     }
 
     function invariant_fundsAccounting() public {
