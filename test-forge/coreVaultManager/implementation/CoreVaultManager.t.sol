@@ -4,7 +4,7 @@ pragma solidity 0.8.27;
 import {Test} from "forge-std/Test.sol";
 import {CoreVaultManager} from "../../../contracts/coreVaultManager/implementation/CoreVaultManager.sol";
 import {CoreVaultManagerProxy} from "../../../contracts/coreVaultManager/implementation/CoreVaultManagerProxy.sol";
-import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IPayment.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 import {IPaymentVerification} from "@flarenetwork/flare-periphery-contracts/flare/IPaymentVerification.sol";
 import {CoreVaultManagerHandler} from "./CoreVaultManagerHandler.t.sol";
