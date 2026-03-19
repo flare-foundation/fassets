@@ -22,7 +22,7 @@
   {
     "name": "Relay",
     "contractName": "Relay.sol",
-    "address": "0x67a916E175a2aF01369294739AA60dDdE1Fad189"
+    "address": "0xCB86E8Be709001e01897Bf59847406853da8f14b"
   },
   {
     "name": "FdcHub",
@@ -32,7 +32,7 @@
   {
     "name": "FdcVerification",
     "contractName": "FdcVerification.sol",
-    "address": "0xd283afC5A67E2d4Bc700b5B640328Bda22450621"
+    "address": "0x3f4dd62410D4F876232Ed17C115437144995557f"
   },
   {
     "name": "USDX",
