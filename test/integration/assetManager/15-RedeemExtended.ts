@@ -764,6 +764,20 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             );
         });
 
+        it("redeemWithTag reverts with DestinationTagTooBig when tag >= 2**32", async () => {
+            const { agent, minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            //
+            const tagTooLarge = toBN(2).pow(toBN(32));  // exactly 2**32
+            await expectRevert.custom(
+                context.assetManager.redeemWithTag(context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, tagTooLarge,
+                    { from: redeemer.address }),
+                "DestinationTagTooBig",
+                []
+            );
+        });
+
         it("ordinary redeem is not limited by minimumRedeemAmountUBA", async () => {
             const { minter } = await setupAgentAndMint(3);
             const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);

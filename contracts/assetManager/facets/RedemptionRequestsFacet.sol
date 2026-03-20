@@ -39,6 +39,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
     error RedemptionTooSmall();
     error InvalidTicketId();
     error RedeemWithTagNotSupported();
+    error DestinationTagTooBig();
 
     /**
      * Redeem (up to) `_lots` lots of FAssets. The corresponding amount of the FAssets belonging
@@ -110,6 +111,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         require(RedemptionRequests.redeemWithTagSupported(), RedeemWithTagNotSupported());
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
         require(amountAMG >= RedemptionRequests.minimumRedeemAmountAMG(), RedemptionTooSmall());
+        require(_destinationTag < 2 ** 32, DestinationTagTooBig());
         return _redeem(amountAMG, 1, _redeemerUnderlyingAddressString, _executor, true, _destinationTag);
     }
 
