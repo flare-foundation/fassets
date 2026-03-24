@@ -142,7 +142,7 @@ contracts/mintingTagManager/**/*
 
 ### Explicit scope
 
-Complete list of **160** in-scope Solidity files:
+Complete list of **161** in-scope Solidity files:
 
 ```
 contracts/agentOwnerRegistry/implementation/AgentOwnerRegistry.sol
@@ -174,6 +174,7 @@ contracts/assetManager/facets/EmergencyPauseFacet.sol
 contracts/assetManager/facets/LiquidationFacet.sol
 contracts/assetManager/facets/MintingDefaultsFacet.sol
 contracts/assetManager/facets/MintingFacet.sol
+contracts/assetManager/facets/RedeemExtendedSettingsFacet.sol
 contracts/assetManager/facets/RedemptionConfirmationsFacet.sol
 contracts/assetManager/facets/RedemptionDefaultsFacet.sol
 contracts/assetManager/facets/RedemptionRequestsFacet.sol
