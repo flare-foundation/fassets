@@ -13,7 +13,7 @@ import { HardhatNetworkAccountUserConfig } from "hardhat/types";
 import path from "path";
 import 'solidity-coverage';
 import "./type-extensions";
-import type { EtherscanConfig } from "@nomicfoundation/hardhat-verify/types";
+import type { EtherscanConfig, SourcifyConfig } from "@nomicfoundation/hardhat-verify/types";
 // Importing standalone simple library to surpass warnings in mock contracts and in mock contract imports
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-require-imports
 const intercept = require('intercept-stdout');
@@ -64,7 +64,8 @@ function readAccounts(network: string) {
     return [...deployerAccounts, ...testAccounts];
 }
 
-const flareExplorerApiUrls: Partial<EtherscanConfig> = {
+const flareExplorerApiConfig: Partial<EtherscanConfig> = {
+    enabled: true,
     apiKey: {
         songbird: '0000',
         flare: '0000',
@@ -107,7 +108,8 @@ const flareExplorerApiUrls: Partial<EtherscanConfig> = {
     ]
 };
 
-const flarescanApiUrls: Partial<EtherscanConfig> = {
+const flarescanApiConfig: Partial<EtherscanConfig> = {
+    enabled: true,
     apiKey: {
         songbird: '0000',
         flare: '0000',
@@ -150,6 +152,32 @@ const flarescanApiUrls: Partial<EtherscanConfig> = {
     ]
 };
 
+const sourcifyApiConfig: Partial<SourcifyConfig> = {
+    enabled: true,
+    apiUrl: "https://sourcify.flare.rocks",
+    browserUrl: "https://sourcify.flare.rocks/browser"
+};
+
+const verifyApi = process.env.VERIFY_API;
+
+function etherscanConfig(): Partial<EtherscanConfig> {
+    if (verifyApi === "flarescan" || verifyApi === "all") {
+        return flarescanApiConfig;
+    } else if (verifyApi === "explorer" || verifyApi === "all") {
+        return flareExplorerApiConfig;
+    } else {
+        return { enabled: false };
+    }
+}
+
+function sourcifyConfig(): Partial<SourcifyConfig> {
+    if (verifyApi === "sourcify" || verifyApi === "all") {
+        return sourcifyApiConfig;
+    } else {
+        return { enabled: false };
+    }
+}
+
 const config: HardhatUserConfig = {
     defaultNetwork: "hardhat",
 
@@ -161,21 +189,25 @@ const config: HardhatUserConfig = {
             accounts: readAccounts('scdev').map(x => x.privateKey)
         },
         songbird: {
+            chainId: 19,
             url: process.env.SONGBIRD_RPC || "https://songbird-api.flare.network/ext/C/rpc",
             timeout: 40000,
             accounts: readAccounts('songbird').map(x => x.privateKey)
         },
         flare: {
+            chainId: 14,
             url: process.env.FLARE_RPC || "https://flare-api.flare.network/ext/C/rpc",
             timeout: 40000,
             accounts: readAccounts('flare').map(x => x.privateKey)
         },
         coston: {
+            chainId: 16,
             url: process.env.COSTON_RPC || "https://coston-api.flare.network/ext/C/rpc",
             timeout: 40000,
             accounts: readAccounts('coston').map(x => x.privateKey)
         },
         coston2: {
+            chainId: 114,
             url: process.env.COSTON2_RPC || "https://coston2-api.flare.network/ext/C/rpc",
             timeout: 40000,
             accounts: readAccounts('coston2').map(x => x.privateKey)
@@ -237,10 +269,8 @@ const config: HardhatUserConfig = {
         showTimeSpent: true,
         outputFile: ".gas-report.txt"
     },
-    etherscan: process.env.EXPLORER_API === "flarescan" ? flarescanApiUrls : flareExplorerApiUrls,
-    sourcify: {
-        enabled: false
-    }
+    etherscan: etherscanConfig(),
+    sourcify: sourcifyConfig(),
 };
 
 export default config;
