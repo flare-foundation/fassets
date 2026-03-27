@@ -7,7 +7,7 @@
   {
     "name": "Relay",
     "contractName": "Relay.sol",
-    "address": "0x92a6E1127262106611e1e129BB64B6D8654273F7"
+    "address": "0x051f214D346Cfd97B107BECb87E2B35D1b4287E9"
   },
   {
     "name": "FdcHub",
@@ -22,7 +22,7 @@
   {
     "name": "PriceSubmitter",
     "contractName": "PriceSubmitter.sol",
-    "address": "0x1000000000000000000000000000000000000003"
+    "address": "0x2ADC05f9c85149274266fFeD348C705622858820"
   },
   {
     "name": "Inflation",
@@ -37,12 +37,12 @@
   {
     "name": "FtsoRewardManager",
     "contractName": "FtsoRewardManager.sol",
-    "address": "0xfD36176C63dA52E783a347DE3544B0b44C7054a6"
+    "address": "0x332b2B083f20504588Dd0624D6fd14379b692FAb"
   },
   {
     "name": "CleanupBlockNumberManager",
     "contractName": "CleanupBlockNumberManager.sol",
-    "address": "0xB50DAcdaA3Af02F8A0533902C117ADFC31A31Ccf"
+    "address": "0xC03A9C0D30e272d44334ab732B281125290c9f3a"
   },
   {
     "name": "FtsoRegistry",
@@ -52,12 +52,12 @@
   {
     "name": "VoterWhitelister",
     "contractName": "VoterWhitelister.sol",
-    "address": "0xFAe0fd738dAbc8a0426F47437322b6d026A9FD95"
+    "address": "0x6b9d022224c11446Ad7D373F5BaF6271200FdA1f"
   },
   {
     "name": "FtsoManager",
     "contractName": "FtsoManager.sol",
-    "address": "0x12B6E9dB4Ac9889aBb92beAA6CF7d71f334c1168"
+    "address": "0x9E10Ca7D1EA3c6f50071d20bde95608b93D2efe1"
   },
   {
     "name": "WNat",
@@ -172,7 +172,7 @@
   {
     "name": "PollingFoundation",
     "contractName": "PollingFoundation.sol",
-    "address": "0xe435D00D30DEc987Afd5dAC2205F2b20e2F90eB8"
+    "address": "0x2E6E089da48214C955aD1f8f88ac19EBE1ca5eFC"
   },
   {
     "name": "AddressUpdater",
@@ -187,7 +187,7 @@
   {
     "name": "PollingFtso",
     "contractName": "PollingFtso.sol",
-    "address": "0xD036a8F254ef782cb93af4F829A1568E992c3864"
+    "address": "0xAB53139CcEb08b2b2C030F80FC036d1063d9e606"
   },
   {
     "name": "ClaimSetupManager",
