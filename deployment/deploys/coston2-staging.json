@@ -328,5 +328,20 @@
     "name": "MintingDefaultsFacet",
     "contractName": "MintingDefaultsFacet.sol",
     "address": "0x5f4ABb63e73d2C7eC0B2390E3ea17d79E8DE1a0f"
+  },
+  {
+    "name": "MintingTagManagerImplementation",
+    "contractName": "MintingTagManager.sol",
+    "address": "0x95D66101CBE31E813b48896c68fB206AA8C4Af5C"
+  },
+  {
+    "name": "MintingTagManager",
+    "contractName": "MintingTagManagerProxy.sol",
+    "address": "0xd11250b10361D9E184dfc555392166EC321605e6"
+  },
+  {
+    "name": "SmartAccountManager",
+    "contractName": "SmartAccountManagerMock.sol",
+    "address": "0x5E6562cB0aDAE67577E308e835764111377D8482"
   }
 ]

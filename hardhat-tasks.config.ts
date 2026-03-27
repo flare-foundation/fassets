@@ -12,6 +12,7 @@ import { deployAssetManager, deployAssetManagerController, deployCoreVaultManage
 import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory, verifyAgentOwnerRegistry, verifyAgentVaultFactory, verifyCollateralPoolFactory, verifyCollateralPoolTokenFactory } from "./deployment/lib/deploy-asset-manager-dependencies";
 import { deployCuts } from "./deployment/lib/deploy-cuts";
 import { deployPriceReaderV2, verifyFtsoV2PriceStore } from "./deployment/lib/deploy-ftsov2-price-store";
+import { deployMintingTagManager, verifyMintingTagManager } from "./deployment/lib/deploy-minting-tag-manager";
 import { currentDeployConfigDir, loadCurrentDeployContracts } from "./deployment/lib/deploy-utils";
 import { linkContracts } from "./deployment/lib/link-contracts";
 import { verifyAllAssetManagerFacets, verifyAssetManager, verifyAssetManagerController, verifyContract, verifyCoreVaultManager } from "./deployment/lib/verify-fasset-contracts";
@@ -34,6 +35,13 @@ task("deploy-price-reader-v2", "Deploy price reader v2.")
         const contracts = loadCurrentDeployContracts(true);
         await hre.run("compile");
         await deployPriceReaderV2(hre, contracts);
+    });
+
+task("deploy-minting-tag-manager", "Deploy minting tag manager.")
+    .setAction(async ({}, hre) => {
+        const contracts = loadCurrentDeployContracts(true);
+        await hre.run("compile");
+        await deployMintingTagManager(hre, contracts);
     });
 
 task("deploy-asset-manager-dependencies", "Deploy some or all asset manager dependencies.")
@@ -162,6 +170,12 @@ task("verify-price-reader-v2", "Verify deployed price reader v2.")
     .setAction(async ({}, hre) => {
         const contracts = loadCurrentDeployContracts(true);
         await verifyFtsoV2PriceStore(hre, contracts);
+    });
+
+task("verify-minting-tag-manager", "Verify deployed minting tag manager.")
+    .setAction(async ({}, hre) => {
+        const contracts = loadCurrentDeployContracts(true);
+        await verifyMintingTagManager(hre, contracts);
     });
 
 task("verify-asset-manager-facets", "Verify all asset manager facets.")
