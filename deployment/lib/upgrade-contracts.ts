@@ -112,8 +112,8 @@ export async function upgradeGovernedProxy({ hre, artifacts, contracts, deployer
         await proxy.upgradeTo(newImplAddress, { from: deployer });
         console.log(`${implementationContract} at ${proxy.address} upgraded to ${await getProxyImplementationAddress(hre, proxy.address)}`);
     } else {
-        const instance = await requireUnchecked(artifacts, contractName).at(proxy.address);
-        printExecuteDataUnchecked(implementationContract, instance, "upgradeTo", [newImplAddress]);
+        const instance = await artifacts.require("IUUPSUpgradeable").at(proxy.address);
+        printExecuteData(contractName, instance, "upgradeTo", [newImplAddress]);
     }
 }
 
@@ -150,11 +150,6 @@ export function printExecuteDataUnchecked(contractName: string, instance: Truffl
     console.log(`EXECUTE: ${contractName}(${instance.address}) ${method}(${formattedParams.join(", ")})`);
     const abidata = web3.eth.abi.encodeFunctionCall(methodAbi, args as string[]);
     console.log(`    abi: ${abidata}`);
-}
-
-function requireUnchecked(artifacts: Truffle.Artifacts, contractName: string) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-    return artifacts.require(contractName as any) as unknown as Truffle.Contract<Truffle.ContractInstance>;
 }
 
 async function shouldExecute(execute: boolean, contract: IGovernedRead) {
