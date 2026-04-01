@@ -40,6 +40,9 @@ export const assetManagerFacetsDeployedByDiamondCut = [
     'RedemptionTimeExtensionFacet',
     'CoreVaultClientFacet',
     'CoreVaultClientSettingsFacet',
+    'DirectMintingFacet',
+    'DirectMintingSettingsFacet',
+    'RedeemExtendedSettingsFacet',
 ]
 
 export async function deployAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, contracts: ContractStore, deployer: string) {
