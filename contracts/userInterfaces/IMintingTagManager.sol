@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
+import {IERC721EnumerableUpgradeable}
+    from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721EnumerableUpgradeable.sol";
 
 
 /**
@@ -13,7 +14,7 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721En
  *  minting recipient (the address that receives minted f-assets) and an optional allowed
  *  executor (the only address permitted to execute direct mintings with that tag).
  */
-interface IMintingTagManager is IERC721 {
+interface IMintingTagManager is IERC721EnumerableUpgradeable {
     /// Emitted when a new minting tag is reserved.
     event MintingTagReserved(uint256 tag, address owner);
 

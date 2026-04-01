@@ -82,7 +82,8 @@
   },
   "dependencies": {
     "@flarenetwork/flare-periphery-contracts": "0.1.44-alpha.5",
-    "@openzeppelin/contracts": "4.9.6"
+    "@openzeppelin/contracts": "4.9.6",
+    "@openzeppelin/contracts-upgradeable": "4.9.6"
   },
   "devDependencies": {
     "@eslint/compat": "^1.3.0",

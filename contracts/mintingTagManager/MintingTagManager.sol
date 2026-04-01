@@ -2,8 +2,8 @@
 pragma solidity ^0.8.27;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {ERC721} from  "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {ERC721Enumerable} from  "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import {ERC721Upgradeable} from  "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import {ERC721EnumerableUpgradeable} from  "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 import {GovernedBase} from "../governance/implementation/GovernedBase.sol";
 import {GovernedUUPSProxyImplementation} from "../governance/implementation/GovernedUUPSProxyImplementation.sol";
@@ -13,7 +13,7 @@ import {ReentrancyGuard} from "../openzeppelin/security/ReentrancyGuard.sol";
 
 
 contract MintingTagManager is
-    ERC721Enumerable,
+    ERC721EnumerableUpgradeable,
     GovernedUUPSProxyImplementation,
     IMintingTagManager,
     ReentrancyGuard
@@ -21,7 +21,6 @@ contract MintingTagManager is
     using SafeCast for uint256;
 
     error OnlyTagOwner();
-    error AlreadyInitialized();
     error WrongReservationPaymentAmount();
     error ZeroAddress();
 
@@ -38,22 +37,21 @@ contract MintingTagManager is
     // must be longer than the time to wait for FDC proof
     uint256 internal constant EXECUTOR_CHANGE_ACTIVE_AFTER_SECONDS = 10 minutes;
 
-    string private _name;
-    string private _symbol;
-
     uint256 public nextAvailableTag = 0;
     uint256 public reservationFee;
     address payable public reservationFeeRecipient;
     mapping (uint256 mintingTag => TagData) private tagData;
+
+    // storage gap for future variables
+    uint256[46] private __gap;
 
     modifier onlyTagOwner(uint256 _mintingTag) {
         require(ownerOf(_mintingTag) == msg.sender, OnlyTagOwner());
         _;
     }
 
-    constructor()
-        ERC721("", "")
-    {
+    constructor() {
+        _disableInitializers();
     }
 
     function initialize(
@@ -64,12 +62,13 @@ contract MintingTagManager is
         uint256 _reservationFee,
         address payable _reservationFeeRecipient,
         uint256 _reservedTagsCount
-    ) external {
-        require(nextAvailableTag == 0, AlreadyInitialized());
+    )
+        external
+        initializer
+    {
+        __ERC721_init(name_, symbol_);
         GovernedBase.initialise(_governanceSettings, _initialGovernance);
         nextAvailableTag = _reservedTagsCount;
-        _name = name_;
-        _symbol = symbol_;
         reservationFee = _reservationFee;
         reservationFeeRecipient = _reservationFeeRecipient;
     }
@@ -122,20 +121,6 @@ contract MintingTagManager is
 
     function transfer(address _to, uint256 _mintingTag) external {
         _transfer(msg.sender, _to, _mintingTag);
-    }
-
-    /**
-     * @dev See {IERC721Metadata-name}.
-     */
-    function name() public view virtual override returns (string memory) {
-        return _name;
-    }
-
-    /**
-     * @dev See {IERC721Metadata-symbol}.
-     */
-    function symbol() public view virtual override returns (string memory) {
-        return _symbol;
     }
 
     function reservedTagsForOwner(address _owner)
