@@ -161,8 +161,7 @@ contract MintingTagManager is
         external view virtual override
         returns (address)
     {
-        TagData storage tag = tagData[_mintingTag];
-        return block.timestamp >= tag.allowedExecutorActiveAfterTs ? tag.allowedExecutor : tag.oldAllowedExecutor;
+        return _allowedExecutor(tagData[_mintingTag]);
     }
 
     function pendingAllowedExecutorChange(uint256 _mintingTag)
@@ -205,7 +204,7 @@ contract MintingTagManager is
 
     function _setExecutor(uint256 _mintingTag, address _executor) internal {
         TagData storage tag = tagData[_mintingTag];
-        address currentAllowedExecutor = tag.allowedExecutor;
+        address currentAllowedExecutor = _allowedExecutor(tag);
         if (currentAllowedExecutor != _executor) {
             uint256 allowedExecutorActiveAfterTs = block.timestamp + EXECUTOR_CHANGE_ACTIVE_AFTER_SECONDS;
             tag.oldAllowedExecutor = currentAllowedExecutor;
@@ -213,5 +212,9 @@ contract MintingTagManager is
             tag.allowedExecutorActiveAfterTs = allowedExecutorActiveAfterTs.toUint64();
             emit AllowedExecutorChangePending(_mintingTag, _executor, allowedExecutorActiveAfterTs);
         }
+    }
+
+    function _allowedExecutor(TagData storage _tag) internal view returns (address) {
+        return block.timestamp >= _tag.allowedExecutorActiveAfterTs ? _tag.allowedExecutor : _tag.oldAllowedExecutor;
     }
 }

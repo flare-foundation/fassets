@@ -4,7 +4,7 @@ import { ether, expectEvent, expectRevert, time } from "../../../lib/test-utils/
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { MintingTagManagerInstance, GovernanceSettingsMockInstance } from "../../../typechain-truffle";
-import { BNish } from "../../../lib/utils/helpers";
+import { BNish, MINUTES } from "../../../lib/utils/helpers";
 
 const GovernanceSettingsMock = artifacts.require("GovernanceSettingsMock");
 const MintingTagManager = artifacts.require("MintingTagManager");
@@ -329,22 +329,46 @@ contract("MintingTagManager", function (accounts) {
         assertWeb3Equal(owner2Tags[0], tag2);
     });
 
-    it("changing executor twice is a no-op and does not reset the delay", async () => {
+    it("changing executor while a change is pending should not immediately enforce the previous change", async () => {
+        const executor2 = accounts[6];
+        const res = await mintingTagManager.reserve({ from: tagOwner, value: reservationFee });
+        const reserved = requiredEventArgs(res, "MintingTagReserved");
+        // set executor to executor (pending)
+        await mintingTagManager.setAllowedExecutor(reserved.tag, executor, { from: tagOwner });
+        // active executor should still be zero
+        assertWeb3Equal(await mintingTagManager.allowedExecutor(reserved.tag), ZERO_ADDRESS);
+        // before the first change activates, change to executor2
+        const resEx2 = await mintingTagManager.setAllowedExecutor(reserved.tag, executor2, { from: tagOwner });
+        const args2 = requiredEventArgs(resEx2, "AllowedExecutorChangePending");
+        assertWeb3Equal(args2.executor, executor2);
+        // the active executor should still be zero (not executor!)
+        assertWeb3Equal(await mintingTagManager.allowedExecutor(reserved.tag), ZERO_ADDRESS);
+        // pending change should now be for executor2
+        await checkPendingChange(reserved.tag, true, executor2, args2.activeAfterTs);
+        // after the second change's delay, executor2 should be active
+        await time.increaseTo(args2.activeAfterTs);
+        assertWeb3Equal(await mintingTagManager.allowedExecutor(reserved.tag), executor2);
+        await checkPendingChange(reserved.tag, false, ZERO_ADDRESS, 0);
+    });
+
+    it("setting same pending executor again resets the delay, but is a no-op once active", async () => {
         const res = await mintingTagManager.reserve({ from: tagOwner, value: reservationFee });
         const reserved = requiredEventArgs(res, "MintingTagReserved");
         // set executor first time
         const resEx1 = await mintingTagManager.setAllowedExecutor(reserved.tag, executor, { from: tagOwner });
         const args1 = requiredEventArgs(resEx1, "AllowedExecutorChangePending");
-        // set executor second time before the first change is active
+        await time.deterministicIncrease(1 * MINUTES);   // much less than 10 minutes delay
+        // set executor second time before the first change is active — resets the delay
         const resEx2 = await mintingTagManager.setAllowedExecutor(reserved.tag, executor, { from: tagOwner });
-        expectEvent.notEmitted(resEx2, "AllowedExecutorChangePending"); // no new event should be emitted
-        // pending change should stay for the first change
-        await checkPendingChange(reserved.tag, true, executor, args1.activeAfterTs);
-        // increase time until the change should be active
-        await time.increaseTo(args1.activeAfterTs);
+        const args2 = requiredEventArgs(resEx2, "AllowedExecutorChangePending");
+        // pending change should have a new (later) activeAfterTs
+        assert.isTrue(args2.activeAfterTs.gt(args1.activeAfterTs));
+        await checkPendingChange(reserved.tag, true, executor, args2.activeAfterTs);
+        // increase time until the second change should be active
+        await time.increaseTo(args2.activeAfterTs);
         // new executor should be active now
         assertWeb3Equal(await mintingTagManager.allowedExecutor(reserved.tag), executor);
-        // set executor again to same value, it should not emit event or change anything
+        // set executor again to same value — now it's already active, so it's a no-op
         const resEx3 = await mintingTagManager.setAllowedExecutor(reserved.tag, executor, { from: tagOwner });
         expectEvent.notEmitted(resEx3, "AllowedExecutorChangePending");
         // and there should be no pending change now
