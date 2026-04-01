@@ -5,7 +5,7 @@ import {IInstructionsFacet} from "@flarenetwork/flare-periphery-contracts/flare/
 import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IPayment.sol";
 import {IFAsset} from "../../userInterfaces/IFAsset.sol";
 
-
+// solhint-disable no-empty-blocks
 contract SmartAccountManagerMock is IInstructionsFacet {
     event MintedToSmartAccount(
         bytes32 transactionId,

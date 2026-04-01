@@ -2,8 +2,8 @@
 pragma solidity ^0.8.27;
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {ERC721Upgradeable} from  "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import {ERC721EnumerableUpgradeable} from  "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+import {ERC721EnumerableUpgradeable}
+    from  "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 import {GovernedBase} from "../governance/implementation/GovernedBase.sol";
 import {GovernedUUPSProxyImplementation} from "../governance/implementation/GovernedUUPSProxyImplementation.sol";
