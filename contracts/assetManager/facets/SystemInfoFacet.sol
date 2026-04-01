@@ -135,6 +135,37 @@ contract SystemInfoFacet is AssetManagerBase {
         });
     }
 
+    function redemptionRequestInfoExt(
+        uint256 _redemptionRequestId
+    )
+        external view
+        returns (RedemptionRequestInfo.DataExt memory)
+    {
+        uint64 requestId = SafeCast.toUint64(_redemptionRequestId);
+        Redemption.Request storage request = Redemptions.getRedemptionRequest(requestId, false);
+        return RedemptionRequestInfo.DataExt({
+            redemptionRequestId: requestId,
+            status: _convertRedemptionStatus(request.status),
+            agentVault: request.agentVault,
+            redeemer: request.redeemer,
+            paymentAddress: request.redeemerUnderlyingAddressString,
+            paymentReference: PaymentReference.redemption(requestId),
+            valueUBA: request.underlyingValueUBA,
+            feeUBA: request.underlyingFeeUBA,
+            poolFeeShareBIPS: request.poolFeeShareBIPS,
+            firstUnderlyingBlock: request.firstUnderlyingBlock,
+            lastUnderlyingBlock: request.lastUnderlyingBlock,
+            lastUnderlyingTimestamp: request.lastUnderlyingTimestamp,
+            timestamp: request.timestamp,
+            poolSelfClose: request.poolSelfClose,
+            transferToCoreVault: request.transferToCoreVault,
+            executor: request.executor,
+            executorFeeNatWei: request.executorFeeNatGWei * Conversion.GWEI,
+            requiresDestinationTag: request.requiresDestinationTag,
+            destinationTag: request.destinationTag
+        });
+    }
+
     function _convertCollateralReservationStatus(CollateralReservation.Status _status)
         private pure
         returns (CollateralReservationInfo.Status)

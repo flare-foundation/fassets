@@ -3,6 +3,7 @@ pragma solidity >=0.7.6 <0.9;
 
 import {IXRPPayment} from "@flarenetwork/flare-periphery-contracts/flare/IXRPPayment.sol";
 import {IXRPPaymentNonexistence} from "@flarenetwork/flare-periphery-contracts/flare/IXRPPaymentNonexistence.sol";
+import {RedemptionRequestInfo} from "./data/RedemptionRequestInfo.sol";
 
 
 /**
@@ -144,4 +145,14 @@ interface IRedeemExtended {
         external view
         returns (bool);
 
+    /**
+     * Returns the data about an ongoing redemption request.
+     * Note: once the redemptions is confirmed, the request is deleted and this method fails.
+     * However, if there is no payment and the redemption defaults, the method works and returns status DEFAULTED.
+     * Note: this method adds redemptionWithTag specific fields to the data returned by `redemptionRequestInfo`.
+     * @param _redemptionRequestId the redemption request id, as used for confirming or defaulting the redemption
+     */
+    function redemptionRequestInfoExt(uint256 _redemptionRequestId)
+        external view
+        returns (RedemptionRequestInfo.DataExt memory);
 }

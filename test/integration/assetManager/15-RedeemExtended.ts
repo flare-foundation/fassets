@@ -1,17 +1,17 @@
+import { RedemptionRequestStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
 import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
-import { expectEvent, expectRevert } from "../../../lib/test-utils/test-helpers";
 import { waitForTimelock } from "../../../lib/test-utils/fasset/CreateAssetManager";
+import { expectEvent, expectRevert } from "../../../lib/test-utils/test-helpers";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { EventArgs } from "../../../lib/utils/events/common";
-import { requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
-import { filterEvents } from "../../../lib/utils/events/truffle";
 import { RedemptionWithTagRequested } from "../../../typechain-truffle/IIAssetManager";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
@@ -942,6 +942,83 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 { from: redeemer.address });
             const request = requiredEventArgs(res, 'RedemptionRequested');
             assertWeb3Equal(request.valueUBA, redeemAmountUBA);
+        });
+    });
+
+    describe("redemptionRequestInfoExt", () => {
+        it("should return correct extended info for redeemWithTag redemption", async () => {
+            const { minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            // redeem with tag
+            const destinationTag = 42;
+            const executorFee = toWei("0.01");
+            const res = await context.assetManager.redeemWithTag(
+                context.convertLotsToUBA(3), redeemer.underlyingAddress, redeemerAddress2, destinationTag,
+                { from: redeemer.address, value: executorFee }
+            );
+            const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
+            // get extended info
+            const info = await context.assetManager.redemptionRequestInfoExt(request.requestId);
+            // verify all fields
+            assertWeb3Equal(info.redemptionRequestId, request.requestId);
+            assertWeb3Equal(info.status, RedemptionRequestStatus.ACTIVE);
+            assertWeb3Equal(info.agentVault, request.agentVault);
+            assertWeb3Equal(info.redeemer, request.redeemer);
+            assertWeb3Equal(info.paymentAddress, request.paymentAddress);
+            assertWeb3Equal(info.paymentReference, request.paymentReference);
+            assertWeb3Equal(info.valueUBA, request.valueUBA);
+            assertWeb3Equal(info.feeUBA, request.feeUBA);
+            assertWeb3Equal(info.firstUnderlyingBlock, request.firstUnderlyingBlock);
+            assertWeb3Equal(info.lastUnderlyingBlock, request.lastUnderlyingBlock);
+            assertWeb3Equal(info.lastUnderlyingTimestamp, request.lastUnderlyingTimestamp);
+            assertWeb3Equal(info.executor, request.executor);
+            assertWeb3Equal(info.executorFeeNatWei, request.executorFeeNatWei);
+            assertWeb3Equal(info.poolSelfClose, false);
+            assertWeb3Equal(info.transferToCoreVault, false);
+            // extended fields
+            assertWeb3Equal(info.requiresDestinationTag, true);
+            assertWeb3Equal(info.destinationTag, destinationTag);
+        });
+
+        it("should return requiresDestinationTag=false for normal redemption", async () => {
+            const { agent, minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            // normal redeem (no tag)
+            const [requests] = await redeemer.requestRedemption(3);
+            const request = requests[0];
+            // get extended info
+            const info = await context.assetManager.redemptionRequestInfoExt(request.requestId);
+            assertWeb3Equal(info.redemptionRequestId, request.requestId);
+            assertWeb3Equal(info.status, RedemptionRequestStatus.ACTIVE);
+            assertWeb3Equal(info.requiresDestinationTag, false);
+            assertWeb3Equal(info.destinationTag, 0);
+        });
+
+        it("should reflect status changes after default", async () => {
+            const { agent, minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            // redeem with tag
+            const destinationTag = 99;
+            const res = await context.assetManager.redeemWithTag(
+                context.convertLotsToUBA(3), redeemer.underlyingAddress, ZERO_ADDRESS, destinationTag,
+                { from: redeemer.address }
+            );
+            const request = requiredEventArgs(res, 'RedemptionWithTagRequested');
+            // initially active
+            const info1 = await context.assetManager.redemptionRequestInfoExt(request.requestId);
+            assertWeb3Equal(info1.status, RedemptionRequestStatus.ACTIVE);
+            // default (must use xrpRedemptionPaymentDefault for tagged redemptions)
+            context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+            await redeemer.xrpRedemptionPaymentDefault(request);
+            // should be defaulted
+            const info2 = await context.assetManager.redemptionRequestInfoExt(request.requestId);
+            assertWeb3Equal(info2.status, RedemptionRequestStatus.DEFAULTED_UNCONFIRMED);
+            // extended fields remain correct
+            assertWeb3Equal(info2.requiresDestinationTag, true);
+            assertWeb3Equal(info2.destinationTag, destinationTag);
         });
     });
 
