@@ -696,8 +696,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             expectEvent.notEmitted(res, 'DirectMintingExecutedToSmartAccount');
             expectEvent(res, 'DirectMintingPaymentTooSmallForFee', {
                 transactionId: txHash,
-                receivedAmount: totalMintingAmount,
-                mintingFeeUBA: context.initSettings.directMintingMinimumFeeUBA,
+                receivedAmountUBA: totalMintingAmount,
+                minimumMintingFeeUBA: context.initSettings.directMintingMinimumFeeUBA,
             });
             assertWeb3Equal(await context.fAsset.balanceOf(minter.address), 0);
             assertWeb3Equal(await context.fAsset.balanceOf(executorAddress1), 0);
@@ -713,8 +713,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             expectEvent.notEmitted(res, 'DirectMintingExecutedToSmartAccount');
             expectEvent(res, 'DirectMintingPaymentTooSmallForFee', {
                 transactionId: txHash,
-                receivedAmount: totalMintingAmount,
-                mintingFeeUBA: context.initSettings.directMintingMinimumFeeUBA,
+                receivedAmountUBA: totalMintingAmount,
+                minimumMintingFeeUBA: context.initSettings.directMintingMinimumFeeUBA,
             });
             assertWeb3Equal(await context.fAsset.balanceOf(executorAddress1), 0);
         });

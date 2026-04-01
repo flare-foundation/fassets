@@ -34,8 +34,8 @@ interface IDirectMinting {
 
     event DirectMintingPaymentTooSmallForFee(
         bytes32 transactionId,
-        uint256 receivedAmount,
-        uint256 mintingFeeUBA);
+        uint256 receivedAmountUBA,
+        uint256 minimumMintingFeeUBA);
 
     event LargeDirectMintingDelayed(
         bytes32 transactionId,
