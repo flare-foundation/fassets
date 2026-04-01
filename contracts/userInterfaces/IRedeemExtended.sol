@@ -83,7 +83,8 @@ interface IRedeemExtended {
      *      that will be received by the redeemer - the redemption fee will be subtracted
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
-     * @param _destinationTag the destination tag that is required in the redemption payment (only for XRP)
+     * @param _destinationTag the destination tag that is required in the redemption payment (only for XRP;
+     *      it must fit in 32 bits for now)
      * @return _redeemedAmountUBA the actual redeemed amount; may be less than requested if there are not enough
      *      redemption tickets available or the maximum redemption ticket limit is reached
      */
@@ -91,7 +92,7 @@ interface IRedeemExtended {
         uint256 _amountUBA,
         string memory _redeemerUnderlyingAddressString,
         address payable _executor,
-        uint64 _destinationTag
+        uint256 _destinationTag
     ) external payable
         returns (uint256 _redeemedAmountUBA);
 
