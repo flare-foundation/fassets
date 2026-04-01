@@ -148,17 +148,18 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
             CollateralToTokenRatioTooLow());
         require(totalCollateral <= totalPoolTokens * MAX_COLLATERAL_TO_TOKEN_RATIO_ON_ENTER,
             CollateralToTokenRatioTooHigh());
+        uint256 virtualFees = _totalVirtualFees();
         if (totalPoolTokens == 0) {
             // if the pool is empty of tokens and collateral but contains fees, the new entrant can claim them,
             // but must add enough collateral so that ratio fees/tokens stays normal for future fees
             AssetPrice memory assetPrice = _getAssetPrice();
-            require(msg.value >= totalFAssetFees.mulDiv(assetPrice.mul, assetPrice.div), AmountOfCollateralTooLow());
+            require(msg.value >= virtualFees.mulDiv(assetPrice.mul, assetPrice.div), AmountOfCollateralTooLow());
         }
         // calculate obtained pool tokens and free f-assets
         uint256 tokenShare = _collateralToTokenShare(msg.value);
         assert(tokenShare > 0);     // should never be 0 because of the three requires at the start of the method
         // calculate and create fee debt
-        uint256 feeDebt = totalPoolTokens > 0 ? _totalVirtualFees().mulDiv(tokenShare, totalPoolTokens) : 0;
+        uint256 feeDebt = totalPoolTokens > 0 ? virtualFees.mulDiv(tokenShare, totalPoolTokens) : 0;
         _createFAssetFeeDebt(msg.sender, feeDebt);
         // deposit collateral
         _depositWNat();

@@ -730,6 +730,36 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(earnedNat, poolNatBalance.mul(freeTokens).div(allTokens));
         });
 
+        it("should allow entry with virtualFees worth of collateral when totalFAssetFees > virtualFees after exit without fee withdrawal", async () => {
+            // user0 enters the pool
+            await collateralPool.enter({ value: ETH(10), from: accounts[0] });
+            // deposit fAsset fees
+            await givePoolFAssetFees(ETH(100));
+            // set fAssetsBackedByPool to 0 so exit CR check passes (fees are not backed fAssets)
+            await assetManager.setFAssetsBackedByPool(0);
+            // user0 exits fully WITHOUT withdrawing fees
+            const user0Tokens = await collateralPoolToken.balanceOf(accounts[0]);
+            await collateralPool.exit(user0Tokens, { from: accounts[0] });
+            // After exit: totalFAssetFees is still 100, but totalFAssetFeeDebt is negative
+            // so virtualFees = totalFAssetFees + totalFAssetFeeDebt = 0
+            const totalFees = await collateralPool.totalFAssetFees();
+            const totalDebt = await collateralPool.totalFAssetFeeDebt();
+            assert.isTrue(totalFees.gt(BN_ZERO), "totalFAssetFees should be positive");
+            assert.isTrue(totalDebt.isNeg(), "totalFAssetFeeDebt should be negative");
+            const virtualFees = totalFees.add(totalDebt);
+            assertEqualBN(virtualFees, BN_ZERO);
+            // user1 enters with MIN_NAT_TO_ENTER — enough because virtualFees = 0
+            // but would fail if the code used totalFAssetFees instead of virtualFees
+            const { 0: priceMul, 1: priceDiv } = await assetManager.assetPriceNatWei();
+            const requiredForTotalFees = totalFees.mul(priceMul).div(priceDiv);
+            assert.isTrue(requiredForTotalFees.gt(MIN_NAT_TO_ENTER),
+                "MIN_NAT_TO_ENTER must be less than what totalFAssetFees would require");
+            await collateralPool.enter({ value: MIN_NAT_TO_ENTER, from: accounts[1] });
+            // verify user1 successfully entered
+            const user1Tokens = await collateralPoolToken.balanceOf(accounts[1]);
+            assert.isTrue(user1Tokens.gt(BN_ZERO), "user1 should have received pool tokens");
+        });
+
         it("should eliminate all debt tokens after exit", async () => {
             // account0 enters the pool
             await collateralPool.enter({ value: ETH(10), from: accounts[0] });
