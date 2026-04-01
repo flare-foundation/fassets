@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
+import {IInstructionsFacet} from "@flarenetwork/flare-periphery-contracts/flare/IInstructionsFacet.sol";
 import {IMintingTagManager} from "../../userInterfaces/IMintingTagManager.sol";
-import {ISmartAccountManagerMock} from "../mock/ISmartAccountManagerMock.sol";
 import {MintingRateLimiter} from "./data/MintingRateLimiter.sol";
 
 
@@ -15,7 +15,7 @@ library DirectMinting {
     struct State {
         uint8 version;
         IMintingTagManager mintingTagManager;
-        ISmartAccountManagerMock smartAccountManager;
+        IInstructionsFacet smartAccountManager;
         address mintingFeeReceiver;
         uint64 minimumMintingFeeAmg;
         uint16 mintingFeeBIPS;

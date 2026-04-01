@@ -2,13 +2,13 @@
 pragma solidity ^0.8.27;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IInstructionsFacet} from "@flarenetwork/flare-periphery-contracts/flare/IInstructionsFacet.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {IMintingTagManager} from "../../userInterfaces/IMintingTagManager.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {IDirectMinting} from "../../userInterfaces/IDirectMinting.sol";
 import {IDirectMintingSettings} from "../../userInterfaces/IDirectMintingSettings.sol";
-import {ISmartAccountManagerMock} from "../mock/ISmartAccountManagerMock.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafePct} from "../../utils/library/SafePct.sol";
 import {Globals} from "../library/Globals.sol";
 import {Conversion} from "../library/Conversion.sol";
@@ -71,7 +71,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
     {
         require(_smartAccountManager != address(0), AddressZero());
         DirectMinting.State storage state = DirectMinting.getState();
-        state.smartAccountManager = ISmartAccountManagerMock(_smartAccountManager);
+        state.smartAccountManager = IInstructionsFacet(_smartAccountManager);
         emit IAssetManagerEvents.ContractChanged("smartAccountManager", _smartAccountManager);
     }
 

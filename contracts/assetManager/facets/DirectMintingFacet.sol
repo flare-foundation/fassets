@@ -286,7 +286,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
             mintedAmountUBA,
             _payment.data.responseBody.blockTimestamp,
             memoData,
-            msg.sender
+            payable(msg.sender)
         );
         emit DirectMintingExecutedToSmartAccount(
             _payment.data.requestBody.transactionId,

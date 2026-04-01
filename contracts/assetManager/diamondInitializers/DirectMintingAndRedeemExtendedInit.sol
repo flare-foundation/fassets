@@ -2,6 +2,8 @@
 pragma solidity ^0.8.27;
 
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IInstructionsFacet} from "@flarenetwork/flare-periphery-contracts/flare/IInstructionsFacet.sol";
 import {IMintingTagManager} from "../../userInterfaces/IMintingTagManager.sol";
 import {IDirectMinting} from "../../userInterfaces/IDirectMinting.sol";
 import {IDirectMintingSettings} from "../../userInterfaces/IDirectMintingSettings.sol";
@@ -9,8 +11,6 @@ import {ICoreVaultClient} from "../../userInterfaces/ICoreVaultClient.sol";
 import {ICoreVaultClientSettings} from "../../userInterfaces/ICoreVaultClientSettings.sol";
 import {IRedeemExtended} from "../../userInterfaces/IRedeemExtended.sol";
 import {IRedeemExtendedSettings} from "../../userInterfaces/IRedeemExtendedSettings.sol";
-import {ISmartAccountManagerMock} from "../mock/ISmartAccountManagerMock.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {LibDiamond} from "../../diamond/library/LibDiamond.sol";
 import {Conversion} from "../library/Conversion.sol";
 import {DirectMinting} from "../library/DirectMinting.sol";
@@ -91,7 +91,7 @@ contract DirectMintingAndRedeemExtendedInit {
     function _initDirectMinting(InitParams calldata _params) private {
         DirectMinting.State storage state = DirectMinting.getState();
         state.mintingTagManager = IMintingTagManager(_params.mintingTagManager);
-        state.smartAccountManager = ISmartAccountManagerMock(_params.smartAccountManager);
+        state.smartAccountManager = IInstructionsFacet(_params.smartAccountManager);
         state.mintingFeeReceiver = _params.mintingFeeReceiver;
         state.minimumMintingFeeAmg = Conversion.convertUBAToAmg(_params.minimumMintingFeeUBA);
         state.mintingFeeBIPS = _params.mintingFeeBIPS.toUint16();

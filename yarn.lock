@@ -909,11 +909,12 @@
     "@ethersproject/properties" "^5.7.0"
     "@ethersproject/strings" "^5.7.0"
 
-"@flarenetwork/flare-periphery-contracts@0.1.44-alpha.2":
-  version "0.1.44-alpha.2"
-  resolved "https://registry.yarnpkg.com/@flarenetwork/flare-periphery-contracts/-/flare-periphery-contracts-0.1.44-alpha.2.tgz#87649a9f0e99f832f88a25ea7297889abc33dced"
-  integrity sha512-fIvcEe40M/5d+l72SSRM98c9joLnHtGZvkkdbSJ10J1gaEX6bjF3Fqsv3KZTYEMqX4iqH4b8h/nOIcnpHE/gzw==
+"@flarenetwork/flare-periphery-contracts@0.1.44-alpha.5":
+  version "0.1.44-alpha.5"
+  resolved "https://registry.yarnpkg.com/@flarenetwork/flare-periphery-contracts/-/flare-periphery-contracts-0.1.44-alpha.5.tgz#a1b66a86190e9d118ecda97fba2e2944cc36bd92"
+  integrity sha512-ObaMG+YxO86cHbv4bUxdxnhn63QcjEZdx1Lj6N5ggoJRZzWDw69AUBH6j7UewQSo60fy4uWC6Y/TszsaXkv22Q==
   dependencies:
+    "@layerzerolabs/lz-evm-protocol-v2" "^3.0.0"
     "@openzeppelin/contracts" "^4.6.0"
 
 "@flarenetwork/js-flare-common@0.0.2":
@@ -1002,6 +1003,11 @@
   dependencies:
     "@jridgewell/resolve-uri" "^3.0.3"
     "@jridgewell/sourcemap-codec" "^1.4.10"
+
+"@layerzerolabs/lz-evm-protocol-v2@^3.0.0":
+  version "3.0.167"
+  resolved "https://registry.yarnpkg.com/@layerzerolabs/lz-evm-protocol-v2/-/lz-evm-protocol-v2-3.0.167.tgz#3daab6d0602ee4eded3f45a0bd0979ca2a5ee3aa"
+  integrity sha512-LEvKkC65Smdm3AwTY6vi5lcB6g1QJtFMNi2V0fEGLK5VMrYnOkGKSpWE+wc1oBoK2x1dOqQLpsEfvfVIgzfL4w==
 
 "@noble/curves@1.2.0":
   version "1.2.0"
