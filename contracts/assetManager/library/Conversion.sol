@@ -131,7 +131,7 @@ library Conversion {
         // if tokenFtsoSymbol is empty, it is assumed that the token is a USD-like stablecoin
         // so `_amountUSD5` is (approximately) the correct amount of tokens
         if (bytes(_token.tokenFtsoSymbol).length == 0) {
-            return _amountUSD5;
+            return _amountUSD5.mulDiv(10 ** _token.decimals, 1e5);
         }
         return convertFromUSD5(_amountUSD5, _token.tokenFtsoSymbol, _token.decimals);
     }

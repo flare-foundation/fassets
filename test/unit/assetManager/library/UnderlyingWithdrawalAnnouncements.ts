@@ -10,7 +10,7 @@ import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/tes
 import { assertWeb3Equal } from "../../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { toBN } from "../../../../lib/utils/helpers";
+import { BN_TEN, toBN, toBNExp } from "../../../../lib/utils/helpers";
 import { ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatMockInstance } from "../../../../typechain-truffle";
 
 contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; UnderlyingWithdrawalAnnouncements basic tests`, accounts => {
@@ -148,6 +148,12 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         collaterals[1].directPricePair = true;
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        // deposit vault collateral so that the reward payout has enough balance
+        const depositAmount = toBNExp(1000, 18);
+        await usdc.mintAmount(agentOwner1, depositAmount);
+        await usdc.approve(agentVault.address, depositAmount, { from: agentOwner1 });
+        await agentVault.depositCollateral(usdc.address, depositAmount, { from: agentOwner1 });
+        // mint some underlying tokens to agent and announce withdrawal
         chain.mint(underlyingAgent1, 500);
         await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
@@ -157,10 +163,15 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
         const manSettings = await assetManager.getSettings();
         await time.deterministicIncrease(manSettings.confirmationByOthersAfterSeconds);
+        const chlgBalanceBefore = await usdc.balanceOf(accounts[12]);
         const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: accounts[12] });
+        const chlgBalanceAfter = await usdc.balanceOf(accounts[12]);
         // assert
         expectEvent(res, "UnderlyingWithdrawalConfirmed", { agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash });
         assert.isAbove(Number(requiredEventArgs(res, "UnderlyingWithdrawalConfirmed").announcementId), 0);
+        // the user presenting confirmation should be rewarded
+        const expectedReward = toBN(settings.confirmationByOthersRewardUSD5).mul(BN_TEN.pow(await usdc.decimals())).div(toBNExp(1, 5)); // convert from USD5 to token decimals
+        assertWeb3Equal(chlgBalanceAfter.sub(chlgBalanceBefore), expectedReward);
     });
 
     it("others can confirm underlying withdrawal after some time", async () => {
