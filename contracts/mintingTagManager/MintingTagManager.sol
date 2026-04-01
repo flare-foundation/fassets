@@ -189,7 +189,7 @@ contract MintingTagManager is
     function _reserve(address _to) internal returns (uint256) {
         uint256 mintingTag = nextAvailableTag;
         nextAvailableTag += 1;
-        _mint(_to, mintingTag);
+        _safeMint(_to, mintingTag);
         emit MintingTagReserved(mintingTag, _to);
         return mintingTag;
     }
