@@ -8,11 +8,12 @@ import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { InclusionIterable, coinFlip, currentRealTime, getEnv, randomChoice, randomNum, weightedRandomChoice } from "../../../lib/test-utils/simulation-utils";
 import { time } from "../../../lib/test-utils/test-helpers";
+import { assignMintingTagManager, assignSmartAccountManagerMock } from "../../../lib/test-utils/test-settings";
 import { getTestFile } from "../../../lib/test-utils/test-suite-helpers";
 import { Web3EventDecoder } from "../../../lib/test-utils/Web3EventDecoder";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
-import { expectErrors, formatBN, latestBlockTimestamp, mulDecimal, sleep, systemTimestamp, toBIPS, toBN, toWei } from "../../../lib/utils/helpers";
+import { expectErrors, formatBN, latestBlockTimestamp, mulDecimal, sleep, systemTimestamp, toBIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { LogFile } from "../../../lib/utils/logging";
 import { InterceptorEvmEvents } from "./InterceptorEvmEvents";
 import { MultiStateLock } from "./MultiStateLock";
@@ -29,6 +30,9 @@ import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
 contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulation tests`, accounts => {
     const startTimestamp = systemTimestamp();
     const governance = accounts[1];
+    const coreVaultTriggeringAccountAddress = accounts[2];
+    const mintingTagManagerFeeReceiver = accounts[3];
+    const directMintingFeeReceiver = accounts[4];
 
     const CHAIN = getEnv('CHAIN', 'string', 'xrp');
     const LOOPS = getEnv('LOOPS', 'number', 100);
@@ -72,8 +76,26 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
         // create context
         commonContext = await CommonContext.createTest(governance);
         chainInfo = testChainInfo[CHAIN as keyof typeof testChainInfo] ?? assert.fail(`Invalid chain ${CHAIN}`);
-        context = await AssetContext.createTest(commonContext, chainInfo);
+        context = await AssetContext.createTest(commonContext, chainInfo, {
+            testSettings: {
+                directMintingFeeReceiver: directMintingFeeReceiver,
+            }
+        });
         chain = context.chain as MockChain;
+        // create core vault
+        await context.assignCoreVaultManager({
+            underlyingAddress: "core_vault_underlying",
+            custodianAddress: "core_vault_custodian",
+            triggeringAccounts: [coreVaultTriggeringAccountAddress],
+        });
+        await context.coreVaultManager!.addAllowedDestinationAddresses(agents.map(agent => agent.agent.underlyingAddress), { from: governance });
+        // create minting tag manager
+        await context.assignMintingTagManager({
+            fee: toBNExp("100", 18),    // 100 NAT per minting tag
+            feeReceiver: mintingTagManagerFeeReceiver,
+            reservedTags: 20
+        });
+        await context.assignSmartAccountManagerMock();
         // create interceptor
         runnerLock = new MultiStateLock();
         eventDecoder = new Web3EventDecoder({});
@@ -85,6 +107,9 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
             fAsset: context.fAsset,
             wnat: context.wNat,
             priceStore: context.priceStore,
+            coreVaultManager: context.coreVaultManager!,
+            mintingTagManager: context.mintingTagManager!,
+            smartAccountManager: context.smartAccountManager!,
         });
         for (const [key, token] of Object.entries(context.stablecoins)) {
             interceptor.captureEventsFrom(key, token, "ERC20");
@@ -108,6 +133,8 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
         timeline.logger = logger;
         (context.flareDataConnectorClient as MockFlareDataConnectorClient).logger = logger;
         simulationState.logger = logger;
+        // create core vault bot
+        coreVault = await SimulationCoreVault.create(runner, coreVaultTriggeringAccountAddress);
     });
 
     after(async () => {
@@ -178,15 +205,6 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
             poolTokenHolders.push(tokenHolder);
             eventDecoder.addAddress(`POOL_TOKEN_HOLDER_${i}`, tokenHolder.address);
         }
-        // create core vault
-        const coreVaultTriggeringAccountAddress = accounts[firstPoolTokenHolderAddress + N_POOL_TOKEN_HOLDERS];
-        await context.assignCoreVaultManager({
-            underlyingAddress: "core_vault_underlying",
-            custodianAddress: "core_vault_custodian",
-            triggeringAccounts: [coreVaultTriggeringAccountAddress],
-        });
-        await context.coreVaultManager!.addAllowedDestinationAddresses(agents.map(agent => agent.agent.underlyingAddress), { from: governance });
-        coreVault = await SimulationCoreVault.create(runner, coreVaultTriggeringAccountAddress);
         // await context.wnat.send("1000", { from: governance });
         await interceptor.allHandled();
         // init some state
@@ -194,6 +212,7 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
         // actions
         const actions: Array<[() => Promise<void>, number]> = [
             [testMint, 10],
+            [testDirectMint, 10],
             [testRedeem, 10],
             [testSelfMint, 10],
             [testSelfClose, 10],
@@ -329,6 +348,11 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
     async function testMint() {
         const customer = randomChoice(customers);
         runner.startThread((scope) => customer.minting(scope));
+    }
+
+    async function testDirectMint() {
+        const customer = randomChoice(customers);
+        runner.startThread((scope) => customer.directMinting(scope));
     }
 
     async function testSelfMint() {

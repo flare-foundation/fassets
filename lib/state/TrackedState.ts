@@ -23,9 +23,10 @@ export class TrackedCoreVaultState {
     transferredTo = BN_ZERO;
     returned = BN_ZERO;
     redemptionRequested = BN_ZERO;
+    directMinted = BN_ZERO;
 
     backedFAssetSupply() {
-        return this.transferringTo.add(this.transferredTo).sub(this.returned).sub(this.redemptionRequested);
+        return this.transferringTo.add(this.transferredTo).sub(this.returned).sub(this.redemptionRequested).add(this.directMinted);
     }
 }
 
@@ -93,6 +94,9 @@ export class TrackedState {
             this.agentBackedFAssetSupply = this.agentBackedFAssetSupply.add(toBN(args.mintedAmountUBA).add(toBN(args.poolFeeUBA)));
         });
         this.assetManagerEvent('RedemptionRequested').subscribe(args => {
+            this.agentBackedFAssetSupply = this.agentBackedFAssetSupply.sub(toBN(args.valueUBA));
+        });
+        this.assetManagerEvent('RedemptionWithTagRequested').subscribe(args => {
             this.agentBackedFAssetSupply = this.agentBackedFAssetSupply.sub(toBN(args.valueUBA));
         });
         this.assetManagerEvent('RedemptionPoolFeeMinted').subscribe(args => {
@@ -165,6 +169,16 @@ export class TrackedState {
         this.assetManagerEvent('CoreVaultRedemptionRequested').subscribe(args => {
             this.coreVault.redemptionRequested = this.coreVault.redemptionRequested.add(toBN(args.valueUBA));
         });
+        // direct minting
+        this.assetManagerEvent('DirectMintingExecuted').subscribe(args => {
+            this.coreVault.directMinted = this.coreVault.directMinted.add(toBN(args.mintedAmountUBA)).add(toBN(args.mintingFeeUBA)).add(toBN(args.executorFeeUBA));
+        });
+        this.assetManagerEvent('DirectMintingExecutedToSmartAccount').subscribe(args => {
+            this.coreVault.directMinted = this.coreVault.directMinted.add(toBN(args.mintedAmountUBA)).add(toBN(args.mintingFeeUBA));
+        });
+        this.assetManagerEvent('DirectMintingPaymentTooSmallForFee').subscribe(args => {
+            this.coreVault.directMinted = this.coreVault.directMinted.add(toBN(args.receivedAmountUBA));
+        });
     }
 
     private registerAgentHandlers() {
@@ -189,6 +203,7 @@ export class TrackedState {
         this.assetManagerEvent('SelfMint').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleSelfMint(args));
         // redemption and self-close
         this.assetManagerEvent('RedemptionRequested').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionRequested(args));
+        this.assetManagerEvent('RedemptionWithTagRequested').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionRequested(args));
         this.assetManagerEvent('RedemptionPerformed').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionPerformed(args));
         this.assetManagerEvent('RedemptionDefault').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionDefault(args));
         this.assetManagerEvent('RedemptionPaymentBlocked').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionPaymentBlocked(args));

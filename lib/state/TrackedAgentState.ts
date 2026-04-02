@@ -2,7 +2,7 @@ import {
     AgentAvailable, AgentVaultCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved,
     DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault, RedeemedInCollateral, RedemptionDefault,
     RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionPoolFeeMinted, RedemptionRequested,
-    RedemptionTicketCreated, RedemptionTicketDeleted, RedemptionTicketUpdated, ReturnFromCoreVaultCancelled,
+    RedemptionTicketCreated, RedemptionTicketDeleted, RedemptionTicketUpdated, RedemptionWithTagRequested, ReturnFromCoreVaultCancelled,
     ReturnFromCoreVaultConfirmed, ReturnFromCoreVaultRequested, SelfClose, SelfMint, TransferToCoreVaultDefaulted,
     TransferToCoreVaultStarted, TransferToCoreVaultSuccessful, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced,
     UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
@@ -171,7 +171,7 @@ export class TrackedAgentState {
 
     // handlers: redemption and self-close
 
-    handleRedemptionRequested(args: EvmEventArgs<RedemptionRequested>): void {
+    handleRedemptionRequested(args: EvmEventArgs<RedemptionRequested> | EvmEventArgs<RedemptionWithTagRequested>): void {
         this.mintedUBA = this.mintedUBA.sub(toBN(args.valueUBA));
         this.updateRedeemingUBA(args.requestId, toBN(args.valueUBA));
     }

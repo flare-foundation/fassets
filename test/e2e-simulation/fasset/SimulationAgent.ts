@@ -10,7 +10,7 @@ import { EventScope, EventSubscription } from "../../../lib/utils/events/ScopedE
 import { EventArgs } from "../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, MAX_BIPS, checkedCast, formatBN, minBN, sleep, toBN, toWei } from "../../../lib/utils/helpers";
-import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
+import { RedemptionRequested, RedemptionWithTagRequested } from "../../../typechain-truffle/IIAssetManager";
 import { SimulationActor } from "./SimulationActor";
 import { SimulationRunner } from "./SimulationRunner";
 
@@ -66,6 +66,8 @@ export class SimulationAgent extends SimulationActor {
         this.eventSubscriptions[agentVaultAddress] = [
             this.runner.assetManagerEvent('RedemptionRequested', { agentVault: agentVaultAddress })
                 .subscribe((args) => this.handleRedemptionRequest(args)),
+            this.runner.assetManagerEvent('RedemptionWithTagRequested', { agentVault: agentVaultAddress })
+                .subscribe((args) => this.handleRedemptionRequestWithTag(args)),
             this.runner.assetManagerEvent('LiquidationStarted', { agentVault: agentVaultAddress })
                 .subscribe((args) => this.topupCollateral()),
             // handle all possible full liquidation ends: Redemption*???, LiquidationPerformed, SelfClose
@@ -111,7 +113,7 @@ export class SimulationAgent extends SimulationActor {
                 request.paymentReference);
             const transaction = await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
             assert.isTrue(transaction == null || transaction.hash === txHash);
-            this.comment(`Confirming payment cheatOnPayment=${cheatOnPayment}, transaction.status=${transaction?.status}`);
+            this.comment(`Confirming payment ${request.requestId} cheatOnPayment=${cheatOnPayment}, transaction.status=${transaction?.status}`);
             if (!cheatOnPayment && transaction && transaction.status !== TX_FAILED) {
                 await agent.confirmActiveRedemptionPayment(request, txHash)
                     .catch(e => scope.exitOnExpectedError(e, ['Missing event RedemptionPerformed']));
@@ -122,6 +124,19 @@ export class SimulationAgent extends SimulationActor {
                 // Error 'Missing event RedemptionDefault' happens when redeemer defaults before confirm
             }
             this.unaccountedSpentFreeBalance.subFrom(agent.vaultAddress, amountToMyself);
+        });
+    }
+
+    handleRedemptionRequestWithTag(request: EventArgs<RedemptionWithTagRequested>) {
+        if (!coinFlip(0.8)) return;
+        this.runner.startThread(async (scope) => {
+            const agent = this.agent;   // save in case it is destroyed and re-created
+            const paymentAmount = request.valueUBA.sub(request.feeUBA);
+            const txHash = await agent.wallet.addTransaction(agent.underlyingAddress, request.paymentAddress, paymentAmount, request.paymentReference);
+            const transaction = await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
+            assert.isTrue(transaction == null || transaction.hash === txHash);
+            this.comment(`Confirming XRP payment ${request.requestId}, transaction.status=${transaction?.status}`);
+            await agent.confirmXRPRedemptionPayment(txHash, request);
         });
     }
 

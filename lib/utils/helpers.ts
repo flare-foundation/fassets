@@ -96,7 +96,7 @@ export function toBN(x: BNish): BN {
  */
 export function toNumber(x: BNish) {
     if (typeof x === 'number') return x;
-    return Number(x);
+    return Number(String(x));
 }
 
 // return String(Math.round(x * 10^exponent)), but sets places below float precision to zero instead of some random digits

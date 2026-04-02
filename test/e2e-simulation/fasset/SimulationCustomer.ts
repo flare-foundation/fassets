@@ -1,89 +1,20 @@
 import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
-import { EventScope, QualifiedEvent, qualifiedEvent } from "../../../lib/utils/events/ScopedEvents";
-import { EventArgs } from "../../../lib/utils/events/common";
-import { BN_ZERO, errorIncluded, expectErrors, formatBN, minBN, promiseValue } from "../../../lib/utils/helpers";
-import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
+import { EventScope } from "../../../lib/utils/events/ScopedEvents";
+import { BN_ZERO, errorIncluded, minBN, sumBN, toBN, toNumber } from "../../../lib/utils/helpers";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
-import { foreachAsyncParallel, randomChoice, randomInt } from "../../../lib/test-utils/simulation-utils";
+import { foreachAsyncParallel, randomBN, randomChoice, randomInt } from "../../../lib/test-utils/simulation-utils";
 import { FAssetSeller } from "./FAssetMarketplace";
 import { SimulationActor } from "./SimulationActor";
 import { SimulationRunner } from "./SimulationRunner";
+import { RedemptionPaymentReceiver } from "./RedemptionPaymentReceiver";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
+import { findEvent } from "../../../lib/utils/events/truffle";
 
 // debug state
 let mintedLots = 0;
-
-export class RedemptionPaymentReceiver extends SimulationActor {
-    constructor(
-        runner: SimulationRunner,
-        public redeemer: Redeemer,
-    ) {
-        super(runner);
-    }
-
-    static create(runner: SimulationRunner, address: string, underlyingAddress: string) {
-        const redeemer = new Redeemer(runner.context, address, underlyingAddress);
-        return new RedemptionPaymentReceiver(runner, redeemer);
-    }
-
-    get name() {
-        return this.formatAddress(this.redeemer.address);
-    }
-
-    get underlyingAddress() {
-        return this.redeemer.underlyingAddress;
-    }
-
-    async handleRedemption(scope: EventScope, request: EventArgs<RedemptionRequested>) {
-        // detect if default happened during wait
-        const redemptionDefaultPromise = this.assetManagerEvent('RedemptionDefault', { requestId: request.requestId }).immediate().wait(scope);
-        const redemptionDefault = promiseValue(redemptionDefaultPromise);
-        // wait for payment or timeout
-        const event = await Promise.race([
-            this.chainEvents.transactionEvent({ reference: request.paymentReference, to: this.underlyingAddress }).qualified('paid').wait(scope),
-            this.waitForPaymentTimeout(scope, request),
-        ]);
-        if (event.name === 'paid') {
-            const [targetAddress, amountPaid] = event.args.outputs[0];
-            const expectedAmount = request.valueUBA.sub(request.feeUBA);
-            if (amountPaid.gte(expectedAmount) && targetAddress === this.underlyingAddress) {
-                this.comment(`${this.name}, req=${request.requestId}: Received redemption ${Number(amountPaid)} (= ${Number(amountPaid) / Number(this.context.lotSize())} lots)`);
-            } else {
-                this.comment(`${this.name}, req=${request.requestId}: Invalid redemption, paid=${formatBN(amountPaid)} expected=${expectedAmount} target=${targetAddress}`);
-                await this.waitForPaymentTimeout(scope, request); // still have to wait for timeout to be able to get non payment proof from SC
-                if (!redemptionDefault.resolved) { // do this only if the agent has not already submitted failed payment and defaulted
-                    await this.redemptionDefault(scope, request);
-                }
-                const result = await redemptionDefaultPromise; // now it must be fulfilled, by agent or by customer's default call
-                this.comment(`${this.name}, req=${request.requestId}: default received vault=${formatBN(result.redeemedVaultCollateralWei)} pool=${formatBN(result.redeemedPoolCollateralWei)}`);
-            }
-        } else {
-            this.comment(`${this.name}, req=${request.requestId}: Missing redemption, reference=${request.paymentReference}`);
-            await this.redemptionDefault(scope, request);
-        }
-    }
-
-    private async waitForPaymentTimeout(scope: EventScope, request: EventArgs<RedemptionRequested>): Promise<QualifiedEvent<"timeout", null>> {
-        // both block number and timestamp must be large enough
-        await Promise.all([
-            this.timeline.underlyingBlockNumber(Number(request.lastUnderlyingBlock) + 1).wait(scope),
-            this.timeline.underlyingTimestamp(Number(request.lastUnderlyingTimestamp) + 1).wait(scope),
-        ]);
-        // after that, we have to wait for finalization
-        await this.timeline.underlyingBlocks(this.context.chain.finalizationBlocks).wait(scope);
-        return qualifiedEvent('timeout', null);
-    }
-
-    private async redemptionDefault(scope: EventScope, request: EventArgs<RedemptionRequested>) {
-        this.comment(`${this.name}, req=${request.requestId}: starting default, block=${(this.context.chain as MockChain).blockHeight()}`);
-        const result = await this.redeemer.redemptionPaymentDefault(request)
-            .catch(e => expectErrors(e, ["InvalidRequestId"]))    // can happen if agent confirms failed payment
-            .catch(e => scope.exitOnExpectedError(e, []));
-        return result;
-    }
-}
 
 export class SimulationCustomer extends SimulationActor implements FAssetSeller {
     minter: Minter;
@@ -137,23 +68,74 @@ export class SimulationCustomer extends SimulationActor implements FAssetSeller 
         mintedLots += lots;
     }
 
+    async directMinting(scope: EventScope) {
+        await this.context.updateUnderlyingBlock();
+        // create CR
+        const lotSize = Number(this.context.lotSize());
+        const amount = randomInt(100 * lotSize);
+        if (this.avoidErrors && amount === 0) return;
+        const paymentAddress = await this.context.assetManager.directMintingPaymentAddress();
+        const memoData = PaymentReference.directMinting(this.address);
+        const txHash = await this.minter.performPayment(paymentAddress, amount, memoData);
+        // wait for finalization
+        await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
+        // prove and execute
+        const proof = await this.context.attestationProvider.proveXRPPayment(txHash, null);
+        let res = await this.context.assetManager.executeDirectMinting(proof, { from: this.address });
+        // if minting is delayed, wait and try again
+        const delayed = findEvent(res, "DirectMintingDelayed") ?? findEvent(res, "LargeDirectMintingDelayed");
+        if (delayed) {
+            this.comment(`Direct minting delayed until ${delayed.args.executionAllowedAt}, waiting for delay and trying again`);
+            await this.timeline.flareTimestamp(delayed.args.executionAllowedAt).wait(scope);
+            res = await this.context.assetManager.executeDirectMinting(proof, { from: this.address });
+        }
+        // check that minting was executed
+        const executed = findEvent(res, "DirectMintingExecuted") ?? findEvent(res, "DirectMintingPaymentTooSmallForFee");
+        if (!executed) {
+            throw new Error("Missing event DirectMintingExecuted or DirectMintingPaymentTooSmallForFee");
+        }
+    }
+
     async redemption(scope: EventScope) {
-        const lotSize = this.context.lotSize();
-        // request redemption
-        const holdingUBA = await this.fAssetBalance();
-        const holdingLots = Number(holdingUBA.div(lotSize));
-        const lots = randomInt(this.avoidErrors ? holdingLots : 100);
-        this.comment(`${this.name} lots ${lots}   total minted ${mintedLots}   holding ${holdingLots}`);
-        if (this.avoidErrors && lots === 0) return;
-        const [tickets, remaining] = await this.redeemer.requestRedemption(lots)
+        const [tickets, remaining] = await this.requestRedemption(scope)
             .catch(e => scope.exitOnExpectedError(e, ["FAssetBalanceTooLow", "RedeemZeroLots"]));
-        mintedLots -= lots - Number(remaining);
+        mintedLots -= toNumber(sumBN(tickets.map(t => t.valueUBA))) / toNumber(this.context.lotSize());
         this.comment(`${this.name}: Redeeming ${tickets.length} tickets, remaining ${remaining} lots`);
         // wait for all redemption payments or non-payments
         const redemptionPaymentReceiver = new RedemptionPaymentReceiver(this.runner, this.redeemer);
         await foreachAsyncParallel(tickets, async request => {
             await redemptionPaymentReceiver.handleRedemption(scope, request);
         });
+    }
+
+    async requestRedemption(scope: EventScope) {
+        const lotSize = this.context.lotSize();
+        const holdingUBA = await this.fAssetBalance();
+        const choice = randomChoice(["lots", "withTag", "amount"]);
+        if (choice === "lots") {
+            const holdingLots = Number(holdingUBA.div(lotSize));
+            const lots = randomInt(this.avoidErrors ? holdingLots : 100);
+            this.comment(`${this.name} lots ${lots}   total minted ${mintedLots}   holding ${holdingLots}`);
+            if (this.avoidErrors && lots === 0) {
+                scope.exit("No lots to redeem, skipping.");
+            }
+            return await this.redeemer.requestRedemption(lots);
+        } else if (choice === "withTag") {
+            const amount = randomBN(holdingUBA);
+            if (this.avoidErrors && amount.lt(toBN(this.context.initSettings.minimumRedeemAmountUBA))) {
+                scope.exit("Amount too low, skipping.");
+            }
+            const tag = randomInt(1000);
+            this.comment(`${this.name} amount ${amount}   total minted ${lotSize.muln(mintedLots)}   holding ${holdingUBA} UBA   tag ${tag}`);
+            return await this.redeemer.requestRedemptionWithTag(amount, tag);
+        } else {
+            const amount = randomBN(holdingUBA);
+            if (this.avoidErrors && amount.lt(toBN(this.context.initSettings.minimumRedeemAmountUBA))) {
+                scope.exit("Amount too low, skipping.");
+            }
+            this.comment(`${this.name} amount ${amount}   total minted ${lotSize.muln(mintedLots)}   holding ${holdingUBA} UBA`);
+            return await this.redeemer.requestRedemptionAnyAmount(amount);
+        }
     }
 
     async liquidate(scope: EventScope) {

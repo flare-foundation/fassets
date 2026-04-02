@@ -18,7 +18,7 @@ import { CPEntered, CPExited, CPFeeDebtChanged } from "../../../typechain-truffl
 import {
     AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionPoolFeeMinted, RedemptionRequested, RedemptionTicketCreated,
-    RedemptionTicketDeleted, RedemptionTicketUpdated, ReturnFromCoreVaultCancelled, ReturnFromCoreVaultConfirmed, ReturnFromCoreVaultRequested, SelfClose, SelfMint, TransferToCoreVaultDefaulted, TransferToCoreVaultStarted, TransferToCoreVaultSuccessful, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
+    RedemptionTicketDeleted, RedemptionTicketUpdated, RedemptionWithTagRequested, ReturnFromCoreVaultCancelled, ReturnFromCoreVaultConfirmed, ReturnFromCoreVaultRequested, SelfClose, SelfMint, TransferToCoreVaultDefaulted, TransferToCoreVaultStarted, TransferToCoreVaultSuccessful, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/IIAssetManager";
 import { SparseArray } from "../../../lib/test-utils/SparseMatrix";
 import { BalanceTrackingList, BalanceTrackingRow } from "./AgentBalanceTracking";
@@ -59,6 +59,7 @@ export interface RedemptionRequest {
     paymentAddress: string;
     paymentReference: string;
     poolSelfClose: boolean;
+    destinationTag: number | null;
     // stateful part
     collateralReleased: boolean;
     underlyingReleased: boolean;
@@ -185,7 +186,7 @@ export class SimulationAgentState extends TrackedAgentState {
 
     // handlers: redemption and self-close
 
-    override handleRedemptionRequested(args: EvmEventArgs<RedemptionRequested>): void {
+    override handleRedemptionRequested(args: EvmEventArgs<RedemptionRequested> | EvmEventArgs<RedemptionWithTagRequested>): void {
         super.handleRedemptionRequested(args);
         // create request and close tickets
         const request = this.addRedemptionRequest(args);
@@ -512,7 +513,7 @@ export class SimulationAgentState extends TrackedAgentState {
         }
     }
 
-    newRedemptionRequest(args: EvmEventArgs<RedemptionRequested>): RedemptionRequest {
+    newRedemptionRequest(args: EvmEventArgs<RedemptionRequested> | EvmEventArgs<RedemptionWithTagRequested>): RedemptionRequest {
         return {
             id: Number(args.requestId),
             agentVault: args.agentVault,
@@ -525,10 +526,11 @@ export class SimulationAgentState extends TrackedAgentState {
             poolSelfClose: this.isPoolSelfCloseRedemption(args.requestId),
             collateralReleased: false,
             underlyingReleased: false,
+            destinationTag: "destinationTag" in args ? Number(args.destinationTag) : null,
         };
     }
 
-    addRedemptionRequest(args: EvmEventArgs<RedemptionRequested>) {
+    addRedemptionRequest(args: EvmEventArgs<RedemptionRequested> | EvmEventArgs<RedemptionWithTagRequested>) {
         const request = this.newRedemptionRequest(args);
         if (this.redemptionRequests.has(request.id)) assert.fail(`Duplicate redemption request id ${request.id}`);
         this.redemptionRequests.set(request.id, request);

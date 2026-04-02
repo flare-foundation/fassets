@@ -3,7 +3,7 @@ import { BN_ZERO, ZERO_ADDRESS, formatBN, toWei } from "../../../lib/utils/helpe
 import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import { AsyncLock, coinFlip, randomBN, randomChoice } from "../../../lib/test-utils/simulation-utils";
 import { SimulationActor } from "./SimulationActor";
-import { RedemptionPaymentReceiver } from "./SimulationCustomer";
+import { RedemptionPaymentReceiver } from "./RedemptionPaymentReceiver";
 import { SimulationRunner } from "./SimulationRunner";
 
 const MIN_POOL_ENTER_EXIT = toWei(1);

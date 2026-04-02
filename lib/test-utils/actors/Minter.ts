@@ -69,7 +69,9 @@ export class Minter extends AssetContextClient {
         const paymentAddress = await this.context.assetManager.directMintingPaymentAddress();
         const txHash = await this.performPayment(paymentAddress, amount, options?.memoData ?? null, { destinationTag: options?.destinationTag });
         const proof = await this.context.attestationProvider.proveXRPPayment(txHash, null);
-        const res = await this.context.assetManager.executeDirectMinting(proof, { from: options?.executor ?? this.address, value: options?.value != null ? toBN(options.value) : undefined });
+        const executor = options?.executor ?? this.address;
+        const valueNAT = options?.value != null ? toBN(options.value) : undefined;
+        const res = await this.context.assetManager.executeDirectMinting(proof, { from: executor, value: valueNAT });
         return [res, txHash, proof] as const;
     }
 

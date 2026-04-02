@@ -1,7 +1,7 @@
-import { AgentOwnerRegistryInstance, CoreVaultManagerInstance, FAssetInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
+import { AgentOwnerRegistryInstance, CoreVaultManagerInstance, FAssetInstance, IIAssetManagerInstance, MintingTagManagerInstance, SmartAccountManagerMockInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings, CollateralType, RedemptionTicketInfo } from "../../fasset/AssetManagerTypes";
 import { convertAmgToTokenWei, convertAmgToUBA, convertTokenWeiToAMG, convertUBAToAmg } from "../../fasset/Conversions";
-import { AgentOwnerRegistryEvents, AssetManagerEvents, CoreVaultManagerEvents, FAssetEvents, IAssetContext } from "../../fasset/IAssetContext";
+import { AgentOwnerRegistryEvents, AssetManagerEvents, CoreVaultManagerEvents, FAssetEvents, IAssetContext, MintingTagManagerEvents, SmartAccountManagerMockEvents } from "../../fasset/IAssetContext";
 import { CollateralPrice } from "../../state/CollateralPrice";
 import { Prices } from "../../state/Prices";
 import { TokenPriceReader } from "../../state/TokenPrice";
@@ -16,7 +16,7 @@ import { AssetManagerInitSettings, newAssetManager, waitForTimelock } from "../f
 import { MockChain } from "../fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../fasset/MockFlareDataConnectorClient";
 import { time } from "../test-helpers";
-import { assignCoreVaultManager, CoreVaultManagerInitSettings, createAgentOwnerRegistry, createCoreVaultManager, createTestCollaterals, createTestCoreVaultManagerSettings, createTestSettings, TestSettingOptions } from "../test-settings";
+import { assignCoreVaultManager, assignMintingTagManager, assignSmartAccountManagerMock, CoreVaultManagerInitSettings, createAgentOwnerRegistry, createCoreVaultManager, createTestCollaterals, createTestCoreVaultManagerSettings, createTestSettings, TestSettingOptions } from "../test-settings";
 import { CommonContext } from "./CommonContext";
 import { TestChainInfo } from "./TestChainInfo";
 
@@ -73,6 +73,8 @@ export class AssetContext implements IAssetContext {
     chainId = this.chainInfo.chainId;
 
     coreVaultManager: ContractWithEvents<CoreVaultManagerInstance, CoreVaultManagerEvents> | undefined;
+    mintingTagManager: ContractWithEvents<MintingTagManagerInstance, MintingTagManagerEvents> | undefined;
+    smartAccountManager: ContractWithEvents<SmartAccountManagerMockInstance, SmartAccountManagerMockEvents> | undefined;
 
     /**
      * Convert underlying amount to base units (e.g. eth to wei)
@@ -140,6 +142,16 @@ export class AssetContext implements IAssetContext {
         const settings = createTestCoreVaultManagerSettings(this.chainInfo, options);
         this.coreVaultManager = await assignCoreVaultManager(this.assetManager, this.addressUpdater, settings);
         return this.coreVaultManager;
+    }
+
+    async assignMintingTagManager(options: { fee: BNish, feeReceiver: string, reservedTags: number }) {
+        this.mintingTagManager = await assignMintingTagManager(this.assetManager, options);
+        return this.mintingTagManager;
+    }
+
+     async assignSmartAccountManagerMock() {
+        this.smartAccountManager = await assignSmartAccountManagerMock(this.assetManager);
+        return this.smartAccountManager;
     }
 
     async updateUnderlyingBlock() {

@@ -24,6 +24,8 @@ export type CollateralPoolEvents = import('../../typechain-truffle/ICollateralPo
 export type CollateralPoolTokenEvents = import('../../typechain-truffle/ICollateralPoolToken').AllEvents;
 export type AgentOwnerRegistryEvents = import('../../typechain-truffle/IAgentOwnerRegistry').AllEvents;
 export type CoreVaultManagerEvents = import('../../typechain-truffle/CoreVaultManager').AllEvents;
+export type MintingTagManagerEvents = import('../../typechain-truffle/MintingTagManager').AllEvents;
+export type SmartAccountManagerMockEvents = import('../../typechain-truffle/SmartAccountManagerMock').AllEvents;
 
 export interface IAssetContext {
     chainInfo: ChainInfo;
