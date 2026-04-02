@@ -160,6 +160,10 @@
             "pattern": "^[0-9 ]+$",
             "type": "string"
         },
+        "coreVaultDonationTag": {
+            "description": "Destination tag that must be added to core vault donation transactions.",
+            "type": "integer"
+        },
         "coreVaultMinimumAmountLeftBIPS": {
             "description": "The minimum amount that has to be left on agent's underlying address after the transfer to the core vault,\nto make sure that the agent stays redeemable.\n\nExpressed as a percentage of the \"agent's minting capacity\", which is the amount of backed assets at which\nthe agent's vault or pool collateral ratio falls to the corresponding system minimum collateral ratio.\n\nWarning: agent minting capacity is based on the system min CR, which is typicaly 10-20% (or more) smaller\nthan the agent's minting CR. We intentioanaly use minCR instead of mintingCR, because that would be gameable.\nHowever, this means that to make a typical agent keep about 50% of their minting capacity,\nthis value should be set 20% lower, e.g. to 40%.",
             "type": "integer"
@@ -186,6 +190,42 @@
         },
         "diamondCutMinTimelockSeconds": {
             "description": "Minimum time that the system must wait before performing diamond cut.\nThe actual timelock is the maximum of this setting and GovernanceSettings.timelock.",
+            "type": "integer"
+        },
+        "directMintingDailyLimitUBA": {
+            "description": "Maximum amount that can be directly minted per day, in base unit of the underlying asset (UBA).\nAfter that the mintings are delayed.",
+            "type": "string"
+        },
+        "directMintingExecutorFeeUBA": {
+            "description": "Fee paid to the executor of a direct minting request, in base unit of the underlying asset (UBA).\nThis only applies to direct mintings to address, for direct minting to smart account the executor fee is\ncalculated and paid by the smart account manager.",
+            "type": "string"
+        },
+        "directMintingFeeBIPS": {
+            "description": "Direct minting fee as a percentage of the minting amount, in BIPS.",
+            "type": "integer"
+        },
+        "directMintingFeeReceiver": {
+            "description": "Address that receives the direct minting fee.",
+            "type": "string"
+        },
+        "directMintingHourlyLimitUBA": {
+            "description": "Maximum amount that can be directly minted per hour, in base unit of the underlying asset (UBA).\nAfter that the mintings are delayed.",
+            "type": "string"
+        },
+        "directMintingLargeMintingDelaySeconds": {
+            "description": "Delay in seconds imposed on large direct mintings before they can be executed.",
+            "type": "integer"
+        },
+        "directMintingLargeMintingThresholdUBA": {
+            "description": "Threshold above which a direct minting is considered large, in base unit of the underlying asset (UBA).\nLarge mintings are always delayed.",
+            "type": "string"
+        },
+        "directMintingMinimumFeeUBA": {
+            "description": "Minimum fee charged for direct minting, in base unit of the underlying asset (UBA).",
+            "type": "string"
+        },
+        "directMintingOthersCanExecuteAfterSeconds": {
+            "description": "Time in seconds after which anyone can execute a direct minting request\n(not just the executor set by the minter).",
             "type": "integer"
         },
         "emergencyPauseDurationResetAfterSeconds": {
@@ -249,6 +289,10 @@
             "minimum": 0,
             "type": "integer"
         },
+        "minimumRedeemAmountUBA": {
+            "description": "Minimum amount that can be redeemed, in base unit of the underlying asset (UBA).",
+            "type": "string"
+        },
         "mintingCap": {
             "description": "Maximum minted amount of the f-asset, in base unit of underlying asset.",
             "pattern": "^[0-9 ]+$",
@@ -258,6 +302,10 @@
             "description": "The minimum amount of pool tokens the agent must hold to be able to mint.\nTo be able to mint, the NAT value of all backed fassets together with new ones times this percentage\nmust be smaller than the agent's pool tokens' amount converted to NAT.",
             "minimum": 0,
             "type": "integer"
+        },
+        "mintingTagManager": {
+            "description": "Contract name or address of the minting tag manager.",
+            "type": "string"
         },
         "paymentChallengeRewardBIPS": {
             "description": "Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).\nThe payment is in agent's vault collateral tokens. This is the proportional part (in BIPS).",
@@ -286,6 +334,10 @@
             "description": "Price reader contract is a simple abstraction of FTSO system.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'FdcVerification' in contracts.json.",
             "pattern": "^\\w+$",
             "type": "string"
+        },
+        "redeemWithTagSupported": {
+            "description": "Whether redemption with a payment tag is supported for this asset type.",
+            "type": "boolean"
         },
         "redemptionDefaultFactorVaultCollateralBIPS": {
             "description": "On redemption underlying payment failure, redeemer is compensated with\nredemption value recalculated times redemption failure factor.\nThis is the part of factor paid from agent's vault collateral.",
@@ -346,6 +398,7 @@
         "collateralReservationFeeBIPS",
         "confirmationByOthersAfterSeconds",
         "confirmationByOthersRewardUSD5",
+        "coreVaultDonationTag",
         "coreVaultMinimumAmountLeftBIPS",
         "coreVaultMinimumRedeemLots",
         "coreVaultNativeAddress",
@@ -353,6 +406,15 @@
         "coreVaultTransferDefaultPenaltyBIPS",
         "coreVaultTransferTimeExtensionSeconds",
         "diamondCutMinTimelockSeconds",
+        "directMintingDailyLimitUBA",
+        "directMintingExecutorFeeUBA",
+        "directMintingFeeBIPS",
+        "directMintingFeeReceiver",
+        "directMintingHourlyLimitUBA",
+        "directMintingLargeMintingDelaySeconds",
+        "directMintingLargeMintingThresholdUBA",
+        "directMintingMinimumFeeUBA",
+        "directMintingOthersCanExecuteAfterSeconds",
         "emergencyPauseDurationResetAfterSeconds",
         "fAssetName",
         "fAssetSymbol",
@@ -364,13 +426,16 @@
         "maxRedeemedTickets",
         "maxTrustedPriceAgeSeconds",
         "minUpdateRepeatTimeSeconds",
+        "minimumRedeemAmountUBA",
         "mintingCap",
         "mintingPoolHoldingsRequiredBIPS",
+        "mintingTagManager",
         "paymentChallengeRewardBIPS",
         "paymentChallengeRewardUSD5",
         "poolCollateral",
         "poolExitCRChangeTimelockSeconds",
         "poolTokenSuffix",
+        "redeemWithTagSupported",
         "redemptionDefaultFactorVaultCollateralBIPS",
         "redemptionFeeBIPS",
         "redemptionPaymentExtensionSeconds",

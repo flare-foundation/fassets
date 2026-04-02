@@ -458,4 +458,75 @@ export interface AssetManagerParameters {
      * the core vault has to perform.
      */
     coreVaultMinimumRedeemLots: integer;
+
+    /**
+     * Destination tag that must be added to core vault donation transactions.
+     */
+    coreVaultDonationTag: integer;
+
+    /**
+     * Contract name or address of the minting tag manager.
+     */
+    mintingTagManager: string;
+
+    /**
+     * Address that receives the direct minting fee.
+     */
+    directMintingFeeReceiver: string;
+
+    /**
+     * Minimum fee charged for direct minting, in base unit of the underlying asset (UBA).
+     */
+    directMintingMinimumFeeUBA: string;
+
+    /**
+     * Direct minting fee as a percentage of the minting amount, in BIPS.
+     */
+    directMintingFeeBIPS: integer;
+
+    /**
+     * Fee paid to the executor of a direct minting request, in base unit of the underlying asset (UBA).
+     * This only applies to direct mintings to address, for direct minting to smart account the executor fee is
+     * calculated and paid by the smart account manager.
+     */
+    directMintingExecutorFeeUBA: string;
+
+    /**
+     * Time in seconds after which anyone can execute a direct minting request
+     * (not just the executor set by the minter).
+     */
+    directMintingOthersCanExecuteAfterSeconds: integer;
+
+    /**
+     * Maximum amount that can be directly minted per hour, in base unit of the underlying asset (UBA).
+     * After that the mintings are delayed.
+     */
+    directMintingHourlyLimitUBA: string;
+
+    /**
+     * Maximum amount that can be directly minted per day, in base unit of the underlying asset (UBA).
+     * After that the mintings are delayed.
+     */
+    directMintingDailyLimitUBA: string;
+
+    /**
+     * Threshold above which a direct minting is considered large, in base unit of the underlying asset (UBA).
+     * Large mintings are always delayed.
+     */
+    directMintingLargeMintingThresholdUBA: string;
+
+    /**
+     * Delay in seconds imposed on large direct mintings before they can be executed.
+     */
+    directMintingLargeMintingDelaySeconds: integer;
+
+    /**
+     * Whether redemption with a payment tag is supported for this asset type.
+     */
+    redeemWithTagSupported: boolean;
+
+    /**
+     * Minimum amount that can be redeemed, in base unit of the underlying asset (UBA).
+     */
+    minimumRedeemAmountUBA: string;
 }

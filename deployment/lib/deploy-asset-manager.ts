@@ -107,6 +107,40 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
         },
         { execute: true, verbose: false });
 
+    await deployCutsOnDiamond(hre, contracts,
+        {
+            diamond: assetManager.address,
+            facets: [
+                { contract: "DirectMintingFacet", exposedInterfaces: ["IDirectMinting"] },
+                { contract: "DirectMintingSettingsFacet", exposedInterfaces: ["IDirectMintingSettings"] },
+                { contract: "RedeemExtendedSettingsFacet", exposedInterfaces: ["IRedeemExtendedSettings"] },
+            ],
+            init: {
+                contract: "DirectMintingAndRedeemExtendedInit",
+                method: "initialize",
+                args: [{
+                    // core vault additional settings
+                    coreVaultDonationTag: parameters.coreVaultDonationTag,
+                    // direct minting
+                    mintingTagManager: contracts.getAddress(parameters.mintingTagManager),
+                    smartAccountManager: ZERO_ADDRESS, // asset manager must be deployed before smart accounts, so this must be set later
+                    mintingFeeReceiver: parameters.directMintingFeeReceiver,
+                    minimumMintingFeeUBA: parameters.directMintingMinimumFeeUBA,
+                    mintingFeeBIPS: parameters.directMintingFeeBIPS,
+                    executorFeeUBA: parameters.directMintingExecutorFeeUBA,
+                    othersCanExecuteAfterSeconds: parameters.directMintingOthersCanExecuteAfterSeconds,
+                    hourlyLimitUBA: parameters.directMintingHourlyLimitUBA,
+                    dailyLimitUBA: parameters.directMintingDailyLimitUBA,
+                    largeMintingThresholdUBA: parameters.directMintingLargeMintingThresholdUBA,
+                    largeMintingDelaySeconds: parameters.directMintingLargeMintingDelaySeconds,
+                    // redeem with tag
+                    redeemWithTagSupported: parameters.redeemWithTagSupported,
+                    minimumRedeemAmountUBA: parameters.minimumRedeemAmountUBA,
+                }],
+            },
+        },
+        { execute: true, verbose: false });
+
     // everything from IIAssetManager must be implemented now
     await checkAllAssetManagerMethodsImplemented(hre, assetManager.address);
 

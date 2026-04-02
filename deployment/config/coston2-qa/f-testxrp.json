@@ -74,5 +74,18 @@
     "coreVaultTransferDefaultPenaltyBIPS": 10,
     "coreVaultMinimumAmountLeftBIPS": 2000,
     "coreVaultRedemptionFeeBIPS": 0,
-    "coreVaultMinimumRedeemLots": 10
+    "coreVaultMinimumRedeemLots": 10,
+    "coreVaultDonationTag": 14,
+    "mintingTagManager": "MintingTagManager",
+    "directMintingFeeReceiver": "0x6ACB5959d4B7834E20ff9AD5B2A405780B1Af5Ac",
+    "directMintingMinimumFeeUBA": "100000",
+    "directMintingFeeBIPS": 25,
+    "directMintingExecutorFeeUBA": "100000",
+    "directMintingOthersCanExecuteAfterSeconds": 7200,
+    "directMintingHourlyLimitUBA": "1000000000",
+    "directMintingDailyLimitUBA": "5000000000",
+    "directMintingLargeMintingThresholdUBA": "1000000000",
+    "directMintingLargeMintingDelaySeconds": 3600,
+    "redeemWithTagSupported": true,
+    "minimumRedeemAmountUBA": "5000000"
 }
