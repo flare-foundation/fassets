@@ -54,6 +54,7 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
     error AmountNotPositive();
     error InvalidExecutor();
     error NotACoreVaultDonation();
+    error MemoDataNotAllowed();
 
     // core vault may not be enabled on all chains
     modifier onlyEnabled {
@@ -307,6 +308,7 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard, ICoreVaultCl
         require(_payment.data.responseBody.hasDestinationTag &&
             _payment.data.responseBody.destinationTag == CoreVaultClient.coreVaultDonationTag(),
             NotACoreVaultDonation());
+        require(!_payment.data.responseBody.hasMemoData, MemoDataNotAllowed());
         require(_payment.data.responseBody.receivedAmount > 0, AmountNotPositive());
         // mark payment used
         AssetManagerState.get().paymentConfirmations.confirmIncomingPayment(_payment);

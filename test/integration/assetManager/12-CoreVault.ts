@@ -34,6 +34,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
     const challengerAddress2 = accounts[51];
     const liquidatorAddress1 = accounts[60];
     const liquidatorAddress2 = accounts[61];
+    const executorAddress1 = accounts[62];
     const triggeringAccount = accounts[5];
     // addresses on mock underlying chain can be any string, as long as it is unique
     const underlyingAgent1 = "Agent1";
@@ -1344,12 +1345,90 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert.custom(context.assetManager.confirmCoreVaultDonation(proof), "NotACoreVaultDonation", []);
         });
 
+        it("should revert if memo data is present", async () => {
+            const wallet = new MockChainWallet(mockChain);
+            const coreVaultDonationTag = Number(context.initSettings.coreVaultDonationTag);
+            const txHash = await wallet.addTransaction(donorAddress, coreVaultUnderlyingAddress, 1e6, "0x123456", { destinationTag: coreVaultDonationTag });
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.confirmCoreVaultDonation(proof), "MemoDataNotAllowed", []);
+        });
+
         it("should revert if amount is zero", async () => {
             const wallet = new MockChainWallet(mockChain);
             const coreVaultDonationTag = Number(context.initSettings.coreVaultDonationTag);
             const txHash = await wallet.addTransaction(donorAddress, coreVaultUnderlyingAddress, 0, null, { destinationTag: coreVaultDonationTag });
             const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
             await expectRevert.custom(context.assetManager.confirmCoreVaultDonation(proof), "AmountNotPositive", []);
+        });
+
+        it("should not allow the same payment to be used as both CV transfer redemption and core vault donation", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            // make agent available with collateral and perform standard minting
+            await agent.depositCollateralLotsAndMakeAvailable(100);
+            await minter.performMinting(agent.vaultAddress, 10);
+            await context.updateUnderlyingBlock();
+            // agent starts transfer to core vault - this creates a redemption request
+            const info = await agent.getAgentInfo();
+            const rdreqs = await agent.startTransferToCoreVault(info.mintedUBA);
+            assert.equal(rdreqs.length, 1);
+            const rdreq = rdreqs[0];
+            // agent makes underlying payment to core vault with BOTH:
+            //   - the core vault donation tag (destination tag)
+            //   - the REDEMPTION payment reference in memo matching the CV transfer redemption request
+            // This attempts to use the same payment for both CV transfer confirmation and donation.
+            const coreVaultDonationTag = Number(await context.assetManager.getCoreVaultDonationTag());
+            const paymentAmount = rdreq.valueUBA.sub(rdreq.feeUBA);
+            const txHash = await agent.performPayment(
+                coreVaultUnderlyingAddress,
+                paymentAmount,
+                rdreq.paymentReference,
+                { destinationTag: coreVaultDonationTag }
+            );
+            // agent confirms the CV transfer redemption payment - this succeeds
+            const confirmTx = await agent.confirmRedemptionPayment(txHash, rdreq);
+            expectEvent(confirmTx, "TransferToCoreVaultSuccessful");
+            // attempting to also confirm as a donation must fail
+            const donationProof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(
+                context.assetManager.confirmCoreVaultDonation(donationProof, { from: executorAddress1 }),
+                "MemoDataNotAllowed", []
+            );
+        });
+
+        it("should not allow CV transfer redemption to be used as core vault donation", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            // make agent available with collateral and perform standard minting
+            await agent.depositCollateralLotsAndMakeAvailable(100);
+            await minter.performMinting(agent.vaultAddress, 10);
+            await context.updateUnderlyingBlock();
+            // agent starts transfer to core vault - this creates a redemption request
+            const info = await agent.getAgentInfo();
+            const rdreqs = await agent.startTransferToCoreVault(info.mintedUBA);
+            assert.equal(rdreqs.length, 1);
+            const rdreq = rdreqs[0];
+            // agent makes underlying payment to core vault with BOTH:
+            //   - the core vault donation tag (destination tag)
+            //   - the REDEMPTION payment reference in memo matching the CV transfer redemption request
+            // This attempts to use the same payment for both CV transfer confirmation and donation.
+            const coreVaultDonationTag = Number(await context.assetManager.getCoreVaultDonationTag());
+            const paymentAmount = rdreq.valueUBA.sub(rdreq.feeUBA);
+            const txHash = await agent.performPayment(
+                coreVaultUnderlyingAddress,
+                paymentAmount,
+                rdreq.paymentReference,
+                { destinationTag: coreVaultDonationTag }
+            );
+            // attempting to confirm as a donation succeeds
+            const donationProof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(
+                context.assetManager.confirmCoreVaultDonation(donationProof, { from: executorAddress1 }),
+                "MemoDataNotAllowed", []
+            );
+            // agent tries can confirm the CV transfer redemption payment
+            const res = await agent.confirmRedemptionPayment(txHash, rdreq);
+            expectEvent(res, "TransferToCoreVaultSuccessful");
         });
     });
 
