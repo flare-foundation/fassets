@@ -1,8 +1,8 @@
 import { network } from "hardhat";
 import { TransactionReceipt } from "web3-core";
+import { currentRealTime, Statistics, truffleResultAsJson } from "../../../lib/test-utils/simulation-utils";
 import { Web3EventDecoder } from "../../../lib/test-utils/Web3EventDecoder";
 import { EvmEvent } from "../../../lib/utils/events/common";
-import { currentRealTime, Statistics, truffleResultAsJson } from "../../../lib/test-utils/simulation-utils";
 import { AnyFunction, filterStackTrace, getOrCreate, reportError, sorted, sum, tryCatch } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
 import { MultiStateLock } from "./MultiStateLock";
@@ -93,7 +93,7 @@ export class EventCollector {
 export type MiningMode = 'auto' | 'manual';
 
 export class TruffleTransactionInterceptor extends TransactionInterceptor {
-    private handledPromises: Promise<void>[] = [];
+    private handledPromises: Promise<unknown>[] = [];
     private startRealTime = currentRealTime();
     private contractTypeName: Map<string, string> = new Map();  // address => type name
     private addressToContract: Map<string, Truffle.ContractInstance> = new Map();
@@ -181,7 +181,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             }
             // instrument call
             // const boundMethod = method.bind(contractObject);
-            contractObject[name] = async (...args: unknown[]) => await this.callMethod(contract, name, method, args, item);
+            contractObject[name] = async (...args: unknown[]) => await this.addHandledPromise(this.callMethod(contract, name, method, args, item));
             // copy subkeys from method (call, sendTransaction, estimateGas)
             for (const key of subkeys) {
                 contractObject[name][key] = (method)[key];
@@ -320,8 +320,14 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
         }
     }
 
+    private addHandledPromise<T>(promise: Promise<T>): Promise<T> {
+        this.handledPromises.push(promise);
+        return promise;
+    }
+
     async allHandled() {
-        await Promise.all(this.handledPromises);
+        this.log(`Waiting for ${this.handledPromises.length} handled promises...`);
+        await Promise.allSettled(this.handledPromises);
         this.handledPromises = [];
     }
 }

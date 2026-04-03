@@ -1,13 +1,13 @@
 import { AvailableAgentInfo } from "../../../lib/fasset/AssetManagerTypes";
 import { AssetManagerEvents } from "../../../lib/fasset/IAssetContext";
+import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
+import { Web3EventDecoder } from "../../../lib/test-utils/Web3EventDecoder";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { ExtractedEventArgs } from "../../../lib/utils/events/common";
 import { IEvmEvents } from "../../../lib/utils/events/IEvmEvents";
-import { EventScope } from "../../../lib/utils/events/ScopedEvents";
+import { EventExecutionQueue, EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { ScopedRunner } from "../../../lib/utils/events/ScopedRunner";
-import { sleep } from "../../../lib/utils/helpers";
-import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
-import { Web3EventDecoder } from "../../../lib/test-utils/Web3EventDecoder";
+import { Future, sleep } from "../../../lib/utils/helpers";
 import { FAssetMarketplace } from "./FAssetMarketplace";
 import { SimulationAgent } from "./SimulationAgent";
 import { SimulationCustomer } from "./SimulationCustomer";
@@ -23,6 +23,7 @@ export class SimulationRunner extends ScopedRunner {
         public timeline: SimulationTimeline,
         public truffleEvents: IEvmEvents,
         public chainEvents: UnderlyingChainEvents,
+        public eventQueue: EventExecutionQueue | null,
         public state: SimulationState,
         public avoidErrors: boolean,
     ) {
@@ -30,7 +31,8 @@ export class SimulationRunner extends ScopedRunner {
         this.logError = (e) => this.interceptor.logUnexpectedError(e, "!!! THREAD ERROR");
     }
 
-    waitingToFinish: boolean = false;
+    shuttingDown: boolean = false;
+    shutdownStarted = new Future<void>();
 
     agents: SimulationAgent[] = [];
     customers: SimulationCustomer[] = [];
@@ -42,8 +44,13 @@ export class SimulationRunner extends ScopedRunner {
         this.availableAgents = _availableAgents;
     }
 
+    startShutdown() {
+        this.shuttingDown = true;
+        this.shutdownStarted.resolve();
+    }
+
     checkForBreak(scope: EventScope, message: string = "Waiting for finish") {
-        if (this.waitingToFinish) {
+        if (this.shuttingDown) {
             scope.exit(message);
         }
     }

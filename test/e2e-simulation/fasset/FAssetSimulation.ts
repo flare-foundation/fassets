@@ -8,7 +8,6 @@ import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { InclusionIterable, coinFlip, currentRealTime, getEnv, randomChoice, randomNum, weightedRandomChoice } from "../../../lib/test-utils/simulation-utils";
 import { time } from "../../../lib/test-utils/test-helpers";
-import { assignMintingTagManager, assignSmartAccountManagerMock } from "../../../lib/test-utils/test-settings";
 import { getTestFile } from "../../../lib/test-utils/test-suite-helpers";
 import { Web3EventDecoder } from "../../../lib/test-utils/Web3EventDecoder";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
@@ -36,6 +35,7 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
 
     const CHAIN = getEnv('CHAIN', 'string', 'xrp');
     const LOOPS = getEnv('LOOPS', 'number', 100);
+    const SHUTDOWN_LOOPS = getEnv('SHUTDOWN_LOOPS', 'number', LOOPS);
     const AUTOMINE = getEnv('AUTOMINE', 'boolean', true);
     const STRICT = getEnv('STRICT', 'boolean', false);
     const N_AGENTS = getEnv('N_AGENTS', 'number', 10);
@@ -125,7 +125,7 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
         simulationState.deleteDestroyedAgents = false;
         await simulationState.initialize();
         // runner
-        runner = new SimulationRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, simulationState, AVOID_ERRORS);
+        runner = new SimulationRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, eventQueue, simulationState, AVOID_ERRORS);
         // logging
         logger = new LogFile("test_logs/fasset-simulation.log");
         interceptor.logger = logger;
@@ -280,11 +280,16 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
                 await interceptor.allHandled();
             }
         }
+        // unblock direct mintings
+        await unblockDirectMintings();
+        await interceptor.allHandled();
+        eventQueue.runAll();
+        // start shutdown runner process
+        runner.startShutdown();
         // wait for all threads to finish
         interceptor.comment(`Remaining threads: ${runner.runningThreadCount}`);
-        runner.waitingToFinish = true;
         let count = 0;
-        while (runner.runningThreadCount > 0 && ++count < LOOPS) {
+        while (runner.runningThreadCount > 0 && ++count < SHUTDOWN_LOOPS) {
             await sleep(200);
             await timeline.skipTime(100);
             interceptor.comment(`-----  WAITING  ${await timeInfo()}  -----`);
@@ -343,6 +348,11 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
 
     async function updateUnderlyingBlock() {
         await context.updateUnderlyingBlock();
+    }
+
+    async function unblockDirectMintings() {
+        const timestamp = await latestBlockTimestamp();
+        await context.assetManager.unblockDirectMintingsUntil(timestamp, { from: governance });
     }
 
     async function testMint() {

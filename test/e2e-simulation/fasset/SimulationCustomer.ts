@@ -1,17 +1,17 @@
 import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
-import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
-import { EventScope } from "../../../lib/utils/events/ScopedEvents";
-import { BN_ZERO, errorIncluded, minBN, sumBN, toBN, toNumber } from "../../../lib/utils/helpers";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
 import { foreachAsyncParallel, randomBN, randomChoice, randomInt } from "../../../lib/test-utils/simulation-utils";
+import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
+import { EventScope } from "../../../lib/utils/events/ScopedEvents";
+import { findEvent } from "../../../lib/utils/events/truffle";
+import { BN_ZERO, errorIncluded, minBN, sumBN, toBN, toNumber } from "../../../lib/utils/helpers";
 import { FAssetSeller } from "./FAssetMarketplace";
+import { RedemptionPaymentReceiver } from "./RedemptionPaymentReceiver";
 import { SimulationActor } from "./SimulationActor";
 import { SimulationRunner } from "./SimulationRunner";
-import { RedemptionPaymentReceiver } from "./RedemptionPaymentReceiver";
-import { PaymentReference } from "../../../lib/fasset/PaymentReference";
-import { findEvent } from "../../../lib/utils/events/truffle";
 
 // debug state
 let mintedLots = 0;
@@ -85,9 +85,20 @@ export class SimulationCustomer extends SimulationActor implements FAssetSeller 
         // if minting is delayed, wait and try again
         const delayed = findEvent(res, "DirectMintingDelayed") ?? findEvent(res, "LargeDirectMintingDelayed");
         if (delayed) {
-            this.comment(`Direct minting delayed until ${delayed.args.executionAllowedAt}, waiting for delay and trying again`);
-            await this.timeline.flareTimestamp(delayed.args.executionAllowedAt).wait(scope);
-            res = await this.context.assetManager.executeDirectMinting(proof, { from: this.address });
+            this.comment(`Direct minting delayed until ${delayed.args.executionAllowedAt}, waiting for delay and trying again, transactionId = ${delayed.args.transactionId}`);
+            const delayedAt = await web3.eth.getBlock((res.receipt as TransactionReceipt).blockNumber).then(block => Number(block.timestamp));
+            const delayEnded = await Promise.race([
+                this.timeline.flareTimestamp(delayed.args.executionAllowedAt).wait(scope).then(() => "ended" as const),
+                this.assetManagerEvent("DirectMintingsUnblocked").filter(e => delayedAt < Number(e.startedUntilTimestamp)).wait(scope).then(() => "unblocked" as const),
+                this.runner.shutdownStarted.promise.then(() => "shutdown" as const),
+            ]);
+            if (delayEnded === "ended" || delayEnded === "unblocked") {
+                this.comment(`Direct minting delay ${delayEnded}, executing again, transactionId = ${delayed.args.transactionId}`);
+                res = await this.context.assetManager.executeDirectMinting(proof, { from: this.address });
+            } else {
+                this.comment(`Shutdown started while waiting for direct minting delay, exiting, transactionId = ${delayed.args.transactionId}`);
+                scope.exit("Shutdown started while waiting for direct minting delay");
+            }
         }
         // check that minting was executed
         const executed = findEvent(res, "DirectMintingExecuted") ?? findEvent(res, "DirectMintingPaymentTooSmallForFee");
