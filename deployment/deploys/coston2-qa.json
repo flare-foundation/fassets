@@ -357,7 +357,7 @@
   {
     "name": "CoreVaultClientFacet",
     "contractName": "CoreVaultClientFacet.sol",
-    "address": "0x26029de1f329059d5B83404E6aFCdF203568E322"
+    "address": "0x6b61a39edEC051DF4aE39b6D7C21A20454c28362"
   },
   {
     "name": "CoreVaultClientSettingsFacet",
