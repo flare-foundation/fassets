@@ -327,7 +327,8 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
 
     async allHandled() {
         this.log(`Waiting for ${this.handledPromises.length} handled promises...`);
-        await Promise.allSettled(this.handledPromises);
+        const handledPromises = this.handledPromises;
         this.handledPromises = [];
+        await Promise.allSettled(handledPromises);
     }
 }

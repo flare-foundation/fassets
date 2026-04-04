@@ -48,6 +48,7 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
     const CHANGE_LOT_SIZE_FACTOR = getEnv('CHANGE_LOT_SIZE_FACTOR', 'number[]', []);
     const CHANGE_PRICE_AT = getEnv('CHANGE_PRICE_AT', 'range', null);
     const CHANGE_PRICE_FACTOR = getEnv('CHANGE_PRICE_FACTOR', 'json', null) as { [key: string]: [number, number] };
+    const TRANSFER_TO_CV_PROB = getEnv('TRANSFER_TO_CV_PROB', 'number', 5);     // likelihood of transfer to CV (set to 0 to test liquidations)
     const ILLEGAL_PROB = getEnv('ILLEGAL_PROB', 'number', 1);     // likelihood of illegal operations (not normalized)
 
     let commonContext: CommonContext;
@@ -219,7 +220,7 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
             [testLiquidate, 10],
             [testConvertDustToTicket, 1],
             [testUnderlyingWithdrawal, 5],
-            [testTransferToCoreVault, 5],
+            [testTransferToCoreVault, TRANSFER_TO_CV_PROB],
             [testReturnFromCoreVault, 5],
             [refreshAvailableAgents, 1],
             [updateUnderlyingBlock, 10],

@@ -282,7 +282,11 @@ export class SimulationAgent extends SimulationActor {
         const agent = this.agent;   // save in case agent is destroyed and re-created
         const res = await this.context.assetManager.announceAgentSettingUpdate(agent.vaultAddress, name, value, { from: this.ownerWorkAddress });
         const announcement = requiredEventArgs(res, 'AgentSettingChangeAnnounced');
-        await this.timeline.flareTimestamp(announcement.validAt).wait(scope);
+        await Promise.race([
+            this.timeline.flareTimestamp(announcement.validAt).wait(scope),
+            this.runner.shutdownStarted.promise
+        ]);
+        this.runner.checkForBreak(scope);
         await this.context.assetManager.executeAgentSettingUpdate(agent.vaultAddress, name, { from: this.ownerWorkAddress });
     }
 
