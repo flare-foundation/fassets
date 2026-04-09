@@ -158,10 +158,10 @@ const sourcifyApiConfig: Partial<SourcifyConfig> = {
     browserUrl: "https://sourcify.flare.rocks/browser"
 };
 
-const verifyApi = process.env.VERIFY_API;
+const verifyApi = process.env.VERIFY_API ?? "explorer";
 
 function etherscanConfig(): Partial<EtherscanConfig> {
-    if (verifyApi === "flarescan" || verifyApi === "all") {
+    if (verifyApi === "flarescan") {
         return flarescanApiConfig;
     } else if (verifyApi === "explorer" || verifyApi === "all") {
         return flareExplorerApiConfig;
