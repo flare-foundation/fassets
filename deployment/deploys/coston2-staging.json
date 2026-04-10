@@ -119,12 +119,12 @@
   {
     "name": "CollateralPoolProxyImplementation",
     "contractName": "CollateralPool.sol",
-    "address": "0x85d1F0dCaaAB3C299B808b7c8343B3613353A21C"
+    "address": "0xBcd91CC3e08A05e383da8d522DbDbF987dFED3b4"
   },
   {
     "name": "CollateralPoolFactory",
     "contractName": "CollateralPoolFactory.sol",
-    "address": "0x154B67a0913658Df71cA897f6c100647598AcAC2"
+    "address": "0xcf1bC1d7C18bCb3E991F822cf60E4bA6E1d2b9bd"
   },
   {
     "name": "CollateralPoolTokenProxyImplementation",
