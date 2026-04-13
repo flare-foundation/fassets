@@ -124,7 +124,7 @@ interface IRedeemExtended {
      * the underlying chain), the redeemer calls this method and receives payment in collateral (with some extra).
      * The agent can also call default if the redeemer is unresponsive, to payout the redeemer and free the
      * remaining collateral.
-     * NOTE: the only difference between this method and `confirmRedemptionPayment` is that this one accepts
+     * NOTE: the only difference between this method and `redemptionPaymentDefault` is that this one accepts
      *   IXRPPayment proof type and supports destination tags.
      * NOTE: may only be called by the redeemer (= creator of the redemption request),
      *   the executor appointed by the redeemer,
