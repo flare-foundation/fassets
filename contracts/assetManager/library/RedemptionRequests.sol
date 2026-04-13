@@ -22,6 +22,7 @@ library RedemptionRequests {
     error CannotRedeemToAgentsAddress();
     error UnderlyingAddressTooLong();
     error ExecutorFeeWithoutExecutor();
+    error InvalidUnderlyingAddress();
 
     struct AgentRedemptionData {
         address agentVault;
@@ -46,6 +47,7 @@ library RedemptionRequests {
         internal
         returns (uint64 _requestId)
     {
+        _validateAddressCharacters(_redeemerUnderlyingAddressString);
         require(_executorFeeNatGWei == 0 || _executor != address(0), ExecutorFeeWithoutExecutor());
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_data.agentVault);
@@ -139,5 +141,15 @@ library RedemptionRequests {
             state.currentUnderlyingBlock + blockshift + settings.underlyingBlocksForPayment;
         _lastUnderlyingTimestamp =
             state.currentUnderlyingBlockTimestamp + timeshift + settings.underlyingSecondsForPayment;
+    }
+
+
+    function _validateAddressCharacters(string memory _address) private pure {
+        bytes memory addressBytes = bytes(_address);
+        for (uint256 i = 0; i < addressBytes.length; i++) {
+            uint8 char = uint8(addressBytes[i]);
+            bool isValidChar = char >= 32 && char <= 126; // Check if character is in the printable ASCII range
+            require(isValidChar, InvalidUnderlyingAddress());
+        }
     }
 }
