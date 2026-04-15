@@ -1622,6 +1622,30 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 "ExecutorFeeWithoutExecutor", []);
         });
 
+        it("should revert redeeming if address contains invalid characters (high, perhaps utf-8 prefix)", async () => {
+            // define redeemer and its underlying address
+            const redeemer = accounts[83];
+            const underlyingRedeemer = "redeemer\x81";
+            // create available agentVault and mint f-assets
+            const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
+            // redemption request
+            await expectRevert.custom(assetManager.redeem(1, underlyingRedeemer, ZERO_ADDRESS, { from: redeemer }),
+                "InvalidUnderlyingAddress", []);
+        });
+
+        it("should revert redeeming if address contains invalid characters (low)", async () => {
+            // define redeemer and its underlying address
+            const redeemer = accounts[83];
+            const underlyingRedeemer = "redeemer\x10";
+            // create available agentVault and mint f-assets
+            const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
+            // redemption request
+            await expectRevert.custom(assetManager.redeem(1, underlyingRedeemer, ZERO_ADDRESS, { from: redeemer }),
+                "InvalidUnderlyingAddress", []);
+        });
+
         it("should finish non-defaulted redemption payment", async () => {
             // define redeemer and its underlying address
             const redeemer = accounts[83];

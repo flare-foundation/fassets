@@ -23,6 +23,7 @@ library RedemptionRequests {
     error CannotRedeemToAgentsAddress();
     error UnderlyingAddressTooLong();
     error ExecutorFeeWithoutExecutor();
+    error InvalidUnderlyingAddress();
 
     struct Settings {
         bool redeemWithTagSupported;
@@ -64,6 +65,7 @@ library RedemptionRequests {
         Agent.State storage agent = Agent.get(_args.agentVault);
         // validate redemption address
         require(bytes(_args.redeemerUnderlyingAddressString).length < 128, UnderlyingAddressTooLong());
+        _validateAddressCharacters(_args.redeemerUnderlyingAddressString);
         bytes32 underlyingAddressHash = keccak256(bytes(_args.redeemerUnderlyingAddressString));
         // both addresses must be normalized (agent's address is checked at vault creation,
         // and if redeemer address isn't normalized, the agent can trigger rejectInvalidRedemption),
@@ -179,6 +181,16 @@ library RedemptionRequests {
             state.currentUnderlyingBlock + blockshift + settings.underlyingBlocksForPayment;
         _lastUnderlyingTimestamp =
             state.currentUnderlyingBlockTimestamp + timeshift + settings.underlyingSecondsForPayment;
+    }
+
+
+    function _validateAddressCharacters(string memory _address) private pure {
+        bytes memory addressBytes = bytes(_address);
+        for (uint256 i = 0; i < addressBytes.length; i++) {
+            uint8 char = uint8(addressBytes[i]);
+            bool isValidChar = char >= 32 && char <= 126; // Check if character is in the printable ASCII range
+            require(isValidChar, InvalidUnderlyingAddress());
+        }
     }
 
     bytes32 internal constant SETTINGS_POSITION = keccak256("fasset.RedemptionRequests.Settings");
