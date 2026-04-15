@@ -190,7 +190,7 @@
   {
     "name": "RedemptionRequestsFacet",
     "contractName": "RedemptionRequestsFacet.sol",
-    "address": "0xD00EafF55512F41C85e25E2Ef046011db31258dC"
+    "address": "0x400Ce5e02E3FE4f632609635A626b3917bE194bA"
   },
   {
     "name": "RedemptionConfirmationsFacet",
