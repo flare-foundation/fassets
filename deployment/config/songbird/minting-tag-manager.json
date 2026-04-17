@@ -1,0 +1,7 @@
+{
+    "name": "FXRP Minting Tag",
+    "symbol": "MTFXRP",
+    "reservationFee": "10000000000000000000000",
+    "reservationFeeRecipient": "",
+    "reservedTagCount": 30
+}

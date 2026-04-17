@@ -65,6 +65,11 @@
     "address": "0x5C14FE9D73Ab763F4d4a76f334bf7029DDD20Ecc"
   },
   {
+    "name": "MasterAccountController",
+    "contractName": "MasterAccountController.sol",
+    "address": "0x434936d47503353f06750Db1A444DBDC5F0AD37c"
+  },
+  {
     "name": "PriceReader",
     "contractName": "FtsoV2PriceStoreProxy.sol",
     "address": "0x3eF12dF4f91D6168b353B0Ae8195Cc8642D8a411"
