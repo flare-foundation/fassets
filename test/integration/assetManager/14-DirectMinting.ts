@@ -1084,6 +1084,27 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(hourlyLimiterState4[1], context.convertLotsToUBA(10)); // new window, only 100 lots
             assertWeb3Equal(dailyLimiterState4[1], context.convertLotsToUBA(10)); // new window, only 10 lots
         });
+
+        it("should enforce minting cap in direct minting", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // set a small minting cap (10 lots)
+            await context.assetManagerController.setMintingCapAmg([context.assetManager.address], context.convertLotsToAMG(10), { from: governance });
+            // direct minting above the cap must revert
+            const paymentReference = PaymentReference.directMinting(minter.address);
+            const txHash1 = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(15), paymentReference);
+            const proof1 = await context.attestationProvider.proveXRPPayment(txHash1, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof1, { from: executorAddress1 }), "MintingCapExceeded", []);
+            // direct minting below the cap succeeds
+            const [res2] = await minter.directMintRaw(context.convertLotsToUBA(7), {
+                memoData: paymentReference,
+                executor: executorAddress1
+            });
+            expectEvent(res2, 'DirectMintingExecuted');
+            // a further direct minting that would exceed the remaining capacity reverts
+            const txHash3 = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(5), paymentReference);
+            const proof3 = await context.attestationProvider.proveXRPPayment(txHash3, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof3, { from: executorAddress1 }), "MintingCapExceeded", []);
+        });
     });
 
     describe("Initialization guards", () => {

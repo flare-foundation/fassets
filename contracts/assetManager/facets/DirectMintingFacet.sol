@@ -15,6 +15,7 @@ import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 import {PaymentReference} from "../library/data/PaymentReference.sol";
 import {DirectMinting} from "../library/DirectMinting.sol";
 import {CoreVaultClient} from "../library/CoreVaultClient.sol";
+import {Minting} from "../library/Minting.sol";
 import {PaymentConfirmations} from "../library/data/PaymentConfirmations.sol";
 import {MintingRateLimiter} from "../library/data/MintingRateLimiter.sol";
 
@@ -61,6 +62,9 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         (bool mintToSmartAccount, address recipient, address allowedExecutor) = _decodeTarget(_payment);
         require(allowedExecutor == address(0) || allowedExecutor == msg.sender || _othersCanExecute(_payment),
             InvalidExecutor());
+        // check minting cap before rate limits, to prevent delayed mintings from piling up while waiting
+        // for minting capacity to increase
+        Minting.checkMintingCap(Conversion.convertUBAToAmg(receivedAmount));
         // check rate limits
         DirectMintingDelayState mintingDelayed =
             _checkRateLimits(_payment.data.requestBody.transactionId, receivedAmount);
