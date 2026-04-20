@@ -7,17 +7,17 @@
         "method": "initialize",
         "args": [{
             "coreVaultDonationTag": 1,
-            "mintingTagManager": "",
+            "mintingTagManager": "0x09E139A95edD67509AEA040BF4b722Ec103D21f4",
             "smartAccountManager": "0x434936d47503353f06750Db1A444DBDC5F0AD37c",
-            "mintingFeeReceiver": "",
+            "mintingFeeReceiver": "0xF55bcAd5568d1584ab6f013f144e1e433Ee551C7",
             "minimumMintingFeeUBA": "100000",
             "mintingFeeBIPS": "10",
             "executorFeeUBA": "200000",
             "othersCanExecuteAfterSeconds": 7200,
-            "hourlyLimitUBA": "4000000000000",
-            "dailyLimitUBA": "40000000000000",
-            "largeMintingThresholdUBA": "4000000000000",
-            "largeMintingDelaySeconds": 7200,
+            "hourlyLimitUBA": "50000000000",
+            "dailyLimitUBA": "200000000000",
+            "largeMintingThresholdUBA": "50000000000",
+            "largeMintingDelaySeconds": 86400,
             "redeemWithTagSupported": true,
             "minimumRedeemAmountUBA": "5000000"
         }]

@@ -7,9 +7,9 @@
         "method": "initialize",
         "args": [{
             "coreVaultDonationTag": 1,
-            "mintingTagManager": "",
+            "mintingTagManager": "0xb426b5AE61c23fF1B901a8AD1f1A3921D1E9D2F1",
             "smartAccountManager": "0x434936d47503353f06750Db1A444DBDC5F0AD37c",
-            "mintingFeeReceiver": "",
+            "mintingFeeReceiver": "0xF55bcAd5568d1584ab6f013f144e1e433Ee551C7",
             "minimumMintingFeeUBA": "100000",
             "mintingFeeBIPS": "10",
             "executorFeeUBA": "200000",
