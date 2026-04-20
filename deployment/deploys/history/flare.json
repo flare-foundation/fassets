@@ -412,5 +412,19 @@
     "addresses": [
       "0x6c8d96dEfE4cbEE05FA969Fc0Ac436d94Fc21784"
     ]
+  },
+  {
+    "name": "MintingTagManagerImplementation",
+    "contractName": "MintingTagManager.sol",
+    "addresses": [
+      "0x8eD5c2802e74d77AA6e8b3d3D8Ea08DB12800e9B"
+    ]
+  },
+  {
+    "name": "MintingTagManager",
+    "contractName": "MintingTagManagerProxy.sol",
+    "addresses": [
+      "0xb426b5AE61c23fF1B901a8AD1f1A3921D1E9D2F1"
+    ]
   }
 ]

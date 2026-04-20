@@ -298,5 +298,15 @@
     "name": "CoreVaultManager_FXRP",
     "contractName": "CoreVaultManagerProxy.sol",
     "address": "0x0CdF65f6de5FFFf9B39252d0296EcE2530770b5a"
+  },
+  {
+    "name": "MintingTagManagerImplementation",
+    "contractName": "MintingTagManager.sol",
+    "address": "0x40F8f95E69a961887Bc4ADD3281c2C0e6cDAED34"
+  },
+  {
+    "name": "MintingTagManager",
+    "contractName": "MintingTagManagerProxy.sol",
+    "address": "0x09E139A95edD67509AEA040BF4b722Ec103D21f4"
   }
 ]

@@ -27,7 +27,7 @@ export async function deployMintingTagManager(hre: HardhatRuntimeEnvironment, co
         parameters.name, parameters.symbol, parameters.reservationFee, parameters.reservationFeeRecipient, parameters.reservedTagCount, { from: deployer });
 
     contracts.add("MintingTagManagerImplementation", "MintingTagManager.sol", mintingTagManagerImpl.address);
-    contracts.add("MintingTagManager", "MintingTagManagerProxy.sol", mintingTagManager.address);
+    contracts.add("MintingTagManager", "MintingTagManagerProxy.sol", mintingTagManager.address, { mustSwitchToProduction: true });
 }
 
 export async function verifyMintingTagManager(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
