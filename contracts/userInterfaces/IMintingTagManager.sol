@@ -51,6 +51,17 @@ interface IMintingTagManager is IERC721EnumerableUpgradeable {
     function setMintingRecipient(uint256 _mintingTag, address _recipient) external;
 
     /**
+    * Set the allowed executor for a tag. Only callable by the tag owner.
+    * The allowed executor is the only address that can execute direct mintings with this tag.
+    * Setting an allowed executor is optional; if not set, anyone can execute mintings with the tag.
+    * Changes to the allowed executor are subject to a cooldown delay before they become active.
+    * @param _mintingTag The minting tag id.
+    * @param _executor The new allowed executor address (must not be zero address).
+    */
+    function setAllowedExecutor(uint256 _mintingTag, address _executor)
+        external;
+
+    /**
      * The next tag id that will be assigned on the next reservation.
      */
     function nextAvailableTag() external view returns (uint256);
