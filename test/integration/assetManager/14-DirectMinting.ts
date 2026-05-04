@@ -743,6 +743,55 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             );
         });
 
+        it("re-executing an already confirmed direct minting must revert with PaymentAlreadyConfirmed before being delayed", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // first minting succeeds and gets confirmed (5 lots used from hourly window)
+            const [, , proof1] = await minter.directMintRaw(context.convertLotsToUBA(5), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            // bring the hourly limit to a state (95 lots used) where a re-execution of the first 5-lot
+            // payment would otherwise hit the 100 lot hourly limit and be delayed
+            const [res2] = await minter.directMintRaw(context.convertLotsToUBA(90), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            expectEvent(res2, 'DirectMintingExecuted');
+            // re-executing the first (already confirmed) minting must revert with PaymentAlreadyConfirmed,
+            // not be delayed by the rate limit
+            await expectRevert.custom(
+                context.assetManager.executeDirectMinting(proof1, { from: executorAddress1 }),
+                "PaymentAlreadyConfirmed", []
+            );
+        });
+
+        it("re-executing a delayed-then-released direct minting must revert with PaymentAlreadyConfirmed", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // bring hourly used close to the limit so the next payment is delayed
+            await minter.directMintRaw(context.convertLotsToUBA(95), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            // a 10-lot payment that gets delayed
+            const totalMintingAmount = context.convertLotsToUBA(10);
+            const [res2, txHash2] = await minter.directMintRaw(totalMintingAmount, {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            const delayedEvent = requiredEventArgs(res2, 'DirectMintingDelayed');
+            // wait past the delay and execute it - this confirms the payment
+            await time.increaseTo(delayedEvent.executionAllowedAt);
+            const proof2 = await context.attestationProvider.proveXRPPayment(txHash2, null);
+            const res3 = await context.assetManager.executeDirectMinting(proof2, { from: executorAddress1 });
+            expectEvent(res3, 'DirectMintingExecuted');
+            // re-executing the now-confirmed delayed minting must revert with PaymentAlreadyConfirmed,
+            // taking precedence over the delay-state checks
+            await expectRevert.custom(
+                context.assetManager.executeDirectMinting(proof2, { from: executorAddress1 }),
+                "PaymentAlreadyConfirmed", []
+            );
+        });
+
         it("should delay minting when daily limit is exceeded", async () => {
             const minter1 = await Minter.createTest(context, minterAddress3, underlyingMinter3, context.convertLotsToUBA(2000));
             const minter2 = await Minter.createTest(context, minterAddress3, underlyingMinter3, context.convertLotsToUBA(2000));
@@ -1104,6 +1153,36 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const txHash3 = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(5), paymentReference);
             const proof3 = await context.attestationProvider.proveXRPPayment(txHash3, null);
             await expectRevert.custom(context.assetManager.executeDirectMinting(proof3, { from: executorAddress1 }), "MintingCapExceeded", []);
+        });
+
+        it("delayed minting can still execute after the cap is reached, since the capacity is reserved on delay", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const paymentReference = PaymentReference.directMinting(minter.address);
+            // set the cap so it just fits the 95 lots minted now plus the 10 lots that will be delayed (105/105)
+            await context.assetManagerController.setMintingCapAmg([context.assetManager.address], context.convertLotsToAMG(105), { from: governance });
+            // mint up to just below the hourly limit (100 lots)
+            const [res1] = await minter.directMintRaw(context.convertLotsToUBA(95), {
+                memoData: paymentReference,
+                executor: executorAddress1
+            });
+            expectEvent(res1, 'DirectMintingExecuted');
+            // a further 10 lots exceeds the hourly limit and gets delayed - this must reserve cap capacity
+            const totalMintingAmount = context.convertLotsToUBA(10);
+            const [res2, txHash2] = await minter.directMintRaw(totalMintingAmount, {
+                memoData: paymentReference,
+                executor: executorAddress1
+            });
+            const delayedEvent = requiredEventArgs(res2, 'DirectMintingDelayed');
+            // the cap is now fully reserved (95 minted + 10 reserved = 105) - any new minting must revert
+            const txHash3 = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(1), paymentReference);
+            const proof3 = await context.attestationProvider.proveXRPPayment(txHash3, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof3, { from: executorAddress1 }), "MintingCapExceeded", []);
+            // after the delay passes, the delayed minting must still succeed - its capacity was reserved up front
+            await time.increaseTo(delayedEvent.executionAllowedAt);
+            const proof2 = await context.attestationProvider.proveXRPPayment(txHash2, null);
+            const res4 = await context.assetManager.executeDirectMinting(proof2, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res4, 'DirectMintingExecuted');
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
         });
     });
 

@@ -10,6 +10,11 @@ library DirectMinting {
     struct DelayedMinting {
         uint64 startedAt;
         uint64 allowedAt;
+        // The minting capacity is always checked/reserved before limit checks that can create delay, so this flag
+        // will always be true for new mintings. However, if delay happens just before the upgrade that introduced
+        // the minting cap check/reservation, it will be false (otherwise, the system would try to release unreserved
+        // capacity, leading to underflow).
+        bool mintingCapacityReserved;
     }
 
     struct State {

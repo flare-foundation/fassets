@@ -53,6 +53,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
             InvalidReceivingAddress());
         require(_payment.data.responseBody.receivedAmount > 0, AmountNotPositive());
         uint256 receivedAmount = uint256(_payment.data.responseBody.receivedAmount);
+        bytes32 transactionId = _payment.data.requestBody.transactionId;
         // MintingTagManager and smartAccountManager need not exist at deploy time, so they are checked here
         // instead of in initialization function. However, once they are set they cannot be unset again
         // (so direct minting won't stop working once it works).
@@ -62,22 +63,23 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         (bool mintToSmartAccount, address recipient, address allowedExecutor) = _decodeTarget(_payment);
         require(allowedExecutor == address(0) || allowedExecutor == msg.sender || _othersCanExecute(_payment),
             InvalidExecutor());
-        // check minting cap before rate limits, to prevent delayed mintings from piling up while waiting
-        // for minting capacity to increase
-        Minting.checkMintingCap(Conversion.convertUBAToAmg(receivedAmount));
+        // check that payment was not confirmed before minting cap reservation and possible delay
+        AssetManagerState.get().paymentConfirmations.requireIncomingPaymentUnconfirmed(transactionId);
+        // check and reserve minting capacity
+        _reserveMintingCapacity(transactionId, receivedAmount);
         // check rate limits
-        DirectMintingDelayState mintingDelayed =
-            _checkRateLimits(_payment.data.requestBody.transactionId, receivedAmount);
+        DirectMintingDelayState mintingDelayed = _checkRateLimits(transactionId, receivedAmount);
         if (mintingDelayed == DirectMintingDelayState.Delayed) {
             return;
         }
         // mark payment used
         AssetManagerState.get().paymentConfirmations.confirmIncomingPayment(_payment);
         // update core vault accounting
-        CoreVaultClient.confirmCoreVaultPayment(_payment.data.requestBody.transactionId,
-            _payment.data.responseBody.receivedAmount);
+        CoreVaultClient.confirmCoreVaultPayment(transactionId, _payment.data.responseBody.receivedAmount);
         // calculate fees
         (bool paymentTooSmall, uint256 mintingFeeUBA, uint256 executorFeeUBA) =_computeFees(receivedAmount);
+        // reserved minting capacity can now be released, as it will be calculated from minted FAsset amount
+        _releaseMintingCapacity(receivedAmount);
         // mint system fees to fee receiver
         _mintFAssets(state.mintingFeeReceiver, mintingFeeUBA);
         if (paymentTooSmall) {
@@ -85,7 +87,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
             // actions are done, to prevent smart accounts users from sending very small amounts to avoid paying fee.
             // Executor also gets nothing in this case since the minting fee has priority over the executor fee.
             require(msg.value == 0, NoValueExpected());
-            emit DirectMintingPaymentTooSmallForFee(_payment.data.requestBody.transactionId,
+            emit DirectMintingPaymentTooSmallForFee(transactionId,
                 receivedAmount, Conversion.convertAmgToUBA(state.minimumMintingFeeAmg));
         } else if (mintToSmartAccount) {
             _mintToSmartAccounts(_payment, receivedAmount, mintingFeeUBA);
@@ -123,14 +125,34 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         external view
         returns (DirectMintingDelayState _delayState, uint256 _allowedAt, uint256 _startedAt)
     {
-        DirectMinting.State storage state = DirectMinting.getState();
-        DirectMinting.DelayedMinting storage delayed = state.delayedMintings[_transactionId];
+        DirectMinting.DelayedMinting storage delayed = _getDelayedMinting(_transactionId);
         _delayState = _getDelayState(delayed);
         _allowedAt = delayed.allowedAt;
         _startedAt = delayed.startedAt;
     }
 
     // internal functions
+
+    function _reserveMintingCapacity(bytes32 _transactionId, uint256 _amount)
+        private
+    {
+        DirectMinting.DelayedMinting storage delayed = _getDelayedMinting(_transactionId);
+        // don't reserve the capacity twice (could only happen for delayed mintings)
+        if (!delayed.mintingCapacityReserved) {
+            AssetManagerState.State storage state = AssetManagerState.get();
+            uint64 amountAmg = Conversion.convertUBAToAmg(_amount);
+            Minting.checkMintingCap(amountAmg);
+            state.totalReservedCollateralAMG += amountAmg;
+        }
+    }
+
+    function _releaseMintingCapacity(uint256 _amount)
+        private
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        uint64 amountAmg = Conversion.convertUBAToAmg(_amount);
+        state.totalReservedCollateralAMG -= amountAmg;
+    }
 
     function _checkRateLimits(bytes32 _transactionId, uint256 _amount)
         private
@@ -173,8 +195,17 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         DirectMinting.State storage state = DirectMinting.getState();
         state.delayedMintings[_transactionId] = DirectMinting.DelayedMinting({
             startedAt: block.timestamp.toUint64(),
-            allowedAt: _allowedAt.toUint64()
+            allowedAt: _allowedAt.toUint64(),
+            mintingCapacityReserved: true
         });
+    }
+
+    function _getDelayedMinting(bytes32 _transactionId)
+        private view
+        returns (DirectMinting.DelayedMinting storage)
+    {
+        DirectMinting.State storage state = DirectMinting.getState();
+        return state.delayedMintings[_transactionId];
     }
 
     function _getDelayState(DirectMinting.DelayedMinting storage _delayed)

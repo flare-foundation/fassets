@@ -77,6 +77,31 @@ library PaymentConfirmations {
     }
 
     /**
+     * Revert if the incoming payment was already confirmed.
+     */
+    function requireIncomingPaymentUnconfirmed(
+        State storage _state,
+        bytes32 _transactionId
+    )
+        internal view
+    {
+        require(!incomingPaymentConfirmed(_state, _transactionId), PaymentAlreadyConfirmed());
+    }
+
+    /**
+    * Check if incoming payment was already confirmed.
+    */
+    function incomingPaymentConfirmed(
+        State storage _state,
+        bytes32 _transactionId
+    )
+        internal view
+        returns (bool)
+    {
+        return _state.verifiedPayments[_transactionId] != 0;
+    }
+
+    /**
      * Check if source decreasing transaction was already confirmed.
      */
     function transactionConfirmed(
