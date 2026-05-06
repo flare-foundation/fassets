@@ -133,6 +133,30 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assert.equal(failed.failureReason, "redemption payment too late");
         });
 
+        it("mint and redeem f-assets - payment blocked but too small", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            // make agent available
+            await agent.depositCollateralLotsAndMakeAvailable(10);
+            // mine a block to skip the agent creation time
+            mockChain.mine();
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 3;
+            const [minted] = await minter.performMinting(agent.vaultAddress, lots);
+            // redeemer "buys" f-assets
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            // perform redemption
+            const [redemptionRequests] = await redeemer.requestRedemption(lots);
+            const request = redemptionRequests[0];
+            // agent performs a blocked payment that is also too small
+            const tx1Hash = await agent.performPayment(request.paymentAddress, 100, request.paymentReference, { status: TX_BLOCKED });
+            // since payment is too small, it is considered FAILED even though it is blocked
+            const [failed] = await agent.confirmFailedRedemptionPayment(request, tx1Hash);
+            assert.equal(failed.failureReason, "redemption payment too small");
+        });
+
         it("mint and redeem defaults (agent) - no underlying payment", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));

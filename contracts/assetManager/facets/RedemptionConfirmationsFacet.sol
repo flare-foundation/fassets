@@ -49,6 +49,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
         bytes32 intendedReceivingAddressHash;
         int256 spentAmount;
         int256 receivedAmount;
+        int256 intendedReceivedAmount;
         uint8 status;
         HasDestinationTag hasDestinationTag;
         uint256 destinationTag;
@@ -95,6 +96,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
             intendedReceivingAddressHash: rb.intendedReceivingAddressHash,
             spentAmount: rb.spentAmount,
             receivedAmount: rb.receivedAmount,
+            intendedReceivedAmount: rb.intendedReceivedAmount,
             status: rb.status,
             hasDestinationTag: HasDestinationTag.Unsupported,   // only supported for IXRPPayment
             destinationTag: 0
@@ -139,6 +141,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
             intendedReceivingAddressHash: rb.intendedReceivingAddressHash,
             spentAmount: rb.spentAmount,
             receivedAmount: rb.receivedAmount,
+            intendedReceivedAmount: rb.intendedReceivedAmount,
             status: rb.status,
             hasDestinationTag: rb.hasDestinationTag ? HasDestinationTag.Yes : HasDestinationTag.No,
             destinationTag: rb.destinationTag
@@ -271,11 +274,8 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
         if (_payment.intendedReceivingAddressHash != request.redeemerUnderlyingAddressHash) {
             return (false, "not redeemer's address");
         }
-        if (_payment.receivedAmount < int256(paymentValueUBA)) { // paymentValueUBA < 2**128
-            // for blocked payments, receivedAmount == 0, but it's still receiver's fault
-            if (_payment.status != TransactionAttestation.PAYMENT_BLOCKED) {
-                return (false, "redemption payment too small");
-            }
+        if (_payment.intendedReceivedAmount < int256(paymentValueUBA)) { // paymentValueUBA < 2**128
+            return (false, "redemption payment too small");
         }
         if (request.requiresDestinationTag) {
             if (_payment.hasDestinationTag == HasDestinationTag.No) {
