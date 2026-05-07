@@ -3,7 +3,7 @@ pragma solidity ^0.8.27;
 
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {IInstructionsFacet} from "@flarenetwork/flare-periphery-contracts/flare/IInstructionsFacet.sol";
+import {IMemoInstructionsFacet} from "@flarenetwork/flare-periphery-contracts/flare/IMemoInstructionsFacet.sol";
 import {IMintingTagManager} from "../../userInterfaces/IMintingTagManager.sol";
 import {IDirectMinting} from "../../userInterfaces/IDirectMinting.sol";
 import {IDirectMintingSettings} from "../../userInterfaces/IDirectMintingSettings.sol";
@@ -91,7 +91,7 @@ contract DirectMintingAndRedeemExtendedInit {
     function _initDirectMinting(InitParams calldata _params) private {
         DirectMinting.State storage state = DirectMinting.getState();
         state.mintingTagManager = IMintingTagManager(_params.mintingTagManager);
-        state.smartAccountManager = IInstructionsFacet(_params.smartAccountManager);
+        state.smartAccountManager = IMemoInstructionsFacet(_params.smartAccountManager);
         state.mintingFeeReceiver = _params.mintingFeeReceiver;
         state.minimumMintingFeeAmg = Conversion.convertUBAToAmg(_params.minimumMintingFeeUBA);
         state.mintingFeeBIPS = _params.mintingFeeBIPS.toUint16();

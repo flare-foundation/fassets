@@ -38,6 +38,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
     error DirectMintingNotUnblocked();
     error DirectMintingNotDelayed();
     error NoValueExpected();
+    error NoDataExpectedForDirectMinting();
 
     function executeDirectMinting(
         IXRPPayment.Proof calldata _payment
@@ -46,6 +47,64 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         onlyAttached
         notEmergencyPaused
         nonReentrant
+    {
+        _executeDirectMinting(_payment, false, "");
+    }
+
+    function executeDirectMintingWithData(
+        IXRPPayment.Proof calldata _payment,
+        bytes calldata _data
+    )
+        external payable
+        onlyAttached
+        notEmergencyPaused
+        nonReentrant
+    {
+        _executeDirectMinting(_payment, true, _data);
+    }
+
+    /**
+     * This method is not strictly necessary to allow an unblocked delayed minting to be executed.
+     * However, if the minter has set an allowed executor, it has the exclusive right
+     * to execute minting for fixed time after the minting is allowed to execute. This method makes sure
+     * that the exclusive period begins from the moment the minting was unblocked, not from later allowedAt.
+     * @param _transactionId transaction id of the delayed minting to mark as allowed
+     */
+    function markUnblockedDirectMintingAllowed(bytes32 _transactionId)
+        external
+    {
+        DirectMinting.State storage state = DirectMinting.getState();
+        DirectMinting.DelayedMinting storage delayed = state.delayedMintings[_transactionId];
+        require(delayed.allowedAt != 0 && delayed.allowedAt > block.timestamp, DirectMintingNotDelayed());
+        require(delayed.startedAt < state.unblockMintingsUntilTimestamp, DirectMintingNotUnblocked());
+        delayed.allowedAt = state.mintingsUnblockedAt;
+    }
+
+    function directMintingPaymentAddress()
+        external view
+        returns (string memory)
+    {
+        return CoreVaultClient.coreVaultUnderlyingAddress();
+    }
+
+    function directMintingDelayState(bytes32 _transactionId)
+        external view
+        returns (DirectMintingDelayState _delayState, uint256 _allowedAt, uint256 _startedAt)
+    {
+        DirectMinting.DelayedMinting storage delayed = _getDelayedMinting(_transactionId);
+        _delayState = _getDelayState(delayed);
+        _allowedAt = delayed.allowedAt;
+        _startedAt = delayed.startedAt;
+    }
+
+    // internal functions
+
+    function _executeDirectMinting(
+        IXRPPayment.Proof calldata _payment,
+        bool _hasData,
+        bytes memory _data
+    )
+        private
     {
         TransactionAttestation.verifyXRPPaymentSuccess(_payment);
         TransactionAttestation.verifyProofOwnership(_payment.data.requestBody.proofOwner);
@@ -89,52 +148,18 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
             // If the total payment is less than the system fee, everything goes to the fee receiver and no further
             // actions are done, to prevent smart accounts users from sending very small amounts to avoid paying fee.
             // Executor also gets nothing in this case since the minting fee has priority over the executor fee.
+            require(!_hasData, NoDataExpectedForDirectMinting());
             require(msg.value == 0, NoValueExpected());
             emit DirectMintingPaymentTooSmallForFee(transactionId,
                 receivedAmount, Conversion.convertAmgToUBA(state.minimumMintingFeeAmg));
         } else if (target.mintToSmartAccount) {
-            _mintToSmartAccounts(_payment, receivedAmount, mintingFeeUBA);
+            _mintToSmartAccounts(_payment, receivedAmount, mintingFeeUBA, _data);
         } else {
+            require(!_hasData, NoDataExpectedForDirectMinting());
             require(msg.value == 0, NoValueExpected());
             _mintToRecipient(_payment, target.recipient, receivedAmount, mintingFeeUBA, executorFeeUBA);
         }
     }
-
-    /**
-     * This method is not strictly necessary to allow an unblocked delayed minting to be executed.
-     * However, if the minter has set an allowed executor, it has the exclusive right
-     * to execute minting for fixed time after the minting is allowed to execute. This method makes sure
-     * that the exclusive period begins from the moment the minting was unblocked, not from later allowedAt.
-     * @param _transactionId transaction id of the delayed minting to mark as allowed
-     */
-    function markUnblockedDirectMintingAllowed(bytes32 _transactionId)
-        external
-    {
-        DirectMinting.State storage state = DirectMinting.getState();
-        DirectMinting.DelayedMinting storage delayed = state.delayedMintings[_transactionId];
-        require(delayed.allowedAt != 0 && delayed.allowedAt > block.timestamp, DirectMintingNotDelayed());
-        require(delayed.startedAt < state.unblockMintingsUntilTimestamp, DirectMintingNotUnblocked());
-        delayed.allowedAt = state.mintingsUnblockedAt;
-    }
-
-    function directMintingPaymentAddress()
-        external view
-        returns (string memory)
-    {
-        return CoreVaultClient.coreVaultUnderlyingAddress();
-    }
-
-    function directMintingDelayState(bytes32 _transactionId)
-        external view
-        returns (DirectMintingDelayState _delayState, uint256 _allowedAt, uint256 _startedAt)
-    {
-        DirectMinting.DelayedMinting storage delayed = _getDelayedMinting(_transactionId);
-        _delayState = _getDelayState(delayed);
-        _allowedAt = delayed.allowedAt;
-        _startedAt = delayed.startedAt;
-    }
-
-    // internal functions
 
     function _reserveMintingCapacity(bytes32 _transactionId, uint256 _amount)
         private
@@ -354,7 +379,8 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
     function _mintToSmartAccounts(
         IXRPPayment.Proof calldata _payment,
         uint256 _receivedAmountUBA,
-        uint256 _mintingFeeUBA
+        uint256 _mintingFeeUBA,
+        bytes memory _data
     ) private {
         DirectMinting.State storage state = DirectMinting.getState();
         // use empty memo data if not present, to avoid having to check for its existence in the smart account manager
@@ -366,13 +392,14 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         uint256 mintedAmountUBA = _receivedAmountUBA - _mintingFeeUBA;
         _mintFAssets(address(state.smartAccountManager), mintedAmountUBA);
         // notify smart account manager
-        state.smartAccountManager.mintedFAssets{ value: msg.value }(
+        state.smartAccountManager.handleMintedFAssets{ value: msg.value }(
             _payment.data.requestBody.transactionId,
             _payment.data.responseBody.sourceAddress,
             mintedAmountUBA,
             _payment.data.responseBody.blockTimestamp,
             memoData,
-            payable(msg.sender)
+            payable(msg.sender),
+            _data
         );
         emit DirectMintingExecutedToSmartAccount(
             _payment.data.requestBody.transactionId,

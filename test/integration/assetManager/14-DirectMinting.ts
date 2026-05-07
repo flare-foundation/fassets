@@ -95,7 +95,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
     async function verifyDirectMintingToSmartAccounts(
         mintingExecuted: EventArgs<DirectMintingExecutedToSmartAccount>, smartAccontReceived: EventArgs<MintedToSmartAccount>,
-        txHash: string, memoData: string | null, minterUnderlyingAddress: string, executorAddress: string, totalMintingAmount: BN
+        txHash: string, memoData: string | null, minterUnderlyingAddress: string, executorAddress: string, totalMintingAmount: BN,
+        extraData: string | null = null
     ) {
         // check that asset manager emitted correct event
         const { expectedMintingFee } = await calculateMintingFees(totalMintingAmount);
@@ -111,6 +112,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         assertWeb3Equal(smartAccontReceived.amount, totalMintingAmount.sub(mintingExecuted.mintingFeeUBA));
         assertWeb3Equal(smartAccontReceived.underlyingTimestamp, await getTransactionTimestamp(txHash));
         assertWeb3Equal(smartAccontReceived.memoData, memoData);
+        assertWeb3Equal(smartAccontReceived.fullData, extraData);
     }
 
     beforeEach(async () => {
@@ -515,6 +517,123 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const [res] = await minter.directMintRaw(context.convertLotsToUBA(3), { memoData, executor: executorAddress1 });
             expectEvent.notEmitted(res, 'DirectMintingExecuted');
             expectEvent(res, 'DirectMintingExecutedToSmartAccount');
+        });
+    });
+
+    describe("Direct minting with extra data (executeDirectMintingWithData)", () => {
+        it("should forward extra data to smart account manager (no memo data on payment)", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            const extraData = "0xdeadbeefcafebabe1234";
+            // payment without memo data => goes to smart account manager
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, null);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            const res = await context.assetManager.executeDirectMintingWithData(proof, extraData, { from: executorAddress1 });
+            // asset manager event preserves the payment's (empty) memo data, not the extra data
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecutedToSmartAccount');
+            assertWeb3Equal(mintingExecuted.memoData, null);
+            // smart account manager mock receives the extra data as fullData and (since fullData is non-empty)
+            // logs it in the data field of its event
+            const smartAccountReceived = requiredEventArgsFrom(res, smartAccountManager, 'MintedToSmartAccount');
+            assertWeb3Equal(smartAccountReceived.memoData, null);
+            assertWeb3Equal(smartAccountReceived.fullData, extraData);
+        });
+
+        it("should forward extra data alongside the payment's memo data to smart account manager", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            const memoData = "0x12345678"; // unrecognized memo => smart account path
+            const extraData = "0xabcdef";
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, memoData);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            const res = await context.assetManager.executeDirectMintingWithData(proof, extraData, { from: executorAddress1 });
+            // asset manager event still carries the on-chain payment memo data
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecutedToSmartAccount');
+            assertWeb3Equal(mintingExecuted.memoData, memoData);
+            // smart account manager receives both memoData (from payment) and fullData (from the extra parameter)
+            const smartAccountReceived = requiredEventArgsFrom(res, smartAccountManager, 'MintedToSmartAccount');
+            assertWeb3Equal(smartAccountReceived.memoData, memoData);
+            assertWeb3Equal(smartAccountReceived.fullData, extraData);
+        });
+
+        it("should forward both native value and extra data to smart account manager", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            const nativeValue = toBNExp(1, 18);
+            const extraData = "0xfeedbeef";
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, null);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            const res = await context.assetManager.executeDirectMintingWithData(proof, extraData,
+                { from: executorAddress1, value: nativeValue });
+            const smartAccountReceived = requiredEventArgsFrom(res, smartAccountManager, 'MintedToSmartAccount');
+            assertWeb3Equal(smartAccountReceived.nativeValueReceived, nativeValue);
+            assertWeb3Equal(smartAccountReceived.fullData, extraData);
+        });
+
+        it("should accept empty extra data on the smart account path", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, null);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            // empty data is allowed for the smart account path
+            const res = await context.assetManager.executeDirectMintingWithData(proof, "0x", { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecutedToSmartAccount');
+            const smartAccountReceived = requiredEventArgsFrom(res, smartAccountManager, 'MintedToSmartAccount');
+            // mock falls back to the payment's memoData (empty here) when fullData is empty
+            assertWeb3Equal(smartAccountReceived.fullData, null);
+            await verifyDirectMintingToSmartAccounts(mintingExecuted, smartAccountReceived,
+                txHash, null, minter.underlyingAddress, executorAddress1, totalMintingAmount, null);
+        });
+
+        it("should revert with NoDataExpectedForDirectMinting when minting by payment reference (even with empty data)", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const paymentReference = PaymentReference.directMinting(minter.address);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(3), paymentReference);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            // even empty data is rejected because executeDirectMintingWithData always sets _hasData = true
+            await expectRevert.custom(
+                context.assetManager.executeDirectMintingWithData(proof, "0x", { from: executorAddress1 }),
+                "NoDataExpectedForDirectMinting", []);
+            await expectRevert.custom(
+                context.assetManager.executeDirectMintingWithData(proof, "0xdeadbeef", { from: executorAddress1 }),
+                "NoDataExpectedForDirectMinting", []);
+        });
+
+        it("should revert with NoDataExpectedForDirectMinting when minting by tag", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // reserve minting tag and set recipient
+            const tagPrice = await mintingTagManager.reservationFee();
+            const tagRes = await mintingTagManager.reserve({ from: minter.address, value: tagPrice });
+            const tagId = requiredEventArgs(tagRes, 'MintingTagReserved').tag;
+            await mintingTagManager.setMintingRecipient(tagId, minter.address, { from: minter.address });
+            // payment with tag goes through recipient path => extra data forbidden
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(3), null,
+                { destinationTag: Number(tagId) });
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(
+                context.assetManager.executeDirectMintingWithData(proof, "0xdeadbeef", { from: executorAddress1 }),
+                "NoDataExpectedForDirectMinting", []);
+        });
+
+        it("should revert with NoDataExpectedForDirectMinting when minting by extended payment reference", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const memoData = PaymentReference.directMintingEx(minter.address, executorAddress1);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(3), memoData);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(
+                context.assetManager.executeDirectMintingWithData(proof, "0xdeadbeef", { from: executorAddress1 }),
+                "NoDataExpectedForDirectMinting", []);
+        });
+
+        it("should revert with NoDataExpectedForDirectMinting when payment is too small for fee", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // payment below the minimum fee triggers the paymentTooSmall branch which also forbids extra data
+            const totalMintingAmount = toBN(context.initSettings.directMintingMinimumFeeUBA).subn(1);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, null);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(
+                context.assetManager.executeDirectMintingWithData(proof, "0xdeadbeef", { from: executorAddress1 }),
+                "NoDataExpectedForDirectMinting", []);
         });
     });
 

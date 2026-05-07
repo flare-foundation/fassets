@@ -61,6 +61,18 @@ interface IDirectMinting {
         external payable;
 
     /**
+     * Executes minting directly, without a collateral reservation.
+     * The payment must be made to the fAsset Core Vault's XRP address.
+     * NOTE: unlike `executeDirectMinting`, this form is only allowed for minting to smart accounts.
+     * @param _payment the XRP payment proof data
+     * @param _data additional data sent to the smart account manager
+     */
+    function executeDirectMintingWithData(
+        IXRPPayment.Proof calldata _payment,
+        bytes calldata _data
+    ) external payable;
+
+    /**
      * This method is not strictly necessary to allow an unblocked delayed minting to be executed.
      * However, if the minter has set an allowed executor, it has the exclusive right
      * to execute minting for fixed time after the minting is allowed to execute. This method makes sure

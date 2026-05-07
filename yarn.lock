@@ -909,13 +909,14 @@
     "@ethersproject/properties" "^5.7.0"
     "@ethersproject/strings" "^5.7.0"
 
-"@flarenetwork/flare-periphery-contracts@0.1.44-alpha.5":
-  version "0.1.44-alpha.5"
-  resolved "https://registry.yarnpkg.com/@flarenetwork/flare-periphery-contracts/-/flare-periphery-contracts-0.1.44-alpha.5.tgz#a1b66a86190e9d118ecda97fba2e2944cc36bd92"
-  integrity sha512-ObaMG+YxO86cHbv4bUxdxnhn63QcjEZdx1Lj6N5ggoJRZzWDw69AUBH6j7UewQSo60fy4uWC6Y/TszsaXkv22Q==
+"@flarenetwork/flare-periphery-contracts@0.1.51-alpha.1":
+  version "0.1.51-alpha.1"
+  resolved "https://registry.yarnpkg.com/@flarenetwork/flare-periphery-contracts/-/flare-periphery-contracts-0.1.51-alpha.1.tgz#9df8797ff753cf7e5762e1d0271bbcd93eed005b"
+  integrity sha512-vyVHNv4hezmObUXOdiSlyYCTxq9g0uJZUsCF74YwNZwYjWvfH8HrF7zoxgKZIpKXLe7Fpib87dx0LJJ/C7/krg==
   dependencies:
     "@layerzerolabs/lz-evm-protocol-v2" "^3.0.0"
     "@openzeppelin/contracts" "^4.6.0"
+    "@openzeppelin/contracts-upgradeable" "^4.6.0"
 
 "@flarenetwork/js-flare-common@0.0.2":
   version "0.0.2"
@@ -1244,7 +1245,7 @@
     ethers "^4.0.0-beta.1"
     source-map-support "^0.5.19"
 
-"@openzeppelin/contracts-upgradeable@4.9.6":
+"@openzeppelin/contracts-upgradeable@4.9.6", "@openzeppelin/contracts-upgradeable@^4.6.0":
   version "4.9.6"
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts-upgradeable/-/contracts-upgradeable-4.9.6.tgz#38b21708a719da647de4bb0e4802ee235a0d24df"
   integrity sha512-m4iHazOsOCv1DgM7eD7GupTJ+NFVujRZt1wzddDPSVGpWdKq1SKkla5htKG7+IS4d2XOCtzkUNwRZ7Vq5aEUMA==
