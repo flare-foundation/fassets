@@ -195,7 +195,7 @@
   {
     "name": "RedemptionConfirmationsFacet",
     "contractName": "RedemptionConfirmationsFacet.sol",
-    "address": "0xd9967C536BDE9384776f314dED8Fa9046b673fdB"
+    "address": "0x88151f6619A2B8729b1faf2227ea80E23fFAB29c"
   },
   {
     "name": "RedemptionDefaultsFacet",
@@ -332,7 +332,7 @@
   {
     "name": "DirectMintingFacet",
     "contractName": "DirectMintingFacet.sol",
-    "address": "0xf0a8ff4a1E91dC18EA2Db0069c997aC541CaCfE3"
+    "address": "0xf91D5C66711949466502db3A829f877F5FD0A9A5"
   },
   {
     "name": "DirectMintingSettingsFacet",
