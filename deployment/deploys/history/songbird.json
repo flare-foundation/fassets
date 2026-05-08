@@ -255,7 +255,8 @@
       "0x788D63E92C2a94EfbCEbb98d862917633337a169",
       "0xe78Bf0B045E54E4AAdEa04da35198d0fBe11B25e",
       "0x56c1Cb45f78197D1Bcd46F8C33d0101d7d28D0b5",
-      "0x179B8d572Fd5cd94Ae136D9cA75819CeADFc9c34"
+      "0x179B8d572Fd5cd94Ae136D9cA75819CeADFc9c34",
+      "0x39f8EB77929DC8fb67FC19732c591ab922aF35Ad"
     ]
   },
   {
@@ -686,7 +687,8 @@
     "name": "DirectMintingFacet",
     "contractName": "DirectMintingFacet.sol",
     "addresses": [
-      "0x478fdAc9D8dAC87604bCd534C023087fC9fE3c7C"
+      "0x478fdAc9D8dAC87604bCd534C023087fC9fE3c7C",
+      "0xee9C80eC301f2dCAaD934A5757B71efAf5E9473F"
     ]
   },
   {
