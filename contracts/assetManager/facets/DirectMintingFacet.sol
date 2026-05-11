@@ -18,6 +18,7 @@ import {CoreVaultClient} from "../library/CoreVaultClient.sol";
 import {Minting} from "../library/Minting.sol";
 import {PaymentConfirmations} from "../library/data/PaymentConfirmations.sol";
 import {MintingRateLimiter} from "../library/data/MintingRateLimiter.sol";
+import {Transfers} from "../../utils/library/Transfers.sol";
 
 
 contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting {
@@ -70,6 +71,8 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         // check rate limits
         DirectMintingDelayState mintingDelayed = _checkRateLimits(transactionId, receivedAmount);
         if (mintingDelayed == DirectMintingDelayState.Delayed) {
+            // return the native value to the executor (delayed execution may be executed by someone else)
+            Transfers.transferNAT(payable(msg.sender), msg.value);
             return;
         }
         // mark payment used

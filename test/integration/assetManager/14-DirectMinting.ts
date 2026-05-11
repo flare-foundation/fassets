@@ -7,7 +7,7 @@ import { MockCoreVaultBot } from "../../../lib/test-utils/actors/MockCoreVaultBo
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { executeTimelockedGovernanceCall } from "../../../lib/test-utils/contract-test-helpers";
-import { transactionTimestamp } from "../../../lib/test-utils/eth";
+import { calcGasCost, transactionTimestamp } from "../../../lib/test-utils/eth";
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { assignMintingTagManager, assignSmartAccountManagerMock } from "../../../lib/test-utils/test-settings";
@@ -741,6 +741,32 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 "DirectMintingStillDelayed",
                 [delayedEvent.executionAllowedAt]
             );
+        });
+
+        it("should return native value to the executor when direct minting is delayed", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // fill the hourly limit close to the cap so the next minting gets delayed
+            await minter.directMintRaw(context.convertLotsToUBA(95), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            // submit a 10-lot smart-account minting that will be delayed; executor attaches native value
+            const totalMintingAmount = context.convertLotsToUBA(10);
+            const nativeValue = toBNExp(1, 18); // 1 NAT
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, null);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            const executorBalanceBefore = toBN(await web3.eth.getBalance(executorAddress1));
+            const smartAccountBalanceBefore = toBN(await web3.eth.getBalance(smartAccountManager.address));
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1, value: nativeValue });
+            const executorBalanceAfter = toBN(await web3.eth.getBalance(executorAddress1));
+            // minting was delayed - no minting events emitted
+            expectEvent(res, 'DirectMintingDelayed');
+            expectEvent.notEmitted(res, 'DirectMintingExecuted');
+            expectEvent.notEmitted(res, 'DirectMintingExecutedToSmartAccount');
+            // smart account manager did not receive any native value
+            assertWeb3Equal(await web3.eth.getBalance(smartAccountManager.address), smartAccountBalanceBefore);
+            // executor only spent gas - the attached native value was returned
+            assertWeb3Equal(executorBalanceBefore.sub(executorBalanceAfter), calcGasCost(res));
         });
 
         it("re-executing an already confirmed direct minting must revert with PaymentAlreadyConfirmed before being delayed", async () => {
