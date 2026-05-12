@@ -2,9 +2,9 @@ import hre from "hardhat";
 import { getProxyImplementationAddress, ZERO_ADDRESS } from "../../../deployment/lib/deploy-utils";
 import { ether, expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
-import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { MintingTagManagerInstance, GovernanceSettingsMockInstance } from "../../../typechain-truffle";
+import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BNish, MINUTES } from "../../../lib/utils/helpers";
+import { GovernanceSettingsMockInstance, MintingTagManagerInstance } from "../../../typechain-truffle";
 
 const GovernanceSettingsMock = artifacts.require("GovernanceSettingsMock");
 const MintingTagManager = artifacts.require("MintingTagManager");
@@ -15,6 +15,7 @@ contract("MintingTagManager", function (accounts) {
     let governanceSettings: GovernanceSettingsMockInstance
     let mintingTagManager: MintingTagManagerInstance;
     const reservationFee = ether("0.1");
+    const executorChangeAfterSeconds = 10 * MINUTES;
     const governance = accounts[0];
     const tagOwner = accounts[1];
     const executor = accounts[5];
@@ -23,7 +24,7 @@ contract("MintingTagManager", function (accounts) {
         governanceSettings = await GovernanceSettingsMock.new();
         const mintingTagManagerImpl = await MintingTagManager.new();
         const mintingTagManagerProxy = await MintingTagManagerProxy.new(mintingTagManagerImpl.address, governanceSettings.address, governance,
-            "Minting Tag Manager", "MTMG", reservationFee, governance, 1);
+            "Minting Tag Manager", "MTMG", reservationFee, governance, 1, executorChangeAfterSeconds);
         mintingTagManager = await MintingTagManager.at(mintingTagManagerProxy.address);
     });
 
@@ -31,14 +32,17 @@ contract("MintingTagManager", function (accounts) {
         const name = await mintingTagManager.name();
         const symbol = await mintingTagManager.symbol();
         const reservationFeeStored = await mintingTagManager.reservationFee();
+        const executorChangeAfterSecondsStored = await mintingTagManager.executorChangeAfterSeconds();
         assert.equal(name, "Minting Tag Manager");
         assert.equal(symbol, "MTMG");
         assertWeb3Equal(reservationFeeStored, reservationFee);
+        assertWeb3Equal(executorChangeAfterSecondsStored, executorChangeAfterSeconds);
     });
 
     it("should not initialize twice", async () => {
         await expectRevert(
-            mintingTagManager.initialize(governanceSettings.address, governance, "Minting Tag Manager", "MTMG", reservationFee, governance, 10),
+            mintingTagManager.initialize(governanceSettings.address, governance, "Minting Tag Manager", "MTMG",
+                reservationFee, governance, 10, executorChangeAfterSeconds),
             "Initializable: contract is already initialized"
         );
     });
@@ -224,6 +228,42 @@ contract("MintingTagManager", function (accounts) {
         const newRecipient = accounts[4];
         await expectRevert.custom(mintingTagManager.setReservationFeeRecipient(newRecipient, { from: tagOwner }),
             "OnlyGovernance", []);
+    });
+
+    it("should change executorChangeAfterSeconds by governance", async () => {
+        const newDelay = 20 * MINUTES;
+        const res = await mintingTagManager.setExecutorChangeAfterSeconds(newDelay, { from: governance });
+        expectEvent(res, "ExecutorChangeAfterSecondsChanged", { executorChangeAfterSeconds: String(newDelay) });
+        const stored = await mintingTagManager.executorChangeAfterSeconds();
+        assertWeb3Equal(stored, newDelay);
+    });
+
+    it("should fail to change executorChangeAfterSeconds if not governance", async () => {
+        const newDelay = 20 * MINUTES;
+        await expectRevert.custom(
+            mintingTagManager.setExecutorChangeAfterSeconds(newDelay, { from: tagOwner }),
+            "OnlyGovernance", []);
+    });
+
+    it("new executorChangeAfterSeconds should apply to subsequent pending executor changes", async () => {
+        const newDelay = 30 * MINUTES;
+        await mintingTagManager.setExecutorChangeAfterSeconds(newDelay, { from: governance });
+        // reserve and set executor with the new delay
+        const res = await mintingTagManager.reserve({ from: tagOwner, value: reservationFee });
+        const reserved = requiredEventArgs(res, "MintingTagReserved");
+        const resEx = await mintingTagManager.setAllowedExecutor(reserved.tag, executor, { from: tagOwner });
+        const args = requiredEventArgs(resEx, "AllowedExecutorChangePending");
+        // pending activeAfterTs should reflect the new delay
+        const blockTs = await time.latest();
+        assertWeb3Equal(args.activeAfterTs, blockTs.addn(newDelay));
+        // executor not yet active
+        assertWeb3Equal(await mintingTagManager.allowedExecutor(reserved.tag), ZERO_ADDRESS);
+        // less than new delay elapses — still not active
+        await time.deterministicIncrease(20 * MINUTES);
+        assertWeb3Equal(await mintingTagManager.allowedExecutor(reserved.tag), ZERO_ADDRESS);
+        // full new delay elapses — now active
+        await time.increaseTo(args.activeAfterTs);
+        assertWeb3Equal(await mintingTagManager.allowedExecutor(reserved.tag), executor);
     });
 
     async function checkPendingChange(tag: BNish, expectedPending: boolean, expectedExecutor: string, expectedActiveAfterTs: BNish) {

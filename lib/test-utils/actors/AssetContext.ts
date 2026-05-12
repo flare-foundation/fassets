@@ -16,7 +16,7 @@ import { AssetManagerInitSettings, newAssetManager, waitForTimelock } from "../f
 import { MockChain } from "../fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../fasset/MockFlareDataConnectorClient";
 import { time } from "../test-helpers";
-import { assignCoreVaultManager, assignMintingTagManager, assignSmartAccountManagerMock, CoreVaultManagerInitSettings, createAgentOwnerRegistry, createCoreVaultManager, createTestCollaterals, createTestCoreVaultManagerSettings, createTestSettings, TestSettingOptions } from "../test-settings";
+import { assignCoreVaultManager, assignMintingTagManager, assignSmartAccountManagerMock, CoreVaultManagerInitSettings, createAgentOwnerRegistry, createCoreVaultManager, createTestCollaterals, createTestCoreVaultManagerSettings, createTestSettings, MintingTagManagerOptions, TestSettingOptions } from "../test-settings";
 import { CommonContext } from "./CommonContext";
 import { TestChainInfo } from "./TestChainInfo";
 
@@ -144,7 +144,7 @@ export class AssetContext implements IAssetContext {
         return this.coreVaultManager;
     }
 
-    async assignMintingTagManager(options: { fee: BNish, feeReceiver: string, reservedTags: number }) {
+    async assignMintingTagManager(options?: MintingTagManagerOptions) {
         this.mintingTagManager = await assignMintingTagManager(this.assetManager, options);
         return this.mintingTagManager;
     }

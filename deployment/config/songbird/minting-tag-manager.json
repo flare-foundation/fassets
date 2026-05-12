@@ -3,5 +3,6 @@
     "symbol": "MTFXRP",
     "reservationFee": "1000000000000000000000",
     "reservationFeeRecipient": "0x889A02c0E6d92e77188aDe03e3ce15B73228C197",
-    "reservedTagCount": 30
+    "reservedTagCount": 30,
+    "executorChangeAfterSeconds": 600
 }

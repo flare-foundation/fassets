@@ -79,7 +79,7 @@ contract LiquidationFacet is AssetManagerBase, ReentrancyGuard {
         // allow one-step liquidation (without calling startLiquidation first)
         bool inLiquidation = _startLiquidation(agent, cr);
         require(inLiquidation, NotInLiquidation());
-        // If any collateral type has become healthy due to price changes, mark it to reduce the payout repoonsibility.
+        // If any collateral type has become healthy due to price changes, mark it to reduce the payout responsibility.
         // (Note that it is possible that the agent has become healthy but we still want to finish without reverting
         // with NotInLiquidation so that we can set the agent status to NORMAL.)
         Liquidation.markCollateralsHealthy(agent, cr);

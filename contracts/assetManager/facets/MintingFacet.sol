@@ -136,7 +136,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
             MintingPaymentTooOld());
         // Only closed (SUCCESSFUL or DEFAULTED) minting payments can be confirmed in this way -
         // ACTIVE minting payments should be confirmed by executeMinting.
-        // We also prevent EXPIRED minitngs to be confirmed this way, to extra incentivize agent to execute minting
+        // We also prevent EXPIRED mintings to be confirmed this way, to extra incentivize agent to execute minting
         // (when paid) instead of waiting and calling unstick minting.
         CollateralReservation.Status status = crt.status;
         require(status == CollateralReservation.Status.SUCCESSFUL || status == CollateralReservation.Status.DEFAULTED,

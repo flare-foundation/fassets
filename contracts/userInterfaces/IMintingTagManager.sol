@@ -27,6 +27,9 @@ interface IMintingTagManager is IERC721EnumerableUpgradeable {
     /// Emitted when the reservation fee or its recipient is changed by governance.
     event ReservationFeeChanged(uint256 reservationFee, address recipient);
 
+    /// Emitted when the cooldown delay for allowed executor changes is updated by governance.
+    event ExecutorChangeAfterSecondsChanged(uint256 executorChangeAfterSeconds);
+
     /**
      * Reserve a new minting tag by paying the reservation fee.
      * The caller becomes the owner of the tag and the initial minting recipient.
@@ -70,6 +73,13 @@ interface IMintingTagManager is IERC721EnumerableUpgradeable {
      * The fee (in native currency) required to reserve a new minting tag.
      */
     function reservationFee() external view returns (uint256);
+
+    /**
+     * The cooldown delay (in seconds) before a change to a tag's allowed executor becomes active.
+     * The delay must be longer than the time needed to obtain an FDC proof, so that an executor
+     * that has already paid for an FDC request cannot be locked out before they can use it.
+     */
+    function executorChangeAfterSeconds() external view returns (uint256);
 
     /**
      * Return all minting tag ids owned by the given address.

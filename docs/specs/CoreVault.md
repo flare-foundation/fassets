@@ -70,7 +70,7 @@ Core vault is a classic multisig address setup by flare on the XRPL. The setup i
 
 The msig address will only do 2 types of transactions: Payment transaction back to agents addresses, and EscrowCreate transactions, which creates an escrow.
 
-We create escrow transactions in order to minimize the amount of xrp that can be spent by the multisig at any given time to reduce the risk. We do that by time locking the funds in the escrow with a safe custodian address as a destination. Until the deadline time only the safe custodian will get access to held funds if preimages are released, otherwise the funds are returned to the multisig address after the time period has passed. Escrows are created such that on each operation day, one lot of size L is released. Preimages are secrets, that when presented escrow transactions can be finalised and funds get immediately transferred to custodian account.
+We create escrow transactions in order to minimize the amount of xrp that can be spent by the multisig at any given time to reduce the risk. We do that by time locking the funds in the escrow with a safe custodian address as a destination. Until the deadline time only the safe custodian will get access to held funds if preimages are released, otherwise the funds are returned to the multisig address after the time period has passed. Escrows are created such that on each operation day, one lot of size L is released. Preimages are secrets, that when presented escrow transactions can be finalized and funds get immediately transferred to custodian account.
 
 ### Payment transaction:
 
@@ -147,7 +147,7 @@ All commands emitted must be within the scope of predefined rules, and each memb
 
 All transactions are also checked by the executor before being executed.
 
-If any member of msig or executor spots the problem, we must go to red alert mode and have a call asap. All members of the call must turn on the camera for at least a few min to make sure noone is compromised.
+If any member of msig or executor spots the problem, we must go to red alert mode and have a call asap. All members of the call must turn on the camera for at least a few min to make sure no one is compromised.
 
 ### Transaction collection and execution
 

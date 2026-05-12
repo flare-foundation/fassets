@@ -15,13 +15,15 @@ contract MintingTagManagerProxy is ERC1967Proxy {
         string memory _symbol,
         uint256 _reservationFee,
         address payable _reservationFeeRecipient,
-        uint256 _reservedTagsCount
+        uint256 _reservedTagsCount,
+        uint256 _executorChangeAfterSeconds
     )
         ERC1967Proxy(_implementationAddress,
             abi.encodeCall(
                 MintingTagManager.initialize, (
                     _governanceSettings, _initialGovernance,
-                    _name, _symbol, _reservationFee, _reservationFeeRecipient, _reservedTagsCount
+                    _name, _symbol, _reservationFee, _reservationFeeRecipient, _reservedTagsCount,
+                    _executorChangeAfterSeconds
                 )
             )
         )

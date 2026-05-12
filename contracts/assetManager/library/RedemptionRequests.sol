@@ -69,7 +69,7 @@ library RedemptionRequests {
         bytes32 underlyingAddressHash = keccak256(bytes(_args.redeemerUnderlyingAddressString));
         // both addresses must be normalized (agent's address is checked at vault creation,
         // and if redeemer address isn't normalized, the agent can trigger rejectInvalidRedemption),
-        // so this comparison quarantees the redemption is not to the agent's address
+        // so this comparison guarantees the redemption is not to the agent's address
         require(underlyingAddressHash != agent.underlyingAddressHash,
             CannotRedeemToAgentsAddress());
         // create request

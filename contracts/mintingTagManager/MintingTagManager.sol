@@ -34,16 +34,14 @@ contract MintingTagManager is
         address oldAllowedExecutor;
     }
 
-    // must be longer than the time to wait for FDC proof
-    uint256 internal constant EXECUTOR_CHANGE_ACTIVE_AFTER_SECONDS = 10 minutes;
-
     uint256 public nextAvailableTag = 0;
     uint256 public reservationFee;
     address payable public reservationFeeRecipient;
     mapping (uint256 mintingTag => TagData) private tagData;
+    uint256 public executorChangeAfterSeconds;
 
     // storage gap for future variables
-    uint256[46] private __gap;
+    uint256[45] private __gap;
 
     modifier onlyTagOwner(uint256 _mintingTag) {
         require(ownerOf(_mintingTag) == msg.sender, OnlyTagOwner());
@@ -61,7 +59,8 @@ contract MintingTagManager is
         string memory symbol_,
         uint256 _reservationFee,
         address payable _reservationFeeRecipient,
-        uint256 _reservedTagsCount
+        uint256 _reservedTagsCount,
+        uint256 _executorChangeAfterSeconds
     )
         external
         initializer
@@ -71,6 +70,7 @@ contract MintingTagManager is
         nextAvailableTag = _reservedTagsCount;
         reservationFee = _reservationFee;
         reservationFeeRecipient = _reservationFeeRecipient;
+        executorChangeAfterSeconds = _executorChangeAfterSeconds;
     }
 
     function setReservationFee(
@@ -91,6 +91,16 @@ contract MintingTagManager is
     {
         reservationFeeRecipient = _reservationFeeRecipient;
         emit ReservationFeeChanged(reservationFee, _reservationFeeRecipient);
+    }
+
+    function setExecutorChangeAfterSeconds(
+        uint256 _executorChangeAfterSeconds
+    )
+        external
+        onlyGovernance
+    {
+        executorChangeAfterSeconds = _executorChangeAfterSeconds;
+        emit ExecutorChangeAfterSecondsChanged(_executorChangeAfterSeconds);
     }
 
     function reserve()
@@ -191,7 +201,7 @@ contract MintingTagManager is
         TagData storage tag = tagData[_mintingTag];
         address currentAllowedExecutor = _allowedExecutor(tag);
         if (currentAllowedExecutor != _executor) {
-            uint256 allowedExecutorActiveAfterTs = block.timestamp + EXECUTOR_CHANGE_ACTIVE_AFTER_SECONDS;
+            uint256 allowedExecutorActiveAfterTs = block.timestamp + executorChangeAfterSeconds;
             tag.oldAllowedExecutor = currentAllowedExecutor;
             tag.allowedExecutor = _executor;
             tag.allowedExecutorActiveAfterTs = allowedExecutorActiveAfterTs.toUint64();

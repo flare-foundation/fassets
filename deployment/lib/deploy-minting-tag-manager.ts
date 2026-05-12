@@ -10,6 +10,7 @@ export interface MintingTagManagerParameters {
     reservationFee: string; // in NAT Wei
     reservationFeeRecipient: string;
     reservedTagCount: number;
+    executorChangeAfterSeconds: number;
 }
 
 export async function deployMintingTagManager(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
@@ -24,7 +25,8 @@ export async function deployMintingTagManager(hre: HardhatRuntimeEnvironment, co
 
     const mintingTagManagerImpl = await MintingTagManager.new();
     const mintingTagManager = await MintingTagManagerProxy.new(mintingTagManagerImpl.address, contracts.GovernanceSettings.address, deployer,
-        parameters.name, parameters.symbol, parameters.reservationFee, parameters.reservationFeeRecipient, parameters.reservedTagCount, { from: deployer });
+        parameters.name, parameters.symbol, parameters.reservationFee, parameters.reservationFeeRecipient, parameters.reservedTagCount,
+        parameters.executorChangeAfterSeconds, { from: deployer });
 
     contracts.add("MintingTagManagerImplementation", "MintingTagManager.sol", mintingTagManagerImpl.address);
     contracts.add("MintingTagManager", "MintingTagManagerProxy.sol", mintingTagManager.address, { mustSwitchToProduction: true });
@@ -37,7 +39,8 @@ export async function verifyMintingTagManager(hre: HardhatRuntimeEnvironment, co
     await verifyContract(hre, "MintingTagManager", contracts,
         [
             contracts.getAddress("MintingTagManager"), contracts.GovernanceSettings.address, deployer,
-            parameters.name, parameters.symbol, parameters.reservationFee, parameters.reservationFeeRecipient, String(parameters.reservedTagCount)
+            parameters.name, parameters.symbol, parameters.reservationFee, parameters.reservationFeeRecipient, String(parameters.reservedTagCount),
+            String(parameters.executorChangeAfterSeconds)
         ],
         true);
 }

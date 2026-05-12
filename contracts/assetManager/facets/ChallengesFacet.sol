@@ -176,7 +176,7 @@ contract ChallengesFacet is AssetManagerBase, ReentrancyGuard {
             if (PaymentReference.isValid(paymentReference, PaymentReference.REDEMPTION)) {
                 // for open redemption, we don't count the value that should be paid to free balance deduction.
                 // Note that we don't need to check that the redemption is for this agent, because payments
-                // with redemption reference for other agent can be immediatelly challenged as illegal.
+                // with redemption reference for other agent can be immediately challenged as illegal.
                 uint256 redemptionId = PaymentReference.decodeId(pmi.data.responseBody.standardPaymentReference);
                 Redemption.Request storage request = state.redemptionRequests[redemptionId];
                 uint256 redemptionValue = Redemptions.isOpen(request) ? request.underlyingValueUBA : 0;

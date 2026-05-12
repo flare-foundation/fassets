@@ -6,7 +6,7 @@ import {CheckPointHistory} from "../library/CheckPointHistory.sol";
 import {CheckPointsByAddress} from "../library/CheckPointsByAddress.sol";
 
 /**
- * @title Check Pointable ERC20 Behavior
+ * @title CheckPointable ERC20 Behavior
  * @notice ERC20 behavior which adds balance check point features.
  **/
 abstract contract CheckPointable is IICheckPointable {

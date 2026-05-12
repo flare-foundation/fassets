@@ -302,7 +302,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, ReentrancyGuard {
                 // either by the agent or by a 3rd party after enough time.
                 // Therefore this is a possible state in normal operation.
                 // However, it is very bad for the agent, since the redemption ticket was re-created on default,
-                // which means that payment confirmation will probably make the underying balance too low,
+                // which means that payment confirmation will probably make the underlying balance too low,
                 // causing full liquidation.
                 return (false, "core vault transfer defaulted");
             }

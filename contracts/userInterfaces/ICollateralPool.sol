@@ -201,7 +201,7 @@ interface ICollateralPool {
     /**
      * Delegate WNat vote power for the wrapped native tokens held in this vault.
      * NOTE: only the owner of the pool's corresponding agent vault may call this method.
-     * @param _to the adress to which the delegation goes (the delegatee)
+     * @param _to the address to which the delegation goes (the delegatee)
      * @param _bips the delegation share (to be spent between at most two delegatees)
      */
     function delegate(address _to, uint256 _bips) external;
