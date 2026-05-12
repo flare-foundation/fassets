@@ -7,6 +7,12 @@ import {MintingRateLimiter} from "./data/MintingRateLimiter.sol";
 
 
 library DirectMinting {
+    struct MintingTarget {
+        bool mintToSmartAccount;
+        address recipient;
+        address allowedExecutor;
+    }
+
     struct DelayedMinting {
         uint64 startedAt;
         uint64 allowedAt;
@@ -15,6 +21,14 @@ library DirectMinting {
         // the minting cap check/reservation, it will be false (otherwise, the system would try to release unreserved
         // capacity, leading to underflow).
         bool mintingCapacityReserved;
+        // Recipient and executor of the minting are captured at delay creation time so that they cannot be
+        // changed (by transferring the tag or updating its recipient/executor) during the delay. If this flag
+        // is false (delay was recorded before the upgrade that introduced this field), the execution falls back
+        // to resolving the values from the payment at execution time.
+        bool targetStored;
+        bool mintToSmartAccount;
+        address recipient;
+        address allowedExecutor;
     }
 
     struct State {

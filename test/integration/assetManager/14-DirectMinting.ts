@@ -858,6 +858,54 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             expectEvent(res2, 'DirectMintingDelayed');
         });
 
+        it("delayed minting recipient and executor are frozen at delay creation (tag transfer cannot be used to steal)", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const attacker = minterAddress2;
+            // reserve a tag with minter as owner and set recipient/executor
+            const tagPrice = await mintingTagManager.reservationFee();
+            const tagRes = await mintingTagManager.reserve({ from: minter.address, value: tagPrice });
+            const tagId = requiredEventArgs(tagRes, 'MintingTagReserved').tag;
+            await mintingTagManager.setMintingRecipient(tagId, minter.address, { from: minter.address });
+            const resEx = await mintingTagManager.setAllowedExecutor(tagId, executorAddress1, { from: minter.address });
+            const argsEx = requiredEventArgs(resEx, "AllowedExecutorChangePending");
+            await time.increaseTo(argsEx.activeAfterTs);
+            // fill hourly limit close to the cap so the next minting via tag gets delayed
+            await minter.directMintRaw(context.convertLotsToUBA(95), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            // submit a tag-based minting that exceeds the remaining hourly capacity - should be delayed
+            const totalMintingAmount = context.convertLotsToUBA(10);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, null,
+                { destinationTag: Number(tagId) });
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            const resDelay = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            const delayedEvent = requiredEventArgs(resDelay, 'DirectMintingDelayed');
+            // before the delay ends, transfer the tag to the attacker - this updates recipient to attacker
+            // and starts a 10-minute cooldown after which the allowed executor is reset to zero.
+            await mintingTagManager.transfer(attacker, tagId, { from: minter.address });
+            assertWeb3Equal(await mintingTagManager.mintingRecipient(tagId), attacker);
+            // advance time past the delay (also clears the 10-minute executor change cooldown started by the transfer)
+            await time.increaseTo(delayedEvent.executionAllowedAt);
+            // after the cooldown, the tag manager reports zero allowed executor - without the fix anyone could execute
+            assertWeb3Equal(await mintingTagManager.allowedExecutor(tagId), ZERO_ADDRESS);
+            // attacker tries to execute - should fail because the executor is taken from the delay record,
+            // where the stored allowed executor is still executorAddress1
+            await expectRevert.custom(
+                context.assetManager.executeDirectMinting(proof, { from: attacker }),
+                "InvalidExecutor", []
+            );
+            // original executor can still execute - funds go to the original recipient (minter), not the attacker
+            const attackerBalanceBefore = toBN(await context.fAsset.balanceOf(attacker));
+            const minterBalanceBefore = toBN(await context.fAsset.balanceOf(minter.address));
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
+            assertWeb3Equal(await context.fAsset.balanceOf(attacker), attackerBalanceBefore);
+            assertWeb3Equal(toBN(await context.fAsset.balanceOf(minter.address)).sub(minterBalanceBefore),
+                mintingExecuted.mintedAmountUBA);
+        });
+
         it("governance can unblock delayed mintings", async () => {
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
             // exceed the hourly limit to create a delayed minting

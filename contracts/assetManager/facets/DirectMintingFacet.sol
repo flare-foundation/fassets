@@ -61,15 +61,15 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         require(address(state.mintingTagManager) != address(0), MissingMintingTagManager());
         require(address(state.smartAccountManager) != address(0), MissingSmartAccountManager());
         _validateTagAndMemoData(_payment);
-        (bool mintToSmartAccount, address recipient, address allowedExecutor) = _decodeTarget(_payment);
-        require(allowedExecutor == address(0) || allowedExecutor == msg.sender || _othersCanExecute(_payment),
-            InvalidExecutor());
+        DirectMinting.MintingTarget memory target = _getMintingTarget(_payment);
+        require(target.allowedExecutor == address(0) || target.allowedExecutor == msg.sender
+            || _othersCanExecute(_payment), InvalidExecutor());
         // check that payment was not confirmed before minting cap reservation and possible delay
         AssetManagerState.get().paymentConfirmations.requireIncomingPaymentUnconfirmed(transactionId);
         // check and reserve minting capacity
         _reserveMintingCapacity(transactionId, receivedAmount);
         // check rate limits
-        DirectMintingDelayState mintingDelayed = _checkRateLimits(transactionId, receivedAmount);
+        DirectMintingDelayState mintingDelayed = _checkRateLimits(transactionId, receivedAmount, target);
         if (mintingDelayed == DirectMintingDelayState.Delayed) {
             // return the native value to the executor (delayed execution may be executed by someone else)
             Transfers.transferNAT(payable(msg.sender), msg.value);
@@ -92,11 +92,11 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
             require(msg.value == 0, NoValueExpected());
             emit DirectMintingPaymentTooSmallForFee(transactionId,
                 receivedAmount, Conversion.convertAmgToUBA(state.minimumMintingFeeAmg));
-        } else if (mintToSmartAccount) {
+        } else if (target.mintToSmartAccount) {
             _mintToSmartAccounts(_payment, receivedAmount, mintingFeeUBA);
         } else {
             require(msg.value == 0, NoValueExpected());
-            _mintToRecipient(_payment, recipient, receivedAmount, mintingFeeUBA, executorFeeUBA);
+            _mintToRecipient(_payment, target.recipient, receivedAmount, mintingFeeUBA, executorFeeUBA);
         }
     }
 
@@ -157,7 +157,11 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         state.totalReservedCollateralAMG -= amountAmg;
     }
 
-    function _checkRateLimits(bytes32 _transactionId, uint256 _amount)
+    function _checkRateLimits(
+        bytes32 _transactionId,
+        uint256 _amount,
+        DirectMinting.MintingTarget memory _target
+    )
         private
         returns (DirectMintingDelayState)
     {
@@ -176,7 +180,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         uint64 amountAmg = Conversion.convertUBAToAmg(_amount);
         if (amountAmg >= state.largeMintingThresholdAmg) {
             uint256 allowedAt = block.timestamp + state.largeMintingDelaySeconds;
-            _addDelayedMinting(_transactionId, allowedAt);
+            _addDelayedMinting(_transactionId, allowedAt, _target);
             emit LargeDirectMintingDelayed(_transactionId, _amount, allowedAt);
             return DirectMintingDelayState.Delayed;
         } else {
@@ -184,7 +188,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
             (bool delayedDaily, uint256 allowedAtDaily) = state.dailyLimiter.recordMinting(amountAmg);
             if (delayedHourly || delayedDaily) {
                 uint256 allowedAt = Math.max(allowedAtHourly, allowedAtDaily);
-                _addDelayedMinting(_transactionId, allowedAt);
+                _addDelayedMinting(_transactionId, allowedAt, _target);
                 emit DirectMintingDelayed(_transactionId, _amount, allowedAt);
                 return DirectMintingDelayState.Delayed;
             }
@@ -192,14 +196,22 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         return DirectMintingDelayState.NotDelayed;
     }
 
-    function _addDelayedMinting(bytes32 _transactionId, uint256 _allowedAt)
+    function _addDelayedMinting(
+        bytes32 _transactionId,
+        uint256 _allowedAt,
+        DirectMinting.MintingTarget memory _target
+    )
         private
     {
         DirectMinting.State storage state = DirectMinting.getState();
         state.delayedMintings[_transactionId] = DirectMinting.DelayedMinting({
             startedAt: block.timestamp.toUint64(),
             allowedAt: _allowedAt.toUint64(),
-            mintingCapacityReserved: true
+            mintingCapacityReserved: true,
+            targetStored: true,
+            mintToSmartAccount: _target.mintToSmartAccount,
+            recipient: _target.recipient,
+            allowedExecutor: _target.allowedExecutor
         });
     }
 
@@ -243,9 +255,29 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         }
     }
 
+    function _getMintingTarget(IXRPPayment.Proof calldata _payment)
+        private view
+        returns (DirectMinting.MintingTarget memory)
+    {
+        DirectMinting.State storage state = DirectMinting.getState();
+        DirectMinting.DelayedMinting storage delayed = state.delayedMintings[_payment.data.requestBody.transactionId];
+        // For a minting that was already delayed, use the recipient and executor captured at delay creation
+        // time. This prevents the tag owner from accidentally changing the recipient/executor
+        // (e.g. by transferring the tag) during the delay period and losing the minted FAssets.
+        if (delayed.targetStored) {
+            return DirectMinting.MintingTarget({
+                mintToSmartAccount: delayed.mintToSmartAccount,
+                recipient: delayed.recipient,
+                allowedExecutor: delayed.allowedExecutor
+            });
+        } else {
+            return _decodeTarget(_payment);
+        }
+    }
+
     function _decodeTarget(IXRPPayment.Proof calldata _payment)
         private view
-        returns (bool _mintToSmartAccount, address _targetAddress, address _allowedExecutor)
+        returns (DirectMinting.MintingTarget memory)
     {
         IXRPPayment.ResponseBody calldata body = _payment.data.responseBody;
         // has registered tag (ignore memo data in this case)
@@ -253,7 +285,11 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
             uint256 destinationTag = body.destinationTag;
             address registeredAddress = DirectMinting.mintingRecipientForTag(destinationTag);
             if (registeredAddress != address(0)) {
-                return (false, registeredAddress, DirectMinting.allowedExecutorForTag(body.destinationTag));
+                return DirectMinting.MintingTarget({
+                    mintToSmartAccount: false,
+                    recipient: registeredAddress,
+                    allowedExecutor: DirectMinting.allowedExecutorForTag(destinationTag)
+                });
             }
         }
         // has valid DIRECT_MINTING payment reference
@@ -263,21 +299,33 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
             if (PaymentReference.isValid(paymentReference, PaymentReference.DIRECT_MINTING)) {
                 uint256 addressNumeric = PaymentReference.decodeId(paymentReference);
                 if (addressNumeric <= type(uint160).max) {
-                    return (false, address(uint160(addressNumeric)), address(0));
+                    return DirectMinting.MintingTarget({
+                        mintToSmartAccount: false,
+                        recipient: address(uint160(addressNumeric)),
+                        allowedExecutor: address(0)
+                    });
                 }
             }
         } else if (body.hasMemoData && body.firstMemoData.length == 48) {
             uint64 prefix = uint64(bytes8(body.firstMemoData[0:8]));
             if (prefix == PaymentReference.DIRECT_MINTING_EX) {
-                address target = address(bytes20(body.firstMemoData[8:28]));
+                address recipient = address(bytes20(body.firstMemoData[8:28]));
                 address executor = address(bytes20(body.firstMemoData[28:48]));
-                if (target != address(0)) {
-                    return (false, target, executor);
+                if (recipient != address(0)) {
+                    return DirectMinting.MintingTarget({
+                        mintToSmartAccount: false,
+                        recipient: recipient,
+                        allowedExecutor: executor
+                    });
                 }
             }
         }
         // no direct minting - mint through smart account manager
-        return (true, address(0), address(0));
+        return DirectMinting.MintingTarget({
+            mintToSmartAccount: true,
+            recipient: address(0),
+            allowedExecutor: address(0)
+        });
     }
 
     // mint to target address and pay executor directly
