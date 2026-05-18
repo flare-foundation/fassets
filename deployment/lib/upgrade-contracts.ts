@@ -117,6 +117,23 @@ export async function upgradeGovernedProxy({ hre, artifacts, contracts, deployer
     }
 }
 
+export async function upgradeGovernedProxyAndCall({ hre, artifacts, contracts, deployer }: DeployScriptEnvironment,
+        contractName: string, implementationName: string, implementationContract: string, calldata: string, execute: boolean)
+{
+    const GovernedUUPSProxyImplementation = artifacts.require("GovernedUUPSProxyImplementation");
+    const proxy = await GovernedUUPSProxyImplementation.at(contracts.getAddress(contractName));
+
+    const newImplAddress = await deployFacet(hre, implementationName, contracts, deployer, implementationContract);
+
+    if (await shouldExecute(execute, proxy)) {
+        await proxy.upgradeToAndCall(newImplAddress, calldata, { from: deployer });
+        console.log(`${implementationContract} at ${proxy.address} upgraded to ${await getProxyImplementationAddress(hre, proxy.address)}`);
+    } else {
+        const instance = await artifacts.require("IUUPSUpgradeable").at(proxy.address);
+        printExecuteData(contractName, instance, "upgradeToAndCall", [newImplAddress, calldata]);
+    }
+}
+
 interface IGovernedRead {
     governance(): Promise<string>;
     productionMode(): Promise<boolean>;

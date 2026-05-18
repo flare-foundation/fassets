@@ -307,12 +307,12 @@
   {
     "name": "DirectMintingFacet",
     "contractName": "DirectMintingFacet.sol",
-    "address": "0xC5da6360d93DEaa32E55a26176400Bc5029b9917"
+    "address": "0x7d99761E9a6375A88cb3661Cb7F2041196Fff4A5"
   },
   {
     "name": "DirectMintingSettingsFacet",
     "contractName": "DirectMintingSettingsFacet.sol",
-    "address": "0x219eF3482D49532c44F8f1929eB08E2D40F4479D"
+    "address": "0xf6CfB215836e08927493F0d1Ffbc04dD0D392588"
   },
   {
     "name": "RedeemExtendedSettingsFacet",
@@ -337,7 +337,7 @@
   {
     "name": "MintingTagManagerImplementation",
     "contractName": "MintingTagManager.sol",
-    "address": "0x7dbbFE31B5AfAd6E4827AE5c15c86cA43D3d620D"
+    "address": "0x413Bd0E4Af6514B7c46C4F77204950887c796Ecf"
   },
   {
     "name": "MintingTagManager",

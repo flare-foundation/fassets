@@ -1,11 +1,12 @@
 import { runDeployScript } from "../../lib/deploy-scripts";
-import { performGovernanceCall, upgradeGovernedProxy } from "../../lib/upgrade-contracts";
+import { abiEncodeCall } from "../../lib/deploy-utils";
+import { upgradeGovernedProxyAndCall } from "../../lib/upgrade-contracts";
 
 runDeployScript(async (deployScriptEnvironment) => {
     const execute = true;
     const { contracts, artifacts } = deployScriptEnvironment;
     const MintingTagManager = artifacts.require("MintingTagManager");
     const mintingTagManager = await MintingTagManager.at(contracts.getAddress("MintingTagManager"));
-    await upgradeGovernedProxy(deployScriptEnvironment, "MintingTagManager", "MintingTagManagerImplementation", "MintingTagManager", execute);
-    await performGovernanceCall(deployScriptEnvironment, "MintingTagManager", mintingTagManager, "setExecutorChangeAfterSeconds", [600], execute);
+    const calldata = abiEncodeCall(mintingTagManager, (inst) => inst.initializeV2(600));
+    await upgradeGovernedProxyAndCall(deployScriptEnvironment, "MintingTagManager", "MintingTagManagerImplementation", "MintingTagManager", calldata, execute);
 });
