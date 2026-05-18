@@ -36,6 +36,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         commonContext = await CommonContext.createTest(governance);
         context = await AssetContext.createTest(commonContext, testChainInfo.xrp);
         await context.assetManagerController.addEmergencyPauseSender(emergencyAddress1, { from: governance });
+        await context.assetManagerController.addEmergencyUnpauseSender(emergencyAddress1, { from: governance });
         return { commonContext, context };
     }
 

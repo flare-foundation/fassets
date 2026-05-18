@@ -1,4 +1,4 @@
-import { AgentSettings, CollateralType, EmergencyPauseLevel } from "../../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, CollateralType, EmergencyPauseLevel, EmergencyPausePermission } from "../../../../lib/fasset/AssetManagerTypes";
 import { lotSize } from "../../../../lib/fasset/Conversions";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { testChainInfo } from "../../../../lib/test-utils/actors/TestChainInfo";
@@ -595,7 +595,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         const poolFee = paymentAmount.mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
         const txHash = await performSelfMintingPayment(agentVault.address, paymentAmount.add(poolFee));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
-        await assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, false, 12 * 60, { from: assetManagerController });
+        await assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, EmergencyPausePermission.PAUSE, 12 * 60, { from: assetManagerController });
         const promise = assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
         // assert
         await expectRevert.custom(promise, "EmergencyPauseActive", []);
@@ -640,7 +640,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, account
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // emergency pause minting
-        await assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, false, 12 * 60, { from: assetManagerController });
+        await assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, EmergencyPausePermission.PAUSE, 12 * 60, { from: assetManagerController });
         // act
         const lots = 2;
         const promise = assetManager.mintFromFreeUnderlying(agentVault.address, lots, { from: agentOwner1});

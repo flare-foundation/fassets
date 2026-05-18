@@ -21,6 +21,8 @@ interface IIAssetManagerController is
 {
     event EmergencyPauseSenderAdded(address emergencyPauseSender);
     event EmergencyPauseSenderRemoved(address emergencyPauseSender);
+    event EmergencyUnpauseSenderAdded(address emergencyUnpauseSender);
+    event EmergencyUnpauseSenderRemoved(address emergencyUnpauseSender);
 
     /**
      * New address in case this controller was replaced.
@@ -244,6 +246,12 @@ interface IIAssetManagerController is
     function removeEmergencyPauseSender(address _address)
         external;
 
+    function addEmergencyUnpauseSender(address _address)
+        external;
+
+    function removeEmergencyUnpauseSender(address _address)
+        external;
+
     function setMaxEmergencyPauseDurationSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
         external;
 
@@ -251,6 +259,10 @@ interface IIAssetManagerController is
         external;
 
     function getEmergencyPauseSenders()
+        external view
+        returns (address[] memory);
+
+    function getEmergencyUnpauseSenders()
         external view
         returns (address[] memory);
 }

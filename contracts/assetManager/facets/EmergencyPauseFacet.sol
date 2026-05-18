@@ -16,16 +16,19 @@ contract EmergencyPauseFacet is AssetManagerBase, IAssetManagerEvents {
     using SafeCast for uint256;
 
     error InconsistentLevelAndDuration();
+    error NotAuthorizedToPause();
+    error NotAuthorizedToUnpause();
 
-    function emergencyPause(EmergencyPause.Level _level, bool _governancePause, uint256 _duration)
+    function emergencyPause(EmergencyPause.Level _level, uint256 _permissions, uint256 _duration)
         external
         onlyAssetManagerController
     {
         // either _level=NONE or _duration=0 cancels pause - require that either both cancel pause or neither
         require((_level == EmergencyPause.Level.NONE) == (_duration == 0), InconsistentLevelAndDuration());
-        if (_governancePause) {
+        if (_permissions & EmergencyPause.GOVERNANCE != 0) {
             _governanceEmergencyPause(_level, _duration);
         } else {
+            _checkExternalPausePermission(_level, _permissions, _duration);
             _externalEmergencyPause(_level, _duration);
         }
     }
@@ -101,6 +104,25 @@ contract EmergencyPauseFacet is AssetManagerBase, IAssetManagerEvents {
         state.emergencyPausedTotalDuration = totalDuration.toUint64();
         state.emergencyPauseLevel = _level;
         _emitPauseEvent();
+    }
+
+    function _checkExternalPausePermission(EmergencyPause.Level _level, uint256 _permissions, uint256 _duration)
+        private view
+    {
+        if (_level == EmergencyPause.Level.NONE) {
+            // cancel always counts as UNPAUSE
+            require(_permissions & EmergencyPause.UNPAUSE != 0, NotAuthorizedToUnpause());
+            return;
+        }
+        EmergencyPause.Level currentLevel = EffectiveEmergencyPause.externalLevel();
+        // require PAUSE permission if the new pause is higher level or it has the same level but is longer
+        bool isPause = _level > currentLevel ||
+            (_level == currentLevel && block.timestamp + _duration >= EffectiveEmergencyPause.externalEndTime());
+        if (isPause) {
+            require(_permissions & EmergencyPause.PAUSE != 0, NotAuthorizedToPause());
+        } else {
+            require(_permissions & EmergencyPause.UNPAUSE != 0, NotAuthorizedToUnpause());
+        }
     }
 
     function _emitPauseEvent() private {

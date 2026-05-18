@@ -65,6 +65,12 @@ export enum EmergencyPauseLevel {
     FULL_AND_TRANSFER   // Prevent everything from FULL, plus prevent FAsset transfers.
 }
 
+export enum EmergencyPausePermission {
+    PAUSE = 1,
+    UNPAUSE = 2,
+    GOVERNANCE = 4,
+}
+
 // explicit conversions
 
 export function collateralClass(value: BN | number | string) {

@@ -37,8 +37,8 @@ contract AssetManagerController is
     using EnumerableSet for EnumerableSet.AddressSet;
 
     error AssetManagerNotManaged();
-    error OnlyGovernanceOrEmergencyPauseSenders();
     error AddressZero();
+    error NotAuthorized();
 
     /**
      * New address in case this controller was replaced.
@@ -52,6 +52,7 @@ contract AssetManagerController is
     IIAssetManager[] private assetManagers;
 
     EnumerableSet.AddressSet private emergencyPauseSenders;
+    EnumerableSet.AddressSet private emergencyUnpauseSenders;
 
     constructor()
         GovernedProxyImplementation()
@@ -653,7 +654,8 @@ contract AssetManagerController is
         onlyImmediateGovernance
     {
         _callOnManagers(_assetManagers,
-            abi.encodeCall(IIAssetManager.emergencyPause, (EmergencyPause.Level.NONE, false, 0)));
+            abi.encodeCall(IIAssetManager.emergencyPause,
+                (EmergencyPause.Level.NONE, EmergencyPause.PAUSE | EmergencyPause.UNPAUSE, 0)));
     }
 
     function resetEmergencyPauseTotalDuration(IIAssetManager[] memory _assetManagers)
@@ -684,6 +686,26 @@ contract AssetManagerController is
         }
     }
 
+    function addEmergencyUnpauseSender(address _address)
+        external
+        onlyImmediateGovernance
+    {
+        if (!emergencyUnpauseSenders.contains(_address)) {
+            emergencyUnpauseSenders.add(_address);
+            emit EmergencyUnpauseSenderAdded(_address);
+        }
+    }
+
+    function removeEmergencyUnpauseSender(address _address)
+        external
+        onlyImmediateGovernance
+    {
+        if (emergencyUnpauseSenders.contains(_address)) {
+            emergencyUnpauseSenders.remove(_address);
+            emit EmergencyUnpauseSenderRemoved(_address);
+        }
+    }
+
     function setMaxEmergencyPauseDurationSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyGovernance
@@ -707,14 +729,34 @@ contract AssetManagerController is
         return emergencyPauseSenders.values();
     }
 
+    function getEmergencyUnpauseSenders()
+        external view
+        returns (address[] memory)
+    {
+        return emergencyUnpauseSenders.values();
+    }
+
     function _emergencyPause(IIAssetManager[] memory _assetManagers, EmergencyPause.Level _level, uint256 _duration)
         private
     {
-        bool byGovernance = msg.sender == governance();
-        require(byGovernance || emergencyPauseSenders.contains(msg.sender),
-            OnlyGovernanceOrEmergencyPauseSenders());
+        uint256 permissions = _callerEmergencyPausePermissions();
+        require(permissions != 0, NotAuthorized());
         _callOnManagers(_assetManagers,
-            abi.encodeCall(IIAssetManager.emergencyPause, (_level, byGovernance, _duration)));
+            abi.encodeCall(IIAssetManager.emergencyPause, (_level, permissions, _duration)));
+    }
+
+    function _callerEmergencyPausePermissions() private view returns (uint256) {
+        if (msg.sender == governance()) {
+            return EmergencyPause.GOVERNANCE;
+        }
+        uint256 permissions = 0;
+        if (emergencyPauseSenders.contains(msg.sender)) {
+            permissions |= EmergencyPause.PAUSE;
+        }
+        if (emergencyUnpauseSenders.contains(msg.sender)) {
+            permissions |= EmergencyPause.UNPAUSE;
+        }
+        return permissions;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////

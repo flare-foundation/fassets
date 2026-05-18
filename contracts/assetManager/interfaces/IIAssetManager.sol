@@ -36,14 +36,21 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsMan
     // Emergency pause
 
     /**
-     * Trigger pause of most operations.
+     * Trigger pause or unpause of most operations.
+     * NOTE: may only be called by the asset manager controller.
+     * @param _level The pause level to set.
+     * @param _permissions Bitset of caller permissions. `EmergencyPause.GOVERNANCE` triggers the governance pause
+     *  path; otherwise the call uses the external pause path, where `EmergencyPause.PAUSE` is required to increase
+     *  the external pause level and `EmergencyPause.UNPAUSE` is required to decrease it.
+     * @param _duration Pause duration in seconds; must be 0 iff `_level == EmergencyPause.Level.NONE`.
      */
-    function emergencyPause(EmergencyPause.Level _level, bool _byGovernance, uint256 _duration)
+    function emergencyPause(EmergencyPause.Level _level, uint256 _permissions, uint256 _duration)
         external;
 
     /**
      * Reset total duration of 3rd party pauses, so that they can trigger pause again.
      * Otherwise, the total duration is automatically reset emergencyPauseDurationResetAfterSeconds after last pause.
+     * NOTE: may only be called by the asset manager controller.
      */
     function resetEmergencyPauseTotalDuration()
         external;
