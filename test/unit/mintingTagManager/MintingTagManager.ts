@@ -42,7 +42,14 @@ contract("MintingTagManager", function (accounts) {
     it("should not initialize twice", async () => {
         await expectRevert(
             mintingTagManager.initialize(governanceSettings.address, governance, "Minting Tag Manager", "MTMG",
-                reservationFee, governance, 10, executorChangeAfterSeconds),
+                reservationFee, governance, 10),
+            "Initializable: contract is already initialized"
+        );
+    });
+
+    it("should not be able to call initializeV2 after deploy", async () => {
+        await expectRevert(
+            mintingTagManager.initializeV2(executorChangeAfterSeconds),
             "Initializable: contract is already initialized"
         );
     });

@@ -3,6 +3,7 @@ pragma solidity ^0.8.27;
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {MintingTagManager} from "./MintingTagManager.sol";
 
 
@@ -22,11 +23,17 @@ contract MintingTagManagerProxy is ERC1967Proxy {
             abi.encodeCall(
                 MintingTagManager.initialize, (
                     _governanceSettings, _initialGovernance,
-                    _name, _symbol, _reservationFee, _reservationFeeRecipient, _reservedTagsCount,
-                    _executorChangeAfterSeconds
+                    _name, _symbol, _reservationFee, _reservationFeeRecipient, _reservedTagsCount
                 )
             )
         )
     {
+        // immediately upgrade to V2 on new deploy
+        Address.functionDelegateCall(
+            _implementationAddress,
+            abi.encodeCall(
+                MintingTagManager.initializeV2, (_executorChangeAfterSeconds)
+            )
+        );
     }
 }

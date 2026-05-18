@@ -59,8 +59,7 @@ contract MintingTagManager is
         string memory symbol_,
         uint256 _reservationFee,
         address payable _reservationFeeRecipient,
-        uint256 _reservedTagsCount,
-        uint256 _executorChangeAfterSeconds
+        uint256 _reservedTagsCount
     )
         external
         initializer
@@ -70,6 +69,14 @@ contract MintingTagManager is
         nextAvailableTag = _reservedTagsCount;
         reservationFee = _reservationFee;
         reservationFeeRecipient = _reservationFeeRecipient;
+    }
+
+    function initializeV2(
+        uint256 _executorChangeAfterSeconds
+    )
+        external
+        reinitializer(2)
+    {
         executorChangeAfterSeconds = _executorChangeAfterSeconds;
     }
 
