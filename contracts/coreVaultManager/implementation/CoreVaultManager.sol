@@ -97,6 +97,9 @@ contract CoreVaultManager is
     /// paused state
     bool public paused;
 
+    /// addresses that can trigger unpause()
+    EnumerableSet.AddressSet private emergencyUnpauseSenders;
+
     modifier onlyAssetManager() {
         _checkOnlyAssetManager();
         _;
@@ -617,6 +620,38 @@ contract CoreVaultManager is
     }
 
     /**
+     * Adds emergency unpause senders.
+     * @param _addresses List of emergency unpause senders to add.
+     * NOTE: may only be called by the governance.
+     */
+    function addEmergencyUnpauseSenders(address[] calldata _addresses)
+        external
+        onlyImmediateGovernance
+    {
+        for (uint256 i = 0; i < _addresses.length; i++) {
+            if(emergencyUnpauseSenders.add(_addresses[i])) {
+                emit EmergencyUnpauseSenderAdded(_addresses[i]);
+            }
+        }
+    }
+
+    /**
+     * Removes emergency unpause senders.
+     * @param _addresses List of emergency unpause senders to remove.
+     * NOTE: may only be called by the governance.
+     */
+    function removeEmergencyUnpauseSenders(address[] calldata _addresses)
+        external
+        onlyImmediateGovernance
+    {
+        for (uint256 i = 0; i < _addresses.length; i++) {
+            if (emergencyUnpauseSenders.remove(_addresses[i])) {
+                emit EmergencyUnpauseSenderRemoved(_addresses[i]);
+            }
+        }
+    }
+
+    /**
      * @inheritdoc ICoreVaultManager
      */
     function pause() external {
@@ -627,9 +662,10 @@ contract CoreVaultManager is
 
     /**
      * Unpauses the contract. New transfer requests and instructions can be triggered.
-     * NOTE: may only be called by the governance.
+     * NOTE: may only be called by the governance or emergency unpause senders.
      */
-    function unpause() external onlyImmediateGovernance {
+    function unpause() external {
+        require(msg.sender == governance() || emergencyUnpauseSenders.contains(msg.sender), NotAuthorized());
         paused = false;
         emit Unpaused();
     }
@@ -775,6 +811,13 @@ contract CoreVaultManager is
      */
     function getEmergencyPauseSenders() external view returns (address[] memory) {
         return emergencyPauseSenders.values();
+    }
+
+    /**
+     * @inheritdoc ICoreVaultManager
+     */
+    function getEmergencyUnpauseSenders() external view returns (address[] memory) {
+        return emergencyUnpauseSenders.values();
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////

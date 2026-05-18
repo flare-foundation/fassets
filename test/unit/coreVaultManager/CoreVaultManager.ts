@@ -483,9 +483,86 @@ contract(`CoreVaultManager.sol; ${getTestFile(__filename)}; CoreVaultManager uni
         assertWeb3Equal(await coreVaultManager.paused(), false);
     });
 
-    it("should not unpause the contract if not from governance", async () => {
+    it("should not unpause the contract if not from governance or emergency unpause sender", async () => {
+        await coreVaultManager.pause({ from: governance });
         const tx = coreVaultManager.unpause({ from: accounts[1] });
+        await expectRevert.custom(tx, "NotAuthorized", []);
+        assertWeb3Equal(await coreVaultManager.paused(), true);
+    });
+
+    it("should add emergency unpause senders", async () => {
+        await coreVaultManager.switchToProductionMode({ from: governance });
+        const tx = await coreVaultManager.addEmergencyUnpauseSenders([accounts[1], accounts[2]], {
+            from: governance,
+        });
+        expectEvent(tx, "EmergencyUnpauseSenderAdded", { sender: accounts[1] });
+        expectEvent(tx, "EmergencyUnpauseSenderAdded", { sender: accounts[2] });
+
+        assertWeb3DeepEqual(await coreVaultManager.getEmergencyUnpauseSenders(), [accounts[1], accounts[2]]);
+
+        // if sender already exists, it should not be added again
+        const tx1 = await coreVaultManager.addEmergencyUnpauseSenders([accounts[1]], {
+            from: governance,
+        });
+        expectEvent.notEmitted(tx1, "EmergencyUnpauseSenderAdded");
+    });
+
+    it("should revert adding emergency unpause senders if not from governance", async () => {
+        const tx = coreVaultManager.addEmergencyUnpauseSenders([accounts[1]], {
+            from: accounts[2],
+        });
         await expectRevert.custom(tx, "OnlyGovernance", []);
+    });
+
+    it("should remove emergency unpause senders", async () => {
+        await coreVaultManager.switchToProductionMode({ from: governance });
+        await coreVaultManager.addEmergencyUnpauseSenders([accounts[1], accounts[2], accounts[3]], {
+            from: governance,
+        });
+
+        // remove two senders
+        const tx = await coreVaultManager.removeEmergencyUnpauseSenders([accounts[1], accounts[3]], {
+            from: governance,
+        });
+        expectEvent(tx, "EmergencyUnpauseSenderRemoved", { sender: accounts[1] });
+        expectEvent(tx, "EmergencyUnpauseSenderRemoved", { sender: accounts[3] });
+        assertWeb3DeepEqual(await coreVaultManager.getEmergencyUnpauseSenders(), [accounts[2]]);
+
+        // if sender is not in the list, it shouldn't be removed
+        const tx1 = await coreVaultManager.removeEmergencyUnpauseSenders([accounts[1]], {
+            from: governance,
+        });
+        expectEvent.notEmitted(tx1, "EmergencyUnpauseSenderRemoved");
+    });
+
+    it("should revert removing emergency unpause sender if not from governance", async () => {
+        const tx = coreVaultManager.removeEmergencyUnpauseSenders([accounts[1]], {
+            from: accounts[2],
+        });
+        await expectRevert.custom(tx, "OnlyGovernance", []);
+    });
+
+    it("should unpause the contract by emergency unpause sender", async () => {
+        await coreVaultManager.addEmergencyUnpauseSenders([accounts[1]], {
+            from: governance,
+        });
+        await coreVaultManager.pause({ from: governance });
+        assertWeb3Equal(await coreVaultManager.paused(), true);
+        const tx = await coreVaultManager.unpause({ from: accounts[1] });
+        expectEvent(tx, "Unpaused");
+        assertWeb3Equal(await coreVaultManager.paused(), false);
+    });
+
+    it("should not unpause the contract by a removed emergency unpause sender", async () => {
+        await coreVaultManager.addEmergencyUnpauseSenders([accounts[1]], {
+            from: governance,
+        });
+        await coreVaultManager.removeEmergencyUnpauseSenders([accounts[1]], {
+            from: governance,
+        });
+        await coreVaultManager.pause({ from: governance });
+        const tx = coreVaultManager.unpause({ from: accounts[1] });
+        await expectRevert.custom(tx, "NotAuthorized", []);
     });
 
     it("should revert adding allowed destination address if not from governance", async () => {

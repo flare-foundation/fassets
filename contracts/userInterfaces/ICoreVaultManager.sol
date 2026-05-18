@@ -143,6 +143,14 @@ interface ICoreVaultManager {
         address sender
     );
 
+    event EmergencyUnpauseSenderAdded(
+        address sender
+    );
+
+    event EmergencyUnpauseSenderRemoved(
+        address sender
+    );
+
     /**
      * Pauses the contract. New requests and instructions cannot be triggered.
      * NOTE: may only be called by the governance or emergency pause senders.
@@ -318,4 +326,10 @@ interface ICoreVaultManager {
      * @return List of emergency pause senders.
      */
     function getEmergencyPauseSenders() external view returns (address[] memory);
+
+    /**
+     * Gets the list of emergency unpause senders.
+     * @return List of emergency unpause senders.
+     */
+    function getEmergencyUnpauseSenders() external view returns (address[] memory);
 }
