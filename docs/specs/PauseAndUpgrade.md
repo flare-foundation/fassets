@@ -42,9 +42,15 @@ The effective pause level is the maximum of the external pause level (set by aut
 
 External pause is triggered by governance-authorized addresses. To guard the system against a complete stop, the external emergency pause is temporary, with a system-defined maximal total pause duration (`maxEmergencyPauseDurationSeconds`). The total pause duration counter resets automatically after `emergencyPauseDurationResetAfterSeconds` have elapsed since the last pause ended. The governance can also manually reset the duration counter.
 
+There are two sets of external pause triggering addresses - "pauser senders" and "unpause senders". Pause senders can raise the pause level or pause duration, and unpause senders can lower the level/duration or cancel the pause. Of course some addresses may be both.
+
 ### Governance pause
 
-The governance can independently trigger an emergency pause at any level, without the duration limits that apply to external pause. This provides a stronger override mechanism for situations that require extended intervention.
+The governance can independently trigger an emergency pause at any level, without the duration limits that apply to external pause. This provides a stronger override mechanism for situations that require extended intervention. The governance can also cancel the external pause. External pause senders cannot cancel the governance-triggered pause.
+
+### Core vault manager emergency pause
+
+Core vault manager has its own, simpler, emergency pause model. It can be paused by governance or a set of pause senders and unpaused by governance or a set of unpause senders. There is no differentiation between governance or external pause, no pause levels and no duration limits.
 
 ## System wind down
 
