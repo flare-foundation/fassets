@@ -1244,6 +1244,35 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.START_OPERATIONS);
         });
 
+        it("only governance can cancelExternalEmergencyPause", async () => {
+            const pauseSender = accounts[80];
+            const unpauseSender = accounts[81];
+            await assetManagerController.addEmergencyPauseSender(pauseSender, { from: governance });
+            await assetManagerController.addEmergencyUnpauseSender(unpauseSender, { from: governance });
+            await expectRevert.custom(
+                assetManagerController.cancelExternalEmergencyPause([assetManager.address], { from: pauseSender }),
+                "OnlyGovernance", []);
+            await expectRevert.custom(
+                assetManagerController.cancelExternalEmergencyPause([assetManager.address], { from: unpauseSender }),
+                "OnlyGovernance", []);
+            await expectRevert.custom(
+                assetManagerController.cancelExternalEmergencyPause([assetManager.address], { from: accounts[1] }),
+                "OnlyGovernance", []);
+        });
+
+        it("unpause sender can stop a non-governance pause via cancelEmergencyPause", async () => {
+            const pauseSender = accounts[80];
+            const unpauseSender = accounts[81];
+            await assetManagerController.addEmergencyPauseSender(pauseSender, { from: governance });
+            await assetManagerController.addEmergencyUnpauseSender(unpauseSender, { from: governance });
+            // pause sender triggers an external pause
+            await assetManagerController.emergencyPauseFull([assetManager.address], 1 * HOURS, { from: pauseSender });
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL);
+            // unpause sender cancels it
+            await assetManagerController.cancelEmergencyPause([assetManager.address], { from: unpauseSender });
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.NONE);
+        });
+
         // emergency unpause sender
         it("can add and remove emergency unpause sender", async () => {
             const sender = accounts[80];
@@ -1287,81 +1316,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert.custom(
                 assetManagerController.removeEmergencyUnpauseSender(accounts[80], { from: accounts[1] }),
                 "OnlyGovernance", []);
-        });
-
-        it("pause sender cannot decrease pause level or cancel pause", async () => {
-            const pauseSender = accounts[80];
-            await assetManagerController.addEmergencyPauseSender(pauseSender, { from: governance });
-            // pause sender raises to FULL
-            await assetManagerController.emergencyPauseFull([assetManager.address], 1 * HOURS, { from: pauseSender });
-            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL);
-            // cannot decrease
-            await expectRevert.custom(
-                assetManagerController.emergencyPauseStartOperations([assetManager.address], 1 * HOURS, { from: pauseSender }),
-                "NotAuthorizedToUnpause", []);
-            // cannot cancel
-            await expectRevert.custom(
-                assetManagerController.cancelEmergencyPause([assetManager.address], { from: pauseSender }),
-                "NotAuthorizedToUnpause", []);
-            // level unchanged
-            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL);
-        });
-
-        it("unpause sender can cancel and lower pause level but cannot pause or raise it", async () => {
-            const pauseSender = accounts[80];
-            const unpauseSender = accounts[81];
-            await assetManagerController.addEmergencyPauseSender(pauseSender, { from: governance });
-            await assetManagerController.addEmergencyUnpauseSender(unpauseSender, { from: governance });
-            // pause sender raises to FULL
-            await assetManagerController.emergencyPauseFull([assetManager.address], 1 * HOURS, { from: pauseSender });
-            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL);
-            // unpause sender lowers to START_OPERATIONS
-            await assetManagerController.emergencyPauseStartOperations([assetManager.address], 1 * HOURS, { from: unpauseSender });
-            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.START_OPERATIONS);
-            // unpause sender cannot raise it again
-            await expectRevert.custom(
-                assetManagerController.emergencyPauseFull([assetManager.address], 1 * HOURS, { from: unpauseSender }),
-                "NotAuthorizedToPause", []);
-            // unpause sender cancels
-            await assetManagerController.cancelEmergencyPause([assetManager.address], { from: unpauseSender });
-            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.NONE);
-            // unpause sender cannot start a new pause from NONE either
-            await expectRevert.custom(
-                assetManagerController.emergencyPauseStartOperations([assetManager.address], 1 * HOURS, { from: unpauseSender }),
-                "NotAuthorizedToPause", []);
-        });
-
-        it("at same pause level, PAUSE is required to extend duration and UNPAUSE to shorten it", async () => {
-            const pauseSender = accounts[80];
-            const unpauseSender = accounts[81];
-            await assetManagerController.addEmergencyPauseSender(pauseSender, { from: governance });
-            await assetManagerController.addEmergencyUnpauseSender(unpauseSender, { from: governance });
-            // pause sender starts a 2-hour FULL pause
-            await assetManagerController.emergencyPauseFull([assetManager.address], 2 * HOURS, { from: pauseSender });
-            // unpause sender cannot extend duration at the same level
-            await expectRevert.custom(
-                assetManagerController.emergencyPauseFull([assetManager.address], 3 * HOURS, { from: unpauseSender }),
-                "NotAuthorizedToPause", []);
-            // pause sender can extend
-            await assetManagerController.emergencyPauseFull([assetManager.address], 3 * HOURS, { from: pauseSender });
-            // pause sender cannot shorten duration at the same level
-            await expectRevert.custom(
-                assetManagerController.emergencyPauseFull([assetManager.address], 1 * HOURS, { from: pauseSender }),
-                "NotAuthorizedToUnpause", []);
-            // unpause sender can shorten
-            await assetManagerController.emergencyPauseFull([assetManager.address], 1 * HOURS, { from: unpauseSender });
-        });
-
-        it("address with both pause and unpause permissions can raise and lower the pause level", async () => {
-            const sender = accounts[80];
-            await assetManagerController.addEmergencyPauseSender(sender, { from: governance });
-            await assetManagerController.addEmergencyUnpauseSender(sender, { from: governance });
-            await assetManagerController.emergencyPauseFull([assetManager.address], 1 * HOURS, { from: sender });
-            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL);
-            await assetManagerController.emergencyPauseStartOperations([assetManager.address], 1 * HOURS, { from: sender });
-            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.START_OPERATIONS);
-            await assetManagerController.cancelEmergencyPause([assetManager.address], { from: sender });
-            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.NONE);
         });
 
         // reset total duration by governance

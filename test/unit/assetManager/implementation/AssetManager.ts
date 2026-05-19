@@ -3388,5 +3388,86 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const promise = assetManager.resetEmergencyPauseTotalDuration();
             await expectRevert.custom(promise, "OnlyAssetManagerController", []);
         });
+
+        it("PAUSE permission alone cannot decrease level or cancel pause", async () => {
+            // raise to FULL with PAUSE only
+            await assetManager.emergencyPause(EmergencyPauseLevel.FULL, EmergencyPausePermission.PAUSE, 1 * HOURS, { from: assetManagerController });
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL);
+            // cannot decrease level
+            await expectRevert.custom(
+                assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, EmergencyPausePermission.PAUSE, 1 * HOURS, { from: assetManagerController }),
+                "NotAuthorizedToUnpause", []);
+            // cannot cancel
+            await expectRevert.custom(
+                assetManager.emergencyPause(EmergencyPauseLevel.NONE, EmergencyPausePermission.PAUSE, 0, { from: assetManagerController }),
+                "NotAuthorizedToUnpause", []);
+            // level unchanged
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL);
+        });
+
+        it("UNPAUSE permission alone can cancel and lower level but cannot raise it", async () => {
+            // setup: raise to FULL with PAUSE
+            await assetManager.emergencyPause(EmergencyPauseLevel.FULL, EmergencyPausePermission.PAUSE, 2 * HOURS, { from: assetManagerController });
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL);
+            // UNPAUSE lowers level and duration
+            await assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, EmergencyPausePermission.UNPAUSE, 1 * HOURS, { from: assetManagerController });
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.START_OPERATIONS);
+            // UNPAUSE cannot raise level
+            await expectRevert.custom(
+                assetManager.emergencyPause(EmergencyPauseLevel.FULL, EmergencyPausePermission.UNPAUSE, 1 * HOURS, { from: assetManagerController }),
+                "NotAuthorizedToPause", []);
+            // UNPAUSE cancels
+            await assetManager.emergencyPause(EmergencyPauseLevel.NONE, EmergencyPausePermission.UNPAUSE, 0, { from: assetManagerController });
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.NONE);
+            // UNPAUSE cannot start a new pause from NONE
+            await expectRevert.custom(
+                assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, EmergencyPausePermission.UNPAUSE, 1 * HOURS, { from: assetManagerController }),
+                "NotAuthorizedToPause", []);
+        });
+
+        it("at same pause level, PAUSE is required to extend duration and UNPAUSE to shorten it", async () => {
+            // start a 2-hour FULL pause
+            await assetManager.emergencyPause(EmergencyPauseLevel.FULL, EmergencyPausePermission.PAUSE, 2 * HOURS, { from: assetManagerController });
+            // UNPAUSE cannot extend duration at the same level
+            await expectRevert.custom(
+                assetManager.emergencyPause(EmergencyPauseLevel.FULL, EmergencyPausePermission.UNPAUSE, 3 * HOURS, { from: assetManagerController }),
+                "NotAuthorizedToPause", []);
+            // PAUSE can extend
+            await assetManager.emergencyPause(EmergencyPauseLevel.FULL, EmergencyPausePermission.PAUSE, 3 * HOURS, { from: assetManagerController });
+            // PAUSE cannot shorten duration at the same level
+            await expectRevert.custom(
+                assetManager.emergencyPause(EmergencyPauseLevel.FULL, EmergencyPausePermission.PAUSE, 1 * HOURS, { from: assetManagerController }),
+                "NotAuthorizedToUnpause", []);
+            // UNPAUSE can shorten
+            await assetManager.emergencyPause(EmergencyPauseLevel.FULL, EmergencyPausePermission.UNPAUSE, 1 * HOURS, { from: assetManagerController });
+        });
+
+        it("raising level while shortening duration requires both PAUSE and UNPAUSE", async () => {
+            // start a 3-hour START_OPERATIONS pause
+            await assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, EmergencyPausePermission.PAUSE, 3 * HOURS, { from: assetManagerController });
+            // PAUSE alone cannot raise level and shorten duration at the same time
+            await expectRevert.custom(
+                assetManager.emergencyPause(EmergencyPauseLevel.FULL, EmergencyPausePermission.PAUSE, 1 * HOURS, { from: assetManagerController }),
+                "NotAuthorizedToUnpause", []);
+            // UNPAUSE alone cannot raise level and shorten duration either
+            await expectRevert.custom(
+                assetManager.emergencyPause(EmergencyPauseLevel.FULL, EmergencyPausePermission.UNPAUSE, 1 * HOURS, { from: assetManagerController }),
+                "NotAuthorizedToPause", []);
+            // Both permissions together succeed
+            await assetManager.emergencyPause(EmergencyPauseLevel.FULL, EXTERNAL_PERMS, 1 * HOURS, { from: assetManagerController });
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL);
+        });
+
+        it("PAUSE and UNPAUSE combined can raise and lower the pause level", async () => {
+            // raise to FULL with 2-hour duration
+            await assetManager.emergencyPause(EmergencyPauseLevel.FULL, EXTERNAL_PERMS, 2 * HOURS, { from: assetManagerController });
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.FULL);
+            // lower level and shorten duration in one call (needs both perms)
+            await assetManager.emergencyPause(EmergencyPauseLevel.START_OPERATIONS, EXTERNAL_PERMS, 1 * HOURS, { from: assetManagerController });
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.START_OPERATIONS);
+            // cancel
+            await assetManager.emergencyPause(EmergencyPauseLevel.NONE, EXTERNAL_PERMS, 0, { from: assetManagerController });
+            assertWeb3Equal(await assetManager.emergencyPauseLevel(), EmergencyPauseLevel.NONE);
+        });
     });
 });

@@ -109,18 +109,19 @@ contract EmergencyPauseFacet is AssetManagerBase, IAssetManagerEvents {
     function _checkExternalPausePermission(EmergencyPause.Level _level, uint256 _permissions, uint256 _duration)
         private view
     {
-        if (_level == EmergencyPause.Level.NONE) {
-            // cancel always counts as UNPAUSE
-            require(_permissions & EmergencyPause.UNPAUSE != 0, NotAuthorizedToUnpause());
-            return;
-        }
+        // Level and duration are independent axes: PAUSE is required to raise either, UNPAUSE to lower either.
+        // A call that raises one axis and lowers the other (e.g. raises level but shortens duration) needs both.
         EmergencyPause.Level currentLevel = EffectiveEmergencyPause.externalLevel();
-        // require PAUSE permission if the new pause is higher level or it has the same level but is longer
-        bool isPause = _level > currentLevel ||
-            (_level == currentLevel && block.timestamp + _duration >= EffectiveEmergencyPause.externalEndTime());
-        if (isPause) {
+        // When no pause is active, externalEndTime() returns 0; normalize to block.timestamp so the comparison
+        // reflects remaining pause duration rather than the stale stored value.
+        uint256 currentEndTime = Math.max(EffectiveEmergencyPause.externalEndTime(), block.timestamp);
+        uint256 newEndTime = block.timestamp + _duration;
+        bool needPause = _level > currentLevel || newEndTime > currentEndTime;
+        bool needUnpause = _level < currentLevel || newEndTime < currentEndTime;
+        if (needPause) {
             require(_permissions & EmergencyPause.PAUSE != 0, NotAuthorizedToPause());
-        } else {
+        }
+        if (needUnpause) {
             require(_permissions & EmergencyPause.UNPAUSE != 0, NotAuthorizedToUnpause());
         }
     }
