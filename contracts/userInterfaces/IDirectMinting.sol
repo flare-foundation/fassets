@@ -66,6 +66,8 @@ interface IDirectMinting {
      * NOTE: unlike `executeDirectMinting`, this form is only allowed for minting to smart accounts.
      * @param _payment the XRP payment proof data
      * @param _data additional data sent to the smart account manager
+     * NOTE: parameter `_data` is checked to match hash defined in `_payment.firstMemoData`, so it cannot be used
+     * to pass arbitrary data. However, the checking is done on the smart accounts side, not in the asset manager.
      */
     function executeDirectMintingWithData(
         IXRPPayment.Proof calldata _payment,
@@ -77,6 +79,8 @@ interface IDirectMinting {
      * However, if the minter has set an allowed executor, it has the exclusive right
      * to execute minting for fixed time after the minting is allowed to execute. This method makes sure
      * that the exclusive period begins from the moment the minting was unblocked, not from later allowedAt.
+     * NOTE: this method is intentionally callable by anybody, not just allowed executor - it is
+     * in the interest of other executors to call it as soon as mintings are unblocked by the governance.
      * @param _transactionId transaction id of the delayed minting to mark as allowed
      */
     function markUnblockedDirectMintingAllowed(bytes32 _transactionId)

@@ -71,3 +71,5 @@ If the pool has to pay something due to the agent's fault, the agent’s collate
 * Redemption payment failure (if there is not enough of the agent’s collateral or if the system is set so that the pool always pays something on redemption failure)
 * Liquidation due to low CR of agent’s vault collateral
 * Full liquidation due to agent’s illegal underlying payment
+
+Burning the agent's pool tokens keeps the FLR/SGB value of the remaining pool tokens unchanged, so in normal circumstances the loss is borne entirely by the agent and other pool participants are unaffected. However, the agent's pool tokens can in principle be fully depleted - this can realistically only happen during heavy liquidations driven by a large adverse price move (see "Example 2 - large price movement" in the liquidation section, where most of the agent's stake is burned in a single step). If the agent's pool tokens are exhausted, any further payments the pool has to make on the agent's behalf are effectively absorbed by the remaining pool participants, reducing the per-token value. The system is designed to minimize this risk, but it cannot be eliminated entirely.

@@ -27,6 +27,8 @@ An agent must make sure that the payment plus transaction fee for a redemption n
 * Redemption can be paid from some other address.
 * The agent can top up the underlying address and then send proof of payment, to update the tracked balance. Note that the agent might not have time for this after the redemption starts, so the first option is generally preferable.
 
+**Warning:** if a redemption payment (or any other otherwise legal payment) pushes the underlying free balance negative, the agent will be immediately put into **full liquidation** (either by redemption confirmation's own accounting or via the "free underlying balance negative" challenge below). This is a realistic risk during periods of high underlying transaction fees on UTXO chains like BTC, where the fee alone can be a significant fraction of a small redemption. The agent should therefore either pay the transaction fee from a separate address (preferred on UTXO chains which allow multiple sources) or top up the underlying address well in advance, *before* the fee spike makes the next redemption payment unsafe.
+
 ### Enforcing the underlying balance
 
 As mentioned, it is rather difficult to enforce an agent to maintain the required balance at any point at time. This will be done utilizing external actors named challengers by encouraging them to report illegal outgoing payments.
