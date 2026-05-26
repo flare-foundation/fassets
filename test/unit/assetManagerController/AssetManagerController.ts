@@ -594,6 +594,15 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             }
         });
 
+        it("updateContracts should only be callable by governance", async () => {
+            await contracts.addressUpdater.addOrUpdateContractNamesAndAddresses(["AddressUpdater", "AssetManagerController", "WNat"],
+                [accounts[79], accounts[80], accounts[81]],
+                { from: governance });
+            await expectRevert.custom(
+                assetManagerController.updateContracts([assetManager.address], { from: accounts[1] }),
+                "OnlyGovernance", []);
+        });
+
         it("should change time for payment settings after timelock", async () => {
             // change settings
             const currentSettings = await assetManager.getSettings();

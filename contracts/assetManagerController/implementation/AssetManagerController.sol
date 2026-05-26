@@ -572,6 +572,7 @@ contract AssetManagerController is
      */
     function updateContracts(IIAssetManager[] calldata _assetManagers)
         external
+        onlyImmediateGovernance
     {
         // read contract addresses
         IIAddressUpdater addressUpdater = IIAddressUpdater(getAddressUpdater());
