@@ -24,6 +24,12 @@ interface IMintingTagManager is IERC721EnumerableUpgradeable {
     /// Emitted when an allowed executor change is initiated (subject to cooldown delay).
     event AllowedExecutorChangePending(uint256 tag, address executor, uint256 activeAfterTs);
 
+    /// Emitted when a pending allowed executor change is cancelled before it activates.
+    /// This happens when the tag owner re-targets the currently-active executor
+    /// (e.g., resets to zero while the active executor is zero, or sets back to the
+    /// active executor while a change to another address is pending), and on tag transfer.
+    event AllowedExecutorChangeCancelled(uint256 tag);
+
     /// Emitted when the reservation fee or its recipient is changed by governance.
     event ReservationFeeChanged(uint256 reservationFee, address recipient);
 

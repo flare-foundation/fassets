@@ -398,6 +398,68 @@ contract("MintingTagManager", function (accounts) {
         await checkPendingChange(reserved.tag, false, ZERO_ADDRESS, 0);
     });
 
+    it("resetting to zero executor should cancel a pending change (no active executor)", async () => {
+        const res = await mintingTagManager.reserve({ from: tagOwner, value: reservationFee });
+        const reserved = requiredEventArgs(res, "MintingTagReserved");
+        // schedule a pending change from zero to executor
+        await mintingTagManager.setAllowedExecutor(reserved.tag, executor, { from: tagOwner });
+        await checkPendingChange(reserved.tag, true, executor, (await time.latest()).addn(executorChangeAfterSeconds));
+        // owner resets executor back to zero before the change activates — this should cancel the pending change
+        const resCancel = await mintingTagManager.setAllowedExecutor(reserved.tag, ZERO_ADDRESS, { from: tagOwner });
+        expectEvent(resCancel, "AllowedExecutorChangeCancelled", { tag: reserved.tag });
+        expectEvent.notEmitted(resCancel, "AllowedExecutorChangePending");
+        // no pending change should remain
+        await checkPendingChange(reserved.tag, false, ZERO_ADDRESS, 0);
+        // after enough time elapses the executor must still be zero
+        await time.deterministicIncrease(executorChangeAfterSeconds + 1);
+        assertWeb3Equal(await mintingTagManager.allowedExecutor(reserved.tag), ZERO_ADDRESS);
+        await checkPendingChange(reserved.tag, false, ZERO_ADDRESS, 0);
+    });
+
+    it("transferring a tag should clear any pending executor change", async () => {
+        const newOwner = accounts[2];
+        const res = await mintingTagManager.reserve({ from: tagOwner, value: reservationFee });
+        const reserved = requiredEventArgs(res, "MintingTagReserved");
+        // schedule a pending change from zero to executor
+        await mintingTagManager.setAllowedExecutor(reserved.tag, executor, { from: tagOwner });
+        await checkPendingChange(reserved.tag, true, executor, (await time.latest()).addn(executorChangeAfterSeconds));
+        // transfer the tag — the new owner should not inherit the pending change scheduled by the previous owner
+        const resTransfer = await mintingTagManager.transfer(newOwner, reserved.tag, { from: tagOwner });
+        expectEvent(resTransfer, "AllowedExecutorChangeCancelled", { tag: reserved.tag });
+        expectEvent.notEmitted(resTransfer, "AllowedExecutorChangePending");
+        // no pending change should remain after the transfer
+        await checkPendingChange(reserved.tag, false, ZERO_ADDRESS, 0);
+        // after the original delay elapses the executor must remain zero (not silently become `executor`)
+        await time.deterministicIncrease(executorChangeAfterSeconds + 1);
+        assertWeb3Equal(await mintingTagManager.allowedExecutor(reserved.tag), ZERO_ADDRESS);
+        await checkPendingChange(reserved.tag, false, ZERO_ADDRESS, 0);
+    });
+
+    it("re-targeting the currently-active executor should cancel a pending change to another address", async () => {
+        const executor2 = accounts[6];
+        const res = await mintingTagManager.reserve({ from: tagOwner, value: reservationFee });
+        const reserved = requiredEventArgs(res, "MintingTagReserved");
+        // make `executor` the active executor
+        const resEx1 = await mintingTagManager.setAllowedExecutor(reserved.tag, executor, { from: tagOwner });
+        const args1 = requiredEventArgs(resEx1, "AllowedExecutorChangePending");
+        await time.increaseTo(args1.activeAfterTs);
+        assertWeb3Equal(await mintingTagManager.allowedExecutor(reserved.tag), executor);
+        // schedule a pending change to executor2
+        await mintingTagManager.setAllowedExecutor(reserved.tag, executor2, { from: tagOwner });
+        await checkPendingChange(reserved.tag, true, executor2, (await time.latest()).addn(executorChangeAfterSeconds));
+        // active executor is still the original one during the cooldown
+        assertWeb3Equal(await mintingTagManager.allowedExecutor(reserved.tag), executor);
+        // owner re-targets the currently active executor — this should cancel the pending change to executor2
+        const resCancel = await mintingTagManager.setAllowedExecutor(reserved.tag, executor, { from: tagOwner });
+        expectEvent(resCancel, "AllowedExecutorChangeCancelled", { tag: reserved.tag });
+        expectEvent.notEmitted(resCancel, "AllowedExecutorChangePending");
+        await checkPendingChange(reserved.tag, false, ZERO_ADDRESS, 0);
+        // after the original cooldown the executor must still be `executor`, never executor2
+        await time.deterministicIncrease(executorChangeAfterSeconds + 1);
+        assertWeb3Equal(await mintingTagManager.allowedExecutor(reserved.tag), executor);
+        await checkPendingChange(reserved.tag, false, ZERO_ADDRESS, 0);
+    });
+
     it("setting same pending executor again resets the delay, but is a no-op once active", async () => {
         const res = await mintingTagManager.reserve({ from: tagOwner, value: reservationFee });
         const reserved = requiredEventArgs(res, "MintingTagReserved");

@@ -207,7 +207,17 @@ contract MintingTagManager is
     function _setExecutor(uint256 _mintingTag, address _executor) internal {
         TagData storage tag = tagData[_mintingTag];
         address currentAllowedExecutor = _allowedExecutor(tag);
-        if (currentAllowedExecutor != _executor) {
+        bool changePending = block.timestamp < tag.allowedExecutorActiveAfterTs;
+        if (changePending && _executor == currentAllowedExecutor) {
+            // Re-targeting the currently active executor (which, during cooldown, is
+            // oldAllowedExecutor) cancels the pending change. This also covers the case
+            // where the active executor is address(0) and the pending change is reverted
+            // by passing address(0) — either explicitly or via _afterTokenTransfer.
+            tag.allowedExecutor = currentAllowedExecutor;
+            tag.oldAllowedExecutor = address(0);
+            tag.allowedExecutorActiveAfterTs = 0;
+            emit AllowedExecutorChangeCancelled(_mintingTag);
+        } else if (currentAllowedExecutor != _executor) {
             uint256 allowedExecutorActiveAfterTs = block.timestamp + executorChangeAfterSeconds;
             tag.oldAllowedExecutor = currentAllowedExecutor;
             tag.allowedExecutor = _executor;
