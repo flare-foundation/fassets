@@ -80,6 +80,7 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         onlyGovernance
         rateLimited
     {
+        require(_mintingFeeReceiver != address(0), AddressZero());
         DirectMinting.State storage state = DirectMinting.getState();
         state.mintingFeeReceiver = _mintingFeeReceiver;
         // not really a contract, but works for any address - event name is a bit unfortunate

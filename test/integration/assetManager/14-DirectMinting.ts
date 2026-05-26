@@ -1462,6 +1462,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(updatedFeeReceiver, newFeeReceiver);
         });
 
+        it("should not allow setting zero address as direct minting fee receiver", async () => {
+            await expectRevert.custom(
+                context.assetManager.setDirectMintingFeeReceiver(ZERO_ADDRESS, { from: governance }),
+                "AddressZero",
+                []
+            );
+        });
+
         it("should allow governance to change minting fee within limits", async () => {
             const currentFeeBIPS = toBN(await context.assetManager.getDirectMintingFeeBIPS());
             const currentMinimumFeeUBA = toBN(await context.assetManager.getDirectMintingMinimumFeeUBA());
