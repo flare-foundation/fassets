@@ -81,6 +81,11 @@ interface IMintingTagManager is IERC721EnumerableUpgradeable {
     function reservationFee() external view returns (uint256);
 
     /**
+     * The recipient that receives reservation fees paid when reserving minting tags.
+     */
+    function reservationFeeRecipient() external view returns (address payable);
+
+    /**
      * The cooldown delay (in seconds) before a change to a tag's allowed executor becomes active.
      * The delay must be longer than the time needed to obtain an FDC proof, so that an executor
      * that has already paid for an FDC request cannot be locked out before they can use it.
