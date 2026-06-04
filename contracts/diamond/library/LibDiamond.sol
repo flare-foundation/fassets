@@ -163,8 +163,7 @@ library LibDiamond {
         if (!success) {
             if (error.length > 0) {
                 // bubble up error
-                /// @solidity memory-safe-assembly
-                assembly {
+                assembly ("memory-safe") {
                     let returndata_size := mload(error)
                     revert(add(32, error), returndata_size)
                 }

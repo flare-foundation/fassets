@@ -38,7 +38,8 @@ contract AgentVaultAndPoolSupportFacet is AssetManagerBase {
         returns (bool)
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        return _token == agent.getVaultCollateralToken() || _token == agent.collateralPool.poolToken();
+        return address(_token) == address(agent.getVaultCollateralToken()) ||
+            address(_token) == address(agent.collateralPool.poolToken());
     }
 
     /**

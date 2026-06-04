@@ -44,7 +44,7 @@ library Minting {
             if (msg.sender == _crt.executor) {
                 Transfers.depositWNat(Globals.getWNat(), _crt.executor, executorFeeNatWei);
             } else {
-                Globals.getBurnAddress().transfer(executorFeeNatWei);
+                Transfers.transferNAT(Globals.getBurnAddress(), executorFeeNatWei);
             }
         }
     }

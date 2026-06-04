@@ -48,6 +48,8 @@ task(TASK_COMPILE)
             if (/ReentrancyGuard.sol/.test(text) &&
                 /Warning: Visibility for constructor is ignored/.test(text)) return '';
             if (/\/mock\//i.test(text) && /Warning:/.test(text) ) return ''; // ignore warnings for mock contracts
+            if (/@openzeppelin/.test(text) &&
+                /Natspec memory-safe-assembly special comment for inline assembly is deprecated/.test(text)) return '';
             return text;
         });
         await runSuper(args);
@@ -226,7 +228,7 @@ const config: HardhatUserConfig = {
     solidity: {
         compilers: [
             {
-                version: "0.8.35",
+                version: "0.8.34",
                 settings: {
                     evmVersion: "london",
                     optimizer: {

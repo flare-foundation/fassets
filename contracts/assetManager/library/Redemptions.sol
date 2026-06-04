@@ -104,7 +104,7 @@ library Redemptions {
             if (msg.sender == _request.executor) {
                 Transfers.depositWNat(Globals.getWNat(), _request.executor, executorFeeNatWei);
             } else {
-                Globals.getBurnAddress().transfer(executorFeeNatWei);
+                Transfers.transferNAT(Globals.getBurnAddress(), executorFeeNatWei);
             }
         }
     }
@@ -118,7 +118,7 @@ library Redemptions {
         uint256 executorFeeNatWei = _request.executorFeeNatGWei * Conversion.GWEI;
         if (executorFeeNatWei > 0) {
             _request.executorFeeNatGWei = 0;
-            Globals.getBurnAddress().transfer(executorFeeNatWei);
+            Transfers.transferNAT(Globals.getBurnAddress(), executorFeeNatWei);
         }
     }
 

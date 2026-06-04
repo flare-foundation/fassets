@@ -114,7 +114,8 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
                 _proof.data.responseBody.blockTimestamp,
             CannotUnstickMintingYet());
         // burn collateral reservation fee (guarded against reentrancy)
-        Globals.getBurnAddress().transfer(crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI);
+        Transfers.transferNAT(Globals.getBurnAddress(),
+            crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI);
         // burn reserved collateral at market price
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(agent.vaultCollateralIndex);
         uint256 reservedCollateral = Conversion.convertAmgToTokenWei(crt.valueAMG, amgToTokenWeiPrice);
@@ -154,7 +155,7 @@ contract MintingDefaultsFacet is AssetManagerBase, ReentrancyGuard {
         vault.payout(vaultCollateral.token, Agents.getOwnerPayAddress(_agent), burnCollateral);
         // Burn the NAT equivalent (must be provided with the call).
         require(msg.value >= _burnedNatWei, NotEnoughFundsProvided());
-        Globals.getBurnAddress().transfer(_burnedNatWei);
+        Transfers.transferNAT(Globals.getBurnAddress(), _burnedNatWei);
     }
 
     function _maxBurnCollateral(

@@ -54,7 +54,7 @@ contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents, IISet
         }
         // update wNat
         IWNat oldWNat = Globals.getWNat();
-        if (oldWNat != _wNat) {
+        if (address(oldWNat) != address(_wNat)) {
             CollateralType.Data memory data = CollateralTypes.getInfo(CollateralType.Class.POOL, oldWNat);
             data.validUntil = 0;
             data.token = _wNat;

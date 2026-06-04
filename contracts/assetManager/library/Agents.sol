@@ -138,7 +138,8 @@ library Agents {
         internal view
         returns (bool)
     {
-        return _token == getPoolWNat(_agent) || _token == getVaultCollateralToken(_agent);
+        return address(_token) == address(getPoolWNat(_agent)) ||
+            address(_token) == address(getVaultCollateralToken(_agent));
     }
 
     function getVaultCollateralToken(Agent.State storage _agent)

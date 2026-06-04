@@ -810,7 +810,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
         onlyAssetManager
         nonReentrant
     {
-        if (_newWNat == wNat) return;
+        if (address(_newWNat) == address(wNat)) return;
         // transfer all funds to new WNat
         uint256 balance = wNat.balanceOf(address(this));
         internalWithdrawal = true;

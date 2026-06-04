@@ -94,9 +94,9 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
     {
         Agent.State storage agent = Agent.get(msg.sender);
         Collateral.Kind kind;
-        if (_token == agent.getVaultCollateralToken()) {
+        if (address(_token) == address(agent.getVaultCollateralToken())) {
             kind = Collateral.Kind.VAULT;
-        } else if (_token == agent.collateralPool.poolToken()) {
+        } else if (address(_token) == address(agent.collateralPool.poolToken())) {
             kind = Collateral.Kind.AGENT_POOL;
         } else {
             return;     // we don't care about other token withdrawals from agent vault

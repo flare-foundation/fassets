@@ -60,13 +60,15 @@ contract WNatMock is IWNat, ERC20 {
 
     function withdraw(uint256 _amount) external {
         _burn(msg.sender, _amount);
-        payable(msg.sender).transfer(_amount);
+        (bool success, ) = payable(msg.sender).call{value: _amount}("");
+        require(success, "transfer failed");
     }
 
     function withdrawFrom(address _owner, uint256 _amount) external {
         _spendAllowance(_owner, msg.sender, _amount);
         _burn(_owner, _amount);
-        payable(msg.sender).transfer(_amount);
+        (bool success, ) = payable(msg.sender).call{value: _amount}("");
+        require(success, "transfer failed");
     }
 
     function delegate(address _to, uint256 _bips) external {
