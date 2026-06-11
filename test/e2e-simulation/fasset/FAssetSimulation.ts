@@ -32,6 +32,7 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
     const coreVaultTriggeringAccountAddress = accounts[2];
     const mintingTagManagerFeeReceiver = accounts[3];
     const directMintingFeeReceiver = accounts[4];
+    const systemRedemptionFeeReceiver = accounts[5];
 
     const CHAIN = getEnv('CHAIN', 'string', 'xrp');
     const LOOPS = getEnv('LOOPS', 'number', 100);
@@ -50,6 +51,7 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
     const CHANGE_PRICE_FACTOR = getEnv('CHANGE_PRICE_FACTOR', 'json', null) as { [key: string]: [number, number] };
     const TRANSFER_TO_CV_PROB = getEnv('TRANSFER_TO_CV_PROB', 'number', 5);     // likelihood of transfer to CV (set to 0 to test liquidations)
     const ILLEGAL_PROB = getEnv('ILLEGAL_PROB', 'number', 1);     // likelihood of illegal operations (not normalized)
+    const SYSTEM_REDEMPTION_FEE_BIPS = getEnv('SYSTEM_REDEMPTION_FEE_BIPS', 'number', 100);  // system redemption fee (set to 0 to disable; at most 100 due to setting increase limit)
 
     let commonContext: CommonContext;
     let context: AssetContext;
@@ -97,9 +99,15 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
             reservedTags: 20
         });
         await context.assignSmartAccountManagerMock();
+        // enable system redemption fee (the fee part of every redemption value is re-minted to the fee receiver)
+        if (SYSTEM_REDEMPTION_FEE_BIPS > 0) {
+            await context.assetManager.setSystemRedemptionFeeReceiver(systemRedemptionFeeReceiver, { from: governance });
+            await context.assetManager.setSystemRedemptionFeeBIPS(SYSTEM_REDEMPTION_FEE_BIPS, { from: governance });
+        }
         // create interceptor
         runnerLock = new MultiStateLock();
         eventDecoder = new Web3EventDecoder({});
+        eventDecoder.addAddress("SYSTEM_REDEMPTION_FEE_RECEIVER", systemRedemptionFeeReceiver);
         interceptor = new TruffleTransactionInterceptor(eventDecoder, accounts[0]);
         interceptor.lock = runnerLock;
         interceptor.captureEvents({

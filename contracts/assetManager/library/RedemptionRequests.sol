@@ -28,6 +28,9 @@ library RedemptionRequests {
     struct Settings {
         bool redeemWithTagSupported;
         uint64 minimumRedeemAmountAMG;
+        uint160 __filler; // to make sure the following start in new word
+        address systemRedemptionFeeReceiver;
+        uint16 systemRedemptionFeeBIPS;
     }
 
     struct AgentRedemptionData {
@@ -73,9 +76,13 @@ library RedemptionRequests {
         require(underlyingAddressHash != agent.underlyingAddressHash,
             CannotRedeemToAgentsAddress());
         // create request
-        uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_args.valueAMG).toUint128();
         _requestId = _newRequestId(_args.poolSelfClose);
+        // charge system fee - subtract the fee from the redemption value here,
+        // the fee is re-minted to the system redemption fee receiver below
+        uint64 systemFeeAMG = _calculateSystemRedemptionFee(_args);
+        _args.valueAMG -= systemFeeAMG;
         // create in-memory request and then put it to storage to not go out-of-stack
+        uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_args.valueAMG).toUint128();
         Redemption.Request memory request;
         request.redeemerUnderlyingAddressHash = underlyingAddressHash;
         request.underlyingValueUBA = redeemedValueUBA;
@@ -101,6 +108,8 @@ library RedemptionRequests {
         // decrease mintedAMG and mark it to redeemingAMG
         // do not add it to freeBalance yet (only after failed redemption payment)
         AgentBacking.startRedeemingAssets(agent, _args.valueAMG, _args.poolSelfClose);
+        // re-mint the system fee to the system redemption fee receiver
+        _mintSystemRedemptionFee(agent, _args.agentVault, systemFeeAMG, _requestId);
         // emit event to remind agent to pay
         _emitRedemptionRequestedEvent(request, _requestId, _args.redeemerUnderlyingAddressString);
     }
@@ -111,6 +120,40 @@ library RedemptionRequests {
 
     function minimumRedeemAmountAMG() internal view returns (uint64) {
         return getSettings().minimumRedeemAmountAMG;
+    }
+
+    function _calculateSystemRedemptionFee(
+        CreateRedemptionRequestArgs memory _args
+    )
+        private view
+        returns (uint64)
+    {
+        Settings storage settings = getSettings();
+        bool chargeFee = settings.systemRedemptionFeeBIPS > 0
+            && settings.systemRedemptionFeeReceiver != address(0)
+            && !_args.transferToCoreVault;
+        if (!chargeFee) return 0;
+        return uint256(_args.valueAMG).mulBips(settings.systemRedemptionFeeBIPS).toUint64();
+    }
+
+    function _mintSystemRedemptionFee(
+        Agent.State storage _agent,
+        address _agentVault,
+        uint64 _feeAMG,
+        uint64 _requestId
+    )
+        private
+    {
+        if (_feeAMG == 0) return;
+        // The fee was subtracted from the redemption value, so it was not released from the agent's
+        // backing in startRedeemingAssets, but its redemption ticket was already closed by the caller
+        // and the corresponding fassets will be burned by the caller together with the redeemed value.
+        // Therefore release the fee backing and re-mint it to the system redemption fee receiver.
+        AgentBacking.releaseMintedAssets(_agent, _feeAMG);
+        AgentBacking.createNewMinting(_agent, _feeAMG);
+        uint256 feeUBA = Conversion.convertAmgToUBA(_feeAMG);
+        Globals.getFAsset().mint(getSettings().systemRedemptionFeeReceiver, feeUBA);
+        emit IAssetManagerEvents.SystemRedemptionFeePaid(_agentVault, _requestId, feeUBA);
     }
 
     function _emitRedemptionRequestedEvent(

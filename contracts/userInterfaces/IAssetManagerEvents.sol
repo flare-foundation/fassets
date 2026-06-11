@@ -287,6 +287,16 @@ interface IAssetManagerEvents {
         uint256 poolFeeUBA);
 
     /**
+     * At the creation of a redemption request, the system redemption fee part of the redemption value
+     * was re-minted as FAssets to the system redemption fee receiver and the redemption value
+     * was lowered by the fee amount.
+     */
+    event SystemRedemptionFeePaid(
+        address indexed agentVault,
+        uint256 indexed requestId,
+        uint256 feeUBA);
+
+    /**
      * Due to self-close exit, some of the agent's backed fAssets were redeemed,
      * but the redemption was immediately paid in collateral so no redemption process is started.
      */

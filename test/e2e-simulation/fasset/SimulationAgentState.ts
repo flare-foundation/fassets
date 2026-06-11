@@ -18,7 +18,7 @@ import { CPEntered, CPExited, CPFeeDebtChanged } from "../../../typechain-truffl
 import {
     AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionPoolFeeMinted, RedemptionRequested, RedemptionTicketCreated,
-    RedemptionTicketDeleted, RedemptionTicketUpdated, RedemptionWithTagRequested, ReturnFromCoreVaultCancelled, ReturnFromCoreVaultConfirmed, ReturnFromCoreVaultRequested, SelfClose, SelfMint, TransferToCoreVaultDefaulted, TransferToCoreVaultStarted, TransferToCoreVaultSuccessful, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
+    RedemptionTicketDeleted, RedemptionTicketUpdated, RedemptionWithTagRequested, ReturnFromCoreVaultCancelled, ReturnFromCoreVaultConfirmed, ReturnFromCoreVaultRequested, SelfClose, SelfMint, SystemRedemptionFeePaid, TransferToCoreVaultDefaulted, TransferToCoreVaultStarted, TransferToCoreVaultSuccessful, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/IIAssetManager";
 import { SparseArray } from "../../../lib/test-utils/SparseMatrix";
 import { BalanceTrackingList, BalanceTrackingRow } from "./AgentBalanceTracking";
@@ -229,6 +229,14 @@ export class SimulationAgentState extends TrackedAgentState {
     override handleRedemptionPoolFeeMinted(args: EvmEventArgs<RedemptionPoolFeeMinted>): void {
         super.handleRedemptionPoolFeeMinted(args);
         this.addBalanceTrackingRow(args.$event, { mintFeePool: args.poolFeeUBA });
+    }
+
+    override handleSystemRedemptionFeePaid(args: EvmEventArgs<SystemRedemptionFeePaid>): void {
+        super.handleSystemRedemptionFeePaid(args);
+        // no balance changes - the fee is subtracted from the redemption value before the RedemptionRequested
+        // event and the re-minted fee stays backed by this agent (tracked through ticket and dust events)
+        this.addBalanceTrackingRow(args.$event, { requestId: args.requestId });
+        this.logAction(`system redemption fee paid: requestId=${args.requestId} fee=${formatBN(args.feeUBA)}`, args.$event);
     }
 
     override handleRedeemedInCollateral(args: EvmEventArgs<RedeemedInCollateral>): void {

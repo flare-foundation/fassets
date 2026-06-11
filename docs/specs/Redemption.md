@@ -76,6 +76,12 @@ Imagine the following flow:
 3) The agent is redeemed against so they have to pay out 100 XRP.
 4) But if they do pay the full 100 XRP, they will have no gas to pay for the transaction. The redemption fee comes to solve this problem. The fee creates a margin between the redeemed amount and the underlying asset value to be paid. This margin allows the agent to cover gas costs, while a portion is converted into fAssets and allocated to the pool.
 
+## System redemption fee
+
+In addition to the redemption fee above (which is shared between the agent and the pool), the system can charge a **system redemption fee**, collected in FAssets for the benefit of the system. It amounts to `systemRedemptionFeeBIPS` of the redemption value and is charged at the creation of every redemption request (`redeem`, `redeemAmount`, `redeemWithTag`, and the redemption part of the collateral pool's self-close exit). The redemption value is lowered by the fee, so the fee is effectively paid by the redeemer. The fee amount is paid to the `systemRedemptionFeeReceiver` address and stays backed by the agent. The fee is only charged when both `systemRedemptionFeeBIPS` and `systemRedemptionFeeReceiver` settings (managed by governance) are nonzero.
+
+The fee is, by design, **not** charged for **self close** (it is not a redemption request and must remain freely available to the agent for closing dust, exiting liquidation, and winding down the vault) nor for **transfer to core vault** (no FAssets are burned there, so there is no redeemer who would pay the fee).
+
 ## Self close
 
 An agent can self close their position or part of their position. This is similar to a redemption, except that there is no underlying payment. The flow is:
@@ -88,6 +94,8 @@ An agent can self close their position or part of their position. This is simila
 Self close can also be used by the agent to stop liquidations, since it reduces the amount of FAssets the agent is backing.
 
 The self-closed amount need not be a whole number of lots and can even be less than one lot. Therefore self-closing is the preferred way to redeem an agent's dust.
+
+Note that the [system redemption fee](#system-redemption-fee) is by design never charged for self-close.
 
 ## Redeem any amount
 

@@ -3,7 +3,7 @@ import {
     DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault, RedeemedInCollateral, RedemptionDefault,
     RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionPoolFeeMinted, RedemptionRequested,
     RedemptionTicketCreated, RedemptionTicketDeleted, RedemptionTicketUpdated, RedemptionWithTagRequested, ReturnFromCoreVaultCancelled,
-    ReturnFromCoreVaultConfirmed, ReturnFromCoreVaultRequested, SelfClose, SelfMint, TransferToCoreVaultDefaulted,
+    ReturnFromCoreVaultConfirmed, ReturnFromCoreVaultRequested, SelfClose, SelfMint, SystemRedemptionFeePaid, TransferToCoreVaultDefaulted,
     TransferToCoreVaultStarted, TransferToCoreVaultSuccessful, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced,
     UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../typechain-truffle/IIAssetManager";
@@ -196,6 +196,14 @@ export class TrackedAgentState {
 
     handleRedemptionPoolFeeMinted(args: EvmEventArgs<RedemptionPoolFeeMinted>): void {
         this.mintedUBA = this.mintedUBA.add(toBN(args.poolFeeUBA));
+    }
+
+    handleSystemRedemptionFeePaid(args: EvmEventArgs<SystemRedemptionFeePaid>): void {
+        // The system redemption fee is subtracted from the redemption value before the RedemptionRequested
+        // event is emitted, so the fee part of the backing is never moved out of mintedUBA (the fee is
+        // re-minted to the system redemption fee receiver and is again backed by this agent).
+        // The fee's redemption ticket re-creation is tracked through redemption ticket and dust events.
+        // Therefore no aggregate has to be updated here.
     }
 
     handleRedeemedInCollateral(args: EvmEventArgs<RedeemedInCollateral>): void {

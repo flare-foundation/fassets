@@ -1,3 +1,4 @@
+import BN from "bn.js";
 import { AgentStatus, AssetManagerSettings, CollateralType } from "../fasset/AssetManagerTypes";
 import { AssetManagerEvents, IAssetContext } from "../fasset/IAssetContext";
 import { UnderlyingChainEvents } from "../underlying-chain/UnderlyingChainEvents";
@@ -13,6 +14,13 @@ import { CollateralList, isPoolCollateral } from "./CollateralIndexedList";
 import { Prices } from "./Prices";
 import { tokenContract } from "./TokenPrice";
 import { InitialAgentData, TrackedAgentState } from "./TrackedAgentState";
+
+// AssetManagerSettings extended with the settings that are not part of the AssetManagerSettings struct
+// in the contract (they are stored in separate diamond storage slots and read through their own getters)
+export interface AssetManagerSettingsExt extends AssetManagerSettings {
+    systemRedemptionFeeBIPS: number | BN | string;
+    systemRedemptionFeeReceiver: string;
+}
 
 export class TrackedCoreVaultState {
     // confirmed balance by CoreVaultManager
@@ -49,7 +57,7 @@ export class TrackedState {
     trustedPrices!: Prices;
 
     // settings
-    settings!: AssetManagerSettings;
+    settings!: AssetManagerSettingsExt;
     collaterals = new CollateralList();
     poolWNatColateral!: CollateralType;
 
@@ -67,7 +75,12 @@ export class TrackedState {
 
     // async initialization part
     async initialize() {
-        this.settings = { ...await this.context.assetManager.getSettings() };
+        this.settings = {
+            ...await this.context.assetManager.getSettings(),
+            // extra settings, not part of the AssetManagerSettings struct
+            systemRedemptionFeeBIPS: await this.context.assetManager.systemRedemptionFeeBIPS(),
+            systemRedemptionFeeReceiver: await this.context.assetManager.systemRedemptionFeeReceiver(),
+        };
         const collateralTypes = await this.context.assetManager.getCollateralTypes();
         for (const collateralToken of collateralTypes) {
             const collateral = await this.addCollateralType(collateralToken);
@@ -114,13 +127,20 @@ export class TrackedState {
         // track setting changes
         this.assetManagerEvent('SettingChanged').subscribe(args => {
             if (!(args.name in this.settings)) assert.fail(`Invalid setting change ${args.name}`);
-            this.logger?.log(`SETTING CHANGED ${args.name} FROM ${(this.settings as Record<string, unknown>)[args.name]} TO ${args.value}`);
-            (this.settings as Record<string, unknown>)[args.name] = web3Normalize(args.value);
+            this.logger?.log(`SETTING CHANGED ${args.name} FROM ${(this.settings as unknown as Record<string, unknown>)[args.name]} TO ${args.value}`);
+            (this.settings as unknown as Record<string, unknown>)[args.name] = web3Normalize(args.value);
+        });
+        this.assetManagerEvent('ContractChanged').subscribe(args => {
+            // unlike SettingChanged, the ContractChanged event is also emitted for many contracts
+            // that are not part of the tracked settings, so the unknown names are just ignored
+            if (!(args.name in this.settings)) return;
+            this.logger?.log(`SETTING CHANGED ${args.name} FROM ${(this.settings as unknown as Record<string, unknown>)[args.name]} TO ${args.value}`);
+            (this.settings as unknown as Record<string, unknown>)[args.name] = web3Normalize(args.value);
         });
         this.assetManagerEvent('SettingArrayChanged').subscribe(args => {
             if (!(args.name in this.settings)) assert.fail(`Invalid setting array change ${args.name}`);
-            this.logger?.log(`SETTING ARRAY CHANGED ${args.name} FROM ${stringifyJson((this.settings as Record<string, unknown>)[args.name])} TO ${stringifyJson(args.value)}`);
-            (this.settings as Record<string, unknown>)[args.name] = web3DeepNormalize(args.value);
+            this.logger?.log(`SETTING ARRAY CHANGED ${args.name} FROM ${stringifyJson((this.settings as unknown as Record<string, unknown>)[args.name])} TO ${stringifyJson(args.value)}`);
+            (this.settings as unknown as Record<string, unknown>)[args.name] = web3DeepNormalize(args.value);
         });
         // track collateral token changes
         this.assetManagerEvent('CollateralTypeAdded').subscribe(args => {
@@ -209,6 +229,7 @@ export class TrackedState {
         this.assetManagerEvent('RedemptionPaymentBlocked').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionPaymentBlocked(args));
         this.assetManagerEvent('RedemptionPaymentFailed').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionPaymentFailed(args));
         this.assetManagerEvent('RedemptionPoolFeeMinted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionPoolFeeMinted(args));
+        this.assetManagerEvent('SystemRedemptionFeePaid').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleSystemRedemptionFeePaid(args));
         this.assetManagerEvent('RedeemedInCollateral').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedeemedInCollateral(args));
         this.assetManagerEvent('SelfClose').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleSelfClose(args));
         // underlying topup and withdrawal
