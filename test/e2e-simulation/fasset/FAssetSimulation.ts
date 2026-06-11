@@ -167,7 +167,7 @@ contract(`FAssetSimulation.sol; ${getTestFile(__filename)}; End to end simulatio
             await Agent.changeWorkAddress(context, ownerManagementAddress, ownerWorkAddress);
             const options = createAgentVaultOptions();
             const ownerAddress = coinFlip() ? ownerWorkAddress : ownerManagementAddress;
-            const simulationAgent = await SimulationAgent.createTest(runner, ownerAddress, underlyingAddress, ownerUnderlyingAddress, options);
+            const simulationAgent = await SimulationAgent.createTest(runner, ownerAddress, underlyingAddress, ownerUnderlyingAddress, ILLEGAL_PROB !== 0, options);
             simulationAgent.capturePerAgentContractEvents(`AGENT_${i}`);
             await simulationAgent.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));
             agents.push(simulationAgent);

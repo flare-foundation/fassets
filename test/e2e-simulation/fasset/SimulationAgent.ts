@@ -1,4 +1,5 @@
 import { AgentSetting, AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
+import { roundUBAToAmg } from "../../../lib/fasset/Conversions";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { isVaultCollateral } from "../../../lib/state/CollateralIndexedList";
 import { SparseArray } from "../../../lib/test-utils/SparseMatrix";
@@ -21,6 +22,7 @@ export class SimulationAgent extends SimulationActor {
         public ownerManagementAddress: string,
         public ownerUnderlyingAddress: string,
         public creationOptions: AgentCreateOptions,
+        public allowCheatOnPayment: boolean,
     ) {
         super(runner);
         this.registerForEvents(agent.agentVault.address);
@@ -43,9 +45,9 @@ export class SimulationAgent extends SimulationActor {
         return this.state.getAgent(address) ?? assert.fail(`Invalid agent address ${address}`);
     }
 
-    static async createTest(runner: SimulationRunner, ownerAddress: string, underlyingAddress: string, ownerUnderlyingAddress: string, options?: AgentCreateOptions) {
+    static async createTest(runner: SimulationRunner, ownerAddress: string, underlyingAddress: string, ownerUnderlyingAddress: string, allowCheatOnPayment: boolean, options?: AgentCreateOptions) {
         const agent = await Agent.createTest(runner.context, ownerAddress, underlyingAddress, options);
-        return new SimulationAgent(runner, agent, agent.ownerManagementAddress, ownerUnderlyingAddress, options ?? {});
+        return new SimulationAgent(runner, agent, agent.ownerManagementAddress, ownerUnderlyingAddress, options ?? {}, allowCheatOnPayment);
     }
 
     unaccountedSpentFreeBalance = new SparseArray();
@@ -102,11 +104,16 @@ export class SimulationAgent extends SimulationActor {
         if (!coinFlip(0.8)) return;
         this.runner.startThread(async (scope) => {
             const agent = this.agent;   // save in case it is destroyed and re-created
-            const cheatOnPayment = coinFlip(0.2);
+            const cheatOnPayment = this.allowCheatOnPayment && coinFlip(0.2);
             const takeFee = cheatOnPayment ? request.feeUBA.add(request.valueUBA.divn(10)) : request.feeUBA;   // cheat by taking more fee (so the payment should be considered failed)
             const paymentAmount = request.valueUBA.sub(takeFee);
+            // the redemption pool fee share is re-minted at payment confirmation, which increases the agent's required
+            // underlying balance, so that part of the fee must remain on the agent's underlying address
+            // (read the pool fee share from the request, because the agent's setting may change between request and payment)
+            const requestInfo = await this.context.assetManager.redemptionRequestInfo(request.requestId);
+            const redemptionPoolFeeUBA = roundUBAToAmg(this.context.settings, request.feeUBA.mul(toBN(requestInfo.poolFeeShareBIPS)).divn(MAX_BIPS));
             // const amountToMyself = randomBN(takeFee.add(this.freeUnderlyingBalance(agent)));  // abuse redemption to pay something to the owner via multi-transaction
-            const amountToMyself = takeFee;
+            const amountToMyself = takeFee.sub(redemptionPoolFeeUBA);
             this.unaccountedSpentFreeBalance.addTo(agent.vaultAddress, amountToMyself);
             const txHash = await agent.wallet.addMultiTransaction({ [agent.underlyingAddress]: paymentAmount.add(amountToMyself) },
                 { [request.paymentAddress]: paymentAmount, [this.ownerUnderlyingAddress]: amountToMyself },
