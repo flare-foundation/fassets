@@ -1,9 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import {IFdcVerification, IPayment, IBalanceDecreasingTransaction, IConfirmedBlockHeightExists,
-        IReferencedPaymentNonexistence, IAddressValidity, IXRPPayment, IXRPPaymentNonexistence}
-    from "../../fdc/mock/FdcVerificationMock.sol";
+import {IFdcVerification} from "@flarenetwork/flare-periphery-contracts/flare/IFdcVerification.sol";
+import {IPayment} from "@flarenetwork/flare-periphery-contracts/flare/IPayment.sol";
+import {IBalanceDecreasingTransaction}
+    from "@flarenetwork/flare-periphery-contracts/flare/IBalanceDecreasingTransaction.sol";
+import {IConfirmedBlockHeightExists}
+    from "@flarenetwork/flare-periphery-contracts/flare/IConfirmedBlockHeightExists.sol";
+import {IReferencedPaymentNonexistence}
+    from "@flarenetwork/flare-periphery-contracts/flare/IReferencedPaymentNonexistence.sol";
+import {IAddressValidity} from "@flarenetwork/flare-periphery-contracts/flare/IAddressValidity.sol";
+import {IXRPPayment} from "@flarenetwork/flare-periphery-contracts/flare/IXRPPayment.sol";
+import {IXRPPaymentNonexistence} from "@flarenetwork/flare-periphery-contracts/flare/IXRPPaymentNonexistence.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {Globals} from "./Globals.sol";
 
