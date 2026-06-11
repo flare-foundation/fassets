@@ -10,7 +10,7 @@ For both liquidation types, any participant (liquidator) will be encouraged to s
 
 ## Liquidation process
 
-Once the liquidation starts, any address (AKA liquidator) can send in FAssets and get paid with a combination of vault and pool collateral at current asset price multiplied by a premium factor (greater than 1). The maximum amount of FAssets that will be accepted is the amount required to make the agent healthy, rounded up to the next lot.
+Once the liquidation starts, any address (AKA liquidator) can send in FAssets and get paid with a combination of vault and pool collateral at current asset price multiplied by a premium factor (greater than 1). The maximum amount of FAssets that will be accepted is the amount required to make the agent healthy (i.e. to bring the agent's collateral ratio back up to the safety CR), capped by the agent's total backed amount.
 
 Liquidator premium is a system-defined percentage and it can optionally increase with the duration of the liquidation. The increase is in a few discrete steps - in the initial version it will start at 5%, after 3 minutes increase to 10% and after 6 minutes to 15% at which point it will stop increasing. The premium is also limited to the agent’s total collateral ratio (the amount of vault and pool collateral together, divided by the backed FAsset amount) - but if this is reached, all the agent backed FAssets will be liquidated and all of the agent’s and pool collateral will be paid to the liquidators.
 
