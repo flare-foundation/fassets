@@ -184,7 +184,7 @@ contract MintingTagManager is
         // update the minting recipient to the new owner on transfer or reservation
         for (uint256 i = 0; i < _batchSize; i++) {
             _setRecipient(_firstTokenId + i, _to);
-            _setExecutor(_firstTokenId + i, address(0));
+            _clearExecutor(_firstTokenId + i);
         }
     }
 
@@ -212,7 +212,7 @@ contract MintingTagManager is
             // Re-targeting the currently active executor (which, during cooldown, is
             // oldAllowedExecutor) cancels the pending change. This also covers the case
             // where the active executor is address(0) and the pending change is reverted
-            // by passing address(0) — either explicitly or via _afterTokenTransfer.
+            // by passing address(0).
             tag.allowedExecutor = currentAllowedExecutor;
             tag.oldAllowedExecutor = address(0);
             tag.allowedExecutorActiveAfterTs = 0;
@@ -223,6 +223,21 @@ contract MintingTagManager is
             tag.allowedExecutor = _executor;
             tag.allowedExecutorActiveAfterTs = allowedExecutorActiveAfterTs.toUint64();
             emit AllowedExecutorChangePending(_mintingTag, _executor, allowedExecutorActiveAfterTs);
+        }
+    }
+
+    function _clearExecutor(uint256 _mintingTag) internal {
+        TagData storage tag = tagData[_mintingTag];
+        // Unlike _setExecutor, the reset is immediate (no cooldown). The cooldown exists to protect
+        // an executor who may have already paid for an FDC request, but the new owner never authorized
+        // the previous owner's executor, so it must not remain active after a transfer.
+        if (tag.allowedExecutor != address(0) || tag.oldAllowedExecutor != address(0)
+            || tag.allowedExecutorActiveAfterTs != 0)
+        {
+            tag.allowedExecutor = address(0);
+            tag.oldAllowedExecutor = address(0);
+            tag.allowedExecutorActiveAfterTs = 0;
+            emit AllowedExecutorCleared(_mintingTag);
         }
     }
 

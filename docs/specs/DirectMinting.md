@@ -6,7 +6,7 @@ In the direct minting the minter simply creates a transaction on the underlying 
 
 The contract `MintingTagManager` allows a user to reserve a minting tag and to set minting recipient and executor for this tag. Since there is a limited amount of (XRP) tags available, the user must pay a reservation fee (`reservationFee`) in native currency (FLR/SGB) to avoid using up all tags. At reservation, the user always receives the next available tag. Minting tag manager implements ERC-721 non-fungible token interface, so that reserved minting tags can be transferred (or resold) to another owner.
 
-The owner of the tag can set minting recipient with the method `setMintingRecipient` and the preferred executor with the method `setAllowedExecutor`. If the allowed executor is address zero (default), anybody can execute mintings with this tag. On initial reservation and tag transfer, the recipient is automatically reset to the new owner and the executor is reset to zero address.
+The owner of the tag can set minting recipient with the method `setMintingRecipient` and the preferred executor with the method `setAllowedExecutor`. If the allowed executor is address zero (default), anybody can execute mintings with this tag. On initial reservation and tag transfer, the recipient is automatically reset to the new owner and the executor (including any pending executor change) is immediately reset to zero address - the executor change cooldown does not apply, because the new owner never authorized the previous owner's executor.
 
 ## Executors
 

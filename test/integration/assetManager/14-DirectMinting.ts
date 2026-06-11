@@ -1001,12 +1001,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const resDelay = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
             const delayedEvent = requiredEventArgs(resDelay, 'DirectMintingDelayed');
             // before the delay ends, transfer the tag to the attacker - this updates recipient to attacker
-            // and starts a 10-minute cooldown after which the allowed executor is reset to zero.
+            // and immediately resets the allowed executor to zero (no cooldown on transfer).
             await mintingTagManager.transfer(attacker, tagId, { from: minter.address });
             assertWeb3Equal(await mintingTagManager.mintingRecipient(tagId), attacker);
-            // advance time past the delay (also clears the 10-minute executor change cooldown started by the transfer)
+            assertWeb3Equal(await mintingTagManager.allowedExecutor(tagId), ZERO_ADDRESS);
+            // advance time past the delay
             await time.increaseTo(delayedEvent.executionAllowedAt);
-            // after the cooldown, the tag manager reports zero allowed executor - without the fix anyone could execute
+            // the tag manager still reports zero allowed executor - without the fix anyone could execute
             assertWeb3Equal(await mintingTagManager.allowedExecutor(tagId), ZERO_ADDRESS);
             // attacker tries to execute - should fail because the executor is taken from the delay record,
             // where the stored allowed executor is still executorAddress1
