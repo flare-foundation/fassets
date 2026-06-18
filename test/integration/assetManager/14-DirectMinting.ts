@@ -20,8 +20,7 @@ import { ContractWithEvents, requiredEventArgs } from "../../../lib/utils/events
 import { BN_ONE, DAYS, HOURS, joinHexBytes, MAX_BIPS, MINUTES, requireNotNull, toBN, toBNExp, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { CoreVaultManagerInstance, DirectMintingAndRedeemExtendedInitInstance, MintingTagManagerInstance, SmartAccountManagerMockInstance } from "../../../typechain-truffle";
-import { DirectMintingExecutedToSmartAccount } from "../../../typechain-truffle/DirectMintingFacet";
-import { DirectMintingExecuted } from "../../../typechain-truffle/IIAssetManager";
+import { DirectMintingExecuted, DirectMintingExecutedToSmartAccount } from "../../../typechain-truffle/IIAssetManager";
 import { MintedToSmartAccount } from "../../../typechain-truffle/SmartAccountManagerMock";
 
 export type SmartAccountManagerMockEvents = import('../../../typechain-truffle/SmartAccountManagerMock').AllEvents;

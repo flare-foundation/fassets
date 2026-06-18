@@ -79,7 +79,8 @@ Each facet in `contracts/assetManager/` corresponds to a logical module:
 | `AgentVaultManagementFacet` | Agent creation and destruction |
 | `CollateralTypesFacet` | Vault collateral management - adding, removing and updating settings for collateral tokens |
 | `SettingsManagementFacet` | Governance-controlled settings updates - all methods are called through AssetManagerController |
-| `CoreVaultClientFacet` | Integration with CoreVaultManager |
+| `CoreVaultClientFacet` | Integration with CoreVaultManager (return from / redeem from / donation) |
+| `TransferToCoreVaultFacet` | Agent transfer of backing to the core vault |
 | `CoreVaultClientSettingsFacet` | Manage settings for `CoreVaultClientFacet` |
 | `EmergencyPauseFacet` | Emergency pause mechanism |
 | `SystemStateManagementFacet` | Attaching to controller, minting pause |

@@ -3,8 +3,7 @@ import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { EventScope, QualifiedEvent, qualifiedEvent } from "../../../lib/utils/events/ScopedEvents";
 import { expectErrors, formatBN, promiseValue } from "../../../lib/utils/helpers";
-import { RedemptionWithTagRequested } from "../../../typechain-truffle/CoreVaultClientFacet";
-import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
+import { RedemptionRequested, RedemptionWithTagRequested } from "../../../typechain-truffle/IIAssetManager";
 import { SimulationActor } from "./SimulationActor";
 import { SimulationRunner } from "./SimulationRunner";
 

@@ -95,6 +95,7 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
             diamond: assetManager.address,
             facets: [
                 { contract: "CoreVaultClientFacet", exposedInterfaces: ["ICoreVaultClient"] },
+                { contract: "TransferToCoreVaultFacet", exposedInterfaces: ["ICoreVaultClient"] },
                 { contract: "CoreVaultClientSettingsFacet", exposedInterfaces: ["ICoreVaultClientSettings"] }
             ],
             init: {
