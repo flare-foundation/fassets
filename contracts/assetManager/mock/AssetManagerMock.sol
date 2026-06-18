@@ -175,6 +175,10 @@ contract AssetManagerMock {
         minPoolCollateralRatioBIPS = _minPoolCollateralRatioBIPS;
     }
 
+    function systemRedemptionFeeBIPS() external pure returns (uint256) {
+        return 0;
+    }
+
    function _passReturnOrRevert(bool _success) private pure {
         // pass exact return or revert data - needs to be done in assembly
         //solhint-disable-next-line no-inline-assembly

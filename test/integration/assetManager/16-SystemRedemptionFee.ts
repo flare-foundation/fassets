@@ -9,7 +9,7 @@ import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-s
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BNish, DAYS, MAX_BIPS, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { BNish, DAYS, MAX_BIPS, toBIPS, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests - system redemption fee`, accounts => {
     const governance = accounts[10];
@@ -306,6 +306,46 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(defaultEvent.redemptionAmountUBA, fullValueUBA.sub(systemFeeUBA(fullValueUBA)));
             // the fee receiver keeps the collected fee
             assertWeb3Equal(await context.fAsset.balanceOf(feeReceiver), systemFeeUBA(fullValueUBA));
+        });
+
+        it("system fee should not make below-exit-CR self-close exit reduce pool collateral ratio", async () => {
+            await enableSystemRedemptionFee();
+            const poolExitCollateralRatioBIPS = toBIPS(3.5);
+            const targetPoolCollateralRatioBIPS = toBIPS(3.0);
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, {
+                poolExitCollateralRatioBIPS,
+            });
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
+            const fullAgentCollateral = toWei(1e7);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+            await minter.performMinting(agent.vaultAddress, 300);
+            const minterPoolDeposit = toWei(90000);
+            await agent.collateralPool.enter({ from: minter.address, value: minterPoolDeposit });
+
+            const minterPoolTokensWei = await agent.collateralPoolToken.balanceOf(minter.address);
+            await context.fAsset.approve(agent.collateralPool.address, context.convertLotsToUBA(300), { from: minter.address });
+            await agent.setPoolCollateralRatioByChangingAssetPrice(Number(targetPoolCollateralRatioBIPS));
+
+            const infoBefore = await agent.getAgentInfo();
+            assert.isTrue(
+                toBN(infoBefore.poolCollateralRatioBIPS).lt(toBN(infoBefore.poolExitCollateralRatioBIPS)),
+                `expected pool CR below exit CR before self-close exit, poolCR=${infoBefore.poolCollateralRatioBIPS}, exitCR=${infoBefore.poolExitCollateralRatioBIPS}`);
+
+            const requiredFAssets = await agent.collateralPool.fAssetRequiredForSelfCloseExit(minterPoolTokensWei);
+            assert.isTrue(requiredFAssets.gte(await context.assetManager.lotSize()));
+
+            await time.deterministicIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds());
+            const response = await agent.collateralPool.selfCloseExit(minterPoolTokensWei, false, underlyingMinter1, ZERO_ADDRESS,
+                { from: minter.address });
+            const feePaid = requiredEventArgsFrom(response, context.assetManager, 'SystemRedemptionFeePaid');
+            assert.isTrue(toBN(feePaid.feeUBA).gtn(0));
+
+            const infoAfter = await agent.getAgentInfo();
+            // console.log('infoAfter', infoAfter.poolCollateralRatioBIPS);
+            // console.log('infoBefore', infoBefore.poolCollateralRatioBIPS);
+            assert.isTrue(
+                toBN(infoAfter.poolCollateralRatioBIPS).eq(toBN(infoBefore.poolCollateralRatioBIPS)),
+                `expected system fee to reduce pool CR, before=${infoBefore.poolCollateralRatioBIPS}, after=${infoAfter.poolCollateralRatioBIPS}`);
         });
     });
 
