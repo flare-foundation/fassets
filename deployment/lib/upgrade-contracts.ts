@@ -22,9 +22,7 @@ export async function upgradeAssetManagerController({ hre, artifacts, contracts,
 }
 
 export async function upgradeAgentVaultFactory({ hre, artifacts, contracts, deployer }: DeployScriptEnvironment, assetSymbols: string[] | "all", execute: boolean) {
-    const AssetManagerController = artifacts.require("AssetManagerController");
-    const assetManagerController = await AssetManagerController.at(contracts.getAddress("AssetManagerController"));
-    const assetManagers = await getAssetManagers(contracts, assetManagerController, assetSymbols);
+    const { assetManagers, assetManagerController } = await getAssetManagersAndController(artifacts, contracts, assetSymbols);
 
     const newAgentVaultFactoryAddress = await deployAgentVaultFactory(hre, contracts);
 
@@ -37,9 +35,7 @@ export async function upgradeAgentVaultFactory({ hre, artifacts, contracts, depl
 }
 
 export async function upgradeCollateralPoolFactory({ hre, artifacts, contracts, deployer }: DeployScriptEnvironment, assetSymbols: string[] | "all", execute: boolean) {
-    const AssetManagerController = artifacts.require("AssetManagerController");
-    const assetManagerController = await AssetManagerController.at(contracts.getAddress("AssetManagerController"));
-    const assetManagers = await getAssetManagers(contracts, assetManagerController, assetSymbols);
+    const { assetManagers, assetManagerController } = await getAssetManagersAndController(artifacts, contracts, assetSymbols);
 
     const newCollateralPoolFactoryAddress = await deployCollateralPoolFactory(hre, contracts);
 
@@ -52,9 +48,7 @@ export async function upgradeCollateralPoolFactory({ hre, artifacts, contracts, 
 }
 
 export async function upgradeCollateralPoolTokenFactory({ hre, artifacts, contracts, deployer }: DeployScriptEnvironment, assetSymbols: string[] | "all", execute: boolean) {
-    const AssetManagerController = artifacts.require("AssetManagerController");
-    const assetManagerController = await AssetManagerController.at(contracts.getAddress("AssetManagerController"));
-    const assetManagers = await getAssetManagers(contracts, assetManagerController, assetSymbols);
+    const { assetManagers, assetManagerController } = await getAssetManagersAndController(artifacts, contracts, assetSymbols);
 
     const newCollateralPoolTokenFactoryAddress = await deployCollateralPoolTokenFactory(hre, contracts);
 
@@ -67,9 +61,7 @@ export async function upgradeCollateralPoolTokenFactory({ hre, artifacts, contra
 }
 
 export async function upgradeFAsset({ hre, artifacts, contracts, deployer }: DeployScriptEnvironment, assetSymbols: string[] | "all", execute: boolean) {
-    const AssetManagerController = artifacts.require("AssetManagerController");
-    const assetManagerController = await AssetManagerController.at(contracts.getAddress("AssetManagerController"));
-    const assetManagers = await getAssetManagers(contracts, assetManagerController, assetSymbols);
+    const { assetManagers, assetManagerController } = await getAssetManagersAndController(artifacts, contracts, assetSymbols);
 
     const newFAssetImplAddress = await deployFacet(hre, "FAssetImplementation", contracts, deployer, "FAsset");
 
@@ -82,9 +74,7 @@ export async function upgradeFAsset({ hre, artifacts, contracts, deployer }: Dep
 }
 
 export async function upgradeAgentVaultsAndPools({ artifacts, contracts }: DeployScriptEnvironment, assetSymbols: string[] | "all", execute: boolean) {
-    const AssetManagerController = artifacts.require("AssetManagerController");
-    const assetManagerController = await AssetManagerController.at(contracts.getAddress("AssetManagerController"));
-    const assetManagers = await getAssetManagers(contracts, assetManagerController, assetSymbols);
+    const { assetManagers, assetManagerController } = await getAssetManagersAndController(artifacts, contracts, assetSymbols);
 
     let maxAgentsCount = 0;
     const IIAssetManager = artifacts.require("IIAssetManager");
@@ -102,7 +92,20 @@ export async function upgradeAgentVaultsAndPools({ artifacts, contracts }: Deplo
     }
 }
 
-export async function upgradeGovernedProxy({ hre, artifacts, contracts, deployer }: DeployScriptEnvironment, contractName: string, implementationName: string, implementationContract: string, execute: boolean) {
+/**
+ * Upgrade a governed proxy and call a function on the new implementation in the same transaction.
+ * @param contractName name of the proxy in the contracts store
+ * @param implementationName name of the implementation in the contracts store
+ * @param implementationContract Solidity contract name of the implementation
+ * @param execute whether to execute the upgrade or just print the data
+ */
+export async function upgradeGovernedProxy(
+    { hre, artifacts, contracts, deployer }: DeployScriptEnvironment,
+    contractName: string,               // name of the proxy in the contracts store
+    implementationName: string,         // name of the implementation in the contracts store
+    implementationContract: string,     // Solidity contract name of the implementation
+    execute: boolean
+) {
     const GovernedUUPSProxyImplementation = artifacts.require("GovernedUUPSProxyImplementation");
     const proxy = await GovernedUUPSProxyImplementation.at(contracts.getAddress(contractName));
 
@@ -117,9 +120,22 @@ export async function upgradeGovernedProxy({ hre, artifacts, contracts, deployer
     }
 }
 
-export async function upgradeGovernedProxyAndCall({ hre, artifacts, contracts, deployer }: DeployScriptEnvironment,
-        contractName: string, implementationName: string, implementationContract: string, calldata: string, execute: boolean)
-{
+/**
+ * Upgrade a governed proxy and call a function on the new implementation in the same transaction. This is useful for initializing new state variables in the implementation.
+ * @param contractName name of the proxy in the contracts store
+ * @param implementationName name of the implementation in the contracts store
+ * @param implementationContract Solidity contract name of the implementation
+ * @param calldata calldata to be passed to the implementation contract during the upgrade
+ * @param execute whether to execute the upgrade or just print the data
+ */
+export async function upgradeGovernedProxyAndCall(
+    { hre, artifacts, contracts, deployer }: DeployScriptEnvironment,
+    contractName: string,               // name of the proxy in the contracts store
+    implementationName: string,         // name of the implementation in the contracts store
+    implementationContract: string,     // Solidity contract name of the implementation
+    calldata: string,
+    execute: boolean
+) {
     const GovernedUUPSProxyImplementation = artifacts.require("GovernedUUPSProxyImplementation");
     const proxy = await GovernedUUPSProxyImplementation.at(contracts.getAddress(contractName));
 
@@ -146,7 +162,12 @@ type TruffleMethod<A extends unknown[], R = TruffleResponse> = (...args: [...A, 
 type TruffleMethodParameters<T, R = unknown> = T extends TruffleMethod<infer P, R> ? P : never;
 
 export async function performGovernanceCall<C extends Truffle.ContractInstance & IGovernedRead, M extends keyof C & string>(
-    { deployer }: DeployScriptEnvironment, contractName: string, instance: C, method: M, args: TruffleMethodParameters<C[M], TruffleResponse>, execute: boolean
+    { deployer }: DeployScriptEnvironment,
+    contractName: string,
+    instance: C,
+    method: M,
+    args: TruffleMethodParameters<C[M], TruffleResponse>,
+    execute: boolean
 ) {
     if (await shouldExecute(execute, instance)) {
         const res = await (instance[method] as TruffleMethod<typeof args>)(...args, { from: deployer });
@@ -156,11 +177,21 @@ export async function performGovernanceCall<C extends Truffle.ContractInstance &
     }
 }
 
-export function printExecuteData<C extends Truffle.ContractInstance, M extends keyof C & string>(contractName: string, instance: C, method: M, args: TruffleMethodParameters<C[M]>) {
+export function printExecuteData<C extends Truffle.ContractInstance, M extends keyof C & string>(
+    contractName: string,
+    instance: C,
+    method: M,
+    args: TruffleMethodParameters<C[M]>
+) {
     printExecuteDataUnchecked(contractName, instance, method, args);
 }
 
-export function printExecuteDataUnchecked(contractName: string, instance: Truffle.ContractInstance, method: string, args: unknown[]) {
+export function printExecuteDataUnchecked(
+    contractName: string,
+    instance: Truffle.ContractInstance,
+    method: string,
+    args: unknown[]
+) {
     const methodAbi = instance.abi.find(it => it.type === "function" && it.name === method)!;
     const formattedParams = methodAbi.inputs!.map((param, index) => `${param.name} = ${JSON.stringify(web3DeepNormalize(args[index]))}`)
     console.log("");    // blank line for readability
@@ -182,6 +213,13 @@ async function printUpgradedContracts(contracts: FAssetContractStore, name: stri
         const settings = await am.getSettings();
         console.log(`${name} on ${assetManagerName} upgraded to ${await field(settings)}`);
     }
+}
+
+export async function getAssetManagersAndController(artifacts: Truffle.Artifacts, contracts: FAssetContractStore, assetSymbols: string[] | "all") {
+    const AssetManagerController = artifacts.require("AssetManagerController");
+    const assetManagerController = await AssetManagerController.at(contracts.getAddress("AssetManagerController"));
+    const assetManagers = await getAssetManagers(contracts, assetManagerController, assetSymbols);
+    return { assetManagers, assetManagerController };
 }
 
 export async function getAssetManagers(contracts: ContractStore, assetManagerController: AssetManagerControllerInstance, assetSymbols: string[] | "all") {
