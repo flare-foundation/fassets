@@ -2,7 +2,7 @@ import { runDeployScript } from "../../lib/deploy-scripts";
 import { upgradeAgentVaultsAndPools, upgradeAssetManagerController, upgradeCollateralPoolFactory, upgradeGovernedProxy } from "../../lib/upgrade-contracts";
 
 runDeployScript(async (deployScriptEnvironment) => {
-    const execute = false;
+    const execute = true;
 
     await upgradeAssetManagerController(deployScriptEnvironment, execute);
 
