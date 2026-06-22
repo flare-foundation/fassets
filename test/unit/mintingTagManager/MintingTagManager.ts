@@ -3,12 +3,13 @@ import { getProxyImplementationAddress, ZERO_ADDRESS } from "../../../deployment
 import { ether, expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BNish, MINUTES } from "../../../lib/utils/helpers";
+import { abiEncodeCall, BNish, MINUTES } from "../../../lib/utils/helpers";
 import { GovernanceSettingsMockInstance, MintingTagManagerInstance } from "../../../typechain-truffle";
 
 const GovernanceSettingsMock = artifacts.require("GovernanceSettingsMock");
 const MintingTagManager = artifacts.require("MintingTagManager");
 const MintingTagManagerProxy = artifacts.require("MintingTagManagerProxy");
+const ERC1967Proxy = artifacts.require("ERC1967Proxy");
 
 
 contract("MintingTagManager", function (accounts) {
@@ -516,5 +517,75 @@ contract("MintingTagManager", function (accounts) {
         expectEvent.notEmitted(resEx3, "AllowedExecutorChangePending");
         // and there should be no pending change now
         await checkPendingChange(reserved.tag, false, ZERO_ADDRESS, 0);
+    });
+
+    describe("V1 deploy and upgrade to V2", () => {
+        // deploy a bare V1 instance via ERC1967Proxy (which only runs `initialize`, NOT `initializeV2`)
+        async function deployV1() {
+            const impl = await MintingTagManager.new();
+            const initCalldata = abiEncodeCall(impl, (inst) => inst.initialize(
+                governanceSettings.address, governance, "Minting Tag Manager", "MTMG",
+                reservationFee, governance, 1
+            ));
+            const proxy = await ERC1967Proxy.new(impl.address, initCalldata);
+            return { impl, instance: await MintingTagManager.at(proxy.address) };
+        }
+
+        it("V1 deploy should initialize V1 state but leave V2 state unset", async () => {
+            const { instance: v1 } = await deployV1();
+            // V1 state is set
+            assert.equal(await v1.name(), "Minting Tag Manager");
+            assert.equal(await v1.symbol(), "MTMG");
+            assertWeb3Equal(await v1.reservationFee(), reservationFee);
+            assertWeb3Equal(await v1.nextAvailableTag(), 1);
+            // V2 state is not set yet
+            assertWeb3Equal(await v1.executorChangeAfterSeconds(), 0);
+            // initializeV2 has not run, so it can still be called (cannot happen in production, because MintingTagManagerProxy immediately initializes V2)
+            await v1.initializeV2(executorChangeAfterSeconds, { from: governance });
+            assertWeb3Equal(await v1.executorChangeAfterSeconds(), executorChangeAfterSeconds);
+        });
+
+        it("should upgrade V1 to V2 via upgradeToAndCall, running initializeV2", async () => {
+            const { instance: v1 } = await deployV1();
+            // reserve a tag so we can check that V1 state survives the upgrade
+            const res = await v1.reserve({ from: tagOwner, value: reservationFee });
+            const reserved = requiredEventArgs(res, "MintingTagReserved");
+            await v1.setMintingRecipient(reserved.tag, accounts[8], { from: tagOwner });
+            // V2 state is still unset before the upgrade
+            assertWeb3Equal(await v1.executorChangeAfterSeconds(), 0);
+            // upgrade to V2 (same code is allowed) and run initializeV2 atomically
+            const implV2 = await MintingTagManager.new();
+            const initV2Calldata = abiEncodeCall(implV2, (inst) => inst.initializeV2(executorChangeAfterSeconds));
+            await v1.upgradeToAndCall(implV2.address, initV2Calldata, { from: governance });
+            // implementation was switched
+            assert.equal(await getProxyImplementationAddress(hre, v1.address), implV2.address);
+            // V2 state is now set
+            assertWeb3Equal(await v1.executorChangeAfterSeconds(), executorChangeAfterSeconds);
+            // V1 state is preserved across the upgrade
+            assert.equal(await v1.name(), "Minting Tag Manager");
+            assert.equal(await v1.ownerOf(reserved.tag), tagOwner);
+            assert.equal(await v1.mintingRecipient(reserved.tag), accounts[8]);
+        });
+
+        it("should not be able to call initializeV2 again after upgrade", async () => {
+            const { instance: v1 } = await deployV1();
+            const implV2 = await MintingTagManager.new();
+            const initV2Calldata = abiEncodeCall(implV2, (inst) => inst.initializeV2(executorChangeAfterSeconds));
+            await v1.upgradeToAndCall(implV2.address, initV2Calldata, { from: governance });
+            await expectRevert(
+                v1.initializeV2(executorChangeAfterSeconds, { from: governance }),
+                "Initializable: contract is already initialized"
+            );
+        });
+
+        it("should fail to upgrade V1 to V2 if not governance", async () => {
+            const { instance: v1 } = await deployV1();
+            const implV2 = await MintingTagManager.new();
+            const initV2Calldata = abiEncodeCall(implV2, (inst) => inst.initializeV2(executorChangeAfterSeconds));
+            await expectRevert.custom(
+                v1.upgradeToAndCall(implV2.address, initV2Calldata, { from: tagOwner }),
+                "OnlyGovernance", []
+            );
+        });
     });
 });
