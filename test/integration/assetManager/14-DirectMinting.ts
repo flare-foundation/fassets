@@ -519,6 +519,40 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
     });
 
+    describe("Reentrancy allowed during the handleMintedFAssets callback", () => {
+        it("smart account manager can reenter the asset manager to redeem while handling minted fAssets", async () => {
+            // set up an agent with collateral and some agent-backed minted fAssets, so there are
+            // redemption tickets that the smart account manager can redeem against
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            await agent.depositCollateralLotsAndMakeAvailable(100);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            await minter.performMinting(agent.vaultAddress, 50);
+            await context.updateUnderlyingBlock();
+            // direct mint to the smart account manager with the special "REDEEM" memo data; the mock will
+            // synchronously call back into the asset manager (redeemAmount) from inside handleMintedFAssets.
+            // this only succeeds because executeDirectMinting disables the reentrancy guard before the callback.
+            const totalMintingAmount = context.convertLotsToUBA(10);
+            const memoData = web3.utils.asciiToHex("REDEEM");
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, memoData);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            // the minting went to the smart account manager
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecutedToSmartAccount');
+            const { expectedMintingFee } = await calculateMintingFees(totalMintingAmount);
+            const mintedToSmartAccountUBA = totalMintingAmount.sub(expectedMintingFee);
+            assertWeb3Equal(mintingExecuted.mintedAmountUBA, mintedToSmartAccountUBA);
+            // the reentrant redeemAmount call created a redemption request to the source underlying address
+            const redemptionRequested = requiredEventArgs(res, 'RedemptionRequested');
+            assertWeb3Equal(redemptionRequested.agentVault, agent.vaultAddress);
+            assertWeb3Equal(redemptionRequested.redeemer, smartAccountManager.address);
+            assertWeb3Equal(redemptionRequested.paymentAddress, underlyingMinter1);
+            // redeemAmount redeems the whole minted amount (the lot amount and fee are both AMG-aligned)
+            assertWeb3Equal(redemptionRequested.valueUBA, mintedToSmartAccountUBA);
+            // the redeemed fAssets were all burned from the smart account manager's balance
+            assertWeb3Equal(await context.fAsset.balanceOf(smartAccountManager.address), 0);
+        });
+    });
+
     describe("Direct minting with extra data (executeDirectMintingWithData)", () => {
         it("should forward extra data to smart account manager (no memo data on payment)", async () => {
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));

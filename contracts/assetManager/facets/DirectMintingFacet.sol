@@ -19,6 +19,7 @@ import {Minting} from "../library/Minting.sol";
 import {PaymentConfirmations} from "../library/data/PaymentConfirmations.sol";
 import {MintingRateLimiter} from "../library/data/MintingRateLimiter.sol";
 import {Transfers} from "../../utils/library/Transfers.sol";
+import {Reentrancy} from "../../openzeppelin/library/Reentrancy.sol";
 
 
 contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting {
@@ -393,6 +394,11 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         // mint to smart account manager
         uint256 mintedAmountUBA = _receivedAmountUBA - _mintingFeeUBA;
         _mintFAssets(address(state.smartAccountManager), mintedAmountUBA);
+        // Smart accounts may trigger operations on asset manager (e.g. redeem) when they get instructions
+        // via handleMintedFAssets. For this to work, reentrancy has to be allowed from this point on.
+        // This is safe, because `handleMintedFAssets` is the last operation
+        // in executeDirectMinting/executeDirectMintingWithData.
+        Reentrancy.nonReentrantAfter();
         // notify smart account manager
         state.smartAccountManager.handleMintedFAssets{ value: msg.value }(
             _payment.data.requestBody.transactionId,

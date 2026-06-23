@@ -3,6 +3,7 @@ pragma solidity ^0.8.27;
 
 import {IMemoInstructionsFacet} from "@flarenetwork/flare-periphery-contracts/flare/IMemoInstructionsFacet.sol";
 import {IFAsset} from "../../userInterfaces/IFAsset.sol";
+import {IRedeemExtended} from "../../userInterfaces/IRedeemExtended.sol";
 
 // solhint-disable no-empty-blocks
 contract SmartAccountManagerMock is IMemoInstructionsFacet {
@@ -15,6 +16,9 @@ contract SmartAccountManagerMock is IMemoInstructionsFacet {
         uint256 nativeValueReceived,
         bytes fullData
     );
+
+    // memo data that triggers an immediate redemption back to the source address
+    bytes private constant REDEEM_INSTRUCTION = "REDEEM";
 
     IFAsset public immutable fAsset;
 
@@ -33,7 +37,14 @@ contract SmartAccountManagerMock is IMemoInstructionsFacet {
         address payable _executor,
         bytes calldata _fullData
     ) external payable {
-        fAsset.transfer(_executor, _amount);
+        // The asset manager (msg.sender) disables its reentrancy guard before calling this method, so the
+        // smart account manager is allowed to call back into it. Use that to immediately redeem the minted
+        // FAssets back to the original payment source address when instructed to do so.
+        if (keccak256(_memoData) == keccak256(REDEEM_INSTRUCTION)) {
+            IRedeemExtended(msg.sender).redeemAmount(_amount, _sourceAddress, _executor);
+        } else {
+            fAsset.transfer(_executor, _amount);
+        }
         emit MintedToSmartAccount(_transactionId, _sourceAddress, _amount, _underlyingTimestamp,
             _memoData, msg.value, _fullData);
     }
