@@ -307,7 +307,7 @@
   {
     "name": "DirectMintingFacet",
     "contractName": "DirectMintingFacet.sol",
-    "address": "0x2051c91F29F6D87Af874dB975C3ac5B92A365B78"
+    "address": "0x4aFaEda2AC4442cD10Ac601622Eee0dF5DF78eeF"
   },
   {
     "name": "DirectMintingSettingsFacet",
