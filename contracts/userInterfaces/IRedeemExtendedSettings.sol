@@ -33,6 +33,15 @@ interface IRedeemExtendedSettings {
         returns (address);
 
     /**
+     * The system redemption fee in BIPS that is actually charged, taking the fee receiver into account.
+     * Equals `systemRedemptionFeeBIPS()` when a fee receiver is set (`systemRedemptionFeeReceiver()` is nonzero),
+     * and zero otherwise (a zero receiver disables the system redemption fee).
+     */
+    function effectiveSystemRedemptionFeeBIPS()
+        external view
+        returns (uint256);
+
+    /**
      * Set the minimum amount in UBA for redemption with tag.
      * Redemption with tag requests with smaller amount will be rejected.
      * NOTE: may only be called by the governance.

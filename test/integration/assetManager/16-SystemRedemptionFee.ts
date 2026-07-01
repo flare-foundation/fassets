@@ -67,6 +67,23 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         it("system redemption fee is disabled by default", async () => {
             assertWeb3Equal(await context.assetManager.systemRedemptionFeeBIPS(), 0);
             assertWeb3Equal(await context.assetManager.systemRedemptionFeeReceiver(), ZERO_ADDRESS);
+            assertWeb3Equal(await context.assetManager.effectiveSystemRedemptionFeeBIPS(), 0);
+        });
+
+        it("effective system redemption fee is nonzero only when a fee receiver is set", async () => {
+            // fee BIPS set but no receiver -> effective fee is zero
+            await context.assetManager.setSystemRedemptionFeeBIPS(FEE_BIPS, { from: governance });
+            assertWeb3Equal(await context.assetManager.systemRedemptionFeeBIPS(), FEE_BIPS);
+            assertWeb3Equal(await context.assetManager.systemRedemptionFeeReceiver(), ZERO_ADDRESS);
+            assertWeb3Equal(await context.assetManager.effectiveSystemRedemptionFeeBIPS(), 0);
+            // once a receiver is set, the effective fee equals the configured BIPS
+            await time.increase(DAYS + 1);
+            await context.assetManager.setSystemRedemptionFeeReceiver(feeReceiver, { from: governance });
+            assertWeb3Equal(await context.assetManager.effectiveSystemRedemptionFeeBIPS(), FEE_BIPS);
+            // resetting the receiver to zero disables the fee again
+            await time.increase(DAYS + 1);
+            await context.assetManager.setSystemRedemptionFeeReceiver(ZERO_ADDRESS, { from: governance });
+            assertWeb3Equal(await context.assetManager.effectiveSystemRedemptionFeeBIPS(), 0);
         });
 
         it("governance can set system redemption fee BIPS and receiver", async () => {

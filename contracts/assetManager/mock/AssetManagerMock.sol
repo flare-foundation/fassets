@@ -34,6 +34,8 @@ contract AssetManagerMock {
     uint256 public lotSize = 1;
     uint256 public minPoolCollateralRatioBIPS = 0;
     uint256 public assetMintingGranularityUBA = 1e9;
+    uint256 public systemRedemptionFeeBIPS = 0;
+    address public systemRedemptionFeeReceiver = address(0);
 
     constructor(IWNat _wNat) {
         wNat = _wNat;
@@ -175,8 +177,13 @@ contract AssetManagerMock {
         minPoolCollateralRatioBIPS = _minPoolCollateralRatioBIPS;
     }
 
-    function systemRedemptionFeeBIPS() external pure returns (uint256) {
-        return 0;
+    function setSystemRedemptionFee(uint256 _feeBIPS, address _receiver) external {
+        systemRedemptionFeeBIPS = _feeBIPS;
+        systemRedemptionFeeReceiver = _receiver;
+    }
+
+    function effectiveSystemRedemptionFeeBIPS() external view returns (uint256) {
+        return systemRedemptionFeeReceiver != address(0) ? systemRedemptionFeeBIPS : 0;
     }
 
    function _passReturnOrRevert(bool _success) private pure {

@@ -484,7 +484,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
             resultWithoutRounding = backedFAssets.mulDivRoundUp(_natShare, totalCollateral);
         }
         uint256 resultWithFeeAccounted = resultWithoutRounding
-            .mulDivRoundUp(SafePct.MAX_BIPS, SafePct.MAX_BIPS - assetManager.systemRedemptionFeeBIPS());
+            .mulDivRoundUp(SafePct.MAX_BIPS, SafePct.MAX_BIPS - assetManager.effectiveSystemRedemptionFeeBIPS());
         return MathUtils.roundUp(resultWithFeeAccounted, assetManager.assetMintingGranularityUBA());
     }
 

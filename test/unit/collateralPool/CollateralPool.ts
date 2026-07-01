@@ -894,6 +894,31 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemptionInCollateral");
         });
 
+        it("should account for the system redemption fee only when the fee receiver is set", async () => {
+            const feeBIPS = 1000; // 10%
+            await fAsset.mint(accounts[0], ETH(100), { from: assetManager.address });
+            await collateralPool.enter({ value: ETH(10) });
+            await collateralPool.enter({ value: ETH(1), from: accounts[1] });
+            await assetManager.setFAssetsBackedByPool(ETH(12));
+            const tokens = await collateralPoolToken.balanceOf(accounts[0]);
+            const natShare = await tokensToNat(tokens);
+            const resultWithoutFee = await getFAssetRequiredToNotSpoilCR(natShare);
+            const amg = await assetManager.assetMintingGranularityUBA();
+            // with no system redemption fee configured, the fee is not accounted
+            const requiredNoFee = await collateralPool.fAssetRequiredForSelfCloseExit(tokens);
+            assertEqualBNWithError(requiredNoFee, resultWithoutFee, amg);
+            // fee set but receiver is zero address -> fee is inactive, so it is not accounted
+            await assetManager.setSystemRedemptionFee(feeBIPS, ZERO_ADDRESS);
+            const requiredFeeInactive = await collateralPool.fAssetRequiredForSelfCloseExit(tokens);
+            assertEqualBN(requiredFeeInactive, requiredNoFee);
+            // fee set and receiver is nonzero -> fee is active, so required f-assets are scaled up
+            await assetManager.setSystemRedemptionFee(feeBIPS, accounts[5]);
+            const requiredFeeActive = await collateralPool.fAssetRequiredForSelfCloseExit(tokens);
+            const expectedWithFee = resultWithoutFee.muln(MAX_BIPS).divn(MAX_BIPS - feeBIPS);
+            assertEqualBNWithError(requiredFeeActive, expectedWithFee, amg.muln(2));
+            assert(requiredFeeActive.gt(requiredNoFee), "active system redemption fee should increase required f-assets");
+        });
+
         it("should do a self-close exit where there are no f-assets to redeem", async () => {
             await collateralPool.enter({ value: ETH(10) });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);

@@ -81,4 +81,10 @@ contract RedeemExtendedSettingsFacet is AssetManagerBase, GovernedProxyImplement
     function systemRedemptionFeeReceiver() external view returns (address) {
         return RedemptionRequests.getSettings().systemRedemptionFeeReceiver;
     }
+
+    function effectiveSystemRedemptionFeeBIPS() external view returns (uint256) {
+        RedemptionRequests.Settings storage settings = RedemptionRequests.getSettings();
+        // a zero fee receiver disables the system redemption fee
+        return settings.systemRedemptionFeeReceiver != address(0) ? settings.systemRedemptionFeeBIPS : 0;
+    }
 }
