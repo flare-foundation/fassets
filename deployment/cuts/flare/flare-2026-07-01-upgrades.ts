@@ -8,7 +8,7 @@ runDeployScript(async (deployScriptEnvironment) => {
     const { contracts, artifacts } = deployScriptEnvironment;
     const assetManagerController = await artifacts.require("AssetManagerController").at(contracts.getAddress("AssetManagerController"));
     const mintingTagManager = await artifacts.require("MintingTagManager").at(contracts.getAddress("MintingTagManager"));
-    const coreVaultManager = await artifacts.require("CoreVaultManager").at(contracts.getAddress("CoreVaultManager"));
+    const coreVaultManager = await artifacts.require("CoreVaultManager").at(contracts.getAddress("CoreVaultManager_FXRP"));
 
     // upgrades (timelocked)
 
