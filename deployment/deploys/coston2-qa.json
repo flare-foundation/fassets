@@ -159,12 +159,12 @@
   {
     "name": "CollateralPoolProxyImplementation",
     "contractName": "CollateralPool.sol",
-    "address": "0x80f19a261554d1897d35D93825581Ea8605016eb"
+    "address": "0x982712032fAE68EB8448Ce617dd3d0eaF0652A16"
   },
   {
     "name": "CollateralPoolFactory",
     "contractName": "CollateralPoolFactory.sol",
-    "address": "0x6f54893811e3114577e5e7eF564dDB3b684bB002"
+    "address": "0x89EcE220B76a5044Ac9Ce7729134ED3e2C79E4de"
   },
   {
     "name": "CollateralPoolTokenProxyImplementation",
@@ -387,7 +387,7 @@
   {
     "name": "DirectMintingFacet",
     "contractName": "DirectMintingFacet.sol",
-    "address": "0xDAb030C5C193659871210719464f35522B34FbB3"
+    "address": "0xae54417f7BcF28c1881A014A4Ba7E797B9C9A6Aa"
   },
   {
     "name": "DirectMintingSettingsFacet",
@@ -397,7 +397,7 @@
   {
     "name": "RedeemExtendedSettingsFacet",
     "contractName": "RedeemExtendedSettingsFacet.sol",
-    "address": "0xf690612dC0234606Da0434B82beF60424e96FbA8"
+    "address": "0x2A72f436953839365c9ed7184686925094c6b010"
   },
   {
     "name": "DirectMintingAndRedeemExtendedInit",
