@@ -13,93 +13,110 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - TEST_PATH: ./test/unit/assetManager/implementation
-        - TEST_PATH: ./test/unit/assetManager/library
-        - TEST_PATH: ./test/unit/!(assetManager)
-        - TEST_ARG: test/unit/gasReport/GasReport.ts
+          - TEST_PATH: ./test/unit/assetManager/implementation
+          - TEST_PATH: ./test/unit/assetManager/library
+          - TEST_PATH: ./test/unit/!(assetManager)
+          - TEST_ARG: test/unit/gasReport/GasReport.ts
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    - name: Install Node.js 20
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20
-    - name: Install node modules
-      run: yarn install --frozen-lockfile
-    - name: Compile contracts
-      run: yarn run compile
-    - name: Run test
-      run: yarn hardhat test --network hardhat ${{ matrix.TEST_ARG }}
-      env:
-        TEST_PATH: ${{ matrix.TEST_PATH }}
-
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Compile contracts
+        run: pnpm run compile
+      - name: Run test
+        run: pnpm hardhat test --network hardhat ${{ matrix.TEST_ARG }}
+        env:
+          TEST_PATH: ${{ matrix.TEST_PATH }}
 
   test-contract-integration:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    - name: Install Node.js 20
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20
-    - name: Install node modules
-      run: yarn install --frozen-lockfile
-    - name: Compile contracts
-      run: yarn run compile
-    - name: Run the test
-      run: yarn run test_integration_hh
-
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Compile contracts
+        run: pnpm run compile
+      - name: Run the test
+        run: pnpm run test_integration_hh
 
   test-linter:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    - name: Install Node.js 20
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20
-    - name: Install node modules
-      run: yarn install --frozen-lockfile
-    - name: Compile contracts
-      run: yarn run compile
-    - name: Run the test
-      run: yarn run lint
-
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Compile contracts
+        run: pnpm run compile
+      - name: Run the test
+        run: pnpm run lint
 
   test-slither-test:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    - name: Install Node.js 20
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20
-    - name: Setup Python and Slither Analyzer
-      run: |
-        sudo apt update -y
-        sudo apt install -y python3-pip python3-venv
-        python3 -m venv .venv
-        source .venv/bin/activate
-        pip install --upgrade pip setuptools
-        pip install slither-analyzer
-    - name: Install node modules
-      run: yarn install --frozen-lockfile
-    - name: Compile contracts
-      run: yarn run compile
-    - name: Run the test
-      run: |
-        source .venv/bin/activate
-        yarn run slither
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Setup Python and Slither Analyzer
+        run: |
+          sudo apt update -y
+          sudo apt install -y python3-pip python3-venv
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip setuptools
+          pip install slither-analyzer
+      - name: Compile contracts
+        run: pnpm run compile
+      - name: Run the test
+        run: |
+          source .venv/bin/activate
+          pnpm run slither

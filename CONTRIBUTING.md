@@ -4,10 +4,10 @@
 
 ```bash
 # install dependencies
-yarn --frozen-lockfile
+pnpm install --frozen-lockfile
 
 # compile contracts
-yarn compile
+pnpm compile
 ```
 
 ## Tests
@@ -18,25 +18,25 @@ yarn compile
 
 ```bash
 # recompile contracts before running tests
-yarn compile
+pnpm compile
 
 # all hardhat tests
-yarn test
+pnpm test
 
 # unit and integration tests in hardhat environment
-yarn testHH`
+pnpm testHH`
 
 # only unit tests in hardhat environment
-yarn test_unit_hh
+pnpm test_unit_hh
 
 # only integration tests in hardhat environment
-yarn test_integration_hh
+pnpm test_integration_hh
 
 # run e2e tests
-yarn test_e2e
+pnpm test_e2e
 
 # generate coverage report
-yarn test-with-coverage
+pnpm test-with-coverage
 ```
 
 ## Using Foundry
@@ -82,7 +82,7 @@ There are currently three linters included in this repository:
 
 ```bash
 # installs slither via pip if slither executable isn't found in PATH
-yarn install-slither
+pnpm install-slither
 ```
 
 If you wish to install slither yourself you can check their instructions [here](https://github.com/crytic/slither?tab=readme-ov-file#how-to-install).
@@ -91,13 +91,13 @@ If you wish to install slither yourself you can check their instructions [here](
 
 ```bash
 # run eslint
-yarn eslint
+pnpm eslint
 
 # run solhint
-yarn lint
+pnpm lint
 
 # run slither
-yarn slither
+pnpm slither
 ```
 
 <!---->
@@ -110,7 +110,7 @@ yarn slither
 <!-- docker build -t local/fasset . -->
 <!---->
 <!-- # run tests -->
-<!-- docker run --rm local/fasset yarn test -->
+<!-- docker run --rm local/fasset pnpm test -->
 <!-- ``` -->
 
 ## Review scope and audits

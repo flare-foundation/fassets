@@ -1,0 +1,20 @@
+minimumReleaseAge: 10080
+trustPolicy: no-downgrade
+packages: []
+nodeLinker: hoisted
+trustPolicyExclude:
+  - 'undici-types@6.21.0 || 6.19.8'
+  - 'chokidar@4.0.3'
+  - 'graphql@15.10.2'
+allowBuilds:
+  '@apollo/protobufjs': false
+  bufferutil: false
+  es5-ext: false
+  keccak: true
+  leveldown: false
+  secp256k1: true
+  truffle: false
+  utf-8-validate: false
+  web3: false
+  web3-bzz: false
+  web3-shh: false
