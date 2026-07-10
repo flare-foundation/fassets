@@ -1,11 +1,15 @@
 #!/bin/bash
+set -euo pipefail
 
 solfile=$1
-barename=$(basename $1 .sol)
-targetdir=docs
+barename=$(basename "$solfile" .sol)
+targetdir=docs/api
 cachedir=cache/docs
 
-mkdir -p $cachedir
-solc --userdoc --devdoc --base-path . --include-path node_modules --pretty-json -o $cachedir --overwrite $solfile
-yarn ts-node scripts/parsedoc.ts $solfile $cachedir/$barename.docuser $targetdir/$barename.md
-sed -i $targetdir/$barename.md -e 's/\s*NOTE/\nNOTE/'
+mkdir -p "$cachedir" "$targetdir"
+
+# Compile the contract and extract its ABI + NatSpec (userdoc/devdoc) into the cache.
+node scripts/compiledoc.js "$solfile" "$cachedir"
+
+# Render a Markdown API reference from the extracted documentation.
+yarn ts-node scripts/parsedoc.ts "$solfile" "$cachedir/$barename.docjson" "$targetdir/$barename.md"
