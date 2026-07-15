@@ -1,156 +1,242 @@
 # Minting
+Minting is the process by which FAsset representations of external assets are created on the Flare network.
+To mint an FAsset, the user must lock the equivalent amount of assets on the source chain at the address of an FAsset [agent](Agents.md). 
+This page documents the minting process for an FAsset.
 
 ## Minting flow
+Any user (referred to as the **minter**) can start a minting operation.
+From the user perspective, minting is a three step process: the user first reserves some agent collateral on Flare, then transfers an appropriate amount of funds to the agent's address on the source chain.
+Once these stages are completed, the user brings the payment onto Flare using the FDC and receives their FAssets.
+Thus, minting creates the user FAssets in return for a payment on the source chain.
 
-Any user (**minter**) can start the minting operation. Minting flow is as follows:
+Formally, to mint an amount $x$ of an FAsset copy of an asset from chain $C$, the user $U$ completes the following process:
 
-* The minter picks an agent of their choice from the publicly available agent list. The minter will typically choose the agent based on the minting fee or the amount of free collateral (which must be enough for the minting).
-* Minter calls `reserveCollateral` (Collateral Reservation Transaction, CRT) which includes:
-  * address of the chosen agent,
-  * number of lots to mint (see the documentation for lots below),
-  * maximum minting fee in BIPS (`_maxMintingFeeBIPS`) - the transaction reverts if the agent's fee exceeds this, protecting the minter from sudden fee changes,
-  * collateral reservation fee (CRF) to compensate for the locked collateral, paid in the native currency (FLR/SGB),
-  * optionally an **executor** address which can trigger minting execution once the underlying payment is finalized and proved - this allows a minting UI to execute payment on the user's behalf, sparing the user extra operations after finalization time (which can be as long as 1 hour). If the executor is used, the minter should send some more FLR/SGB with the request to compensate the executor (the amount is agreed off-chain).
-* The contract will lock the agent's collateral in the amount needed to back the whole minting until the underlying payment is proved or disproved.
-* Collateral reservation response is an event issued by the contract which includes:
-  * The **agent’s address** to which the minter should send funds on the underlying chain.
-  * The **amount** and **fee** to be paid on the underlying chain.
-  * **Payment reference** - a unique 32 byte number the minter should include as a memo attached to their  payment on the underlying chain. Each chain has a bit different implementation of a memo field.
-  * **Last underlying block and last underlying timestamp to pay.** Payment is valid if it is performed either before the last block (inclusive) or before the last timestamp (inclusive). Time to pay is measured in the underlying chain's blocks / times since the underlying chain might be halting for a long time and then the blocks do not increment on that chain.
-* Once the above event is issued, the minter has a limited time to pay the agent on the underlying chain. The minter must deposit the full underlying amount plus the fee.
-* The minter or executor proves the payment on Songbird/Flare using the Flare data connector.
-* Once the payment was proved, the minter can execute the minting which will send FAssets to their account. This call will credit the minter with the respective number of FAssets.
-* When minting is executed, the minting fee is split between the agent and the pool:
-  * The agent’s share simply increases the free balance on the agent’s underlying address. Later it can be withdrawn by the agent.
-  * The pool share gets minted as FAssets and credited to the collateral pool contract.
-* Once minted, the asset manager will create a redemption ticket with the mint amount. See more details below.
+1. The user selects an FAsset agent address $A_C$ from the list of $L_{\mathrm{agents}}$ of FAsset agents.
+2. The minter calls `reserveCollateral` on the Asset Manager contract, starting a Collateral Reservation Transaction (CRT), with parameters $\mathrm{CRT}(A_C, l_x, \mathrm{fee}, E)$. The minter includes a collateral reservation fee $\text{CRF}_U(x)$ payment, paid in Flare, as part of the CRT. The CRT returns a reservation id $\text{CR}_\text{id}$. The parameters indicate:
+    - $A_C$: The underlying address of the chosen agent.
+    - $l_x$: The amount to be minted, denoted in number of required [lots](#lots-and-dust).
+    - $\mathrm{fee}$: The maximum minting fee the user will accept, in BIPS (`_maxMintingFeeBIPS`). The transaction reverts if the agent's fee exceeds this.
+    - $E$ (optional): An *executor* address which can trigger minting execution once the underlying payment is finalized and proved. If an executor is used, the minter includes an additional FLR payment in its request to compensate the executor.
+3. The contract locks an amount $x_{\text{col}}$ of the agent's collateral equal to the amount needed to back the whole minting.
+4. In response to a valid CRT, a Collateral Reservation Response (CRR) event, $\mathrm{CRR}(A_C, C_x, C_{\mathrm{fee}}, \mathrm{ref}, t)$ is issued by the Asset Manager contract, which includes:
+    - $A_C$: The agent’s address on $C$.
+    - $C_x$: The amount of the asset the minter must send to the agent on $C$.
+    - $C_{\mathrm{fee}}$: The fee to be paid by the user on $C$ for the payment
+    - $\mathrm{ref}$: A *payment reference*, a unique $32$-byte number the minter should include as a memo in their payment on the underlying chain.
+    - $t = (B_t, T_t)$: The last underlying block and timestamp by which the user must pay the agent on $C$, both inclusive.
+5. Once the CRR is issued, the minter initiates a transaction, denoted $\mathrm{dep}(C_x)$, on $C$ transferring the amount $C_x$ to the agent address $A_C$. Included in this transaction is the payment reference $\text{ref}$. This transaction is referred to as the *deposit*, and must be completed in the timeframe indicated by $t$.
+6. Once the deposit is completed, the minter (or executor) submits an attestation request $\mathrm{FDC}(\mathrm{dep}_x)$ to the FDC, returning `proof`, confirming the existence of the transaction $\mathrm{dep}_x$ on $C$.
+7. Once the FDC confirms the existence of the deposit transaction, the minter can call the `executeMinting` function at the Asset Manager contract, with inputs (`proof`, $\text{CR}_\text{id})$. This credits the user's account with an amount $x'$ of the FAsset, the minted amount minus a small [fee](#minting-fees). At this stage, minting is completed for the user.
+8. Once FAssets are minted, the Asset Manager creates a [redemption ticket](#redemption-tickets) for the minting.
+9. Once minting is executed, the minting fee $\text{MF}(x)$ for minting $x$ of the FAsset is split between the agent and the agent's pool:
+    - The agent is paid by increasing the free balance on the agent’s underlying address by an amount $\text{MF}_{\mathrm{agent}}(x)$.
+    - The pool share gets minted as an amount $\text{MF}_{\mathrm{pool}}(x)$ of FAssets and credited to the collateral pool contract.
 
-## Minting fees
+## Minting Fees
+The amount minted and paid by the user is impacted by minting fees.
+The minting user specifies an amount $x$ of FAssets to mint, but must pay a slightly higher amount $C_x$ to pay an agent fee on the chain.
+Similarly, they receive an amount $x' < x$ of the FAsset after minting, with the rest deducted to pay the collateral pool.
 
-**Collateral Reservation Fee** (CRF) will be paid at the collateral reservation request. This will be used in case the minter doesn't pay on the underlying chain, to compensate the agent and the collateral providers for the time their collateral was locked and waiting for the minting to be completed (correct transaction being proved on the underlying chain). CRF will be paid in the native currency (SGB or FLR) and the amount is defined as a percentage of the minted value, converted to FLR/SGB. For underlying chains where proving a payment takes longer, the fee could be higher. The CRF percentage will be defined by governance and will be the same for all agents.
+### Minter Perspective
+The rest of this section lays out the fees from the perspective of the agent and its [collateral pool](#collateral-pool), who receive them.
+To simplify exposition, this subsection lays out fees from the user perspective.
 
-The amount of the collateral reservation fee can be obtained by calling `collateralReservationFee`. If the amount paid in `reserveCollateral` is more than the collateral reservation fee, the remainder is the executor’s fee if the minting is executed by an executor, otherwise it is paid back to the user.
+The user pays fees in two parts: `collateralReservationFeeBIPS` and `feeBIPS`.
+Both are expressed as a percentage of the value of $x$ of the asset.
+The user first pays the CRF as 
+$$
+\text{collateralReservationFeeBips} \cdot \text{FTSO}_{X, \text{FLR}}(x)
+$$ 
+in FLR, where $\text{FTSO}_{X, \text{FLR}}(x)$ denotes the FTSO value of the amount $x$ of asset $X$ in FLR.
+Then, they pay an amount $C_x$ on $C$ to the agent and receive an amount $x'$ of FAsset.
+The fee $C_x - x'$ as a percentage of the value $x$ is determined by `feeBIPS`, with 
+$$
+\text{feeBIPS} \cdot x = C_x - x'
+$$.
+Thus, the total fee paid by the user to mint an amount $x$ of the FAsset is
+$$
+\text{feeBIPS} \cdot x + \text{collateralReservationFeeBips} \cdot \text{FTSO}_{X, \text{FLR}}(x).
+$$
 
-At the successful end of the mining or in case of minting payment failure, the CRF is paid to the agent and the pool (in the same share as minting fee).
+### Fee Parameters
+The parameter `collateralReservationFeeBIPS` is a global parameter controlled by governance, the same for all agents.
+The current size of the collateral reservation fee can be obtained by calling `collateralReservationFee` on the Asset Manager contract.
 
-**Minting Fee** will be paid with the underlying currency and each agent can declare a different fee value. The minting fee is defined by the agent as a percentage of the minted amount.
+Each FAsset agent is free to determine its own fee `feeBIPS`, set as a percentage of the amount of minted assets.
+Users can query the agent's fee by calling `getAgentSetting` on the Asset Manager contract, including as arguments the `agentVault` in question and `feeBIPS`.
 
-The minting fee is the main source of revenue for the agent and the collateral providers. Part of the fee is minted as FAssets and given to the pool and the rest is added to the agent’s free underlying balance. The pool fee share percentage is defined by the agent and can be changed by the agent with timelock.
+### Splitting the Fees
+Minting fees $\text{MF}(x)$ for an FAsset minting transaction come in two parts: the Collateral Reservation Fee $\text{CRF}(x)$ required to reserve collateral during the minting process, paid in native tokens, and $\text{MFC}(x)$, the *source chain minting fee* on $C$, paid in a mix of the underlying asset and FAsset.
+That is,
+$$
+\text{MF}(x) = \text{CRF}(x) + \text{MFC}(x).
+$$
+The value and distribution of these fees is laid out below.
 
-## Minting process diagram
+### Distributing the Minting Fee
+The minting fee $\text{MF}(x)$ is split between the agent and the collateral providers in two parts.
+The split is defined by the parameter `poolFeeShareBips`, defining the percentage of the fee that is received by the pool, with the rest going to the agent.
+It is set at the initiation of the Agent Vault, and can be queried at the Asset Manager contract by any user calling `getAgentSettings` with input the Agent Vault and `poolFeeShareBIPS`.
+The distribution of the two component rewards $\text{CRF}(x)$ and $\text{MFC}(x)$ are distinct, and laid out in their own subsections below.
 
-![Minting process](image1.png)
+Fees assigned to the collateral pool are further distributed among collateral providers accordingly to their stake in the pool.
+That is, a provider with an amount $p$ of locked collateral in an agent's collateral pool with a total of $\vert A_P \vert$ collateral is entitled to a share
+$$
+\frac{p}{\vert A_P \vert} \cdot \text{poolFeeShareBIPS}
+$$
+of the agent's minting rewards.
 
-**Explanation**
+### Collateral Reservation Fee
+The *Collateral Reservation Fee* $\text{CRF}_U(x)$ is paid by the user as part of the collateral reservation request.
+At the successful end of the minting or in case of minting payment failure, the CRF is paid to the agent and its pool directly, split according to `poolFeeShareBIPS`.
 
-* Every agent shape contains the following information: vault collateral (used/total), pool collateral (used/total), minting fee, pool fee share and the amount of backed assets.
-* Follow the numbered steps to understand the ordering of the steps.
-* The relevant settings are: minimal vault CR 1.3, minimal pool CR 2.5, agent’s minting vault CR 1.5, agent’s minting pool CR 3.
-* Note that having $13000 of vault collateral isn’t enough for minting, at least $15000 is needed due to minting CR being 1.5. Once the minting is done, only $13000 is needed for backing the minted FAssets. (Analogous for pool collateral.)
-* Proving payment step (4) involves a few internal operations:
-  * minter sends the attestation request
-  * attestation providers attest the payment happened.
-  * data is finalized if enough attesters attest with the same data.
+The CRF is paid in the native FLR and the amount required
+$$
+\text{CRF}(x) := \text{collateralReservationFeeBips} \cdot \text{FTSO}_{X, \text{FLR}}(x)
+$$
+is defined as a percentage `collateralReservationFeeBIPS` of the minted value of the amount $x$ of FAsset $X$.
 
-### State after minting
+If the actual amount paid $\text{CRF}_U(x)$ in `reserveCollateral` by a minter is greater than the necessary fee $\text{CRF}(x)$, the remaining currency $\text{CRF}_U(x) - \text{CRF}(x)$ is paid as the executor’s fee for handling the minting.
+If no executor is used and the CRF is too high, the excess is instead returned to the user.
 
-![State after minting](image2.png)
+### The Minting Fee
+The source chain minting fee $\text{MFC}(x)$ is paid by the user in a mix of FAsset and underlying asset.
+The minting fee is computed as
+$$
+\text{MFC}(x) = x \cdot \text{feeBIPS}.
+$$
 
-## Minting failure
+The proportion of fees assigned to the pool is defined by the `poolFeeShareBIPS`.
+The first part of the fee
+$$x \cdot \text{feeBIPS} \cdot \text{poolFeeShareBips}
+$$
+is deducted from the user's minted FAsset and assigned to the agent's collateral pool.
+The rest, 
+$$
+x \cdot \text{feeBIPS} \cdot (1 - \text{poolFeeShareBips}),
+$$
+is allocated to the agent, paid in native asset and given to the agent by increasing their free underlying balance.
 
-For executing (finalizing) the minting, the minter has to prove they successfully paid the agent on the underlying chain. If the payment was not done in the time frame defined by the underlying chain block and timestamp, the agent has to prove non-payment for releasing their collateral. Once non-payment was proven, the Agent’s collateral that was reserved with the CRT call is freed and the agent receives the collateral reservation fee.
+### Minting failure
+To finalize a minting, the minter presents an FDC proof $\mathrm{FDC}(\mathrm{dep}_x)$ of deposit on the source chain.
+If this payment was not done in its designated time frame, the minting fails.
+It is the minter's responsibility to ensure that the payment is made 
+in time according to $t$.
 
-Note that the requirement here is to **successfully prove the payment**, meaning it is not enough to complete the payment.
-
-Also for the agent, the requirement is to **successfully** prove non-payment for releasing the reserved collateral.
-
-### Mint failure example
-
-For proving non-payment a special attestation type exists for the Flare data connector - *payment non existence.* See more details in the attestation types repository. See this example which has BTC in mind when considering the block rate and block finality requirements.
-
-* Minter sends a mint request on block 92 - at 09:00 AM.
-* Threshold to complete payment is set to:
-  * Block 100
-  * Timestamp 11:00 AM
-* Block 101 is mined with timestamp 10:59 (payment can still happen)
-* Block 102 is mined with timestamp 11:04 (once this block is finalized non payment can be proved)
-* Block 109 is mined - here we assume 7 blocks on bitcoin are enough to assume finality
-* Agent sends a non payment attestation request with relevant payment details - payment reference, required payment amount, last block (100) and last timestamp (11:00).
-* Attestation providers attest that block 102 is finalized, has both number and timestamp larger than required, and that until this block the required payment was not done (or was not ok, e.g. the amount was too small).
-* Mint payment failure can be submitted to the FAsset system with the above non payment proof.
-
-### Minter must make sure the underlying block is correct
-
-The last time for minter to pay the underlying assets is calculated as the current underlying block/timestamp plus a certain (governance defined) amount of blocks or a certain amount of time - whichever is longer. The problem is, the current block/timestamp as seen by the FAsset system can be quite far in the past, since it cannot be updated automatically by the FAsset contract - it has to be updated by an external call (by presenting a Flare data connector proof of a finalized block).
-
-Usually, the block is updated by various bots and every time the FDC proof  of payment transaction is brought to the asset manager- agent bots also have incentive to update it because the same issue affects redemptions; and there is an independent “timekeeper bot” which can be deployed to update the block every few minutes. However, the minter is still advised to check the current underlying block in the FAsset system and update it if necessary. (The minter can also update the underlying block every time before minting, but that prolongs the time of minting by the time to obtain the Flare data connector proof of the current block, so it’s not necessarily the best strategy.)
+If the minter does not pay on time, the agent can prove non-payment using `mintingPaymentDefault` on the Asset Manager contract, including as argument an FDC attestation `proof` of non-payment and the $\text{CR}_{id}$.
+The argument `proof` is obtained from the FDC using a specialized non-payment attestation type.
+Once non-payment is proven, the Agent’s collateral that was reserved with the CRT call is freed and the agent receives the collateral reservation fee.
 
 ## Edge cases
-
 ### Unresponsive minter
-
-It can happen that the minter becomes unresponsive after successful payment. In this case, the agent can also present payment proof and execute minting (FAssets are still transferred to the minter's account). In this way the agent's collateral becomes redeemable, otherwise it could remain locked forever.
+After the minter successfully completes the payment on the source chain, they are responsible for the `executeMinting` transaction. 
+However, the agent is also able to fulfil this function.
+This allows the agent to unlock their collateral reserved for the transaction in cases where the minter becomes unresponsive.
+Note in this case the minted FAssets are still sent to the minter account as usual.
 
 ### Unsticking the minting
+Proofs from the FDC are only available on-chain for approximately 14 days, and can only be made for events that are not too historic.
+If neither the minter nor the agent presents a proof of payment or non-payment in a 14 day window after minting is initiated, the process gets stuck and the agent’s collateral remains locked.
+The workaround for this (unlikely) scenario proceeds as follows.
 
-For technical reasons the Flare data connector proofs are only available for approximately 14 days. If neither the minter nor the agent present the proof of payment or nonpayment in that time, the minting process gets stuck and the agent’s collateral remains locked indefinitely. This should be an extremely rare event, but it cannot be ruled out so the system has a mechanism to deal with this situation.
+1. The agent uses the FDC to prove that payments proofs from the time window when the deposit could have happened are no longer available. 
+2. On receipt of this proof, the FAsset system burns the amount of agent’s collateral equivalent to the price of the underlying assets that should have been deposited and then releases the rest of the collateral reserved for the transaction. 
 
-The Flare data connector can provide the proof that payments proofs from the time when the deposit should have happened are no longer available. On presenting the proof by the agent, the FAsset system burns the amount of agent’s collateral equivalent to the price of the underlying assets that should be deposited and afterwards the rest of the agent’s and pool’s reserved collateral is released. The collateral is burned because we do not know whether the deposit was made and we don’t want to give any actor advantage by delaying the presentation of payment or nonpayment proofs.
-
-The process of collateral burning is itself a bit complicated - since the agent's collateral is in a form of stablecoin or some other bridged token, we cannot burn it. Therefore the agent has to bring in the equivalent amount of FLR/SGB which is burned and the actual collateral is then transferred to the agent.
-
-In the future there will likely be a method to obtain Flare data connector proofs from any time in the past (perhaps with extra cost). In that case, it will always be better for the agent to present either payment or non-payment proof, so unsticking the minting will not be needed anymore.
-
-## Duration of the minting process
-
-The duration of the minting process depends mainly on the underlying chain speed. Maximum time is the sum of:
-
-1) system defined maximum time for deposit; it is a few underlying blocks or a few minutes (whichever is longer),
-2) the chain finalization time,
-3) Flare data connector proof time (3-5 minutes, independent of the underlying chain).
-
-On fast chains like XRP the maximum total time is below 10 minutes. Successful mintings may take less time if the minter pays quickly (only part 1 is shorter), but for payment failures the agent needs to wait the full time before being able to get the non-payment proof.
-
-## Minting payment reference
-
-As stated above, the minter proves their payment as part of the minting process.
-
-We want to make sure the payment transaction can’t be used by another actor who might claim the payment on the underlying chain was done by them, and receive the minted FAssets. We also want to make sure that when the payment time expires and payment hasn’t been performed, the agent can prove that there was no payment for that exact minting.
-
-For handling these issues, a unique payment reference is generated at the collateral reservation request. The minter will have to include the payment reference as a memo field in the underlying payment transaction.
+Since the agent's collateral is in a form of stablecoin (or bridged token) it cannot be burnt directly.
+Instead, the agent has to provide an equivalent amount of FLR (computed via the FTSO), which is then burnt, with the actual collateral provided back to the agent.
 
 ## Self Minting
+Self minting refers to a minting where agent is also the minter.
+After setting up their vault, an agent can configure whether they want make their collateral available for other users to mint or reserve it for only self minting.
+An agent can always be used for self-minting, with self-minting only available from the vault owner address.
 
-Self minting involves one actor as both the agent and the minter. After setting up their vault, the agent can state if they want to lend their collateral or only utilize it for self minting. If a vault is limited to self minting, only the agent can mint against their collateral. Self minting can also be done against a vault that was defined as a public vault, but only by the vault's owner.
+The flow for self minting essentially starts from step 6 of the minting flow.
+The minting agent performs the following steps:
 
-The flow for self minting is very similar to a normal minting flow, but it is performed in a single step (no collateral reservation request) - the agent first pays on the underlying chain and then executes minting. A self-minting operation adds a ticket to the redemption queue the same way any minting does.
+1. The agent initiates a deposit transaction $\mathrm{dep}(C_x)$ on $C$ transferring the amount $C_x$ to the agent address $A_C$. Note that the transaction is sent from a separate address to the agent address $A_C$.
+2. Once the deposit is completed, the agent submits an attestation request $\mathrm{FDC}(\mathrm{dep}_x)$ to the FDC, confirming the existence of the transaction $\mathrm{dep}_x$ on $C$.
+3. Once the FDC confirms the existence of the deposit transaction, the agent can call the `executeMinting` function at the asset manager contract, with input only the FDC `proof`. This credits their account with an amount $x$ of the FAsset.
+4. Once FAssets are minted, the Asset Manager creates a redemption ticket with the mint amount $x$.
 
-In the self-minting, only the pool’s share of the fee needs to be paid.
+Additionally, self-minting requires that the agent pays only the collateral pool’s share of the minting fees.
 
-Self minting can only be triggered by the vault’s owner address.
+Since there is no reservation for self-minting, it could happen that the intended number of lots cannot be minted (e.g. due to a price change or another CRR).
+In this case, the agent can self-mint a smaller number of lots (including $0$ lots), with the remainder of the deposited underlying assets added to the agents free underlying balance.
 
-Since there is no reservation for self-minting, it could happen that due to some change between the underlying deposit and the execution (another collateral reservation, price change which reduces the amount of free lots, lot size change) the intended number of lots cannot be minted. In this case, the agent can always self-mint a smaller number of lots (including 0 lots) and the remainder of the deposited underlying assets will be added to the free underlying balance.
+### Mint from free funds
+An agent that has free funds on their underlying address can speed up self-minting by instead calling `mintFromFreeUnderlying`, specifying a number $n$ of lots of FAssets.
+This call immediately mints the specified number of lots of FAssets, crediting them to the agent, and locking the existing free underlying funds and the agent’s collateral.
+Otherwise, the process is the same as self-minting.
 
-## Mint from free underlying
+## Redemption Tickets
+For every minting operation a *redemption ticket* is created.
+This ticket stores information containing a unique identifier, the vault of the agent that completed the minting, and the minted amount.
+Thus, a ticket $t_i$ is identified by the triplet $(\text{id}, A_v, x_i)$, where $A_v$ is the vault of the agent who completed the minting.
+Redemption tickets are ordered in a FIFO queue, used by the system when determining which agent will be [redeemed](Redemption.md) against next.
 
-An agent that already has some free funds on their underlying address can speed up self-minting by instead using the operation “mint from free underlying”. It is very fast, since there is no need for executing and proving an underlying transaction - it immediately mints the specified number of lots of FAssets, locking the existing free underlying funds and the agent’s collateral. Everything else is the same as for self-mint.
+## Lots and Dust
+Every minting and redemption process is performed in a whole number of lots.
+A lot is an amount $L$ of an FAsset $X$.
+However, certain processes within the FAsset system result in the generation of fractional number of lots (e.g. an amount $L' < L$ of the FAsset):
 
-The underlying funds on the agent’s address may be a remainder of some self-close or liquidation. They can also be deposited in advance using the underlying top-up. The advantage of using top-up in advance and then mint-from-free-underlying over using self-mint in advance is that the collateral is not needed at top-up time, but only at minting.
+1) On minting, part of the minting fee is minted to pay the proportion of the fee allocated to the collateral pool. This will typically consist of an amount of the FAsset less than $L$.
+2) If the lot size $L$ is changed, redemptions only close an integer number of lots on each redemption ticket. The remainder is left unredeemed.
 
-## Redemption tickets and redemption queue
+In such cases the generated fractional amounts of a lot are accounted separately as *dust*.
+Dust is unredeemable, but can still be owned by a user.
+It can be destroyed in various ways:
 
-For every minting operation a redemption ticket will be created referencing the minted amount and the agent which is backing this minting. The redemption tickets are ordered in a FIFO queue which will be used when choosing which agent should be redeemed against next.
+- If an agent address owns an amount of dust that exceeds $L$, it can be bundled into a lot (or multiple lots) and converted into a redemption ticket by calling `convertDustToTicket` on the Asset Manager contract, specifying the Agent Vault owning the dust. This call can be performed by any address.
+- If the amount of dust $D$ created during a minting exceeds $L$, $\lfloor \frac{D}{L} \rfloor$ bundles of dust of size $L$ are created, with redemption tickets submitted automatically for each of these lots.
+- Dust can be self-closed at any time.
+- [Liquidation](Liquidation.md) does not need to be executed in a whole number of lots, and thus may clear dust.
 
-## Dust
+## Direct minting
+In direct minting the minter mints FAssets without the use of an agent by creating a transaction on the underlying chain.
+The transaction contains either a specially crafted memo field or a tag to indicate that it is an FAssets transaction.
+If there is a tag, the `MintingTagManager` contract has method `mintingRecipient`, which returns the target address that should receive the minted amount.
+Direct minting is currently only supported for XRP. 
 
-Every minting and redemption must be made in a whole number of lots. However, there are processes that result in generation of fractional number of lots:
+### Minting tag manager
+The `MintingTagManager` contract allows a user to reserve a minting tag and to set a minting recipient and an executor addresses for this tag.
+Since there is a limited amount of (XRP) tags available, the user must pay a reservation fee (`reservationFee`) on Flare in native tokens to reserve one.
+At reservation, the user receives the next available tag.
+The minting tag manager implements the ERC-721 non-fungible token interface, so that reserved minting tags can be transferred (or resold) to another owner.
 
-1) On minting, part of the minting fee is minted as the FAsset fee to the collateral pool. This value will typically be less than 1 lot.
-2) When the lot size is changed, redemptions only close an integer number of lots of each redemption ticket. The remainder is left unredeemed.
+The owner of the tag sets a minting recipient with the method `setMintingRecipient` and the preferred executor with the method `setAllowedExecutor`.
+If the allowed executor is the zero (default) address, any entity can execute mintings with this tag.
+On initial reservation and tag transfer, the recipient is automatically reset to the new owner and the executor is reset to the zero address.
 
-In such cases the generated fractional amounts of a lot are not accounted as a redemption ticket, but are accounted separately as “**dust**”. The dust is unredeemable, but it can be destroyed in other ways:
+### Executors
+A direct minting is triggered by calling method `executeDirectMinting`, which is performed by the *executor*.
+The executor is paid an executor's fee upon successful completion.
 
-* If the dust exceeds 1 lot, the part that is a whole multiple of a lot can be converted to a redemption ticket by calling a special method. This call can be done by any address, to prevent an inactive agent making FAssets less fungible.
-* If the dust exceeds 1 lot during minting, the part that is a whole multiple of a lot will be automatically added to the created redemption ticket.
-* The dust can be self-closed at any time.
-* Liquidation is not necessarily in a whole number of lots, so it also clears dust.
+The permitted executor can be restricted by the minter in three possible ways, depending on the type of direct minting:
+- When direct minting with tag, the minting tag manager has methods `setAllowedExecutor` for defining and `allowedExecutor` for reading the executor. If `allowedExecutor` is set to zero, any entity can execute.
+- For direct minting with memo field, instead of a $32$-byte standard payment reference, the $48$-byte format is used. In this format, there is an 8$$-byte prefix, followed by a $20$-byte recipient address and finally a $20$-byte executor address.
+- For direct minting to a smart account, the smart account manager may restrict the executor directly.
+
+If the allowed executor doesn't execute the transaction in the permitted time window after the initial minting transaction (managed by the function `othersCanExecuteAfterSeconds`), then anybody can execute the minting.
+
+When direct mintings are performed to a specified address, the executor fee is constant, as defined by `directMintingExecutorFeeUBA`.
+For direct minting to a smart account, the executor fee is calculated and charged by the smart account manager.
+
+### Rate limits
+The direct minting process is restricted by several rate limits:
+- The total amount of funds to be directly minted is limited on both an hourly and a daily basis. These amounts are determined by `directMintingHourlyLimitUBA` and `directMintingDailyLimitUBA` respectively. Large mintings, defined as mintings of amounts above `directMintingLargeMintingThresholdUBA`, are not included in these quotas.
+- Large mintings are automatically delayed by an amount of time `directMintingLargeMintingDelaySeconds`, with the delay applied cumulatively if there are several large mintings performed concurrently.
+
+These parameters are set by governance, and can be queried on the Asset Manager contract by prepending `get` e.g. calling `getDirectMintingHourlyLimitUBA`.
+
+When the amount of funds minted via direct minting in a given time window reaches its limit further mintings are delayed.
+This is implemented by replacing the `DirectMintingExecuted` event with a `DirectMintingDelayed` event.
+This event contains a field `executionAllowedAt`, signifying the timestamp at which the minting can be executed.
+The size of the delay is proportional to how much the current requested total minting amount exceeds the allowed limit (either hourly or daily).
+Once a delayed minting's `executionAllowedAt` timestamp is reached, or the minting is unblocked, the executor can execute the minting as usual.
+
+If a minting limit has been reached, governance can instead unlock delayed mintings initiated before a specified timestamp by calling `unblockDirectMintingsUntil`.
+All the mintings initiated before this timestamp (e.g. those mintings whose `DirectMintingDelayed` event was emitted before this) can now be executed.
+
+If a minting is delayed and has a specified preferred executor, the time window in which the preferred executor's has exclusive execution rights begins as soon as the execution is allowed (at `executionAllowedAt`).
+In cases where governance unblocked the minting, the `executionAllowedAt` for a minting doesn't change automatically, increasing the exclusive window.
+However, in these cases `executionAllowedAt` can be manually reset to the time of unblocking by calling `markUnblockedDirectMintingAllowed`.

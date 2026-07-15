@@ -1,79 +1,163 @@
 # Agents
+Agents are the main actors in the FAsset system.
+An agent is an off-chain entity (often a bot) who performs redemption payments, adds collateral to the system, and collects fees.
+Agents are identified by their *Agent Vault* contract on Flare.
 
-Agents are the main actors in the FAsset system. An agent is an off-chain entity (likely a bot) who performs redemption payments, makes sure there is enough collateral in the vault and collects the fees. On the Flare/Songbird chain, the agent has the “agent vault owner” address.
+## Agent Vaults
+Minters and redeemers do not interact with agents directly.
+Instead, they interact with the agent vault through the Asset Manager contract.
+An agent vault contract on the Flare (or Songbird) chain is an agent-specific instance of `AgentVault`.
+The vault stores information about agent settings and holds the agent's [collateral](Collateral.md).
+An external agent can own multiple agent vaults, but these vaults operate independently.
+Users e.g. [minters](Minting.md), [redeemers](Redemption.md), and [collateral providers](CollateralPool.md) interact with only a single vault at a time.
 
-But minters and redeemers never interact with external agents directly. Instead, they interact with the agent vault contract. An external agent can own multiple agent vaults, but from the point of view of minters, redeemers and collateral providers, these vaults are completely independent and they only interact with a single one.
+### Creation
+To create a new agent vault for an FAsset originating from source chain $C$, the agent $A$ must take the following steps:
+1. Submit an off-chain request to FAsset governance to add the agent's management address to the `AgentOwnerRegistry` [whitelist](#agent-owner-registry), including the agent's name, description, icon URL, and terms of use URL
+2. Associate a work address with the now registered management address.
+3. Create an account $A_C$ on source chain $C$.
+4. Submit an FDC attestation on Flare for the validity of $A_C$, returning `addressProof`, proof of the correctness of the address.
+5. Call `createAgentVault(_addressProof, _settings)` on the Asset Manager contract for the asset, including as arguments the address proof and initial [settings](#agent-settings).
+6. Deposit initial vault collateral into the Agent Vault, in the currency determined by the initial settings.
+7. Buy [collateral pool tokens](CollateralPool.md) at the Agent Vault using `buyCollateralPoolToken`. The agent is not able to mint until its [CR](Collateral.md#Collateral-ratio) is high enough.
+8. (optional) Call `makeAgentAvailable` on the Agent Vault contract to join the list of [publicly available agents](#publicly-available-agents). This step does not need to be completed if the agent only wishes to self-mint.
 
-## Agent vault
+The address $A_C$ is referred to as the agent's *underlying address*, and is unique and immutably tied to the instance of Agent Vault.
+This address must be freshly created, and can only be used for FAsset transactions.
 
-**Agent vault** contract on the Flare/Songbird chain is an instance of `AgentVault`. The agent vault contract holds the agent’s **vault collateral** and makes sure that it can only be withdrawn when it’s not backing any FAssets. The agent can choose an ERC20 token for vault collateral from several tokens defined by governance - typically these would be stablecoins USDC and USDT, but we may also allow other popular tokens e.g. WETH. There is only one collateral token type in each vault, but different vaults can use different tokens for collateral.
+## Vault Collateral
+The agent vault contract holds the agent’s *vault collateral* and ensures that it can only be withdrawn when it’s not backing any FAssets.
+The vault collateral takes the form of a single ERC20 token from a list of tokens defined by governance.
+Typically these would be stablecoins USDC and USDT, but may include other popular tokens such as WETH.
 
-## Agent vault owner
+The choice of ERC20 token used for the collateral is set by the agent on creation of the vault.
+Different vaults owned by the same agent may use a different token from the list of accepted tokens.
 
-Each agent vault has an **owner**, which is an external account that can manipulate the agent vault settings, confirm redemption payments, withdraw funds etc. The same owner can have several agent vaults and can create a new agent vault at any time (e.g. to use different collateral tokens). Owner has a management and a work address - the **work address** is expected to be used by a server bot to automatically execute operations like paying for redemptions, while the **management address** should only be used when the owner wants to change the work address (the management address can never change and will typically be a multisig). The reason for this is that the hot wallet private key must reside on the agent bot server and is therefore more vulnerable to theft, so the agent is advised to regularly change the private key and the corresponding work address.
+### Deposits and Withdrawal
+The agent can deposit collateral using its agent owner address (see below) via the `AgentVault` contract.
+To do so, the agent calls the `depositCollateral` function at the `AgentVault`.
+This function take as argument (`token`, `amount`), the type and amount of tokens to be deposited.
 
-## Agent owner registry
+Similarly, the Agent Vault contract hosts a `withdrawCollateral` function for withdrawing.
+This function takes three inputs: (`token`, `amount`, `recipient`).
+The third argument, `recipient`, is the receiving address of the withdrawal, which does not need to match the owner address.
 
-Although the FAsset system is designed in such a way that the agents don’t need to be trusted, we will (at least for a while) expect the agent owners to be known and verified parties. For this reason, the FAsset contract maintains a list of allowed agent owner management addresses, named the **agent owner registry**. The agent can be added to or removed from the registry by the governance. The agent’s management address must be in the registry for the agent to be able to create a new agent vault and to mint; it is not necessary for redeeming, since we want the FAsset holders to be able to redeem even if the agents are removed from the whitelist.
+## Agent Vault Owner
+Each agent vault has an *agent owner address*, an account that controls the vault.
+This address is responsible for managing the agent vault settings, confirming redemption payments, and withdrawing funds.
+The same owner (address) can manage several agent vaults and create a new agent vault at any time. 
 
-The agent owner registry also contains the agent’s **name**, **description**, **icon url** and (optionally) **terms of use url**. These are set by the governance when the agent is added and can be changed later by the governance.
+The vault owner has a management and a work address.
+The *work address* executes operations like paying for redemptions, while the *management address* is fixed and sets the work address.
+The management address is set on creation of the agent, and the address must be on the whitelist of allowed agent owners .
 
-Optionally, the governance can set a **manager** (typically a smaller multisig) to be able to manage the agent owner registry (adding and removing agents). If it is not set, only the governance can do it.
+## Agent Settings
+Each agent's Agent Vault contract stores information about the agent's settings.
+To retrieve these settings, users can query the `AssetManager` contract.
+There are two functions that return information about the agent.
+The function `getAgentInfo` takes as input the agent vault address and returns a triplet (`feeBips`, $\text{minCR}, \text{Free})$ indicating key settings that a user wishing to mint with the agent may want, including:
 
-## Always-allowed minters
+- `feeBIPS`: The minting fee charged by the agent, in BIPS.
+- **minCR**: The minimal CR set by the agent, below which minting is not possible, in BIPS.
+- **Free**: The amount of free collateral owned by the agent, in lots.
 
-An agent that is not on the publicly available agents list (or has left it) can still allow specific addresses to mint against their vault. This is done through the **always-allowed minters** mechanism. The agent owner can add or remove addresses from their always-allowed minters list. Addresses on this list can mint against the agent’s vault even if the agent is not publicly available. This allows the agent to operate a private vault with select counterparties.
+Additionally, individual settings can be queried using the `getAgentSetting` function, which takes as input the address of the Agent Vault contract` and a setting, returning the value of that setting for that agent.
+The possible settings to query are:
 
-## Agent’s underlying address
+- `feeBIPS`: The minting fee charged by the agent.
+- `poolFeeShareBIPS`: The share of the minting fees received by the agent pool.
+- `redemptionPoolFeeShareBIPS`: The share of the redemption fees received by the agent pool.
+- `mintingVaultCollateralRatioBIPS`: The vault minting CR.
+- `mintingPoolCollateralRatioBIPS`: The pool minting CR.
+- `buyFAssetByAgentFactorBIPS`: The factor by which the price the agent buys FAssets from collateral providers on self-close is multiplied by.
+- `poolExitCollateralRatioBIPS`: The pool exit CR.
+- `getCollateralPool`: Returns the address of the agent collateral pool.
+- `getAgentVaultOwner`: Returns the address of the agent vault owner.
+`getAgentVaultCollateralToken`: Returns the ERC20 token type chosen by the agent for collateral.
+- `getAgentFullVaultCollateral`: Returns the amount of collateral (free and locked) deposited in the agent vault.
+- `getAgentFullPoolCollateral` Returns the amount of collateral (free and locked) stored in the agent pool.
+- `getAgentLiquidationFactorsAndMaxAmount`: Returns the agents vault and pool liquidation factors (BIPS) and the maximum liquidation amount (UBA).
+- `getAgentMinPoolCollateralRatioBIPS`: Returns the minimum CR for the agent pool, in BIPS.
+- `getAgentMinVaultCollateralRatioBIPS`: Returns the minimum CR for the agent vault, in BIPS.
 
-Each agent vault is associated with a single, unique address on the underlying chain (the **agent’s underlying address**), which may not be used for anything other than minting and redeeming.
+### Modifying Agent Settings
+Initial settings are defined as part of the `createAgentVault` call.
+Updating settings can only be done by the agent vault owner address, in a two stage process:
 
-Warning: The agent’s underlying address must be a new address, otherwise the transactions before the agent was created may trigger a challenge.
+- The agent calls `announceAgentSettingUpdate(_agentVault, _name, _value)` at the Asset Manager contract, announcing the intention to change the setting identified by `name` to the given `value` on their agent vault. This returns a timestamp `updateAllowedAt`defining when the agent may execute the change.
+- After time `updateAllowedAt`, the agent calls `executeAgentSettingUpdate(_agentVault, _name)` at the asset manager contract, changing the named setting to the value given in the previous call.
 
-## Collateral pool
+## Agent Owner Registry
+The FAsset system is designed in such a way that the agents don’t need to be trusted. 
+Nonetheless, agent owners are expected to be known and verified parties.
+The FAsset contract maintains a whitelist of allowed agent owner management addresses, named the *agent owner registry*.
+Agents can be added to or removed from the registry by governance. 
 
-Each agent vault has an associated unique collateral pool contract (instance of `CollateralPool`). Collateral pool holds only native token (FLR or SGB) collateral (called “**pool collateral**”). The pool collateral is used as an additional source of collateral for liquidations and failed redemptions at the times of rapid price fluctuations.
+An agent’s management address must be in the registry for the agent to be able to create a new agent vault and to mint.
+However, this is not necessary for redeeming, so that FAsset holders are able to redeem even if agents are removed from the whitelist.
 
-Anybody can add collateral to the pool and obtain **collateral pool tokens** in return. The collateral pool tokens can later be redeemed for the native collateral and a share of minting fees.
+An entry for an agent owner in the Agent Owner Registry is managed by governance and contains the following information for an Agent Management Address:
+- Agent work address
+- Agent description
+- Agent icon URL
+- (Optional) Terms of Use URL.
 
-More details are in the collateral pool section below.
+Optionally, the governance can set a *manager* (typically a smaller multisig) to be able to manage the agent owner registry (adding and removing agents).
+If it is not set, only governance can control the registry.
 
-## List of publicly available agents
+### List of Publicly Available Agents
+When an agent is first created, it can only mint for itself.
+To allow minting by any user, the agent must be added to the *publicly available agents list*.
+The agent can join this list at any time by calling `makeAgentAvailable` on the Asset Manager contract, listing as input the Agent Vault address.
+This requires the agent owner to be registered on the `AgentOwnerRegistry` contract.
+Agents can leave the list, as explained in more detail below.
 
-When an agent is first created, it can only mint for itself. To allow minting by any user, the agent must be added to the **publicly available agents list**. The agent can join this list at any time. It can also leave the list, but doing so is subject to a time-lock (explained in the Closing an agent vault section below).
+### Collateral Pool
+Each agent vault has an associated unique *collateral pool* and collateral pool contract.
+Collateral pools hold additional collateral in the form of native tokens, referred to as *pool collateral*.
+Any user can contribute collateral to an agent's pool in return for a share of the agent's rewards.
+More information about collateral pools can be found [here](CollateralPool.md).
 
-## Creating an agent
+### Always-allowed Minters
+The FAsset system enables agents to operate a private vault for select users.
+This is done through the *always-allowed minters* mechanism.
+Addresses on an agent's always-allowed minters list can mint against the agent’s vault even if the agent is not publicly available.
 
-The steps involved in creating a new agent vault are as follows:
+The agent owner can add or remove addresses from their always-allowed minters list using `addAlwaysAllowedMinterForAgent` and `removeAlwaysAllowedMinterForAgent` functions at the Asset Manager contract.
+Both functions take as input the address of the `agentVault` and the address of the minter.
+A list of always allowed minter can be requested from the same contract using `alwaysAllowedMinterForAgent` function.
 
-1) The agent (external) must ask the FAsset governance for their management address to be added to the agent owner registry in order to be allowed in the asset managers. The agent’s name, description, icon url and (optionally) terms of use url have to be provided with the request.
-2) The agent associates a work address with their management address.
+## Closing an Agent Vault
+Closing an agent vault is an involved process including several wait periods. 
+This ensures that contributors to the agent's collateral pool can exit in response to a planned closure.
+The process for an agent owner to close its vault is described below; all announcements are performed at the Asset Manager contract and require the Agent Vault address as input, with token operations then performed at the relevant `AgentVault` contract.
 
-Now the agent owner can create one or more agent vaults with the following procedure:
+1. The agent announces an exit from the available agents list by calling `announceExitAvailableAgentList`. This call returns a timestamp $\text{exitAllowedAt}$, that returns the time at which the agent can exit. At time `exitAllowedAt`, the agent leaves the available agents list by calling `exitAvailableAgentList`. Users can no longer mint against the agent.
+2. Withdraw all FAsset fees belonging to the agent vault collateral pool tokens.
+3. Redeem all remaining agent backed FAssets. The agent can either wait until the assets are redeemed by users or self-close their entire position manually by obtaining enough FAssets. Some amount of self-closing is usually necessary to remove remaining FAsset [dust](Minting.md#lots-and-dust).
+4. Announce a withdrawal of all remaining vault collateral by calling `announceVaultCollateralWithdraw`, including as input the value of remaining assets to withdraw. This returns a time stamp $\text{withdrawalAllowedAt}$ after which the agent can complete the withdrawal by calling `withdrawCollateral` for the stated amount.
+5. Announce and then redeem the remaining agent vault pool tokens. Again, this requires an announcement `announceAgentPoolTokenRedemption` including the amount to be redeemed, which returns a timestamp $\text{redemptionAllowedAt}$ after which the redemption is available for the stated amount. This step can be done in parallel with step 4.
+6. Announce and then withdraw its underlying assets on the source chain. The announcement uses the `announceUnderlyingWithdrawal` function. The agent is then eligible to withdraw assets on the source chain; once completed, they call `confirmUnderlyingWithdrawal` on the Asset Manager contract, including an FDC proof of the transaction, to confirm the withdrawl.
+7. Wait for all remaining holders of the agent's collateral pool tokens to redeem the tokens and exit the pool.
+8. Announce and execute the `destroyAgent` command. The announcement `announceDestroyAgent` returns a timestamp `destroyAllowedAt` after which the agent can be destroyed at the Asset Manager contract. This deletes the Agent Vault and collateral pool contracts, as well as all agent related data.
 
-3) Execute “create agent vault” operation and provide the initial agent settings (see the section “Agent settings” for details on these). This also creates the collateral pool.
-4) The agent deposits vault collateral to their vault (the currency of the vault collateral was provided as one of the settings in the previous step).
-5) The agent must also buy some collateral pool tokens. Agents need enough collateral pool tokens to perform minting (system defined percentage of minted amount).
-   *Warning:* the agent’s collateral pool tokens cannot be bought directly from the collateral pool as for other collateral providers - they must be bought through a method on agent vault. This is because the owner of the agent’s collateral pool tokens must be the agent’s vault, not the agent owner. See section “Agent’s stake in collateral pool” for details.
-6) The agent can announce the existence of the collateral pool (off chain, e.g. in social media), to attract potential participants in the collateral pool.
-7) At this point the agent can only self-mint against the new agent vault. To become available for minting by others, they can join the publicly available agents list.
+Note that step 2 can be skipped as the withdrawal is done automatically in step 5, but it makes self-closing in step 3 easier for the agent.
 
-## Closing an agent vault
+## Agent Liveness Check
+Any Flare user may check liveness of an FAsset agent.
+To do so, they call `agentPing`$(\text{agentVault}, \text{query})$ at the Asset Manager contract, which emits an `AgentPing` event. 
+The agent's bot responds by calling `agentPingResponse`$(\text{agentVault}, \text{query})$), which emits an `AgentPingResponse` event.
+The `response` field is optional and provides information about the agent bot.
+To prevent DOS-style attacks, agents may opt to only respond to pings from known addresses.
 
-Because it affects all of the collateral providers, closing an agent vault is a rather lengthy procedure, which requires several announcements and some waiting. The agent owner has to do the following:
+## Underlying withdrawals
+Part of the funds on the underlying address may be withdrawn by the agent.
+Such funds can be withdrawn only if the underlying assets are freed up due to actions on Flare.
+These actions include receiving minting fees, failed redemptions paid in collateral, liquidated agent assets, and self-closed agent assets
 
-1) Exit the available agents list (requires prior announcement). This stops other users minting against that agent, allowing the agent to eventually redeem or self-close all the backed FAssets.
-2) Withdraw FAsset fees belonging to agent vault collateral pool tokens (see section “Agent’s stake in collateral pool” for details). This is not strictly necessary, since these fees will be automatically withdrawn in step (5), but can help with self-closing in the next step.
-3) Wait for the agent backed FAssets to be redeemed and self-close the rest. Optionally, instead of waiting for redemptions, the agent can self-close their entire position, if they can obtain enough FAssets. However self-closing some amount is always necessary since there will always be some amount of non-redeemable dust (less than 1 lot).
-4) Withdraw all the vault collateral, with prior announcement.
-5) Redeem the agent vault pool tokens, with prior announcement. This can be done in parallel with step (4).
-6) Withdraw the underlying assets, with prior announcement. (Announcement here is still formally needed, though it is irrelevant, since the underlying assets aren’t backing anything any more. To make the underlying address totally free, the vault has to be destroyed, but this requires the following two steps.)
+When withdrawal is permitted, it must be announced on the Asset Manager contract by the agent, calling `announceUnderlyingWithdrawal`.
+Completed withdrawals must be confirmed on-chain in a two-step process: an FDC proof $\text{payment}$ of the withdrawal transaction is obtained, then used as calldata in the function `confirmUnderlyingWithdrawal` at the Asset Manager contract.
+Alternatively a withdrawal can be cancelled at the Asset Manager contract using the `cancelUnderlyingWithdrawal` function.
+All functions at the Asset Manager contract take as input the address of the Agent Vault.
 
-At this point the agent has pulled out all the funds belonging to them. If they want to completely clean up after themselves, they need to perform two more things:
-
-7) Wait for all the remaining collateral providers to redeem their collateral pool tokens (exit from the pool). Note that at this point, self-close exit is not possible anymore, but it is not an issue, since the ordinary exit will always work when there are no backed FAssets (see section “Exiting collateral pool” for explanation).
-8) Execute “destroy agent”. This deletes agent vault and collateral pool contracts and all agent related data.
-
-## Agent ping (liveness check)
-
-The FAsset system provides a simple mechanism to check whether an agent bot is live and responsive. Anyone can call `agentPing` for an agent vault with a query value, which emits an `AgentPing` event (however, to avoid DOS-ing agents, the agent bot is advised to only respond to pings from known addresses). The agent's bot is expected to observe these events and respond by calling `agentPingResponse`, which emits an `AgentPingResponse` event. The `agentPingResponse` call can provide some data about the agent bot in the `response` field (e.g. make and version of the agent bot software). This mechanism is purely event-based and has no on-chain state effects - it simply allows monitoring whether an agent's bot infrastructure is operational.
+If the agent doesn't present the confirmation of withdrawal correctly, anybody can do so after an amount of time determined by `confirmationByOthersAfterSeconds` has passed and receive a reward from the agent's vault.

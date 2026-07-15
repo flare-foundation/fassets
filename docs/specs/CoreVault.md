@@ -1,178 +1,135 @@
-# Core vault
+# Core Vault
+The Core Vault (CV) is an FAsset system vault operated on an underlying chain and storing funds in the form of the underlying asset.
+A CV serves only a single chain.
+Funds stored in the CV do not need to be fully [collateralized](Collateral.md): thus, the CV improves liquidity of the FAsset system and eases demands on the agents.
 
-The Core Vault is the FAsset system vault on the underlying network, where the agents can transfer the underlying asset. When the underlying is on the CV, the agent doesn’t need to back it with collateral so they can mint again or decide to withdraw this collateral. When the agent doesn’t have any minted lots or there are more redemptions than mintings, the agent can request the underlying assets to be moved from the CV to the agent. (Note that the assets on CV don’t “belong” to any agent - they can be transferred from one agent and returned to another.)
+FAsset agents can transfer funds to the CV, and funds stored in the CV do not need to be backed with additional collateral.
+This frees up agent collateral for additional minting or withdrawal.
+When an agent doesn’t have any minted lots, or when there are more [redemptions](Redemption.md) than [mintings](Minting.md), the agent can request that the underlying assets are returned from the CV to the agent.
+Additionally, in certain contexts users can directly redeem from the CV.
 
-## Transfer to core vault
+## Transfer to Core Vault
+An agent can transfer funds to the CV at any time.
+Transfers to the CV are implemented as redemptions, with the beneficiary being the CV address.
+They are initiated on Flare, with the corresponding transfer performed on the source chain.
+To transfer funds from their underlying address to the CV, an agent follows the following process:
 
-* Agent calls `transferToCoreVault` on Flare network specifying the amount of underlying assets to transfer.
-  * There is a system setting (`minUnderlyingBackingBIPS`) that indicates the percentage of backed FAssets that has to remain on the agent’s underlying address after the transfer - this ensures redemptions are still possible. The maximum transferable amount can be queried via `maximumTransferToCoreVault`.
-  * Core vault has a predefined address on the underlying chain, managed in the CoreVaultManager.
-  * Both fields can be edited by FAsset governance.
-* The system creates a special redemption request internally (a transfer request).
-  * The request has the same structure as any other redemption request and follows all of the same reservation rules (rules are here to prevent another tx from using the same collateral).
-  * The request is directed to the predefined CV address on the underlying chain.
-  * Only one transfer to core vault can be active per agent at any time.
-  * The agent’s collateral is locked at this time, just like for ordinary redemptions.
-* Agent sends underlying assets to the CV address as a valid payment transaction with the payment reference provided by the system.
-* Agent sends the proof of the payment to the system (`confirmRedemptionPayment`).
-  * When the payment proof is confirmed, the agent’s collateral is released and the transferred amount is accounted in the CoreVaultManager.
-  * This proof can be sent by anyone after `confirmationByOthersAfterSeconds`.
-* Unlike ordinary redemption requests, a transfer request never defaults. The agent can either
-  * pay and confirm payment, to have the collateral released (confirmation can also be done by a 3rd party if the payment was made from the vault address), or
-  * After several hours (longer than normal payment time) the time for payment will end and the agent can call `redemptionPaymentDefault`. However, unlike ordinary redemptions, no collateral is paid out (except for a small failure penalty) - instead, a redemption ticket is recreated for the agent (at the end of the queue).
-    If the agent doesn’t call default in enough time (`confirmationByOthersAfterSeconds` since transfer request), anybody can call default and get some reward from the agent’s vault (just like for redemption payment confirmations by others).
+1. The agent calls `transferToCoreVault` on the Asset Manager contract on the Flare network, with inputs $(A_C, x)$ specifying the amount $x$ of funds to transfer and receiving agent address on source chain $C$. 
+2. The FAsset system creates a specialized redemption request for the transfer. This redemption specifies the amount of funds $x$ to be transferred and locks the corresponding agent collateral on Flare. A payment reference $\mathrm{ref}$ is generated in this step in line with a standard redemption request.
+3. The agent transfers the amount $x$ of funds to the CV address on $C$, including $\mathrm{ref}$ as a payment reference.
+4. The agent submits an attestation request to the FDC proving the existence of the payment on $C$. The FDC returns a `proof` of the payment.
+5. The agent calls `confirmRedemptionPayment` on the Asset Manager contract including as arguments (`proof`, $\mathrm{ref})$. At this stage, the transfer is completed and the agent's collateral is released.
 
-## Return from core vault
+Note that the agent can only initialize a transfer of size $x$ if its remaining funds as a percentage of backed FAssets after the transfer exceed a system parameter `minUnderlyingBackingBIPS` and its total funds exceeds `minimumAmountLeftUBA`.
+Additionally, the maximum amount that can be transferred is bounded by `maximumTransferUBA` 
+These parameters can be queried on the Asset Manager contract by calling `maximumTransferToCoreVault`.
 
-There are 2 ways agents can get underlying assets back from the CV. One way is the request for return (of the underlying) where the agent locks enough collateral, and the other is by redeeming its own FAssets for the underlying assets, directly from the core vault.
+### Defaulted Transfers
+Defaults in CV transfers are handled differently to ordinary redemption defaults.
+If the agent fails to pay in the allotted time period (a window of several hours), the agent defaults and calls `redemptionPaymentDefault`.
+Since the redemption has no redeemer, no collateral is paid out.
+Instead, a [redemption ticket](Minting.md#redemption-tickets) $(\text{id}, A_v, x)$ is created for the agent at the end of the redemption queue, where $A_v$ is the agent's vault.
+If the agent fails to call this function in the allotted time window, any one can call the default and be rewarded from the agent vault as usual.
 
-### Request for return process:
+## CV Transactions
+There are two mechanisms by which agents can receive underlying asset from the CV:
 
-* Agent calls `requestReturnFromCoreVault` specifying the number of lots to return.
-* A collateral reservation is created (similar to minting, but flagged as a core vault return). The agent’s collateral is locked.
-* An event is triggered by the CoreVaultManager. These events are consumed by the CV operators who will take action based on the event observed.
-* The request is forwarded to the CoreVaultManager, which may merge it with other pending requests to the same agent.
-* Before the request is processed, the agent can cancel it via `cancelReturnFromCoreVault`, releasing the reserved collateral.
-* Request is processed by the core vault triggering address calling `triggerInstructions`, which updates CV accounting and triggers `TransferRequest` event. These events are consumed by the CV operators who will take action based on the event observed.
-* CV transfers the requested amount to the agent’s underlying address (vault underlying address).
-* The agent (or anyone) presents a proof of payment to the asset manager via `confirmCoreVaultReturnPayment`; at this point a redemption ticket is created for the agent. From this point forward the agent can redeem.
-* CV has in principle unlimited time to honor the request for return of the underlying assets, but will typically respond in less than 15 minutes. We need to make sure (off-chain) that this payments are fast, since the agent’s collateral is locked during this time.
+- Locking additional collateral on Flare.
+- Redeeming FAssets at the CV.
 
-### Redeeming from core vault directly:
+To receive funds by locking collateral, the agent files a request for return of the underlying asset, locks collateral on Flare, and receives the asset in exchange.
+To receive funds via redemption, the agent simply redeems its own FAssets in exchange from the underlying assets directly from the CV.
+However, direct redemptions from the CV are only available to users whose underlying address is included in the `allowedDestinations` list in the `CoreVaultManager` contract, a list of addresses pre-approved by governance.
 
-* A user calls `redeemFromCoreVault` with a number of lots and their underlying address. There is a lower bound (`minimumRedeemLots`) on how much can be redeemed directly, though this bound is reduced when the total amount in the CV is below it (to allow clearing the CV). The user’s underlying address must be in the `allowedDestinations` list in the CoreVaultManager, pre-approved by the governance.
-* System burns the presented FXRP (a redemption fee is deducted, defined by `redemptionFeeBIPS` in the core vault client settings).
-* A `CoreVaultRedemptionRequested` event is triggered. This event holds information about the balance of FXRP burned by the user with a destination of the user’s underlying address and a payment reference.
-* The request is forwarded to the CoreVaultManager, which may merge it with other pending requests to the same destination.
-* CV has unlimited time to honor the redemption directly to the user’s underlying address.
-* This kind of redemptions have lower priority than return requests.
+These processes are laid out in more detail below.
 
-Sending and receiving to the core vault can be stopped by the governance. The CoreVaultManager has the emergency pause mechanism (that has to be called independently from the one in asset manager). This would be used in an event that CV is compromised.
+### Request for Return
+1. The agent calls `requestReturnFromCoreVault` on Flare, including as arguments $(A_v, \ell)$, the agent vault address and the number of lots $\ell$ to return.
+2. A corresponding collateral reservation is created and an amount of agent collateral sufficient to back $\ell$ lots of the underyling asset is locked.
+3. The request is forwarded to the Core Vault Manager, which may merge it with other pending requests to the same agent.
+4. The request is processed by the CV triggering address calling `triggerInstructions`, which updates CV accounting and triggers a `TransferRequest` event. These events are consumed by the CV operators who will take action based on the event observed.
+5. The CV transfers $\ell$ lots to agent’s underlying address $A_C$.
+6. The agent (or any entity) presents a proof of payment to the Asset Manager contract via `confirmCoreVaultReturnPayment`, with the proof obtained via the FDC.
+7. A redemption ticket $(\text{id}, A_v, x)$ is created for the agent, and the agent can redeem FAssets
 
-## Technical design for XRP CV
+Note that before the return request is processed, the agent can cancel it via `cancelReturnFromCoreVault` at the Core Vault Manager contract, releasing the reserved collateral.
 
-Lets define:
+### Redeeming from the CV directly
+1. The user calls `redeemFromCoreVault` on the Asset Manager contract, including as arguments $(\ell, U_C)$ the number of lots to redeem and user's underlying address on $C$.  
+2. The FAsset system burns $\ell$ lots of the user's FAssets. If the user does not have enough FAssets to cover this burn, the redemption fails at this stage.
+3. A `CoreVaultRedemptionRequested` event is triggered, containing the triplet $(\ell, U_C, \text{ref})$ storing the redemption information and a unique payment reference.
+4. The request is forwarded to the Core Vault Manager contract. At this stage, the redemption request may be batched together with other open requests to the same address. Nominally, the CV has unlimited time to honor redemptions, facilitating this batching.
+5. The CV transfers an amount $(\ell \cdot \ell_x) \cdot (1 - \text{redemptionFeeBIPS})$ of the asset to $U_C$ on $C$. Here, $\ell_x$ is the number of units of the asset $x$ in a lot and `redemptionFeeBIPS` defines the redemption fee.
 
-* **L** as “daily liquidity amount”. This is the size in xrp drops that will be escrowed and time locked at a single time.
-* **M** as minimal amount that must be kept on the multisig at any point, to be able to honor agents’ request for underlying assets
-* **Operation days** as days when we plan for msig members to do the signings. Note that if need be we can always do emergency signing.
-* **Msig members** or **Msig signers** as members of the multisig that can sign the transaction
-* **Msig executor** as an operator who collects signatures, assembles the transaction and sends it to the xrp ledger
-* **Custodian address** is the address controlled by a custodian partner that is considered safe. In our design we use it as a backup.
+The value $\ell$ must exceed an amount `minimumRedeemLots`, stored on the CV contract, unless the total funds in the CV is below this bound. 
 
-Core vault is a classic multisig address setup by flare on the XRPL. The setup is as follows:
+Direct sending and receiving to the CV can be halted by governance at any time: the Core Vault Manager has an emergency pause mechanism, which can be used in the event of a CV compromise.
 
-1. The core vault's underlying address must be new; otherwise, someone could send previous transactions to confirmPayment to increase availableFunds.
-2. Flare generates a secure private key that will be a msig account (address that belongs to this private key will be the **Msig address)**.
-3. Flare funds this address with a few XRP (at least 20).
-4. Flare sets up a signer list (SignerListSet transaction type) with adding **Msig members** list with equal weight (1).
-5. Flare disables master key (AccountSet transaction type) so only msig signers can transact.
 
-The msig address will only do 2 types of transactions: Payment transaction back to agents addresses, and EscrowCreate transactions, which creates an escrow.
+## Technical Specifications of the XRP CV
+Currently, the only deployed CV handles FXRP.
+The FXRP CV is implemented as a multisig address on XRPL.
+The master key transaction type is disabled on the CV account, so that all transactions require the multisig signers. 
+The CV supports two types of transactions: payment transactions to agent addresses, and `EscrowCreate` transactions which create escrows.
 
-We create escrow transactions in order to minimize the amount of xrp that can be spent by the multisig at any given time to reduce the risk. We do that by time locking the funds in the escrow with a safe custodian address as a destination. Until the deadline time only the safe custodian will get access to held funds if preimages are released, otherwise the funds are returned to the multisig address after the time period has passed. Escrows are created such that on each operation day, one lot of size L is released. Preimages are secrets, that when presented escrow transactions can be finalized and funds get immediately transferred to custodian account.
+### Payment Transactions
+Payment transactions are standard XRP transactions that must be signed by the multisig holders.
+They support the payment types listed above.
+Multisig signers are responsible for validating that the transaction data emitted by CV smart contracts is valid; that the amount is within allowed limits and that the destination address is approved. 
+Assuming the checks pass, multisig members sign the transaction and send the signed transaction back to Flare.
 
-### Payment transaction:
+### Escrow Transactions
+Escrows are created to rate limit the release of funds.
+Funds are held in escrow and returned to the CV periodically, only released in case of emergency.
+The escrows have a hash condition, so that Flare can present preimages (secret values authorized to trigger escrow transactions) and trigger the transfer to the custodian wallet immediately.
+Preimages are held by a trusted party at Flare that can reveal them in case of emergency.
 
-Payment transaction will be a classic transaction that will look something like that
+Each escrow holds a lot of size $L$ of an asset, time locked with a safe custodian address as the destination.
+Thus, an escrow $e_i$ stores $(L, t_i, \text{Cust}_i)$, defining the amount of funds, expiry time, and custodian address.
+At expiry time $t_i$, the funds are returned to the CV.
+However, if the appropriate preimages are released before expiry, then the custodian receives the funds.
+The release takes the form of a signed `EscrowCancel` transaction holding the preimages.
+A single escrows is created each operation day, so that each day at least one expiry $t_i$ is reached.
 
-    {
-        Account: 'rf7duEoHnFve36dMN6c6NvvP4FChFMake8',
-        Amount: '10000000',
-        Destination: 'r3EdgnFGdF8tcRrkhjGFvpu9r19Bry6cfm',
-        Fee: '40',
-        Memos: [ { Memo: { MemoData: '4865...6C64' } } ],
-        Sequence: 4558233,
-        SigningPubKey: '',
-        TransactionType: 'Payment'
-    }
+### Instruction Sourcing
+Members of the multisig are informed on what transactions to sign by a smart contract on Flare.
+This contract:
 
-Where “Account” is the multisig account and the rest of the fields are filled in by the API according to the event and state of the XRPL. Members of the multisig must validate that the data emitted by the smart contract are within the pre-distributed rules. Especially that the amount is within the limit and that the destination address is on the approved list.
+- Holds a sequence of transactions to be signed.
+- Knows the underlying address of the custodian wallet.
+- Has access to the FAsset agents list.
+- Can emit an escrow time lock command for multisig members to sign.
+- Can emit payment transaction commands.
 
-The multisig member need to sign the provided transaction (the JSON) and send the signed transaction back to Flare in the following format:
-
-    {
-        Account: 'rf7duEoHnFve36dMN6c6NvvP4FChFMake8',
-        Amount: '10000000',
-        Destination: 'r3EdgnFGdF8tcRrkhjGFvpu9r19Bry6cfm',
-        Fee: '40',
-        Memos: [ { Memo: { MemoData: '4865...6C64' } } ],
-        Sequence: 4558233,
-        SigningPubKey: '',
-        TransactionType: 'Payment',
-        Signers: [
-            {
-            Signer: {
-                SigningPubKey: 'EDB008B227BC77A36C8FDB533DBA3C27F35C2342D373494EE59E043049C953411C',
-                TxnSignature: '30AADEC442DED826567AE5966D1C289679EB8E10CA3E4FFAC38B1E6A9378AD5892744B6FF9FBBCD9598EA77D6994C8737D1B214ADF10A4A39ADA4234BED0970B',
-                Account: 'rJWKdxqYJ1ojqaDFXW5fpfros5E6VB6cNy'
-            }
-        }
-    ]
-
-### Escrow transactions:
-
-The escrow’s Destination is a safe custodian address. The escrow lots expiration times are set so that every day of operation, one escrow lot of size L is released. The escrows all have a hash condition, so that flare can present preimages and trigger the transfer to the custodian wallet immediately. Preimages are held by a trusted party at flare than can in an emergency quickly reveal them. If preimages are revealed by accident, the custodian address would get all the funds, and no funds are lost. If this was to happen, we would need a custodian to send funds back to the multisig and escrow the funds with new preimages.
-
-An example of such transaction looks something like that
-
-    {
-        Account: 'rf7duEoHnFve36dMN6c6NvvP4FChFMake8',
-        TransactionType": "EscrowCreate",
-        Amount: '300000000',
-        Destination: 'r3EdgnFGdF8tcRrkhjGFvpu9r19Bry6cfm',
-        CancelAfter: 533257958,
-        Condition: "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855810100",
-    }
-
-Where Destination must always be the custodian’s cold wallet address. The Cancel after must be within the predefined date ranges and validated that the date is what we expect it is in a standard datetime format. The amount must always be one lot. Conditions will also be from a predefined array.
-
-CancelAfter dates must always be the next available date time that falls on the operation day at 9.00 CEST. With that on each operation day one lol is released from the escrow.
-
-The signer must sign and provide the signatures along with the original fields, similar to payment transaction response.
-
-Note that funds to be released back to the multisig address, EscrowCancel transaction must be signed and transmitted. This can be done by anyone. The executor will be able to do this before transmitting any other transaction, to make sure msig address has sufficient funds.
-
-### Instruction sourcing
-
-For members of msig to know what transactions to sign, we use a smart contract that can:
-
-* Hold a sequence of transactions signed by msig
-* Knows underlying address of custodian wallet
-* Has access to FAsset agents list
-* Can emit an escrow time lock command for msig members to sign
-* Can emit a payment transaction command for returning the assets to agents
-
-All commands emitted must be within the scope of predefined rules, and each member of msig must be checked before signing, to make sure they follow the pre-distributed rules and are to the predefined addresses that were shared by flare.
-
-All transactions are also checked by the executor before being executed.
-
-If any member of msig or executor spots the problem, we must go to red alert mode and have a call asap. All members of the call must turn on the camera for at least a few min to make sure no one is compromised.
+All commands emitted by this contract are within scope of predefined rules.
+All transactions are checked by both members of the multisig and the executor before being executed.
+If any of these entities spots a problem, the system enters [(]red alert mode](#red-alert-mode) and operations are halted.
 
 ### Transaction collection and execution
+Members of the multisig must send the signed transactions to the backend that collects the events emitted by the contract and generates the transactions accordingly.
+If the signed transactions deposited by the signers don't match what the backend is expecting, the system enters red alert mode.
 
-Members of the multisig will be given access to the API together with the implementation and are encouraged (will be required after a while) to run their own version, so that they can independently (via their own RPC) verify the transactions that need to be signed.
+Once a sufficient number of signatures are collected for a transaction, a notification is triggered.
+On this trigger, a member of the execution group runs a script that assembles the transaction and sends it to the XRPL mempool.
+The assembler and execution backend is developed by Flare.
 
-Members of the multisig must send the signed transactions to the backend that also collects the events emitted by the contract and generates the transactions accordingly. If the signed transactions deposited by the signers don't match the ones backend is expecting, an alert is triggered and all members of the multisig must evaluate why there is a mismatch (red alert).
+### Security
+During normal operation of the XRP CV, one escrow of size $L$ expires to the main multisig per operation day.
+This limits the amount released from the CV per operation day to $1L$ plus the amount that agents transferred to the CV since the last operation day.
+Note that as soon as $M + L$ tokens are available on CV, an `escrowCreate` event is triggered, where $M$ denotes the minimum amount of funds allowed in the CV.
+If there is more than a maximum amount $V$ of assets in the CV that are not escrowed the system goes into red alert mode, and more escrows are triggered manually.
 
-Once the sufficient number of signatures are collected, an alert is triggered so a member of the execution group checks the transaction again, and runs a script that assembles the transaction and sends it to the xrpl mempool.
+If a critical attack is detected, such as if keys are stolen, the preimages for escrows are published and the funds are released to the custodian address.
+Once the problem is resolved, a new multisig must be created to be used by CV.
 
-The assembler and execution backend is developed by flare and externally audited. Even if the backend is exploited, signatures from the members of the multisig are generated and created independently so the wrong transaction cant be executed on the xrpl.
+## Red Alert Mode
+*Red alert mode* is triggered in cases where the system detects an issue.Red alert mode is triggered manually by Flare response team members that are on duty, either in response to rogue inputs to the CV or communications with multisig members.
 
-### Security assessment:
+When red alert mode triggers, all members of the multisig are alerted and the Flare response team investigates the issue.
+All signing operations are stopped, and do not resume until a meeting is called to discuss an incident report with multisig members.
+Assuming such a meeting is successful, signing can resume.
 
-In normal operation, one escrow expires to the main msig per operation day. This limits the amount released from CV to approximately 1 L per operation day. That limits the amount to 1L + what agents transferred to CV since the last operation day. Note that as soon as M + L tokens are available on CV, an escrowCreate event is triggered. If there is more than V assets not escrowed we must go into red alert and trigger the escrow manually.
-
-If a critical attack (one that cannot be quickly resolved) is detected, including when the keys are stolen, the preimages are published and all the escrows are released to the custodian.
-
-Preimages must be accessible quickly, as they only trigger the safe mode. Once the problem is resolved, the custodian has funds and a new msig must be created to be used by CV.
-
-## Red alert mode
-
-*Red alert mode* is triggered when we believe there is a bug or a misunderstanding in the system. All members of the multisig must be alerted and the designated Flare response team must immediately start looking into the problem. All signing is stopped and for signing to continue a meeting must be called where members are presented by a bug/issue report and signing is restored. The meeting must be with cameras enabled (at least for a few minutes). Note that a response team must be able to use preimages if they deem it necessary.
-
-The Flare response team will have access to the preimages so it can send funds to the custodian. Signers must get confirmation and further instruction from the official contact person at Flare. This confirmation must be a unique predefined order of events that only the contact person at Flare, their replacement and msig signer know. There must be a way for the response team to pause all CV interactions within the FAsset system. To turn this back on, a regular FAsset governance call is required.
-
-The most likely transaction that will be triggered in red alert is a Payment transaction sending all remaining funds within the msig address to the predefined custodian address.
-
-Red alert mode is triggered manually by Flare response team members that are on duty. They can do that based on monitoring inputs and or communication channels with msig members.
+Note that the response team must be able to use preimages if they deem it necessary.
+Thus, they have access to the preimages to trigger releasing funds to the custodian.
+The response team is also able to pause all CV interactions within the FAsset system.
+To turn this back on, an FAsset governance call is required.
