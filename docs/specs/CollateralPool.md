@@ -6,6 +6,11 @@ The collateral pool holds only native token collateral, referred to as *pool col
 The pool collateral is used as an additional source of collateral for [liquidations](Liquidation.md) and failed [redemptions](Redemption.md) at times of rapid price fluctuations.
 Each agent's collateral pool is open: any user of Flare can deposit native tokens in to an agent's collateral pool and earn FAsset fees in return.
 
+## Wrapped Collateral, Delegation, and Rewards
+Although collateral providers enter and exit the pool using native tokens, the pool internally holds its native collateral as WNat. Deposited native tokens are wrapped when they enter the pool, and the corresponding WNat is unwrapped when native collateral is paid out.
+
+The agent vault owner controls delegation for the pool's entire WNat balance. They can set or clear FTSO vote-power delegations using `delegate` and `undelegateAll`, and can separately set or clear governance vote-power delegation using `delegateGovernance` and `undelegateGovernance`. The agent vault owner can claim the pool's delegation rewards using `claimDelegationRewards`. Claimed rewards are received as WNat and added to the pool collateral, increasing the collateral represented by pool tokens for all collateral providers.
+
 ## Collateral Pool Token
 Each collateral pool has its own token contract, an instance of `CollateralPoolToken`.
 Collateral pool tokens are proof that an entity has deposited tokens in the collateral pool.
@@ -37,7 +42,7 @@ $$
 Note that when required, this value is calculated dynamically e.g. based on the state of the pool when required rather than historical values.
 
 ### Locked and Transferable Tokens
-Collateral pool tokens are ERC20 tokens, so they can be transferred and traded. 
+Collateral pool tokens are ERC20 tokens, so they can be transferred and traded.
 However, there are two situations in which the tokens can become non-transferable:
 
 1. When a token is issued to a user entering the pool, it becomes *timelocked* and cannot be transferred. That is, a user depositing an amount $x$ of tokens into $A_P$ at time $T_0$ receives an amount $A_P(x)$ of pool tokens $A_t$ that cannot be traded until time $T_1$. The duration $D =  T_1 - T_0$ of this timelock is a global parameter set by governance.
@@ -47,9 +52,8 @@ However, there are two situations in which the tokens can become non-transferabl
 Pool tokens that are neither timelocked nor debt-locked are called *transferable*.
 
 ## Sharing Pool FAsset Fees
-[Minting](Minting.md) fees, in the form of FAssets, are added to the collateral pool. 
-They are shared between collateral providers proportionally to the amount of collateral pool tokens the provider holds.
-On exiting the collateral pool, the collateral provider receives its share of the fees.
+[Minting](Minting.md) fees, in the form of FAssets, are added to the collateral pool.
+They are shared between collateral providers proportionally to the amount of collateral pool tokens the provider holds. Collateral providers can withdraw their share of fees anytime by calling `withdrawFees`.
 
 ### Fee Debt
 When a user enters a collateral pool which already holds an amount of FAsset fees, the tokens given to the user are assigned a corresponding *FAsset fee debt*, which is subtracted from the fees on exit.
@@ -83,7 +87,7 @@ $$
 Note that FAsset debt is calculated at time of entering the pool and can increase or decrease when the user pays off FAsset fee debt, exits the pool, or withdraws fees.
 
 ### Unlocked Tokens Computation
-Similarly, a users unlocked collateral pool tokens $U_\mathrm{free}(A_t)$ and locked collateral pool tokens $U_\mathrm{lock}(A_t)$ are computed as 
+Similarly, a users unlocked collateral pool tokens $U_\mathrm{free}(A_t)$ and locked collateral pool tokens $U_\mathrm{lock}(A_t)$ are computed as
 
 $$
 U_\mathrm{free}(A_t) = U(A_t) \cdot \frac{U_\mathrm{free}(A_P)}{U_\mathrm{virt}(A)},
@@ -104,8 +108,10 @@ U(A_P) \cdot \vert A_P \vert
 $$
 of the FLR stored in the collateral pool.
 
+Note that exiting the pool doesn't automatically withdraw pool fees - the provider has to withdraw them before or after exit by calling `withdrawFees`.
+
 ### Exit Availability and CRs
-A user can only exit if the [collateral ratio](Collateral.md#collateral-ratio) (CR) of the pool is high enough. 
+A user can only exit if the [collateral ratio](Collateral.md#collateral-ratio) (CR) of the pool is high enough.
 After the exit, the remaining CR must be at least the exit CR, otherwise the exit is not permitted.
 That is, a user with an amount $U(A_t)$ collateral pool tokens can only exit if
 $$
@@ -123,7 +129,7 @@ The amount of burned FAssets will be such that the pool CR after exit is no lowe
 That is, a user with an amount $U(A_t)$ of collateral pool tokens from an agent who is backing an amount $x$ of FAsset $X$ can complete a self exit by burning an amount $u$ of FAsset $X$ such that
 $$
 \frac{\vert A_P \vert - U(A_t)}{\text{FTSO}_{X, \text{FLR}}(x - u)}  \geq \min({\frac{\vert A_P \vert}{\text{FTSO}_{X, \text{FLR}}(x)}}, \text{exitCR}).
-$$ 
+$$
 
 In the case of a `selfCloseExit`, the user is reimbursed for the burnt assets.
 This is handled by a redemption request, created for the value of the burned FAssets via `redeemFromAgent` and called by the `collateralPool` contract as part of the user redemption.

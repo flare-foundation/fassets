@@ -14,20 +14,19 @@ Transfers to the CV are implemented as redemptions, with the beneficiary being t
 They are initiated on Flare, with the corresponding transfer performed on the source chain.
 To transfer funds from their underlying address to the CV, an agent follows the following process:
 
-1. The agent calls `transferToCoreVault` on the Asset Manager contract on the Flare network, with inputs $(A_C, x)$ specifying the amount $x$ of funds to transfer and receiving agent address on source chain $C$. 
-2. The FAsset system creates a specialized redemption request for the transfer. This redemption specifies the amount of funds $x$ to be transferred and locks the corresponding agent collateral on Flare. A payment reference $\mathrm{ref}$ is generated in this step in line with a standard redemption request.
+1. The agent calls `transferToCoreVault` on the Asset Manager contract on the Flare network, with inputs $(A, x)$ specifying the amount $x$ of funds to transfer and the agent vault address $A$.
+2. The FAsset system creates a specialized redemption request for the transfer. This redemption specifies the amount of funds $x$ to be transferred and locks the corresponding agent collateral on Flare. A payment number $\mathrm{id}$ and a payment reference $\mathrm{ref}$ are generated in this step in line with a standard redemption request.
 3. The agent transfers the amount $x$ of funds to the CV address on $C$, including $\mathrm{ref}$ as a payment reference.
 4. The agent submits an attestation request to the FDC proving the existence of the payment on $C$. The FDC returns a `proof` of the payment.
-5. The agent calls `confirmRedemptionPayment` on the Asset Manager contract including as arguments (`proof`, $\mathrm{ref})$. At this stage, the transfer is completed and the agent's collateral is released.
+5. The agent calls `confirmRedemptionPayment` on the Asset Manager contract including as arguments (`proof`, $\mathrm{id})$. At this stage, the transfer is completed and the agent's collateral is released.
 
-Note that the agent can only initialize a transfer of size $x$ if its remaining funds as a percentage of backed FAssets after the transfer exceed a system parameter `minUnderlyingBackingBIPS` and its total funds exceeds `minimumAmountLeftUBA`.
-Additionally, the maximum amount that can be transferred is bounded by `maximumTransferUBA` 
-These parameters can be queried on the Asset Manager contract by calling `maximumTransferToCoreVault`.
+Note that the agent can only initialize a transfer of size $x$ if its remaining funds exceed agent's minting capacity multiplied by the system setting `minimumAmountLeftBIPS`. Agent's minting capacity is defined as the agent's collateral divided by the collateral's minimum CR (converted to the asset currency and minimized between vault and pool collateral).
+The maximum transfer amount and minimum amount left can be queried on the Asset Manager contract by calling `maximumTransferToCoreVault`.
 
 ### Defaulted Transfers
 Defaults in CV transfers are handled differently to ordinary redemption defaults.
 If the agent fails to pay in the allotted time period (a window of several hours), the agent defaults and calls `redemptionPaymentDefault`.
-Since the redemption has no redeemer, no collateral is paid out.
+Since the redemption has no redeemer, the collateral for the full amount is not paid out. However, a penalty of `transferDefaultPenaltyBIPS` times transfer amount is paid from the agent vault.
 Instead, a [redemption ticket](Minting.md#redemption-tickets) $(\text{id}, A_v, x)$ is created for the agent at the end of the redemption queue, where $A_v$ is the agent's vault.
 If the agent fails to call this function in the allotted time window, any one can call the default and be rewarded from the agent vault as usual.
 
@@ -49,33 +48,39 @@ These processes are laid out in more detail below.
 3. The request is forwarded to the Core Vault Manager, which may merge it with other pending requests to the same agent.
 4. The request is processed by the CV triggering address calling `triggerInstructions`, which updates CV accounting and triggers a `TransferRequest` event. These events are consumed by the CV operators who will take action based on the event observed.
 5. The CV transfers $\ell$ lots to agent’s underlying address $A_C$.
-6. The agent (or any entity) presents a proof of payment to the Asset Manager contract via `confirmCoreVaultReturnPayment`, with the proof obtained via the FDC.
+6. The agent (or any entity) presents a proof of payment to the Asset Manager contract via `confirmReturnFromCoreVault`, with the proof obtained via the FDC.
 7. A redemption ticket $(\text{id}, A_v, x)$ is created for the agent, and the agent can redeem FAssets
 
-Note that before the return request is processed, the agent can cancel it via `cancelReturnFromCoreVault` at the Core Vault Manager contract, releasing the reserved collateral.
+Note that before the return request is processed, the agent can cancel it via `cancelReturnFromCoreVault` at the Asset Manager contract, releasing the reserved collateral.
+
+Underlying addresses eligible for returns from the core vault must be explicitly allowed by the governance.
 
 ### Redeeming from the CV directly
-1. The user calls `redeemFromCoreVault` on the Asset Manager contract, including as arguments $(\ell, U_C)$ the number of lots to redeem and user's underlying address on $C$.  
+1. The user calls `redeemFromCoreVault` on the Asset Manager contract, including as arguments $(\ell, U_C)$ the number of lots to redeem and user's underlying address on $C$.
 2. The FAsset system burns $\ell$ lots of the user's FAssets. If the user does not have enough FAssets to cover this burn, the redemption fails at this stage.
 3. A `CoreVaultRedemptionRequested` event is triggered, containing the triplet $(\ell, U_C, \text{ref})$ storing the redemption information and a unique payment reference.
 4. The request is forwarded to the Core Vault Manager contract. At this stage, the redemption request may be batched together with other open requests to the same address. Nominally, the CV has unlimited time to honor redemptions, facilitating this batching.
-5. The CV transfers an amount $(\ell \cdot \ell_x) \cdot (1 - \text{redemptionFeeBIPS})$ of the asset to $U_C$ on $C$. Here, $\ell_x$ is the number of units of the asset $x$ in a lot and `redemptionFeeBIPS` defines the redemption fee.
+5. The CV transfers an amount $(\ell \cdot \ell_x) \cdot (1 - \text{coreVaultRedemptionFeeBIPS})$ of the asset to $U_C$ on $C$. Here, $\ell_x$ is the number of units of the asset $x$ in a lot and `coreVaultRedemptionFeeBIPS` defines the redemption fee.
 
-The value $\ell$ must exceed an amount `minimumRedeemLots`, stored on the CV contract, unless the total funds in the CV is below this bound. 
+The value $\ell$ must exceed an amount `minimumRedeemLots`, stored on the CV contract, unless the total funds in the CV is below this bound.
+
+Underlying addresses eligible for direct redemption from the core vault must be explicitly allowed by the governance.
 
 Direct sending and receiving to the CV can be halted by governance at any time: the Core Vault Manager has an emergency pause mechanism, which can be used in the event of a CV compromise.
 
+### Core vault donations
+To make sure that CV has enough funds for underlying transaction fees, some funds have to be transferred occasionally to the CV. After the transfer, asset manager method `confirmCoreVaultDonation` must be called with the payment proof to update the accounting.
 
 ## Technical Specifications of the XRP CV
 Currently, the only deployed CV handles FXRP.
 The FXRP CV is implemented as a multisig address on XRPL.
-The master key transaction type is disabled on the CV account, so that all transactions require the multisig signers. 
+The master key transaction type is disabled on the CV account, so that all transactions require the multisig signers.
 The CV supports two types of transactions: payment transactions to agent addresses, and `EscrowCreate` transactions which create escrows.
 
 ### Payment Transactions
 Payment transactions are standard XRP transactions that must be signed by the multisig holders.
 They support the payment types listed above.
-Multisig signers are responsible for validating that the transaction data emitted by CV smart contracts is valid; that the amount is within allowed limits and that the destination address is approved. 
+Multisig signers are responsible for validating that the transaction data emitted by CV smart contracts is valid; that the amount is within allowed limits and that the destination address is approved.
 Assuming the checks pass, multisig members sign the transaction and send the signed transaction back to Flare.
 
 ### Escrow Transactions

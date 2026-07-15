@@ -1,6 +1,6 @@
 # Collateral
 
-Each asset minted to an agent in the FAsset system is secured by two kinds of collateral: 
+Each asset minted to an agent in the FAsset system is secured by two kinds of collateral:
 1. **Vault Collateral**: ERC20 tokens held in the agent vault.
 2. **Pool Collateral**: Native FLR tokens held in the [agent pool](CollateralPool.md).
 
@@ -9,17 +9,14 @@ The purpose of the collateral is to ensure that all FAsset [redemptions](Redempt
 ## Collateral types
 
 ### Vault Collateral Types
-A collateral type is a structure that contains the address of an ERC20 token contract along with collateral ratio settings (see below) and information required for obtaining necessary asset price details from the FTSO. 
+A collateral type is a structure that contains the address of an ERC20 token contract along with collateral ratio settings (see below) and information required for obtaining necessary asset price details from the FTSO.
 These two pieces of information determine how much FAsset can be backed by the collateral.
-Each agent must choose a single collateral type and use that as the collateral in its agent vault. 
+Each agent must choose a single collateral type and use that as the collateral in its agent vault.
 The agent can change the chosen vault collateral type only if the currently used type has been deprecated (see below).
 
-FAsset governance defines the types of tokens that can be used as vault collateral by agents. 
+FAsset governance defines the types of tokens that can be used as vault collateral by agents.
 The types typically include popular stablecoins (USDC, USDT) and other highly liquid tokens that exist on the Flare/Songbird chain (e.g. wrapped ETH).
-Governance manages this list by adding or deprecating types.
-When a collateral type is deprecated, a deadline for its use is set. 
-All agents using this collateral type as vault collateral must switch to another type before the given deadline.
-If they fail to do so, their collateral is no longer considered valid and they will be liquidated.
+Governance can add new vault collateral types.
 
 ### Pool Collateral Type
 The same collateral type is used for each agent's collateral pool, the native FLR token.
@@ -73,7 +70,7 @@ The value of each minimal CR is a system parameter per backing currency (ERC20 t
 This is a system value that is higher than the minimal CR.
 As with the minimal CR, there are separate safety vault and pool CR values.
 
-**Minting CR**: Each agent sets a *minting CR* value for both its vault and pool CRs. 
+**Minting CR**: Each agent sets a *minting CR* value for both its vault and pool CRs.
 These values restrict the maximum amount the agent can mint at a time: the maximum mint amount the agent supports is bounded so that both its vault and pool CR remain higher than their respective minting CR values.
 The minting CR must be higher than the minimal CR.
 

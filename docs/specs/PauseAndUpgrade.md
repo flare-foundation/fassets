@@ -37,7 +37,7 @@ The emergency pause mechanism has three severity levels:
 
 | Level | Effect |
 |---|---|
-| **START_OPERATIONS** | Prevents starting new [mints](Minting.md), [redeems](Redemption.md), [liquidations](Liquidation.md), and [core vault](CoreVault.md) transfers/returns. Operations that have already started can still be completed. |
+| **START_OPERATIONS** | Prevents starting new [mints](Minting.md), [redeems](Redemption.md), [liquidations](Liquidation.md), [colateral pool](CollateralPool.md) provider operations, and [core vault](CoreVault.md) transfers/returns. Operations that have already started can still be completed. |
 | **FULL** | Includes all restrictions from START_OPERATIONS, and prevents finishing or defaulting already started mints, redeems, and all other publicly available operations from the Asset Manager contract. |
 | **FULL_AND_TRANSFER** | Includes all restrictions from FULL, and prevents FAsset token transfers. |
 
@@ -59,10 +59,11 @@ The FAsset system can be gradually turned off (or wound down) in two steps.
 
 The first step is to initiate a minting pause.
 Governance initializes this by calling `pauseMinting`.
-Once the minting pause is triggered, the Asset Manager can no longer mint new tokens.
+Once the minting pause is triggered, the Asset Manager can no longer mint new tokens through agents.
 However, other operations are still allowed: existing FAssets can be redeemed, and agents can still self-close or liquidate their position.
 At this stage, FAsset transfers still work as usual.
 A minting pause is reversible via `unpauseMinting`.
+Minting pause does not apply to the direct minting.
 
 The duration of a minting pause is expected to be relatively long (e.g. a few weeks), leaving a period where redemptions are still possible and users can remove FAssets from the system.
 After this time, the governance reduces the minimum backing requirement after transfer to core vault (`minUnderlyingBackingBIPS`) to $0$.

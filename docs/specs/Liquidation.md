@@ -14,7 +14,7 @@ They receive a premium on top of FAsset's value for this exchange, effectively p
 ## Liquidation Process
 Once an agent is in liquidation, any address (liquidator) can send in FAssets backed by this agent and get paid with a combination of vault and [pool collateral](CollateralPool.md) at the current asset price multiplied by a premium factor.
 The liquidator premium is a system-defined percentage, and increases with the duration of the liquidation.
-The maximum amount of FAssets that can be liquidated in this way is the amount required to make the agent healthy, rounded up to the next lot.
+The maximum amount of FAssets that can be liquidated in this way is the amount required to make the agent healthy.
 
 ### Liquidation Settings
 Formally, liquidation is defined by a trio of parameters stored on the Asset Manager Settings contract:

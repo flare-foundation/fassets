@@ -8,7 +8,7 @@ For a user $U$ who wants to redeem an amount $x$ of an FAsset $X$ originating fr
 1. The redeemer initiates the redemption process by calling the `redeem` function on the Asset Manager Contract from their Flare address $U_F$, with parameters
    - $\ell$: The amount of [lots](Minting.md#lots-and-dust) of FAsset to redeem, such that $\ell$ lots constitutes $x$ amount of FAsset.
    - $U_C$: The (user) address on $C$ to receive the redeemed assets.
-   - $\text{Ex}$: The executor address for the redemption. 
+   - $\text{Ex}$: The executor address for the redemption.
 2. The FAsset system selects one or more redemption tickets $t_1, \dots, t_n$ from the front of the redemption FIFO queue. Each ticket $t_i$ specifies an agent $A_i$ and an amount $x_i$. Tickets are selected until either the combined amount of assets stored is sufficient to cover the redemption, $\sum_i^n x_i \geq x$, or until a maximum ticket limit `maxRedeemedTickets` is reached. If this limit is reached, only a [partial redemption](#partial-redemptions) is performed.
 3. The user transfers the amount $x$ of FAssets to be redeemed to the Asset Manager contract, which burns the assets. If the redeemer does not own enough FAssets, the redemption fails at this stage.
 4. For each agent $A_i$ who owns at least one of the tickets $t_i$, the Asset Manager contract issues a `Redemption Requested` event with the following information:
@@ -24,19 +24,20 @@ For a user $U$ who wants to redeem an amount $x$ of an FAsset $X$ originating fr
    - $\text{ref}_i$: The payment reference for this ticket.
    - $\text{Ex}$: The executor address.
    - $\text{ExFee}$: The executor fee in NAT.
-5. Each agent $A_i$ pays the redeemer their designated amount $x_{A_i}$ on the underlying chain with the payment reference $\text{ref}_i$ included. Note this payment can be made from any address, not only the agent’s underlying address.
+5. Each agent $A_i$ pays the redeemer their designated amount $x_{A_i}$ on the underlying chain with the payment reference $\text{ref}_i$ included. The payment must be made from the agent vault underlying address, although on UTXO chains a part of it (e.g. fees) can also be made from other addresses.
 6. Once its payment is finalized, each agent uses the FDC to prove the payment. Once all payments are finalized, the user has successfully redeemed their FAssets. Once each payment proof is presented to the Asset Manager contract, the agent and pool [collateral](Collateral.md) backing the redeemed FAssets is freed.
 
 ### Redemption Fee
 The redemption fee is charged to the redeemer as a proportion of the redemption amount, so that on redemption of an amount $x$ of FAsset they receive an amount
 $$
-x \cdot (1 - \text{redemptionFeeBIPS})
+x \cdot (1 - \text{systemRedemptionFeeBIPS}) \cdot (1 - \text{redemptionFeeBIPS})
 $$
 of asset $X$ on source chain $C$.
-The parameter `redemptionFeeBIPS` is a global parameter set by governance.
+The parameters `systemRedemptionFeeBIPS` and `redemptionFeeBIPS` are a global parameters set by governance.
 
-Part of this fee is retained by the agent on $C$, with the rest minted into FAssets and deposited into the agent's pool.
-The pool’s share of the redemption fee is the same percentage as that of its share of the [minting fee](Minting.md#minting-fees).
+There are two fees: the system fee is paid as FAssets to the governance defined `redemptionFeeReceiver` address.
+The other fee is the agent's fee. Part of this fee is retained by the agent on $C$, with the rest minted into FAssets and deposited into the agent's pool.
+The pool’s share of the redemption fee is defined by the agent's setting `redemptionPoolFeeShareBIPS`.
 
 ### Redemption Failures
 Each agent has a limited time to make its redemption payment on the underlying chain, defined by the last block number $B_t$ and $\text{timestamp}$ by which the payment must be made.
@@ -51,12 +52,14 @@ $$
 $$
 in FLR from the agent collateral, where $\text{FTSO}_{X, \text{FLR}}(x)$ denotes the FTSO price of $x$ of FAsset $X$ in FLR.
 
+If the agent's collateral ratio is below `redemptionDefaultFactorVaultCollateralBIPS`, part of the redemption collateral payment will be made in FLR from the collateral pool. This should be rare since in such case the agent is already in liquidation.
+
 ### Partial Redemptions
 Partial redemptions occur when either the amount of FAssets to be redeemed is greater than the amount stored on the first `maxRedeemedTickets` amount of tickets or there are not enough tickets to cover the redemption in step 2.
 In this case, $\sum_i^n x_i < x$, and the redeemer can not redeem the full amount $x$ of FAssets.
 
 Instead, the user redeems the maximum amount $y = \sum_{i = 1}^n {x_i}$ available on the tickets.
-Then, in stage 4, alongside the `redemptionRequested` events, the Asset Manager contract releases a `redemptionRequestIncomplete` event with parameters $(U_F, \text{remainingAmount})$, the user address and the amount of unredeemed assets `remainingAmount`$ = y - x$ measured in lots.
+Then, in stage 4, alongside the `redemptionRequested` events, the Asset Manager contract releases a `redemptionRequestIncomplete` event with parameters $(U_F, \text{remainingAmount})$, the user address and the amount of unredeemed assets `remainingAmount`$ = x - y$ measured in lots.
 Otherwise, the redemption flow is unchanged.
 If the user still wishes to redeem further FAssets, they can initiate a fresh redemption request for `remainingAmount`, or some other amount
 
@@ -83,7 +86,7 @@ The size of the reward is determined by `confirmationByOthersRewardUSD5` and the
 
 ### Expired Proof Time
 If no payment or non-payment proof is presented for an agent's redemption payment during the allotted time window (14 days), the agent can trigger a *finish without payment* procedure.
-For this, the agent has to present an FDC proof that the proofs are no longer available to `confirmRedemptionWithoutPayment` on the Asset Manager contract, including as argument the redemption ID.
+For this, the agent has to present an FDC proof that the proofs are no longer available to `finishRedemptionWithoutPayment` on the Asset Manager contract, including as argument the redemption ID.
 This triggers a procedure as in the case of non-payment, with the redeemer paid in collateral plus premium and the rest of the agent’s collateral released.
 
 ### Redemption Time Extension
