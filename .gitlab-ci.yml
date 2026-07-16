@@ -64,6 +64,7 @@ build-smart-contracts:
   needs: []
   script:
     - corepack enable
+    - pnpm install --frozen-lockfile
     - pnpm compile
   artifacts:
     paths:
@@ -138,6 +139,21 @@ test-slither-check:
     - source .venv/bin/activate
     - pnpm slither
 
+test-forge-node-modules:
+  image: node:24
+  stage: test
+  extends:
+    - .rules
+    - .pnpm-cache
+  needs: []
+  script:
+    - corepack enable
+    - pnpm install --frozen-lockfile
+  artifacts:
+    paths:
+      - node_modules/
+    expire_in: 1 day
+
 test-forge:
   image: ghcr.io/foundry-rs/foundry:stable
   extends:
@@ -146,6 +162,11 @@ test-forge:
     - flarenetwork-lg
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
+  needs:
+    - job: build-smart-contracts
+      artifacts: true
+    - job: test-forge-node-modules
+      artifacts: true
   before_script:
     - forge install --no-git
     - forge build
