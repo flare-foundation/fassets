@@ -14,9 +14,7 @@ These two pieces of information determine how much FAsset can be backed by the c
 Each agent must choose a single collateral type and use that as the collateral in its agent vault.
 The agent can change the chosen vault collateral type only if the currently used type has been deprecated (see below).
 
-FAsset governance defines the types of tokens that can be used as vault collateral by agents.
-The types typically include popular stablecoins (USDC, USDT) and other highly liquid tokens that exist on the Flare/Songbird chain (e.g. wrapped ETH).
-Governance can add new vault collateral types.
+FAsset governance defines the types of tokens that can be used as vault collateral by agents, and is responsible for adding new collateral types.
 
 ### Pool Collateral Type
 The same collateral type is used for each agent's collateral pool, the native FLR token.

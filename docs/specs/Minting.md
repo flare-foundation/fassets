@@ -36,7 +36,7 @@ Formally, to mint an amount $x$ of an FAsset copy of an asset from chain $C$, th
 ## Minting Fees
 The amount minted and paid by the user is impacted by minting fees.
 The minting user specifies an amount $x$ of FAssets to mint, but must pay a slightly higher amount $C_x$ to pay an agent fee on the chain.
-The agent fee is then split between the agent and the agent's collateral pool: the agent receives it as free underlying on the vault underlying address and the pool receives fees as FAssets (which are minted from the pool share of the paid fee).
+The agent receives fees as free underlying on the vault address, and the pool receives fees as FAssets minted from the pool share of the paid fee.
 
 ### Minter Perspective
 The rest of this section lays out the fees from the perspective of the agent and its [collateral pool](#collateral-pool), who receive them.
@@ -121,8 +121,7 @@ is allocated to the agent, paid in native asset and given to the agent by increa
 ### Minting failure
 To finalize a minting, the minter presents an FDC proof $\mathrm{FDC}(\mathrm{dep}_x)$ of deposit on the source chain.
 If this payment was not done in its designated time frame, the minting fails.
-It is the minter's responsibility to ensure that the payment is made
-in time according to $t$.
+It is the minter's responsibility to ensure that the payment is made in time according to $t$.
 
 If the minter does not pay on time, the agent can prove non-payment using `mintingPaymentDefault` on the Asset Manager contract, including as argument an FDC attestation `proof` of non-payment and the $\text{CR}_{id}$.
 The argument `proof` is obtained from the FDC using a specialized non-payment attestation type.
@@ -155,16 +154,16 @@ The flow for self minting essentially starts from step 6 of the minting flow.
 The minting agent performs the following steps:
 
 1. The agent initiates a deposit transaction $\mathrm{dep}(C_x)$ on $C$ transferring the amount $C_x$ to the agent address $A_C$. Note that the transaction is sent from a separate address to the agent address $A_C$.
-2. Once the deposit is completed, the agent submits an attestation request $\mathrm{FDC}(\mathrm{dep}_x)$ to the FDC, confirming the existence of the transaction $\mathrm{dep}_x$ on $C$.
-3. Once the FDC confirms the existence of the deposit transaction, the agent can call the `selfMint` function at the asset manager contract, with the inputs the FDC `proof`, agent vault address and the number of lots $n$. The paid amount $x$ must cover the minted amount and the pool fee, which still gets paid for self mint. This credits their account with $n$ lots of the FAsset.
-4. Once FAssets are minted, the Asset Manager creates a redemption ticket for $n$ lots.
+2. Once the deposit is completed, the agent submits an attestation request $\mathrm{FDC}(\mathrm{dep}_x)$ to the FDC, returning a proof `proof` confirming the existence of the transaction $\mathrm{dep}_x$ on $C$.
+3. Once the FDC confirms the existence of the deposit transaction, the agent calls the `selfMint` function at the Asset manager contract with inputs (`proof`, $A, n)$, the FDC `proof`, agent vault address and the number of lots $n$ to mint. The paid amount $x$ must cover the minted amount and the pool fee to allow minting $n$ lots. This credits their account with $n$ lots of the FAsset.
+4. Once the FAssets are minted, the Asset Manager creates a redemption ticket for $n$ lots.
 
 Additionally, self-minting requires that the agent pays only the collateral pool’s share of the minting fees.
 
 Since there is no reservation for self-minting, it could happen that the intended number of lots cannot be minted (e.g. due to a price change or another CRR).
 In this case, the agent can self-mint a smaller number of lots (including $0$ lots), with the remainder of the deposited underlying assets added to the agents free underlying balance.
 
-### Mint from free funds
+### Mint from Free Funds
 An agent that has free funds on their underlying address can speed up self-minting by instead calling `mintFromFreeUnderlying`, specifying the agent vault and a number $n$ of lots of FAssets.
 This call immediately mints the specified number of lots of FAssets, crediting them to the agent, and locking the existing free underlying funds and the agent’s collateral.
 Otherwise, the process is the same as self-minting.
@@ -204,7 +203,7 @@ Since there is a limited amount of (XRP) tags available, the user must pay a res
 At reservation, the user receives the next available tag.
 The minting tag manager implements the ERC-721 non-fungible token interface, so that reserved minting tags can be transferred (or resold) to another owner.
 
-The owner of the tag sets a minting recipient with the method `setMintingRecipient` and the preferred executor with the method `setAllowedExecutor`. The later method is subject to a governance defined cooldown period.
+The owner of the tag sets a minting recipient with the method `setMintingRecipient` and the preferred executor with the method `setAllowedExecutor` (calling this method is subject to a governance defined cooldown).
 If the allowed executor is the zero (default) address, any entity can execute mintings with this tag.
 On initial reservation and tag transfer, the recipient is automatically reset to the new owner and the executor is reset to the zero address.
 
@@ -219,13 +218,13 @@ The permitted executor can be restricted by the minter in three possible ways, d
 
 If the allowed executor doesn't execute the transaction in the permitted time window after the initial minting transaction (managed by the setting `othersCanExecuteAfterSeconds`), then anybody can execute the minting.
 
-When direct mintings are performed to a specified address, the executor fee is constant, as defined by the setting `directMintingExecutorFeeUBA`.
+When direct mintings are performed to a specified address, the executor fee is constant, as defined by `directMintingExecutorFeeUBA`.
 For direct minting to a smart account, the executor fee is calculated and charged by the smart account manager.
 
 ### Rate limits
 The direct minting process is restricted by several rate limits:
 - The total amount of funds to be directly minted is limited on both an hourly and a daily basis. These amounts are determined by `directMintingHourlyLimitUBA` and `directMintingDailyLimitUBA` respectively. Large mintings, defined as mintings of amounts above `directMintingLargeMintingThresholdUBA`, are not included in these quotas.
-- Large mintings are automatically delayed by an amount of time `directMintingLargeMintingDelaySeconds`, with the same delay applied to all if there are several large mintings performed concurrently.
+- Large mintings are automatically delayed by an amount of time `directMintingLargeMintingDelaySeconds`, with the same delay applied to all large mintings if there are several performed concurrently.
 
 These parameters are set by governance, and can be queried on the Asset Manager contract by prepending `get` e.g. calling `getDirectMintingHourlyLimitUBA`.
 

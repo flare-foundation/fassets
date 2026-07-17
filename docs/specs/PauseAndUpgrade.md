@@ -63,7 +63,7 @@ Once the minting pause is triggered, the Asset Manager can no longer mint new to
 However, other operations are still allowed: existing FAssets can be redeemed, and agents can still self-close or liquidate their position.
 At this stage, FAsset transfers still work as usual.
 A minting pause is reversible via `unpauseMinting`.
-Minting pause does not apply to the direct minting.
+Note that a minting pause does not apply to direct minting.
 
 The duration of a minting pause is expected to be relatively long (e.g. a few weeks), leaving a period where redemptions are still possible and users can remove FAssets from the system.
 After this time, the governance reduces the minimum backing requirement after transfer to core vault (`minUnderlyingBackingBIPS`) to $0$.

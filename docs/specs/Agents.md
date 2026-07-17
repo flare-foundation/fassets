@@ -54,26 +54,27 @@ The management address is set on creation of the agent, and the address must be 
 ## Agent Settings
 Each agent's Agent Vault contract stores information about the agent's settings.
 To retrieve these settings, users can query the `AssetManager` contract.
-There are two functions that return information about the agent.
-The function `getAgentInfo` takes as input the agent vault address and returns `AgentInfo` structure with detailed information about the agent, including key settings that a user wishing to mint with the agent may want:
+There are several functions that return information about the agent.
+The function `getAgentInfo` takes as input the agent vault address and returns `AgentInfo` structure with detailed information about the agent.
+As well as other fields, this includes key settings that a user wishing to mint with the agent may want:
 
 - `feeBIPS`: The minting fee charged by the agent, in BIPS.
 - `minting(Vault/Pool)CollateralRatioBIPS`: The minimal CR set by the agent, below which minting is not possible, in BIPS.
 - `freeCollateralLots`: The amount of free collateral owned by the agent, in lots.
 
-There exist methods that return some of the fields from agent info structure individually:
+Secondly, there exist methods that return specific fields from the `AgentInfo` structure individually:
 
 - `getCollateralPool`: Returns the address of the agent collateral pool.
 - `getAgentVaultOwner`: Returns the address of the agent vault owner.
-`getAgentVaultCollateralToken`: Returns the ERC20 token type chosen by the agent for collateral.
+- `getAgentVaultCollateralToken`: Returns the ERC20 token type chosen by the agent for collateral.
 - `getAgentFullVaultCollateral`: Returns the amount of collateral (free and locked) deposited in the agent vault.
 - `getAgentFullPoolCollateral` Returns the amount of collateral (free and locked) stored in the agent pool.
-- `getAgentLiquidationFactorsAndMaxAmount`: Returns the agents vault and pool liquidation factors (BIPS) and the maximum liquidation amount (UBA).
+- `getAgentLiquidationFactorsAndMaxAmount`: Returns the agent's vault and pool liquidation factors (BIPS) and the maximum liquidation amount (UBA).
 - `getAgentMinPoolCollateralRatioBIPS`: Returns the minimum CR for the agent pool, in BIPS.
 - `getAgentMinVaultCollateralRatioBIPS`: Returns the minimum CR for the agent vault, in BIPS.
 
-Additionally, individual settings can be queried using the `getAgentSetting` function, which takes as input the address of the Agent Vault contract` and a setting, returning the value of that setting for that agent.
-The possible settings to query are:
+Finally, individual settings can be queried using the `getAgentSetting` function, which takes as input the address of the Agent Vault contract and a setting, returning the value of that setting for that agent.
+Possible settings include:
 
 - `feeBIPS`: The minting fee charged by the agent.
 - `poolFeeShareBIPS`: The share of the minting fees received by the agent pool.
@@ -82,6 +83,8 @@ The possible settings to query are:
 - `mintingPoolCollateralRatioBIPS`: The pool minting CR.
 - `buyFAssetByAgentFactorBIPS`: The factor by which the price the agent buys FAssets from collateral providers on self-close is multiplied by.
 - `poolExitCollateralRatioBIPS`: The pool exit CR.
+
+Note that these lists are not exhaustive, with the `AgentInfo` field containing a large number of other fields.
 
 ### Modifying Agent Settings
 Initial settings are defined as part of the `createAgentVault` call.
@@ -154,9 +157,12 @@ To prevent DOS-style attacks, agents may opt to only respond to pings from known
 ## Underlying Balance Management
 
 ### Underlying Top-Ups
-An agent can increase its free underlying balance by transferring funds to its registered underlying address using the top-up payment reference derived from the Agent Vault address. After the payment is finalized, the agent obtains an FDC payment proof and calls `confirmTopupPayment(payment, agentVault)` on the Asset Manager. The Asset Manager verifies the destination and payment reference and adds the received amount to the agent's free underlying balance. These funds can then be used for operations such as minting from free underlying or to pay underlying transaction fees.
+An agent can increase its free underlying balance by transferring funds to its registered underlying address using the top-up payment reference derived from the Agent Vault address.
+After the payment is finalized, the agent obtains an FDC payment proof and calls `confirmTopupPayment(payment, agentVault)` on the Asset Manager contract.
+The Asset Manager verifies the destination and payment reference and adds the received amount to the agent's free underlying balance.
+These funds can then be used for operations such as minting from free underlying or to pay underlying transaction fees.
 
-### Underlying Withdrawals
+### Underlying Withdrawal
 Part of the funds on the underlying address may be withdrawn by the agent.
 Such funds can be withdrawn only if the underlying assets are freed up due to actions on Flare.
 These actions include receiving minting fees, failed redemptions paid in collateral, liquidated agent assets, and self-closed agent assets

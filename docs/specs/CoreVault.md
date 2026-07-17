@@ -14,20 +14,22 @@ Transfers to the CV are implemented as redemptions, with the beneficiary being t
 They are initiated on Flare, with the corresponding transfer performed on the source chain.
 To transfer funds from their underlying address to the CV, an agent follows the following process:
 
-1. The agent calls `transferToCoreVault` on the Asset Manager contract on the Flare network, with inputs $(A, x)$ specifying the amount $x$ of funds to transfer and the agent vault address $A$.
-2. The FAsset system creates a specialized redemption request for the transfer. This redemption specifies the amount of funds $x$ to be transferred and locks the corresponding agent collateral on Flare. A payment number $\mathrm{id}$ and a payment reference $\mathrm{ref}$ are generated in this step in line with a standard redemption request.
+1. The agent calls `transferToCoreVault` on the Asset Manager contract on the Flare network, with inputs $(A, x)$ specifying the amount $x$ of funds to transfer and the agent vault contract.
+2. The FAsset system creates a specialized redemption request for the transfer. This redemption specifies the amount of funds $x$ to be transferred and locks the corresponding agent collateral on Flare. A payment number $\mathrm{id}$ and reference  $\mathrm{ref}$ are generated in this step in line with a standard redemption request.
 3. The agent transfers the amount $x$ of funds to the CV address on $C$, including $\mathrm{ref}$ as a payment reference.
 4. The agent submits an attestation request to the FDC proving the existence of the payment on $C$. The FDC returns a `proof` of the payment.
 5. The agent calls `confirmRedemptionPayment` on the Asset Manager contract including as arguments (`proof`, $\mathrm{id})$. At this stage, the transfer is completed and the agent's collateral is released.
 
-Note that the agent can only initialize a transfer of size $x$ if its remaining funds exceed agent's minting capacity multiplied by the system setting `minimumAmountLeftBIPS`. Agent's minting capacity is defined as the agent's collateral divided by the collateral's minimum CR (converted to the asset currency and minimized between vault and pool collateral).
+Note that the agent can only initialize a transfer of size $x$ if its remaining funds exceed the agent's minting capacity multiplied by the system setting `minimumAmountLeftBIPS`.
+Agent's minting capacity is defined as the agent's collateral divided by the collateral's minimum CR (converted to the asset currency and minimized between vault and pool collateral).
 The maximum transfer amount and minimum amount left can be queried on the Asset Manager contract by calling `maximumTransferToCoreVault`.
 
 ### Defaulted Transfers
 Defaults in CV transfers are handled differently to ordinary redemption defaults.
 If the agent fails to pay in the allotted time period (a window of several hours), the agent defaults and calls `redemptionPaymentDefault`.
-Since the redemption has no redeemer, the collateral for the full amount is not paid out. However, a penalty of `transferDefaultPenaltyBIPS` times transfer amount is paid from the agent vault.
-Instead, a [redemption ticket](Minting.md#redemption-tickets) $(\text{id}, A_v, x)$ is created for the agent at the end of the redemption queue, where $A_v$ is the agent's vault.
+Since the redemption has no redeemer, the collateral for the full amount is not paid out.
+However, a penalty of `transferDefaultPenaltyBIPS` multiplied by the transfer amount $x$ is paid from the agent vault.
+Additionally, a [redemption ticket](Minting.md#redemption-tickets) $(\text{id}, A_v, x)$ is created for the agent at the end of the redemption queue, where $A_v$ is the agent's vault.
 If the agent fails to call this function in the allotted time window, any one can call the default and be rewarded from the agent vault as usual.
 
 ## CV Transactions
@@ -38,7 +40,7 @@ There are two mechanisms by which agents can receive underlying asset from the C
 
 To receive funds by locking collateral, the agent files a request for return of the underlying asset, locks collateral on Flare, and receives the asset in exchange.
 To receive funds via redemption, the agent simply redeems its own FAssets in exchange from the underlying assets directly from the CV.
-However, direct redemptions from the CV are only available to users whose underlying address is included in the `allowedDestinations` list in the `CoreVaultManager` contract, a list of addresses pre-approved by governance.
+However, returns and direct redemptions from the CV are only available to users whose underlying address is included in the `allowedDestinations` list in the `CoreVaultManager` contract, a list of addresses pre-approved by governance.
 
 These processes are laid out in more detail below.
 
@@ -53,8 +55,6 @@ These processes are laid out in more detail below.
 
 Note that before the return request is processed, the agent can cancel it via `cancelReturnFromCoreVault` at the Asset Manager contract, releasing the reserved collateral.
 
-Underlying addresses eligible for returns from the core vault must be explicitly allowed by the governance.
-
 ### Redeeming from the CV directly
 1. The user calls `redeemFromCoreVault` on the Asset Manager contract, including as arguments $(\ell, U_C)$ the number of lots to redeem and user's underlying address on $C$.
 2. The FAsset system burns $\ell$ lots of the user's FAssets. If the user does not have enough FAssets to cover this burn, the redemption fails at this stage.
@@ -64,12 +64,11 @@ Underlying addresses eligible for returns from the core vault must be explicitly
 
 The value $\ell$ must exceed an amount `minimumRedeemLots`, stored on the CV contract, unless the total funds in the CV is below this bound.
 
-Underlying addresses eligible for direct redemption from the core vault must be explicitly allowed by the governance.
-
 Direct sending and receiving to the CV can be halted by governance at any time: the Core Vault Manager has an emergency pause mechanism, which can be used in the event of a CV compromise.
 
-### Core vault donations
-To make sure that CV has enough funds for underlying transaction fees, some funds have to be transferred occasionally to the CV. After the transfer, asset manager method `confirmCoreVaultDonation` must be called with the payment proof to update the accounting.
+### Core Vault Donations
+To make sure that the CV has enough funds for underlying transaction fees, some funds have to be transferred occasionally to the CV.
+After such a transfer, the Asset Manager method `confirmCoreVaultDonation` must be called with the payment proof to update the accounting.
 
 ## Technical Specifications of the XRP CV
 Currently, the only deployed CV handles FXRP.

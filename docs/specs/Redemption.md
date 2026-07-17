@@ -24,7 +24,7 @@ For a user $U$ who wants to redeem an amount $x$ of an FAsset $X$ originating fr
    - $\text{ref}_i$: The payment reference for this ticket.
    - $\text{Ex}$: The executor address.
    - $\text{ExFee}$: The executor fee in NAT.
-5. Each agent $A_i$ pays the redeemer their designated amount $x_{A_i}$ on the underlying chain with the payment reference $\text{ref}_i$ included. The payment must be made from the agent vault underlying address, although on UTXO chains a part of it (e.g. fees) can also be made from other addresses.
+5. Each agent $A_i$ pays the redeemer their designated amount $x_{A_i}$ on the underlying chain with the payment reference $\text{ref}_i$ included. This payment must be made from the agent's underlying address, with the exception that fees on UTXO chains may be made from other addresses.
 6. Once its payment is finalized, each agent uses the FDC to prove the payment. Once all payments are finalized, the user has successfully redeemed their FAssets. Once each payment proof is presented to the Asset Manager contract, the agent and pool [collateral](Collateral.md) backing the redeemed FAssets is freed.
 
 ### Redemption Fee
@@ -36,7 +36,8 @@ of asset $X$ on source chain $C$.
 The parameters `systemRedemptionFeeBIPS` and `redemptionFeeBIPS` are a global parameters set by governance.
 
 There are two fees: the system fee is paid as FAssets to the governance defined `redemptionFeeReceiver` address.
-The other fee is the agent's fee. Part of this fee is retained by the agent on $C$, with the rest minted into FAssets and deposited into the agent's pool.
+The other fee is the agent's fee.
+Part of this fee is retained by the agent on $C$, with the rest minted into FAssets and deposited into the agent's pool.
 The pool’s share of the redemption fee is defined by the agent's setting `redemptionPoolFeeShareBIPS`.
 
 ### Redemption Failures
@@ -52,7 +53,8 @@ $$
 $$
 in FLR from the agent collateral, where $\text{FTSO}_{X, \text{FLR}}(x)$ denotes the FTSO price of $x$ of FAsset $X$ in FLR.
 
-If the agent's collateral ratio is below `redemptionDefaultFactorVaultCollateralBIPS`, part of the redemption collateral payment will be made in FLR from the collateral pool. This should be rare since in such case the agent is already in liquidation.
+If the agent's collateral ratio is below `redemptionDefaultFactorVaultCollateralBIPS`, part of the redemption collateral payment will be made in FLR from the collateral pool.
+This is a rare occurence for certain cases where the agent is already in [liquidation](Liquidation.md).
 
 ### Partial Redemptions
 Partial redemptions occur when either the amount of FAssets to be redeemed is greater than the amount stored on the first `maxRedeemedTickets` amount of tickets or there are not enough tickets to cover the redemption in step 2.
