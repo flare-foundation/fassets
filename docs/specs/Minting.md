@@ -192,7 +192,7 @@ It can be destroyed in various ways:
 - [Liquidation](Liquidation.md) does not need to be executed in a whole number of lots, and thus may clear dust.
 
 ## Direct minting
-In direct minting the minter mints FAssets without the use of an agent by creating a transaction on the underlying chain.
+In direct minting the minter mints FAssets without the use of an agent by creating a transaction to a special address on the underlying chain.
 The transaction contains either a specially crafted memo field or a tag to indicate that it is an FAssets transaction.
 If there is a tag, the `MintingTagManager` contract has method `mintingRecipient`, which returns the target address that should receive the minted amount.
 Direct minting is currently only supported for XRP.
@@ -213,7 +213,7 @@ The executor is paid an executor's fee upon successful completion.
 
 The permitted executor can be restricted by the minter in three possible ways, depending on the type of direct minting:
 - When direct minting with tag, the minting tag manager has methods `setAllowedExecutor` for defining and `allowedExecutor` for reading the executor. If `allowedExecutor` is set to zero, any entity can execute.
-- For direct minting with memo field, instead of a $32$-byte standard payment reference, the $48$-byte format is used. In this format, there is an 8$$-byte prefix, followed by a $20$-byte recipient address and finally a $20$-byte executor address.
+- For direct minting with memo field, either a $32$-byte standard payment reference or a $48$-byte memo can be used. In the $48$-byte format, there is an $8$-byte prefix, followed by a $20$-byte recipient address and finally a $20$-byte executor address. With $32$-byte format, there is the recipient address but no executor restriction.
 - For direct minting to a smart account, the smart account manager may restrict the executor directly.
 
 If the allowed executor doesn't execute the transaction in the permitted time window after the initial minting transaction (managed by the setting `othersCanExecuteAfterSeconds`), then anybody can execute the minting.
@@ -240,3 +240,11 @@ All the mintings initiated before this timestamp (e.g. those mintings whose `Dir
 If a minting is delayed and has a specified preferred executor, the time window in which the preferred executor's has exclusive execution rights begins as soon as the execution is allowed (at `executionAllowedAt`).
 In cases where governance unblocked the minting, the `executionAllowedAt` for a minting doesn't change automatically, increasing the exclusive window.
 However, in these cases `executionAllowedAt` can be manually reset to the time of unblocking by calling `markUnblockedDirectMintingAllowed`.
+
+### Minting to smart accounts
+
+Direct mints that use a special $32$/$48$-byte memo data or a registered destination tag are minted directly to the minter address. All other mintings are sent to the smart account manager, which decides what to do based on additional instructions. If the payment has no memo, the minted amount (minus fees) is simply sent to the smart account corresponding to the underlying payment source address.
+
+If a non-empty memo is not a valid smart account instruction (unknown instruction code, malformed instruction data, ...), the smart account manager reverts. The asset manager calls the smart account manager after confirming the payment and does not catch errors, so the revert unwinds the whole minting transaction and the payment remains unconfirmed - retrying with the same proof fails the same way. This fail-loud behavior is intentional on the smart account manager side: the user can release the stuck payment by sending a follow-up payment from the same underlying address with the ignore-memo recovery instruction and then retrying the minting, which skips the broken memo and sends the minted amount (minus fees) to the smart account. See the Flare Smart Accounts documentation for the memo instruction format and the recovery procedure.
+
+To facilitate possibly long smart account instructions, there is a second version of the direct minting method, `executeDirectMintingWithData`, which includes an extra parameter named `_data`. This version is only allowed to be used for mintings that go to the smart accounts. The `_data` parameter is sent to the smart account manager, along with other minting details and minted FAssets. There are no verification done on the `_data` field in the asset manager - the smart account manager verifies that it correctly corresponds to the memo data in the payment (typically, memo data will contain a hash of the `_data` field).
