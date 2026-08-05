@@ -243,8 +243,19 @@ However, in these cases `executionAllowedAt` can be manually reset to the time o
 
 ### Minting to smart accounts
 
-Direct mints that use a special $32$/$48$-byte memo data or a registered destination tag are minted directly to the minter address. All other mintings are sent to the smart account manager, which decides what to do based on additional instructions. If the payment has no memo, the minted amount (minus fees) is simply sent to the smart account corresponding to the underlying payment source address.
+Direct mints that use a special $32$/$48$-byte memo data or a registered destination tag are minted directly to the minter address.
+All other mintings are sent to the smart account manager, which decides what to do based on additional instructions.
+If the payment has no memo, the minted amount (minus fees) is simply sent to the smart account corresponding to the underlying payment source address.
 
-If a non-empty memo is not a valid smart account instruction (unknown instruction code, malformed instruction data, ...), the smart account manager reverts. The asset manager calls the smart account manager after confirming the payment and does not catch errors, so the revert unwinds the whole minting transaction and the payment remains unconfirmed - retrying with the same proof fails the same way. This fail-loud behavior is intentional on the smart account manager side: the user can release the stuck payment by sending a follow-up payment from the same underlying address with the ignore-memo recovery instruction and then retrying the minting, which skips the broken memo and sends the minted amount (minus fees) to the smart account. See the Flare Smart Accounts documentation for the memo instruction format and the recovery procedure.
+If a non-empty memo is not a valid smart account instruction (unknown instruction code, malformed instruction data, ...),
+the smart account manager reverts. The asset manager calls the smart account manager after confirming the payment and does not catch errors,
+so the revert unwinds the whole minting transaction and the payment remains unconfirmed - retrying with the same proof fails the same way.
+This fail-loud behavior is intentional on the smart account manager side: the user can release the stuck payment by sending a follow-up payment
+from the same underlying address with the ignore-memo recovery instruction and then retrying the minting, which skips the broken memo and sends
+the minted amount (minus fees) to the smart account. See the Flare Smart Accounts documentation for the memo instruction format and the recovery procedure.
 
-To facilitate possibly long smart account instructions, there is a second version of the direct minting method, `executeDirectMintingWithData`, which includes an extra parameter named `_data`. This version is only allowed to be used for mintings that go to the smart accounts. The `_data` parameter is sent to the smart account manager, along with other minting details and minted FAssets. There are no verification done on the `_data` field in the asset manager - the smart account manager verifies that it correctly corresponds to the memo data in the payment (typically, memo data will contain a hash of the `_data` field).
+To facilitate possibly long smart account instructions, there is a second version of the direct minting method, `executeDirectMintingWithData`,
+which includes an extra parameter named `_data`. This version is only allowed to be used for mintings that go to the smart accounts.
+The `_data` parameter is sent to the smart account manager, along with other minting details and minted FAssets. There are no verification done
+on the `_data` field in the asset manager - the smart account manager verifies that it correctly corresponds to the memo data in the payment
+(typically, memo data will contain a hash of the `_data` field).
