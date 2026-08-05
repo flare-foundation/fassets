@@ -84,19 +84,18 @@ library RedemptionDefaults {
         returns (uint256)
     {
         Collateral.CombinedData memory cd = AgentCollateral.combinedData(_agent);
+        uint256 combinedPaidPoolWei = _paidPoolWei +
+            _paidC1Wei.mulDiv(cd.poolCollateral.amgToTokenWeiPrice, cd.agentCollateral.amgToTokenWeiPrice);
         // check that there are enough agent pool tokens
-        uint256 poolTokenEquiv = _paidC1Wei
-            .mulDiv(cd.agentPoolTokens.amgToTokenWeiPrice, cd.agentCollateral.amgToTokenWeiPrice);
         uint256 requiredPoolTokensForRemainder =
             uint256(_agent.reservedAMG + _agent.mintedAMG + _agent.redeemingAMG - _request.valueAMG)
                 .mulDiv(cd.agentPoolTokens.amgToTokenWeiPrice, Conversion.AMG_TOKEN_WEI_PRICE_SCALE)
                 .mulBips(Globals.getSettings().mintingPoolHoldingsRequiredBIPS);
+        uint256 poolTokenEquiv = combinedPaidPoolWei
+            .mulDiv(cd.agentPoolTokens.amgToTokenWeiPrice, cd.poolCollateral.amgToTokenWeiPrice);
         require(requiredPoolTokensForRemainder + poolTokenEquiv <= cd.agentPoolTokens.fullCollateral,
             NotEnoughAgentPoolTokensToCoverFailedVaultPayment());
         // check that pool CR won't be lowered
-        uint256 poolWeiEquiv = _paidC1Wei
-            .mulDiv(cd.poolCollateral.amgToTokenWeiPrice, cd.agentCollateral.amgToTokenWeiPrice);
-        uint256 combinedPaidPoolWei = _paidPoolWei + poolWeiEquiv;
         require(combinedPaidPoolWei <= cd.poolCollateral.maxRedemptionCollateral(_agent, _request.valueAMG),
             NotEnoughPoolCollateralToCoverFailedVaultPayment());
         return combinedPaidPoolWei;

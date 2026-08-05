@@ -12,8 +12,10 @@ import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-he
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
+import { EventArgs } from "../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { DAYS, deepFormat, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
+import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
 
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests - redemption failures`, accounts => {
@@ -788,6 +790,132 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // Second redeem and default - price ratio pool_token:NAT is still 1 because agent pool tokens were burned.
             // However, agent's pool token holdings will be lower, because of 10% pool participation which is also charged to the agent.
             await redeemAndDefaultSanctioned(3);
+        });
+
+        // Setup for the tests below: the agent has just enough collateral to mint 10 lots, but the vault
+        // collateral price then drops, so that a part of the redemption default has to be paid from the pool
+        // even before the (blocked) vault payment is replaced by a pool payment.
+        async function createSanctionedRedeemerWithLowVaultCR(vaultCRBIPS: number, poolProvider: string) {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { poolFeeShareBIPS: 0 });
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            // add redeemer to usdc (vault collateral) sanction list, so that vault payments to it will fail
+            await context.usdc.addToSanctionList(redeemer.address);
+            // deposit minimum required collateral for agent, the rest of the pool collateral is added by a third party
+            const requiredCollateral = await agent.requiredCollateralForLots(10);
+            await agent.depositCollateralsAndMakeAvailable(requiredCollateral.vault, requiredCollateral.agentPoolTokens);
+            const providerNatWei = requiredCollateral.pool.sub(requiredCollateral.agentPoolTokens);
+            await agent.collateralPool.enter({ from: poolProvider, value: providerNatWei });
+            // mint and transfer f-assets to the redeemer
+            await minter.performMinting(agent.vaultAddress, 10);
+            await minter.transferFAsset(redeemer.address, context.convertLotsToUBA(10));
+            // lower the vault collateral price, so that the agent's vault collateral cannot cover the whole
+            // default payment and a part of it must be paid from the pool
+            await agent.setVaultCollateralRatioByChangingVaultTokenPrice(vaultCRBIPS);
+            return { agent, minter, redeemer, providerNatWei };
+        }
+
+        // Calculate the collaterals paid for the default of `request` and the agent's pool tokens that must
+        // cover the payment when the vault payment is replaced by a pool payment.
+        async function calculateSanctionedDefaultPayment(agent: Agent, request: EventArgs<RedemptionRequested>) {
+            const mintingPoolHoldingsRequiredBIPS = toBN(context.settings.mintingPoolHoldingsRequiredBIPS);
+            const ac = await agent.getAgentCollateral();
+            const [paidVaultWei, paidPoolWei] = await agent.getRedemptionPaymentDefaultValueForUBA(request.valueUBA);
+            // the vault payment fails, so it is replaced by an equivalent pool payment
+            const vaultPartInPoolWei = paidVaultWei.mul(ac.pool.amgPrice.amgToTokenWei).div(ac.vault.amgPrice.amgToTokenWei);
+            const combinedPoolWei = paidPoolWei.add(vaultPartInPoolWei);
+            // conversions between pool collateral (NAT) and pool tokens
+            const poolWeiToPoolTokens = (amount: BN) => amount.mul(ac.agentPoolTokens.amgPrice.amgToTokenWei).div(ac.pool.amgPrice.amgToTokenWei);
+            const poolTokensToPoolWei = (amount: BN) => amount.mul(ac.pool.amgPrice.amgToTokenWei).div(ac.agentPoolTokens.amgPrice.amgToTokenWei);
+            // the agent's pool tokens must cover the whole pool payment, otherwise the burning of the agent's
+            // tokens won't compensate the pool for the paid out collateral and pool token value will drop
+            const requiredTokensForPayment = poolWeiToPoolTokens(combinedPoolWei);
+            // ... only covering the vault part of the payment is not enough
+            const requiredTokensForVaultPartOnly = poolWeiToPoolTokens(vaultPartInPoolWei);
+            // plus the agent must keep the pool token holdings required for the remaining backing
+            const remainingBackedUBA = (await agent.getTotalBackedAssetUBA()).sub(toBN(request.valueUBA));
+            const requiredTokensForRemainder = ac.agentPoolTokens.convertUBAToTokenWei(remainingBackedUBA)
+                .mul(mintingPoolHoldingsRequiredBIPS).divn(MAX_BIPS);
+            return {
+                paidVaultWei, paidPoolWei, combinedPoolWei, poolTokensToPoolWei,
+                agentPoolTokens: ac.agentPoolTokens.balance,
+                requiredTokens: requiredTokensForRemainder.add(requiredTokensForPayment),
+                requiredTokensCoveringVaultPartOnly: requiredTokensForRemainder.add(requiredTokensForVaultPartOnly),
+                requiredTokensForPayment, requiredTokensForRemainder,
+            };
+        }
+
+        it("sanctioned redemption - agent pool tokens must cover the whole replaced payment, not just the vault part", async () => {
+            const poolProvider = accounts[15];
+            const { agent, redeemer } = await createSanctionedRedeemerWithLowVaultCR(0.6 * MAX_BIPS, poolProvider);
+            // redeem a part of the minted amount and let the redemption expire
+            const [[request]] = await redeemer.requestRedemption(6);
+            context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+            // the default payment is split between vault collateral and pool
+            const payment = await calculateSanctionedDefaultPayment(agent, request);
+            assert.isTrue(payment.paidPoolWei.gtn(0), "test misconfigured: no part of the default is paid from the pool");
+            assert.isTrue(payment.requiredTokens.gt(payment.requiredTokensCoveringVaultPartOnly));
+            // with the minimum pool token holdings, the default is not possible
+            await expectRevert.custom(redeemer.redemptionPaymentDefault(request), "NotEnoughAgentPoolTokensToCoverFailedVaultPayment", []);
+            // buying pool tokens that only cover the vault part of the payment must not be enough
+            const insufficientTokens = payment.requiredTokensCoveringVaultPartOnly.sub(payment.agentPoolTokens);
+            assert.isTrue(insufficientTokens.gtn(0), "test misconfigured: agent already holds enough pool tokens");
+            await agent.buyCollateralPoolTokens(payment.poolTokensToPoolWei(insufficientTokens));
+            await expectRevert.custom(redeemer.redemptionPaymentDefault(request), "NotEnoughAgentPoolTokensToCoverFailedVaultPayment", []);
+            // pool tokens must cover the pool part of the payment, too
+            const missingTokens = payment.requiredTokens.sub(payment.requiredTokensCoveringVaultPartOnly);
+            await agent.buyCollateralPoolTokens(payment.poolTokensToPoolWei(missingTokens).sub(toWei(1)));
+            await expectRevert.custom(redeemer.redemptionPaymentDefault(request), "NotEnoughAgentPoolTokensToCoverFailedVaultPayment", []);
+            // once the whole payment is covered, the default succeeds
+            await agent.buyCollateralPoolTokens(toWei(2));
+            const poolCollateralBefore = await agent.collateralPool.totalCollateral();
+            const poolTokenSupplyBefore = await agent.collateralPoolToken.totalSupply();
+            const agentPoolTokensBefore = await agent.poolTokenBalance();
+            const startPoolBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
+            const res = await redeemer.redemptionPaymentDefault(request);
+            // everything is paid from the pool
+            assertWeb3Equal(res.redeemedVaultCollateralWei, 0);
+            assertApproximatelyEqual(res.redeemedPoolCollateralWei, payment.combinedPoolWei, "relative", 1e-9);
+            assertWeb3Equal((await context.wNat.balanceOf(redeemer.address)).sub(startPoolBalanceRedeemer), res.redeemedPoolCollateralWei);
+            // the whole payment is covered by burning the agent's pool tokens...
+            const agentPoolTokensAfter = await agent.poolTokenBalance();
+            assertApproximatelyEqual(agentPoolTokensBefore.sub(agentPoolTokensAfter), payment.requiredTokensForPayment, "relative", 1e-9);
+            // ... and the agent still holds the pool tokens required for the remaining backing
+            assert.isTrue(agentPoolTokensAfter.gte(payment.requiredTokensForRemainder));
+            // therefore the pool token value must not drop
+            const poolCollateralAfter = await agent.collateralPool.totalCollateral();
+            const poolTokenSupplyAfter = await agent.collateralPoolToken.totalSupply();
+            const tokenPriceBefore = poolCollateralBefore.mul(toWei(1)).div(poolTokenSupplyBefore);
+            const tokenPriceAfter = poolCollateralAfter.mul(toWei(1)).div(poolTokenSupplyAfter);
+            assert.isTrue(tokenPriceAfter.gte(tokenPriceBefore), `pool token price dropped from ${tokenPriceBefore} to ${tokenPriceAfter}`);
+            assertApproximatelyEqual(tokenPriceAfter, tokenPriceBefore, "relative", 1e-9, "pool token price changed");
+        });
+
+        it("sanctioned redemption - other pool token holders must not be at loss when vault payment is replaced by pool payment", async () => {
+            const poolProvider = accounts[15];
+            const { agent, redeemer, providerNatWei } = await createSanctionedRedeemerWithLowVaultCR(0.6 * MAX_BIPS, poolProvider);
+            const providerPoolTokens = await agent.collateralPoolToken.balanceOf(poolProvider);
+            // redeem everything and let the redemption expire
+            const [[request]] = await redeemer.requestRedemption(10);
+            context.skipToExpiration(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+            const payment = await calculateSanctionedDefaultPayment(agent, request);
+            assert.isTrue(payment.paidPoolWei.gtn(0), "test misconfigured: no part of the default is paid from the pool");
+            // pool tokens covering only the vault part of the payment must not be enough - if the default were
+            // allowed here, the pool part would be paid at the expense of the other pool token holders
+            await agent.buyCollateralPoolTokens(payment.poolTokensToPoolWei(payment.requiredTokensCoveringVaultPartOnly.sub(payment.agentPoolTokens)));
+            await expectRevert.custom(redeemer.redemptionPaymentDefault(request), "NotEnoughAgentPoolTokensToCoverFailedVaultPayment", []);
+            // the agent buys the remaining pool tokens, so that the whole (vault + pool) payment is covered
+            await agent.buyCollateralPoolTokens(payment.poolTokensToPoolWei(payment.requiredTokens.sub(payment.requiredTokensCoveringVaultPartOnly)).add(toWei(1)));
+            // the vault payment is blocked, so the redeemer is paid from the pool
+            const res = await redeemer.redemptionPaymentDefault(request);
+            assertWeb3Equal(res.redeemedVaultCollateralWei, 0);
+            assertApproximatelyEqual(res.redeemedPoolCollateralWei, payment.combinedPoolWei, "relative", 1e-9);
+            // the pool provider must be able to withdraw at least as much as was deposited
+            await time.deterministicIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds());
+            const exit = requiredEventArgs(await agent.collateralPool.exit(providerPoolTokens, { from: poolProvider }), "CPExited");
+            assert.isTrue(toBN(exit.receivedNatWei).gte(providerNatWei),
+                `pool provider lost collateral: deposited ${providerNatWei}, received ${exit.receivedNatWei}`);
+            assertApproximatelyEqual(exit.receivedNatWei, providerNatWei, "relative", 1e-9, "pool provider's collateral changed");
         });
 
         it("redemption - must not select agent's address as receiver in payment proof", async () => {
