@@ -55,6 +55,11 @@
     "address": "0xCcF30790A93F15e24EB909548a2C58a9b0a7FBd4"
   },
   {
+    "name": "FtsoV2",
+    "contractName": "FtsoV2Proxy.sol",
+    "address": "0x7BDE3Df0624114eDB3A67dFe6753e62f4e7c1d20"
+  },
+  {
     "name": "FdcHub",
     "contractName": "FdcHub.sol",
     "address": "0xc25c749DC27Efb1864Cb3DADa8845B7687eB2d44"

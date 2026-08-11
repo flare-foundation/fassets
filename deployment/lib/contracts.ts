@@ -20,6 +20,7 @@ export interface FAssetContracts {
     AddressUpdater: Contract;
     WNat: Contract;
     Relay: Contract;
+    FtsoV2: Contract;
     FdcHub: Contract;
     FdcVerification?: Contract;
     // fasset
@@ -150,6 +151,7 @@ export class FAssetContractStore extends ContractStore implements FAssetContract
     get AddressUpdater() { return this.getRequired('AddressUpdater'); }
     get WNat() { return this.getRequired('WNat'); }
     get Relay() { return this.getRequired('Relay'); }
+    get FtsoV2() { return this.getRequired('FtsoV2'); }
     get FdcHub() { return this.getRequired('FdcHub'); }
     get FdcVerification() { return this.get('FdcVerification'); }
     // fasset

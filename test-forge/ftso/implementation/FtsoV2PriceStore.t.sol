@@ -57,12 +57,14 @@ contract FtsoV2PriceStoreTest is Test {
         );
         ftsoV2PriceStore = FtsoV2PriceStore(address(ftsoV2PriceStoreProxy));
 
-        contractNameHashes = new bytes32[](2);
-        contractAddresses = new address[](2);
+        contractNameHashes = new bytes32[](3);
+        contractAddresses = new address[](3);
         contractNameHashes[0] = keccak256(abi.encode("Relay"));
         contractAddresses[0] = address(relayMock);
         contractNameHashes[1] = keccak256(abi.encode("AddressUpdater"));
         contractAddresses[1] = addressUpdater;
+        contractNameHashes[2] = keccak256(abi.encode("FtsoV2"));
+        contractAddresses[2] = makeAddr("ftsoV2Mock");
         vm.prank(addressUpdater);
         ftsoV2PriceStore.updateContractAddresses(contractNameHashes, contractAddresses);
     }

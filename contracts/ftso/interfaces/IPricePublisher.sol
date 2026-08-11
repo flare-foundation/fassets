@@ -30,8 +30,32 @@ interface IPricePublisher {
      * Publishes the FTSO scaling prices and calculates the median of the trusted prices.
      * It must be called for all feeds ordered as in the `getFeedIds()` list.
      * @param _proofs The list of FTSO scaling feeds with Merkle proofs.
+     * @dev Can only be used when the prices are obtained from FTSO scaling, i.e. when
+     *  `useFtsoV2FastUpdates()` is `false`.
      */
     function publishPrices(FeedWithProof[] calldata _proofs) external;
+
+    /**
+     * Publishes the prices, read from the FTSOv2 fast updates (or custom feeds) contract, and calculates
+     * the median of the trusted prices.
+     * The prices for all the feeds in the `getFeedIds()` list are published in a single call, therefore
+     * no proofs and no arguments are needed.
+     * The prices are published for the previous voting round id (the same round as the trusted providers'
+     * prices), even though the fast updates feed values are typically a bit newer than that - the actual
+     * feed timestamp is reported as the price timestamp by `IPriceReader.getPrice`.
+     * @dev Can only be used when the prices are obtained from FTSOv2 fast updates, i.e. when
+     *  `useFtsoV2FastUpdates()` is `true`.
+     */
+    function publishPricesFromFastUpdates() external payable;
+
+    /**
+     * Indicates the source of the (non-trusted) prices, which determines the method used for publishing.
+     * @return `true` if the prices are obtained from the FTSOv2 fast updates contract - in this case
+     *  they must be published by calling `publishPricesFromFastUpdates()`;
+     *  `false` if they are obtained from FTSO scaling - in this case they must be published by
+     *  calling `publishPrices()` with Merkle proofs.
+     */
+    function useFtsoV2FastUpdates() external view returns (bool);
 
     /**
      * Submits trusted prices for the voting round id.

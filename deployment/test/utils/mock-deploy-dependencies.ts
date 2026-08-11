@@ -8,6 +8,7 @@ const RelayMock = artifacts.require('RelayMock');
 const FdcHubMock = artifacts.require('FdcHubMock');
 const WNatMock = artifacts.require('WNatMock');
 const FdcVerification = artifacts.require('FdcVerificationMock');
+const FtsoV2Mock = artifacts.require('FtsoV2Mock');
 
 export async function mockDeployDependencies(hre: HardhatRuntimeEnvironment, contractsFile: string) {
     const { deployer } = loadDeployAccounts(hre);
@@ -31,6 +32,10 @@ export async function mockDeployDependencies(hre: HardhatRuntimeEnvironment, con
     const relay = await RelayMock.new();
     await addressUpdater.addOrUpdateContractNamesAndAddresses(["Relay"], [relay.address], { from: deployer });
 
+    // FtsoV2 - no feeds are set, since the fast updates are not used in local deployments by default
+    const ftsoV2 = await FtsoV2Mock.new();
+    await addressUpdater.addOrUpdateContractNamesAndAddresses(["FtsoV2"], [ftsoV2.address], { from: deployer });
+
     // FDCVerification
     const fdcVerification = await FdcVerification.new(relay.address, 200);
     await addressUpdater.addOrUpdateContractNamesAndAddresses(["FdcVerification"], [fdcVerification.address], { from: deployer });
@@ -44,6 +49,7 @@ export async function mockDeployDependencies(hre: HardhatRuntimeEnvironment, con
     contracts.add('GovernanceSettings', 'GovernanceSettings.sol', governanceSettings.address);
     contracts.add('AddressUpdater', 'AddressUpdater.sol', addressUpdater.address);
     contracts.add('Relay', 'RelayMock.sol', relay.address);
+    contracts.add('FtsoV2', 'FtsoV2Mock.sol', ftsoV2.address);
     contracts.add('FdcHub', 'FdcHubMock.sol', fdcHub.address);
     contracts.add('FdcVerification', 'FdcVerificationMock.sol', fdcVerification.address);
     contracts.add('WNat', 'WNat.sol', wNat.address);

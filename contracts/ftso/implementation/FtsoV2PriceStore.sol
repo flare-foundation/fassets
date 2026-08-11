@@ -4,6 +4,8 @@ pragma solidity ^0.8.27;
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {IRelay} from "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
+import {FtsoV2Interface} from "@flarenetwork/flare-periphery-contracts/flare/FtsoV2Interface.sol";
+import {MathUtils} from "../../utils/library/MathUtils.sol";
 import {GovernedUUPSProxyImplementation} from "../../governance/implementation/GovernedUUPSProxyImplementation.sol";
 import {AddressUpdatable} from "../../flareSmartContracts/implementation/AddressUpdatable.sol";
 import {IPriceReader} from "../../ftso/interfaces/IPriceReader.sol";
@@ -33,6 +35,10 @@ contract FtsoV2PriceStore is
         uint32 trustedValue;
         int8 trustedDecimals;
         uint8 numberOfSubmits;
+
+        // The timestamp of the value, when it was obtained from FTSOv2 fast updates.
+        // Zero when the value was obtained from FTSO scaling (then the end of `votingRoundId` is used).
+        uint64 fastUpdatesTimestamp;
     }
 
     error InvalidStartTime();
@@ -55,6 +61,10 @@ contract FtsoV2PriceStore is
     error ThresholdTooHigh();
     error SymbolNotSupported();
     error MinTurnoutTooBig();
+    error FtsoV2FastUpdatesContractNotSet();
+    error UsePublishPrices();
+    error UsePublishPricesFromFastUpdates();
+    error FastUpdatesFeedTooOld();
 
     /// Timestamp when the first voting epoch started, in seconds since UNIX epoch.
     uint64 public firstVotingRoundStartTs;
@@ -95,6 +105,15 @@ contract FtsoV2PriceStore is
     /// (for FTSO, not for trusted providers).
     uint16 public minTurnoutBIPS;
 
+    /// Optionally, the feeds can be retrieved from FTSOv2 fast updates instead of FTSO scaling.
+    /// When `true`, the prices must be published by `publishPricesFromFastUpdates()`,
+    /// otherwise they must be published by `publishPrices()` (with Merkle proofs).
+    bool public useFtsoV2FastUpdates;
+
+    /// The FtsoV2 contract, which provides the fast updates and custom feeds.
+    /// Only used when `useFtsoV2FastUpdates` is `true`.
+    FtsoV2Interface public ftsoV2FastUpdates;
+
     event LowTurnoutForFeed(bytes21 indexed feedId, uint32 indexed votingRoundId, uint16 turnoutBIPS);
 
     constructor()
@@ -128,6 +147,7 @@ contract FtsoV2PriceStore is
      * @inheritdoc IPricePublisher
      */
     function publishPrices(FeedWithProof[] calldata _proofs) external {
+        require(!useFtsoV2FastUpdates, UsePublishPricesFromFastUpdates());
         uint32 votingRoundId = 0;
         require(_proofs.length == feedIds.length, WrongNumberOfProofs());
         for (uint256 i = 0; i < _proofs.length; i++) {
@@ -135,13 +155,7 @@ contract FtsoV2PriceStore is
             Feed calldata feed = proof.body;
             if (i == 0) {
                 votingRoundId = feed.votingRoundId;
-                require(votingRoundId > lastPublishedVotingRoundId, PricesAlreadyPublished());
-                require(_getEndTimestamp(votingRoundId) + submitTrustedPricesWindowSeconds <= block.timestamp,
-                    SubmissionWindowNotClosed());
-                // update last published voting round id
-                lastPublishedVotingRoundId = votingRoundId;
-                // emit event
-                emit PricesPublished(votingRoundId);
+                _publishNewVotingRound(votingRoundId);
             } else {
                 require(feed.votingRoundId == votingRoundId, VotingRoundIdMismatch());
             }
@@ -159,25 +173,102 @@ contract FtsoV2PriceStore is
                 priceStore.votingRoundId = feed.votingRoundId;
                 priceStore.value = uint32(feed.value);
                 priceStore.decimals = feed.decimals;
+                priceStore.fastUpdatesTimestamp = 0;
             } else {
                 emit LowTurnoutForFeed(feedId, feed.votingRoundId, feed.turnoutBIPS);
             }
 
             // calculate trusted prices for the same voting round
-            bytes memory trustedPrices = submittedTrustedPrices[feedId][votingRoundId];
-            if (trustedPrices.length > 0 && trustedPrices.length >= 4 * trustedProvidersThreshold) {
-                // calculate median price
-                (uint256 medianPrice, bool priceOk) = _calculateMedian(trustedPrices);
-                if (priceOk) {
-                    // store the median price
-                    priceStore.trustedVotingRoundId = votingRoundId;
-                    priceStore.trustedValue = uint32(medianPrice);
-                    priceStore.numberOfSubmits = uint8(trustedPrices.length / 4);
-                }
-                // delete submitted trusted prices
-                delete submittedTrustedPrices[feedId][votingRoundId];
-            }
+            _setTrustedPrices(priceStore, feedId, votingRoundId);
         }
+    }
+
+    /**
+     * @inheritdoc IPricePublisher
+     */
+    function publishPricesFromFastUpdates() external payable {
+        require(useFtsoV2FastUpdates, UsePublishPrices());
+
+        bytes21[] memory feedIdsM = feedIds;
+        (uint256[] memory values, int8[] memory decimals, uint64 timestamp) =
+            ftsoV2FastUpdates.getFeedsById{ value: msg.value }(feedIdsM);
+
+        uint32 votingRoundId = _getPreviousVotingEpochId();
+        // FtsoV2 fast update prices will usually be a bit newer than votingRoundId (typically votingRoundId+1),
+        // because we want to sync votingRoundId with trusted feeds, which are from the previous round.
+        // But we can at least ensure that they are not too old (which could happen in principle).
+        require(timestamp >= _getStartTimestamp(votingRoundId), FastUpdatesFeedTooOld());
+        _publishNewVotingRound(votingRoundId);
+
+        for (uint256 i = 0; i < feedIdsM.length; i++) {
+            bytes21 feedId = feedIdsM[i];
+
+            PriceStore storage priceStore = latestPrices[feedId];
+            priceStore.votingRoundId = votingRoundId;
+            (priceStore.value, priceStore.decimals) = _rescaleToUint32(values[i], decimals[i]);
+            priceStore.fastUpdatesTimestamp = timestamp;
+
+            // calculate trusted prices for the same voting round
+            _setTrustedPrices(priceStore, feedId, votingRoundId);
+        }
+    }
+
+    /**
+     * Validate the timing for publishing a voting round, emit event and mark it published.
+     */
+    function _publishNewVotingRound(uint32 _votingRoundId) private {
+        require(_votingRoundId > lastPublishedVotingRoundId, PricesAlreadyPublished());
+        require(_getEndTimestamp(_votingRoundId) + submitTrustedPricesWindowSeconds <= block.timestamp,
+            SubmissionWindowNotClosed());
+        // update last published voting round id
+        lastPublishedVotingRoundId = _votingRoundId;
+        // emit event
+        emit PricesPublished(_votingRoundId);
+    }
+
+    /**
+     * Calculates the median of the trusted providers' prices, submitted for the feed `_feedId` in the voting
+     * round `_votingRoundId`, and stores it into `_priceStore`.
+     * The median is only stored if enough prices were submitted and if they are close enough together
+     * (see `_calculateMedian`). In any case, the submitted prices are deleted, since they are used only once
+     * and the window for submitting trusted prices is already over when the method is called.
+     * @param _priceStore The price store entry for the feed `_feedId`.
+     * @param _feedId The feed id.
+     * @param _votingRoundId The voting round id for which the prices are being published.
+     */
+    function _setTrustedPrices(PriceStore storage _priceStore, bytes21 _feedId, uint32 _votingRoundId) private {
+        bytes memory trustedPrices = submittedTrustedPrices[_feedId][_votingRoundId];
+        if (trustedPrices.length > 0 && trustedPrices.length >= 4 * trustedProvidersThreshold) {
+            // calculate median price
+            (uint256 medianPrice, bool priceOk) = _calculateMedian(trustedPrices);
+            if (priceOk) {
+                // store the median price
+                _priceStore.trustedVotingRoundId = _votingRoundId;
+                _priceStore.trustedValue = uint32(medianPrice);
+                _priceStore.numberOfSubmits = uint8(trustedPrices.length / 4);
+            }
+            // delete submitted trusted prices
+            delete submittedTrustedPrices[_feedId][_votingRoundId];
+        }
+    }
+
+    /**
+     * The prices are stored as `uint32`, but FtsoV2 returns them as `uint256`, so the value has to be
+     * divided by a power of 10 to fit into `uint32`, with the number of decimals reduced accordingly.
+     * This does not change the price, only its precision (which is still at least 9 significant digits).
+     * @param _value The feed value, as returned by FtsoV2.
+     * @param _decimals The number of decimals of `_value`, as returned by FtsoV2.
+     * @return The value and the number of decimals of the rescaled price, such that
+     *  `value * 10**-decimals` approximates `_value * 10**-_decimals`.
+     */
+    function _rescaleToUint32(uint256 _value, int8 _decimals)
+        private pure
+        returns (uint32, int8)
+    {
+        (uint256 rescaled, uint256 scaleDec) = MathUtils.rescale(_value, type(uint32).max);
+        // rescaled is at most type(uint32).max, so it fits uint32
+        // scaleDec always fits int8 - see doc comment for MathUtils.rescale()
+        return (uint32(rescaled), _decimals - int8(uint8(scaleDec)));
     }
 
     /**
@@ -277,6 +368,20 @@ contract FtsoV2PriceStore is
     }
 
     /**
+     * Selects the source of the (non-trusted) prices - either FTSOv2 fast updates or FTSO scaling.
+     * This also determines the method that has to be used for publishing the prices -
+     * `publishPricesFromFastUpdates()` or `publishPrices()`, respectively.
+     * @param _use Whether the prices should be read from the FTSOv2 fast updates contract.
+     * @dev Can only be called by the governance.
+     */
+    function setUseFtsoV2FastUpdates(bool _use)
+        external onlyGovernance
+    {
+        require(!_use || address(ftsoV2FastUpdates) != address(0), FtsoV2FastUpdatesContractNotSet());
+        useFtsoV2FastUpdates = _use;
+    }
+
+    /**
      * Sets the minTurnoutBIPS.
      * @param _minTurnoutBIPS The minimum percentage of providers that have to send a price to be published.
      * @dev Can only be called by the governance.
@@ -301,7 +406,9 @@ contract FtsoV2PriceStore is
         require(feedId != bytes21(0), SymbolNotSupported());
         PriceStore storage feed = latestPrices[feedId];
         _price = feed.value;
-        _timestamp = _getEndTimestamp(feed.votingRoundId);
+        _timestamp = feed.fastUpdatesTimestamp != 0
+            ? feed.fastUpdatesTimestamp
+            : _getEndTimestamp(feed.votingRoundId);
         int256 decimals = feed.decimals; // int8
         if (decimals < 0) {
             _priceDecimals = 0;
@@ -390,6 +497,7 @@ contract FtsoV2PriceStore is
         internal override
     {
         relay = IRelay(_getContractAddress(_contractNameHashes, _contractAddresses, "Relay"));
+        ftsoV2FastUpdates = FtsoV2Interface(_getContractAddress(_contractNameHashes, _contractAddresses, "FtsoV2"));
     }
 
     /**
@@ -414,6 +522,13 @@ contract FtsoV2PriceStore is
      */
     function _getPreviousVotingEpochId() internal view returns(uint32) {
         return uint32((block.timestamp - firstVotingRoundStartTs) / votingEpochDurationSeconds) - 1;
+    }
+
+    /**
+     * Returns the start timestamp for the given voting epoch id.
+     */
+    function _getStartTimestamp(uint256 _votingEpochId) internal view returns(uint256) {
+        return firstVotingRoundStartTs + _votingEpochId * votingEpochDurationSeconds;
     }
 
     /**

@@ -8,7 +8,9 @@ interface IPriceReader {
      * Returns the price for the given symbol.
      * @param _symbol The symbol.
      * @return _price The price.
-     * @return _timestamp The timestamp of the voting round for which the price was calculated.
+     * @return _timestamp The timestamp of the price - the end of the voting round for which the price was
+     *  calculated, or, when the price is obtained from FTSOv2 fast updates, the timestamp of the last
+     *  update of the feed.
      * @return _priceDecimals The price decimals.
      */
     function getPrice(string memory _symbol)

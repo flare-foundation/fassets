@@ -4,19 +4,21 @@ import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-he
 import { TestSettingsContracts, createTestContracts } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
-import { BNish, erc165InterfaceId, MAX_BIPS } from "../../../lib/utils/helpers";
-import { FtsoV2PriceStoreInstance, MockContractInstance } from "../../../typechain-truffle";
+import { BNish, erc165InterfaceId, MAX_BIPS, toBN, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { FtsoV2MockInstance, FtsoV2PriceStoreInstance, MockContractInstance } from "../../../typechain-truffle";
 import { filterEvents } from "../../../lib/utils/events/truffle";
 
 const FtsoV2PriceStore = artifacts.require('FtsoV2PriceStore');
 const FtsoV2PriceStoreProxy = artifacts.require('FtsoV2PriceStoreProxy');
 const MockContract = artifacts.require('MockContract');
+const FtsoV2Mock = artifacts.require('FtsoV2Mock');
 
 contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore basic tests`, accounts => {
     let contracts: TestSettingsContracts;
     let priceStoreImpl: FtsoV2PriceStoreInstance;
     let priceStore: FtsoV2PriceStoreInstance;
     let relayMock: MockContractInstance;
+    let ftsoV2Mock: FtsoV2MockInstance;
     const governance = accounts[10];
     const votingEpochDurationSeconds = 90;
     const ftsoScalingProtocolId = 100;
@@ -42,10 +44,11 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         );
         priceStore = await FtsoV2PriceStore.at(priceStoreProxy.address);
         relayMock = await MockContract.new();
+        ftsoV2Mock = await FtsoV2Mock.new();
         await priceStore.setTrustedProviders(trustedProviders, 1, { from: governance });
         await priceStore.updateSettings(feedIds, feedSymbols, feedDecimals, 50, 0, { from: governance });
-        await contracts.addressUpdater.update(["AddressUpdater", "Relay"],
-            [contracts.addressUpdater.address, relayMock.address],
+        await contracts.addressUpdater.update(["AddressUpdater", "Relay", "FtsoV2"],
+            [contracts.addressUpdater.address, relayMock.address, ftsoV2Mock.address],
             [priceStore.address],
             { from: governance });
         return { contracts, priceStore };
@@ -695,14 +698,179 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         });
     });
 
+    describe("publishing prices from fast updates", () => {
+
+        // sets the feeds on the FtsoV2 mock and switches the price store to fast updates
+        async function enableFastUpdates(value0: BNish = 123123, value1: BNish = 123456,
+            decimals0: number = feedDecimals[0], decimals1: number = feedDecimals[1]
+        ) {
+            await ftsoV2Mock.setFeed(feedIds[0], value0, decimals0);
+            await ftsoV2Mock.setFeed(feedIds[1], value1, decimals1);
+            await priceStore.setUseFtsoV2FastUpdates(true, { from: governance });
+        }
+
+        // increases time to the end of the submission window of `votingRound` and publishes the prices
+        async function publishPricesFromFastUpdates(votingRound: number = 1, fee?: BNish) {
+            await time.increaseTo(endOfRevealTime(votingRound));
+            return fee != null
+                ? await priceStore.publishPricesFromFastUpdates({ value: String(fee) })
+                : await priceStore.publishPricesFromFastUpdates();
+        }
+
+        async function submitTrustedPrices(votingRoundId: number, providers: string[], prices: BNish[]) {
+            for (let p = 0; p < providers.length; p++) {
+                const feed: TrustedPriceFeed[] = [];
+                for (let i = 0; i < feedIds.length; i++) {
+                    feed.push({ id: feedIds[i], value: prices[p], decimals: feedDecimals[i] });
+                }
+                await priceStore.submitTrustedPrices(votingRoundId, feed, { from: providers[p] });
+            }
+        }
+
+        it("only governance can enable fast updates", async () => {
+            await expectRevert.custom(priceStore.setUseFtsoV2FastUpdates(true, { from: accounts[15] }), "OnlyGovernance", []);
+        });
+
+        it("should not enable fast updates before the FtsoV2 contract address is set", async () => {
+            // create a price store that has not received the contract addresses yet
+            const priceStoreProxy = await FtsoV2PriceStoreProxy.new(priceStoreImpl.address, contracts.governanceSettings.address,
+                governance, contracts.addressUpdater.address, startTs, votingEpochDurationSeconds, ftsoScalingProtocolId);
+            const newPriceStore = await FtsoV2PriceStore.at(priceStoreProxy.address);
+            assert.equal(await newPriceStore.ftsoV2FastUpdates(), ZERO_ADDRESS);
+            await expectRevert.custom(newPriceStore.setUseFtsoV2FastUpdates(true, { from: governance }), "FtsoV2FastUpdatesContractNotSet", []);
+        });
+
+        it("should not publish prices from fast updates when they are not enabled", async () => {
+            assert.isFalse(await priceStore.useFtsoV2FastUpdates());
+            await expectRevert.custom(priceStore.publishPricesFromFastUpdates(), "UsePublishPrices", []);
+        });
+
+        it("should not publish prices with proofs when fast updates are enabled", async () => {
+            await enableFastUpdates();
+            assert.isTrue(await priceStore.useFtsoV2FastUpdates());
+            await expectRevert.custom(publishPrices(), "UsePublishPricesFromFastUpdates", []);
+        });
+
+        it("should publish prices from fast updates", async () => {
+            await enableFastUpdates();
+            const feedsTimestamp = endOfRevealTime(1) - 10;
+            await ftsoV2Mock.setFeedsTimestamp(feedsTimestamp);
+            const res = await publishPricesFromFastUpdates(1);
+            expectEvent(res, "PricesPublished", { votingRoundId: "1" });
+            assertWeb3Equal(await priceStore.lastPublishedVotingRoundId(), 1);
+            // the reported timestamp is the feed timestamp, not the end of the voting round
+            const { 0: price0, 1: timestamp0, 2: decimals0 } = await priceStore.getPrice(feedSymbols[0]);
+            assertWeb3Equal(price0, 123123);
+            assertWeb3Equal(timestamp0, feedsTimestamp);
+            assertWeb3Equal(decimals0, feedDecimals[0]);
+            const { 0: price1, 1: timestamp1, 2: decimals1 } = await priceStore.getPrice(feedSymbols[1]);
+            assertWeb3Equal(price1, 123456);
+            assertWeb3Equal(timestamp1, feedsTimestamp);
+            assertWeb3Equal(decimals1, feedDecimals[1]);
+        });
+
+        it("should also calculate trusted prices when publishing from fast updates", async () => {
+            await enableFastUpdates();
+            await time.increaseTo(startTs + 2 * votingEpochDurationSeconds);   // start of voting round 2
+            await submitTrustedPrices(1, trustedProviders, [123258, 123255, 123256]);
+            await publishPricesFromFastUpdates(1);
+            const { 0: price, 1: timestamp, 2: decimals, 3: noOfSubmits } =
+                await priceStore.getPriceFromTrustedProvidersWithQuality(feedSymbols[1]);
+            assertWeb3Equal(price, 123256);
+            assertWeb3Equal(noOfSubmits, 3);
+            assertWeb3Equal(decimals, feedDecimals[1]);
+            // the trusted price timestamp is still the end of the voting round
+            assertWeb3Equal(timestamp, startTs + 2 * votingEpochDurationSeconds);
+        });
+
+        it("should not publish prices from fast updates twice for the same voting round", async () => {
+            await enableFastUpdates();
+            await publishPricesFromFastUpdates(1);
+            await expectRevert.custom(priceStore.publishPricesFromFastUpdates(), "PricesAlreadyPublished", []);
+        });
+
+        it("should not publish prices from fast updates before the submission window closes", async () => {
+            await enableFastUpdates();
+            await time.increaseTo(startTs + 2 * votingEpochDurationSeconds);   // start of voting round 2
+            await expectRevert.custom(priceStore.publishPricesFromFastUpdates(), "SubmissionWindowNotClosed", []);
+        });
+
+        it("should not publish too old prices from fast updates", async () => {
+            await enableFastUpdates();
+            // the feeds must not be older than the start of the published voting round
+            await ftsoV2Mock.setFeedsTimestamp(startTs + votingEpochDurationSeconds - 1);
+            await time.increaseTo(endOfRevealTime(1));
+            await expectRevert.custom(priceStore.publishPricesFromFastUpdates(), "FastUpdatesFeedTooOld", []);
+            // exactly at the start of the voting round the feeds are still fresh enough
+            await ftsoV2Mock.setFeedsTimestamp(startTs + votingEpochDurationSeconds);
+            await priceStore.publishPricesFromFastUpdates();
+            assertWeb3Equal(await priceStore.lastPublishedVotingRoundId(), 1);
+        });
+
+        it("should rescale feed values that do not fit into uint32", async () => {
+            await enableFastUpdates(toBN("12345678901234"), 1000, 8, 5);
+            await publishPricesFromFastUpdates(1);
+            // the value is divided by 10^4 to fit into uint32 and the decimals are reduced by 4,
+            // so the price 12345678901234e-8 is published as 1234567890e-4
+            const { 0: price0, 2: decimals0 } = await priceStore.getPrice(feedSymbols[0]);
+            assertWeb3Equal(price0, 1234567890);
+            assertWeb3Equal(decimals0, 4);
+            // a value that fits into uint32 is published unchanged
+            const { 0: price1, 2: decimals1 } = await priceStore.getPrice(feedSymbols[1]);
+            assertWeb3Equal(price1, 1000);
+            assertWeb3Equal(decimals1, 5);
+        });
+
+        it("should read a rescaled price with negative decimals", async () => {
+            // 10^20 with 0 decimals has to be divided by 10^11, which makes the stored decimals negative (-11)
+            await enableFastUpdates(toBN(10).pow(toBN(20)), 1000, 0, 5);
+            await publishPricesFromFastUpdates(1);
+            // getPrice multiplies the value back when the decimals are negative
+            const { 0: price, 2: decimals } = await priceStore.getPrice(feedSymbols[0]);
+            assertWeb3Equal(price, toBN(10).pow(toBN(20)));
+            assertWeb3Equal(decimals, 0);
+        });
+
+        it("should forward the feed fee to the FtsoV2 contract", async () => {
+            await enableFastUpdates();
+            await ftsoV2Mock.setFeePerFeed(10);
+            await time.increaseTo(endOfRevealTime(1));
+            // reading the feeds fails when the fee is not paid
+            await expectRevert.custom(priceStore.publishPricesFromFastUpdates(), "FeeTooLow", []);
+            // the caller has to send the fee for all the feeds
+            await priceStore.publishPricesFromFastUpdates({ value: "20" });
+            assertWeb3Equal(await web3.eth.getBalance(ftsoV2Mock.address), 20);
+            assertWeb3Equal(await web3.eth.getBalance(priceStore.address), 0);
+        });
+
+        it("should switch back to publishing prices with proofs", async () => {
+            await enableFastUpdates(50000, 60000);
+            const feedsTimestamp = endOfRevealTime(1) - 10;
+            await ftsoV2Mock.setFeedsTimestamp(feedsTimestamp);
+            await publishPricesFromFastUpdates(1);
+            const { 0: fastPrice, 1: fastTimestamp } = await priceStore.getPrice(feedSymbols[0]);
+            assertWeb3Equal(fastPrice, 50000);
+            assertWeb3Equal(fastTimestamp, feedsTimestamp);
+            // switch back to FTSO scaling
+            await priceStore.setUseFtsoV2FastUpdates(false, { from: governance });
+            await expectRevert.custom(priceStore.publishPricesFromFastUpdates(), "UsePublishPrices", []);
+            // the prices published with proofs report the end of the voting round as the timestamp again
+            await publishPrices(true, 2, 2);
+            const { 0: price, 1: timestamp } = await priceStore.getPrice(feedSymbols[0]);
+            assertWeb3Equal(price, 123123);
+            assertWeb3Equal(timestamp, startTs + 3 * votingEpochDurationSeconds);
+        });
+    });
+
     describe("upgrade", () => {
         it("should update contract addresses", async () => {
-            await contracts.addressUpdater.update(["AddressUpdater", "Relay"],
-                [accounts[79], accounts[80]],
+            await contracts.addressUpdater.update(["AddressUpdater", "Relay", "FtsoV2"],
+                [accounts[79], accounts[80], accounts[81]],
                 [priceStore.address],
                 { from: governance });
             assert.equal(await priceStore.getAddressUpdater(), accounts[79]);
             assert.equal(await priceStore.relay(), accounts[80]);
+            assert.equal(await priceStore.ftsoV2FastUpdates(), accounts[81]);
         });
 
         it("should upgrade and downgrade", async () => {

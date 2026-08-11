@@ -34,4 +34,11 @@ contract MathUtilsMock {
     function bound(uint256 _value, uint256 _min, uint256 _max) external pure returns (uint256) {
         return MathUtils.bound(_value, _min, _max);
     }
+
+    function rescale(uint256 _value, uint256 _maxValue)
+        external pure
+        returns (uint256 _result, uint256 _scaleDecimalPlaces)
+    {
+        return MathUtils.rescale(_value, _maxValue);
+    }
 }
