@@ -14,7 +14,7 @@
         "decimals": 18,
         "directPricePair": false,
         "assetFtsoSymbol": "testXRP",
-        "tokenFtsoSymbol": "NAT",
+        "tokenFtsoSymbol": "CFLR",
         "minCollateralRatioBIPS": 20000,
         "safetyMinCollateralRatioBIPS": 21000
     },

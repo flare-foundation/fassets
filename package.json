@@ -52,7 +52,7 @@
     "console": "yarn hardhat console --no-compile --network",
     "---------DEPLOY---SCRIPTS---HARDHAT": "",
     "local": "env DEPLOY_PROFILE=hardhat yarn hardhat --network local",
-    "full-deploy-hardhat": "yarn local deploy-price-reader-v2 && yarn local deploy-asset-manager-dependencies --all && yarn local deploy-asset-managers --deploy-controller --all",
+    "full-deploy-hardhat": "yarn local deploy-price-reader-v2 && yarn local run deployment/test/scripts/mock-set-prices.ts && yarn local deploy-minting-tag-manager && yarn local deploy-asset-manager-dependencies --all && yarn local deploy-asset-managers --deploy-controller --all",
     "full-deploy-hardhat-test": "yarn local test --no-compile deployment/test/test-deployed-contracts.ts",
     "mock-deploy-hardhat": "rm -f deployment/deploys/hardhat.json && yarn local run deployment/test/scripts/mock-deploy-dependencies.ts && yarn local run deployment/test/scripts/mock-deploy-stablecoins.ts && yarn full-deploy-hardhat && yarn full-deploy-hardhat-test",
     "flare-sc-deploy-hardhat": "yarn local run deployment/test/scripts/mock-deploy-stablecoins.ts && yarn full-deploy-hardhat && yarn full-deploy-hardhat-test",

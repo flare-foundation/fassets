@@ -6,10 +6,11 @@ import { getTestFile, itIf } from "../../lib/test-utils/test-suite-helpers";
 import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
 import { SourceId } from "../../lib/underlying-chain/SourceId";
 import { requiredEventArgs } from "../../lib/utils/events/truffle";
-import { latestBlockTimestamp, toBN, toBNExp } from "../../lib/utils/helpers";
+import { latestBlockTimestamp, toBN } from "../../lib/utils/helpers";
 import { AgentOwnerRegistryInstance, IAssetManagerControllerInstance } from "../../typechain-truffle";
 import { FAssetContractStore } from "../lib/contracts";
 import { loadCurrentDeployContracts, loadDeployAccounts, requiredEnvironmentVariable, runningOnHardhatNetwork } from "../lib/deploy-utils";
+import { mockSetPrices } from "./utils/mock-set-prices";
 
 const IAssetManagerController = artifacts.require('IAssetManagerController');
 const IIAssetManager = artifacts.require('IIAssetManager');
@@ -70,21 +71,6 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, ac
         [SourceId.LTC]: 'mjGn3j6vrHwgRzRWsXFT6dP1K5atca7yPx',
     };
 
-    const testPrices: Record<string, [string, number, number]> = {
-        'CFLR': ['FtsoNat', 5, 0.20],
-        'testUSDC': ['FtsoUSDC', 5, 1.01],
-        'testUSDT': ['FtsoUSDT', 5, 0.99],
-        'testETH': ['FtsoETH', 3, 3000],
-        'testBTC': ['FtsoBtc', 2, 20_000],
-        'testDOGE': ['FtsoDoge', 5, 0.05],
-        'testXRP': ['FtsoXrp', 5, 0.50],
-        'SGB': ['FtsoNat', 5, 0.20],
-        'USDX': ['FtsoUSDT', 5, 0.99],
-        'XRP': ['FtsoXrp', 5, 0.50],
-        'BTC': ['FtsoBtc', 2, 20_000],
-        'DOGE': ['FtsoDoge', 5, 0.05],
-    };
-
     itIf(runningOnHardhatNetwork(hre))("Can create an agent on all managers", async () => {
         const { deployer } = loadDeployAccounts(hre);
         const managers = await assetManagerController.getAssetManagers();
@@ -93,12 +79,8 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, ac
         // create Flare data connector client (only really needed for address validation)
         const relay = await artifacts.require('RelayMock').at(contracts.Relay.address);
         const fdcHub = await artifacts.require('FdcHubMock').at(contracts.FdcHub.address);
-        const priceStore = await artifacts.require('FtsoV2PriceStoreMock').at(contracts.FtsoV2PriceStore!.address);
-        for (const symbol of await priceStore.getSymbols()) {
-            const [_, decimals, price] = testPrices[symbol];
-            await priceStore.setCurrentPrice(symbol, toBNExp(price, decimals), 0);
-            await priceStore.setCurrentPriceFromTrustedProviders(symbol, toBNExp(price, decimals), 0);
-        }
+        // refresh the prices set at deploy time, so that they are not too old
+        await mockSetPrices(hre, contracts);
         const chainIds = Object.keys(testUnderlyingAddresses);
         const currentTime = toBN(await latestBlockTimestamp());
         const chains = Object.fromEntries(chainIds.map(id => [id, new MockChain(currentTime)]));
