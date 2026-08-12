@@ -476,6 +476,162 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         });
     });
 
+    describe("adding a new feed", () => {
+        // the feed that is added to the already running price store
+        const newFeedId = "0x015852502f55534400000000000000000000000000";  // XRP/USD
+        const newFeedSymbol = "XRP";
+        const newFeedDecimals = 5;
+        const allFeedIds = [...feedIds, newFeedId];
+        const allFeedSymbols = [...feedSymbols, newFeedSymbol];
+        const allFeedDecimals = [...feedDecimals, newFeedDecimals];
+
+        // adds the new feed, leaving the settings of the existing feeds unchanged
+        async function addNewFeed() {
+            await priceStore.updateSettings(allFeedIds, allFeedSymbols, allFeedDecimals, 50, 0, { from: governance });
+        }
+
+        // publishes prices for all the feeds, including the new one
+        async function publishAllPrices(votingRoundId: number, values: BNish[], increaseTime: boolean = true) {
+            const feeds: PriceFeed[] = allFeedIds.map((id, i) =>
+                ({ votingRoundId, id, value: values[i], turnoutBIPS: 10000, decimals: allFeedDecimals[i] }));
+            return await publishPriceFeedList(feeds, increaseTime, votingRoundId);
+        }
+
+        async function submitPrices(votingRoundId: number, provider: string, ids: string[], decimals: number[], values: BNish[]) {
+            const feeds: TrustedPriceFeed[] = ids.map((id, i) => ({ id, value: values[i], decimals: decimals[i] }));
+            return await priceStore.submitTrustedPrices(votingRoundId, feeds, { from: provider });
+        }
+
+        async function readPrices(symbol: string) {
+            const { 0: price, 1: timestamp, 2: decimals } = await priceStore.getPrice(symbol);
+            const { 0: trustedPrice, 1: trustedTimestamp, 2: trustedDecimals, 3: numberOfSubmits } =
+                await priceStore.getPriceFromTrustedProvidersWithQuality(symbol);
+            return { price, timestamp, decimals, trustedPrice, trustedTimestamp, trustedDecimals, numberOfSubmits };
+        }
+
+        async function enableFastUpdates() {
+            await ftsoV2Mock.setFeed(feedIds[0], 123123, feedDecimals[0]);
+            await ftsoV2Mock.setFeed(feedIds[1], 123456, feedDecimals[1]);
+            await priceStore.setUseFtsoV2FastUpdates(true, { from: governance });
+        }
+
+        it("should register the new feed and keep the existing ones", async () => {
+            await addNewFeed();
+            expect((await priceStore.getFeedIds()).toString()).to.eq(allFeedIds.toString());
+            expect((await priceStore.getSymbols()).toString()).to.eq(allFeedSymbols.toString());
+            const { 0: ids, 1: decimals } = await priceStore.getFeedIdsWithDecimals();
+            expect(ids.toString()).to.eq(allFeedIds.toString());
+            expect(decimals.toString()).to.eq(allFeedDecimals.toString());
+            expect(await priceStore.getFeedId(newFeedSymbol)).to.eq(newFeedId);
+        });
+
+        it("should not change the prices of the existing feeds when a new feed is added", async () => {
+            // publish prices and trusted prices for the existing feeds
+            await time.increaseTo(startTs + 2 * votingEpochDurationSeconds);   // start of voting round 2
+            for (let i = 0; i < trustedProviders.length; i++) {
+                await submitPrices(1, trustedProviders[i], feedIds, feedDecimals, [123455 + i, 123455 + i]);
+            }
+            await publishPrices();
+            const flrBefore = await readPrices(feedSymbols[0]);
+            const usdcBefore = await readPrices(feedSymbols[1]);
+            assertWeb3Equal(flrBefore.price, 123123);
+            assertWeb3Equal(usdcBefore.price, 123456);
+            assertWeb3Equal(usdcBefore.trustedPrice, 123456);
+            assertWeb3Equal(usdcBefore.numberOfSubmits, 3);
+
+            // adding a new feed must not touch the prices of the existing feeds
+            await addNewFeed();
+            expect(await readPrices(feedSymbols[0])).to.deep.eq(flrBefore);
+            expect(await readPrices(feedSymbols[1])).to.deep.eq(usdcBefore);
+        });
+
+        it("should have no price for the new feed until it is published", async () => {
+            await addNewFeed();
+            // the new feed is supported, but has no price yet - the timestamp is the end of voting round 0
+            const { price, timestamp, decimals, trustedPrice, trustedTimestamp, trustedDecimals, numberOfSubmits } =
+                await readPrices(newFeedSymbol);
+            assertWeb3Equal(price, 0);
+            assertWeb3Equal(timestamp, startTs + votingEpochDurationSeconds);
+            assertWeb3Equal(decimals, 0);
+            assertWeb3Equal(trustedPrice, 0);
+            assertWeb3Equal(trustedTimestamp, startTs + votingEpochDurationSeconds);
+            assertWeb3Equal(trustedDecimals, newFeedDecimals);
+            assertWeb3Equal(numberOfSubmits, 0);
+        });
+
+        it("should require the new feed to be published together with the existing ones", async () => {
+            await addNewFeed();
+            // publishing only the old feeds is not possible anymore
+            await expectRevert.custom(publishPrices(), "WrongNumberOfProofs", []);
+            // publishing all the feeds works and sets the price of the new feed
+            await publishAllPrices(1, [123123, 123456, 500000], false);
+            assertWeb3Equal((await priceStore.getPrice(feedSymbols[0]))[0], 123123);
+            assertWeb3Equal((await priceStore.getPrice(feedSymbols[1]))[0], 123456);
+            const { 0: price, 1: timestamp, 2: decimals } = await priceStore.getPrice(newFeedSymbol);
+            assertWeb3Equal(price, 500000);
+            assertWeb3Equal(timestamp, startTs + 2 * votingEpochDurationSeconds);
+            assertWeb3Equal(decimals, newFeedDecimals);
+        });
+
+        it("should keep the trusted price submissions of the existing feeds when a new feed is added mid-round", async () => {
+            await time.increaseTo(startTs + 2 * votingEpochDurationSeconds);   // start of voting round 2
+            // two providers submit before the new feed is added
+            await submitPrices(1, trustedProviders[0], feedIds, feedDecimals, [123455, 123455]);
+            await submitPrices(1, trustedProviders[1], feedIds, feedDecimals, [123456, 123456]);
+
+            await addNewFeed();
+
+            // the remaining provider must now submit prices for all the feeds
+            await expectRevert.custom(submitPrices(1, trustedProviders[2], feedIds, feedDecimals, [123458, 123458]),
+                "AllPricesMustBeProvided", []);
+            await submitPrices(1, trustedProviders[2], allFeedIds, allFeedDecimals, [123458, 123458, 200000]);
+
+            await publishAllPrices(1, [123123, 123456, 500000]);
+
+            // the submissions from before the change are still used for the existing feeds
+            const usdc = await readPrices(feedSymbols[1]);
+            assertWeb3Equal(usdc.trustedPrice, 123456);   // median of 123455, 123456, 123458
+            assertWeb3Equal(usdc.numberOfSubmits, 3);
+            // the new feed only has the submissions made after it was added
+            const xrp = await readPrices(newFeedSymbol);
+            assertWeb3Equal(xrp.trustedPrice, 200000);
+            assertWeb3Equal(xrp.numberOfSubmits, 1);
+            assertWeb3Equal(xrp.trustedDecimals, newFeedDecimals);
+        });
+
+        it("should add a new feed when publishing from fast updates", async () => {
+            await enableFastUpdates();
+            // the new feed must also be available on FtsoV2
+            await ftsoV2Mock.setFeed(newFeedId, 500000, newFeedDecimals);
+            await addNewFeed();
+
+            await time.increaseTo(endOfRevealTime(1));
+            await priceStore.publishPricesFromFastUpdates();
+
+            assertWeb3Equal((await priceStore.getPrice(feedSymbols[0]))[0], 123123);
+            assertWeb3Equal((await priceStore.getPrice(feedSymbols[1]))[0], 123456);
+            const { 0: price, 2: decimals } = await priceStore.getPrice(newFeedSymbol);
+            assertWeb3Equal(price, 500000);
+            assertWeb3Equal(decimals, newFeedDecimals);
+        });
+
+        it("should not be able to publish from fast updates if the new feed is not supported by FtsoV2", async () => {
+            await enableFastUpdates();
+            // the new feed is not set on FtsoV2, so reading the feeds fails and no prices can be published at all
+            await addNewFeed();
+            await time.increaseTo(endOfRevealTime(1));
+            await expectRevert.custom(priceStore.publishPricesFromFastUpdates(), "FeedNotSupported", []);
+
+            // the governance can recover by removing the feed from the list again
+            await priceStore.updateSettings(feedIds, feedSymbols, feedDecimals, 50, 0, { from: governance });
+            expect((await priceStore.getFeedIds()).toString()).to.eq(feedIds.toString());
+            await priceStore.publishPricesFromFastUpdates();
+            assertWeb3Equal((await priceStore.getPrice(feedSymbols[0]))[0], 123123);
+            // the symbol of the removed feed stays registered, it just never gets a price
+            assertWeb3Equal((await priceStore.getPrice(newFeedSymbol))[0], 0);
+        });
+    });
+
     describe("set trusted providers", () => {
         it ("should revert if not governance", async () => {
             await expectRevert.custom(priceStore.setTrustedProviders([], 1), "OnlyGovernance", []);
@@ -923,39 +1079,65 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
     }
 
     async function publishPriceFeeds(feed0: PriceFeed, feed1: PriceFeed, increaseTime: boolean = true, votingRound: number = Number(feed0.votingRoundId), zeroRoot: boolean = false) {
+        return await publishPriceFeedList([feed0, feed1], increaseTime, votingRound, zeroRoot);
+    }
+
+    function feedLeafHash(feed: PriceFeed) {
+        return web3.utils.keccak256(web3.eth.abi.encodeParameters(
+            ["tuple(uint32,bytes21,int32,uint16,int8)"], // IFtsoFeedPublisher.Feed (uint32 votingRoundId, bytes21 id, int32 value, uint16 turnoutBIPS, int8 decimals)
+            [[feed.votingRoundId, feed.id, feed.value, feed.turnoutBIPS, feed.decimals]]
+        ));
+    }
+
+    // builds a Merkle tree of the leaves and returns the root and the proof for every leaf;
+    // the pairs of nodes are sorted before hashing, as expected by OpenZeppelin's MerkleProof
+    function buildMerkleTree(leaves: string[]) {
+        const layers = [leaves];
+        while (layers[layers.length - 1].length > 1) {
+            const layer = layers[layers.length - 1];
+            const nextLayer: string[] = [];
+            for (let i = 0; i < layer.length; i += 2) {
+                // an odd node at the end is just promoted to the next layer
+                nextLayer.push(i + 1 < layer.length ? hashPair(layer[i], layer[i + 1]) : layer[i]);
+            }
+            layers.push(nextLayer);
+        }
+        const proofs = leaves.map((_, leafIndex) => {
+            const proof: string[] = [];
+            let index = leafIndex;
+            for (let l = 0; l < layers.length - 1; l++) {
+                const siblingIndex = index ^ 1;
+                if (siblingIndex < layers[l].length) {   // no sibling for a promoted odd node
+                    proof.push(layers[l][siblingIndex]);
+                }
+                index = Math.floor(index / 2);
+            }
+            return proof;
+        });
+        return { root: layers[layers.length - 1][0], proofs };
+    }
+
+    function hashPair(node1: string, node2: string) {
+        return web3.utils.keccak256(web3.eth.abi.encodeParameters(
+            ["bytes32", "bytes32"],
+            node1 < node2 ? [node1, node2] : [node2, node1]
+        ));
+    }
+
+    async function publishPriceFeedList(feeds: PriceFeed[], increaseTime: boolean = true, votingRound: number = Number(feeds[0].votingRoundId), zeroRoot: boolean = false) {
         if (increaseTime) {
             // increase time to the end of reveal time and submission window of voting round
             await time.increaseTo(endOfRevealTime(votingRound));
         }
 
-        const leaf0 = web3.utils.keccak256(web3.eth.abi.encodeParameters(
-            ["tuple(uint32,bytes21,int32,uint16,int8)"], // IFtsoFeedPublisher.Feed (uint32 votingRoundId, bytes21 id, int32 value, uint16 turnoutBIPS, int8 decimals)
-            [[feed0.votingRoundId, feed0.id, feed0.value, feed0.turnoutBIPS, feed0.decimals]]
-        ));
+        const { root, proofs } = buildMerkleTree(feeds.map(feedLeafHash));
 
-        const leaf1 = web3.utils.keccak256(web3.eth.abi.encodeParameters(
-            ["tuple(uint32,bytes21,int32,uint16,int8)"], // IFtsoFeedPublisher.Feed (uint32 votingRoundId, bytes21 id, int32 value, uint16 turnoutBIPS, int8 decimals)
-            [[feed1.votingRoundId, feed1.id, feed1.value, feed1.turnoutBIPS, feed1.decimals]]
-        ));
+        await relayMock.givenCalldataReturn(
+            web3.eth.abi.encodeFunctionCall({ type: "function", name: "merkleRoots", inputs: [{ name: "_protocolId", type: "uint256" }, { name: "_votingRoundId", type: "uint256" }] } as AbiItem, [String(ftsoScalingProtocolId), String(votingRound)]),
+            web3.eth.abi.encodeParameter("bytes32", zeroRoot ? "0x" + "00".repeat(32) : root)
+        );
 
-        const merkleRoot = web3.utils.keccak256(web3.eth.abi.encodeParameters(
-            ["bytes32", "bytes32"],
-            leaf0 < leaf1 ? [leaf0, leaf1] : [leaf1, leaf0]
-        ));
-
-        if (zeroRoot) {
-            await relayMock.givenCalldataReturn(
-                web3.eth.abi.encodeFunctionCall({ type: "function", name: "merkleRoots", inputs: [{ name: "_protocolId", type: "uint256" }, { name: "_votingRoundId", type: "uint256" }] } as AbiItem, [String(ftsoScalingProtocolId), String(votingRound)]),
-                web3.eth.abi.encodeParameter("bytes32", "0x" + "00".repeat(32))
-            );
-        } else {
-            await relayMock.givenCalldataReturn(
-                web3.eth.abi.encodeFunctionCall({ type: "function", name: "merkleRoots", inputs: [{ name: "_protocolId", type: "uint256" }, { name: "_votingRoundId", type: "uint256" }] } as AbiItem, [String(ftsoScalingProtocolId), String(votingRound)]),
-                web3.eth.abi.encodeParameter("bytes32", merkleRoot)
-            );
-        }
-
-        const tx = await priceStore.publishPrices([{ proof: [leaf1], body: feed0 }, { proof: [leaf0], body: feed1 }]);
+        const tx = await priceStore.publishPrices(feeds.map((feed, i) => ({ proof: proofs[i], body: feed })));
         console.log(`publishPrices gas used: ${tx.receipt.gasUsed}`);   // eslint-disable-line @typescript-eslint/no-unsafe-member-access
         return tx;
     }
