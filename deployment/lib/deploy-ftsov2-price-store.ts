@@ -37,7 +37,10 @@ export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contra
         contracts.GovernanceSettings.address, deployer, deployer, parameters.firstVotingRoundStartTs, parameters.votingEpochDurationSeconds, 100);
     const ftsoV2PriceStore = await FtsoV2PriceStore.at(ftsoV2PriceStoreProxy.address);
 
-    await ftsoV2PriceStore.updateContractAddresses(encodeContractNames(hre, ["AddressUpdater", "Relay", "FtsoV2"]), [contracts.AddressUpdater.address, contracts.Relay.address, contracts.FtsoV2.address], { from: deployer });
+    await ftsoV2PriceStore.updateContractAddresses(
+        encodeContractNames(hre, ["AddressUpdater", "Relay", "FtsoV2"]),
+        [contracts.AddressUpdater.address, contracts.Relay.address, contracts.FtsoV2.address],
+        { from: deployer });
 
     await ftsoV2PriceStore.setTrustedProviders(parameters.trustedProviders, parameters.trustedProvidersThreshold, { from: deployer });
     await ftsoV2PriceStore.updateSettings(

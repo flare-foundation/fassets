@@ -1,0 +1,8 @@
+{
+    "name": "Minting Tag Manager (FTestXRP)",
+    "symbol": "MTMTXRP",
+    "reservationFee": "100000000000000000000",
+    "reservationFeeRecipient": "0xC363dc494628de8387d01b48513Df1a53948ceaf",
+    "reservedTagCount": 20,
+    "executorChangeAfterSeconds": 600
+}
