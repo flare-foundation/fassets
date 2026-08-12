@@ -74,6 +74,17 @@ export function encodeFeedIds(feedIds: IFeedId[]): string[] {
     return result;
 }
 
+export function decodeFeedId(encodedFeedId: string): IFeedId {
+    const hex = encodedFeedId.startsWith("0x") ? encodedFeedId.slice(2) : encodedFeedId;
+    if (hex.length !== 42) {
+        throw Error(`Invalid encoded feed id: ${encodedFeedId}`);
+    }
+    const category = parseInt(hex.slice(0, 2), 16);
+    // the name is zero-padded on the right
+    const name = Buffer.from(hex.slice(2), "hex").toString().replace(/\0+$/, "");
+    return { category, name };
+}
+
 function readFtsoV2Parameters(): FtsoV2PriceStoreParameters {
     const paramFileName = `${currentDeployConfigDir()}/ftsov2.json`;
     const parameters = JSON.parse(readFileSync(paramFileName, { encoding: "ascii" })) as FtsoV2PriceStoreParameters;
