@@ -497,18 +497,6 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             return await publishPriceFeedList(feeds, increaseTime, votingRoundId);
         }
 
-        async function submitPrices(votingRoundId: number, provider: string, ids: string[], decimals: number[], values: BNish[]) {
-            const feeds: TrustedPriceFeed[] = ids.map((id, i) => ({ id, value: values[i], decimals: decimals[i] }));
-            return await priceStore.submitTrustedPrices(votingRoundId, feeds, { from: provider });
-        }
-
-        async function readPrices(symbol: string) {
-            const { 0: price, 1: timestamp, 2: decimals } = await priceStore.getPrice(symbol);
-            const { 0: trustedPrice, 1: trustedTimestamp, 2: trustedDecimals, 3: numberOfSubmits } =
-                await priceStore.getPriceFromTrustedProvidersWithQuality(symbol);
-            return { price, timestamp, decimals, trustedPrice, trustedTimestamp, trustedDecimals, numberOfSubmits };
-        }
-
         async function enableFastUpdates() {
             await ftsoV2Mock.setFeed(feedIds[0], 123123, feedDecimals[0]);
             await ftsoV2Mock.setFeed(feedIds[1], 123456, feedDecimals[1]);
@@ -629,6 +617,251 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             assertWeb3Equal((await priceStore.getPrice(feedSymbols[0]))[0], 123123);
             // the symbol of the removed feed stays registered, it just never gets a price
             assertWeb3Equal((await priceStore.getPrice(newFeedSymbol))[0], 0);
+        });
+    });
+
+    describe("removing and replacing feeds", () => {
+        // the feed id of a renamed feed, as it happens on FtsoV2 (e.g. FTM/USD -> S/USD)
+        const renamedFeedId = encodeFeedId("USDC.E/USD");
+
+        // publishes prices for the given feeds only
+        async function publishPricesForFeeds(votingRoundId: number, ids: string[], decimals: number[], values: BNish[], increaseTime: boolean = true) {
+            const feeds: PriceFeed[] = ids.map((id, i) =>
+                ({ votingRoundId, id, value: values[i], turnoutBIPS: 10000, decimals: decimals[i] }));
+            return await publishPriceFeedList(feeds, increaseTime, votingRoundId);
+        }
+
+        // removes the second feed (USDC), leaving the settings of the first one unchanged
+        async function removeSecondFeed() {
+            await priceStore.updateSettings([feedIds[0]], [feedSymbols[0]], [feedDecimals[0]], 50, 0, { from: governance });
+        }
+
+        it("should remove a feed from the list of published feeds", async () => {
+            await removeSecondFeed();
+            expect((await priceStore.getFeedIds()).toString()).to.eq(feedIds[0]);
+            expect((await priceStore.getSymbols()).toString()).to.eq(feedSymbols[0]);
+            // all the remaining feeds - and only those - have to be published
+            await expectRevert.custom(publishPrices(), "WrongNumberOfProofs", []);
+            await publishPricesForFeeds(1, [feedIds[0]], feedDecimals, [200000], false);
+            assertWeb3Equal((await priceStore.getPrice(feedSymbols[0]))[0], 200000);
+        });
+
+        it("should keep returning the last published price of a removed feed", async () => {
+            // publish prices and trusted prices for both feeds
+            await time.increaseTo(startTs + 2 * votingEpochDurationSeconds);   // start of voting round 2
+            for (let i = 0; i < trustedProviders.length; i++) {
+                await submitPrices(1, trustedProviders[i], feedIds, feedDecimals, [123455 + i, 123455 + i]);
+            }
+            await publishPrices();
+            const usdcBefore = await readPrices(feedSymbols[1]);
+            assertWeb3Equal(usdcBefore.price, 123456);
+            assertWeb3Equal(usdcBefore.trustedPrice, 123456);
+
+            await removeSecondFeed();
+
+            // the symbol of the removed feed is still supported (it does not revert), but it is never updated again,
+            // so the price stays at the last published value and the timestamp becomes stale
+            await publishPricesForFeeds(2, [feedIds[0]], feedDecimals, [200000]);
+            expect(await readPrices(feedSymbols[1])).to.deep.eq(usdcBefore);
+            assertWeb3Equal(usdcBefore.timestamp, startTs + 2 * votingEpochDurationSeconds);
+            // while the remaining feed is updated
+            const flr = await readPrices(feedSymbols[0]);
+            assertWeb3Equal(flr.price, 200000);
+            assertWeb3Equal(flr.timestamp, startTs + 3 * votingEpochDurationSeconds);
+        });
+
+        it("should not accept trusted prices for a removed feed", async () => {
+            await time.increaseTo(startTs + 2 * votingEpochDurationSeconds);   // start of voting round 2
+            await removeSecondFeed();
+
+            // the providers must only submit the prices of the remaining feeds
+            await expectRevert.custom(submitPrices(1, trustedProviders[0], feedIds, feedDecimals, [123455, 123455]),
+                "AllPricesMustBeProvided", []);
+            for (let i = 0; i < trustedProviders.length; i++) {
+                await submitPrices(1, trustedProviders[i], [feedIds[0]], feedDecimals, [123455 + i]);
+            }
+
+            await publishPricesForFeeds(1, [feedIds[0]], feedDecimals, [123123]);
+            const flr = await readPrices(feedSymbols[0]);
+            assertWeb3Equal(flr.trustedPrice, 123456);   // median of 123455, 123456, 123457
+            assertWeb3Equal(flr.numberOfSubmits, 3);
+        });
+
+        it("should be able to add a removed feed back", async () => {
+            await publishPrices();
+            await removeSecondFeed();
+            await publishPricesForFeeds(2, [feedIds[0]], feedDecimals, [200000]);
+            // the removed feed still reports the stale price
+            assertWeb3Equal((await priceStore.getPrice(feedSymbols[1]))[0], 123456);
+
+            // add it back with unchanged settings
+            await priceStore.updateSettings(feedIds, feedSymbols, feedDecimals, 50, 0, { from: governance });
+            expect((await priceStore.getFeedIds()).toString()).to.eq(feedIds.toString());
+            await publishPricesForFeeds(3, feedIds, feedDecimals, [300000, 400000]);
+            assertWeb3Equal((await priceStore.getPrice(feedSymbols[0]))[0], 300000);
+            const { 0: price, 1: timestamp } = await priceStore.getPrice(feedSymbols[1]);
+            assertWeb3Equal(price, 400000);
+            assertWeb3Equal(timestamp, startTs + 4 * votingEpochDurationSeconds);
+        });
+
+        it("should keep the pending trusted submissions of a feed that is removed and added back in the same round", async () => {
+            await time.increaseTo(startTs + 2 * votingEpochDurationSeconds);   // start of voting round 2
+            for (let i = 0; i < trustedProviders.length; i++) {
+                await submitPrices(1, trustedProviders[i], feedIds, feedDecimals, [123455 + i, 123455 + i]);
+            }
+            // removing a feed does not delete the prices submitted for it, so they are still used
+            // if the feed is added back before the round is published
+            await removeSecondFeed();
+            await priceStore.updateSettings(feedIds, feedSymbols, feedDecimals, 50, 0, { from: governance });
+
+            await publishPrices();
+            const usdc = await readPrices(feedSymbols[1]);
+            assertWeb3Equal(usdc.trustedPrice, 123456);   // median of 123455, 123456, 123457
+            assertWeb3Equal(usdc.numberOfSubmits, 3);
+        });
+
+        it("should replace the feed id of a symbol", async () => {
+            // the encoded feed ids are the same as the ones used by FtsoV2
+            expect(encodeFeedId("FLR/USD")).to.eq(feedIds[0]);
+            await publishPrices();
+            assertWeb3Equal((await priceStore.getPrice(feedSymbols[1]))[0], 123456);
+
+            // replace the feed id of USDC, keeping the symbol and the decimals
+            await priceStore.updateSettings([feedIds[0], renamedFeedId], feedSymbols, feedDecimals, 50, 0, { from: governance });
+            expect((await priceStore.getFeedIds()).toString()).to.eq([feedIds[0], renamedFeedId].toString());
+            expect((await priceStore.getSymbols()).toString()).to.eq(feedSymbols.toString());
+            expect(await priceStore.getFeedId(feedSymbols[1])).to.eq(renamedFeedId);
+
+            // the prices are stored per feed id, so the symbol has no price until the new feed is published
+            const { price, timestamp, trustedPrice } = await readPrices(feedSymbols[1]);
+            assertWeb3Equal(price, 0);
+            assertWeb3Equal(timestamp, startTs + votingEpochDurationSeconds);   // end of voting round 0
+            assertWeb3Equal(trustedPrice, 0);
+
+            // after publishing the new feed the symbol gets the price again
+            await publishPricesForFeeds(2, [feedIds[0], renamedFeedId], feedDecimals, [200000, 300000]);
+            const { 0: newPrice, 1: newTimestamp, 2: newDecimals } = await priceStore.getPrice(feedSymbols[1]);
+            assertWeb3Equal(newPrice, 300000);
+            assertWeb3Equal(newTimestamp, startTs + 3 * votingEpochDurationSeconds);
+            assertWeb3Equal(newDecimals, feedDecimals[1]);
+        });
+
+        it("should require the prices of the replaced feed to be published in the new order", async () => {
+            // replace the feed id of USDC
+            await priceStore.updateSettings([feedIds[0], renamedFeedId], feedSymbols, feedDecimals, 50, 0, { from: governance });
+            // the old feed id is not accepted anymore
+            await time.increaseTo(startTs + 2 * votingEpochDurationSeconds);   // start of voting round 2
+            await expectRevert.custom(submitPrices(1, trustedProviders[0], feedIds, feedDecimals, [123455, 123455]),
+                "FeedIdMismatch", []);
+            await expectRevert.custom(publishPrices(), "FeedIdMismatch", []);
+            // the feeds must also be published in the order in which they are configured
+            await expectRevert.custom(publishPricesForFeeds(1, [renamedFeedId, feedIds[0]], [feedDecimals[1], feedDecimals[0]], [300000, 200000], false),
+                "FeedIdMismatch", []);
+            await publishPricesForFeeds(1, [feedIds[0], renamedFeedId], feedDecimals, [200000, 300000], false);
+            assertWeb3Equal((await priceStore.getPrice(feedSymbols[1]))[0], 300000);
+        });
+
+        it("should replace the symbol of a feed", async () => {
+            await publishPrices();
+            const newSymbol = "USDC.E";
+            await priceStore.updateSettings(feedIds, [feedSymbols[0], newSymbol], feedDecimals, 50, 0, { from: governance });
+            expect((await priceStore.getSymbols()).toString()).to.eq([feedSymbols[0], newSymbol].toString());
+
+            // the new symbol immediately reports the price of the feed, since the price is stored per feed id
+            expect(await readPrices(newSymbol)).to.deep.eq(await readPrices(feedSymbols[1]));
+            assertWeb3Equal((await priceStore.getPrice(newSymbol))[0], 123456);
+
+            // the old symbol is not unregistered - it still points to the same feed and keeps being updated
+            expect(await priceStore.getFeedId(feedSymbols[1])).to.eq(feedIds[1]);
+            await publishPricesForFeeds(2, feedIds, feedDecimals, [200000, 300000]);
+            assertWeb3Equal((await priceStore.getPrice(newSymbol))[0], 300000);
+            assertWeb3Equal((await priceStore.getPrice(feedSymbols[1]))[0], 300000);
+        });
+
+        it("should not mix up the prices of the feeds when their order changes", async () => {
+            // publish different prices and trusted prices for the two feeds
+            await time.increaseTo(startTs + 2 * votingEpochDurationSeconds);   // start of voting round 2
+            for (let i = 0; i < trustedProviders.length; i++) {
+                await submitPrices(1, trustedProviders[i], feedIds, feedDecimals, [111100 + i, 222200 + i]);
+            }
+            await publishPrices(true, 1, 1, feedIds[0], feedIds[1], 111000, 222000);
+            const flrBefore = await readPrices(feedSymbols[0]);
+            const usdcBefore = await readPrices(feedSymbols[1]);
+
+            // swap the order of the feeds (the decimals follow their feeds)
+            await priceStore.updateSettings([feedIds[1], feedIds[0]], [feedSymbols[1], feedSymbols[0]],
+                [feedDecimals[1], feedDecimals[0]], 50, 0, { from: governance });
+            // the prices are stored per feed id, so moving the feeds does not change any of them
+            expect(await readPrices(feedSymbols[0])).to.deep.eq(flrBefore);
+            expect(await readPrices(feedSymbols[1])).to.deep.eq(usdcBefore);
+
+            // publishing in the old order is not possible anymore
+            await expectRevert.custom(publishPrices(true, 2, 2), "FeedIdMismatch", []);
+            // in the new order every price still ends up in its own feed
+            await publishPricesForFeeds(2, [feedIds[1], feedIds[0]], [feedDecimals[1], feedDecimals[0]],
+                [333000, 444000], false);
+            const flr = await readPrices(feedSymbols[0]);
+            const usdc = await readPrices(feedSymbols[1]);
+            assertWeb3Equal(flr.price, 444000);
+            assertWeb3Equal(flr.decimals, feedDecimals[0]);
+            assertWeb3Equal(usdc.price, 333000);
+            assertWeb3Equal(usdc.decimals, feedDecimals[1]);
+            // the trusted prices are also unaffected by the move
+            assertWeb3Equal(flr.trustedPrice, 111101);
+            assertWeb3Equal(flr.trustedDecimals, feedDecimals[0]);
+            assertWeb3Equal(usdc.trustedPrice, 222201);
+            assertWeb3Equal(usdc.trustedDecimals, feedDecimals[1]);
+        });
+
+        // Documents a known edge case: `setTrustedProviders` clears the pending trusted price submissions
+        // only for the feeds that are in the list at that moment (`_clearSubmittedTrustedPricesForLastEpoch`).
+        // A feed that is removed from the list before the providers are reset keeps its pending submissions,
+        // so if it is added back in the same voting round, the old submissions are counted together with
+        // the new ones - even those made by providers that are not trusted anymore.
+        // It needs that exact governance sequence within a single 90-second window and the spread check rejects
+        // the price outright if the two sets are far apart, so the severity is very low.
+        it("should keep the trusted prices submitted before the providers were reset for a feed that was removed at that time", async () => {
+            await time.increaseTo(startTs + 2 * votingEpochDurationSeconds);   // start of voting round 2
+            // the old providers submit prices for both feeds
+            for (let i = 0; i < trustedProviders.length; i++) {
+                await submitPrices(1, trustedProviders[i], feedIds, feedDecimals, [111100 + i, 100000 + i]);
+            }
+            // the second feed is removed, the providers are replaced (which clears the submissions of the
+            // feeds that are in the list and allows the providers to submit again) and the feed is added back
+            const newProviders = [trustedProviders[0], trustedProviders[1], accounts[13]];
+            await removeSecondFeed();
+            await priceStore.setTrustedProviders(newProviders, 1, { from: governance });
+            await priceStore.updateSettings(feedIds, feedSymbols, feedDecimals, 50, 0, { from: governance });
+            for (let i = 0; i < newProviders.length; i++) {
+                await submitPrices(1, newProviders[i], feedIds, feedDecimals, [222200 + i, 100200 + i]);
+            }
+
+            await publishPrices();
+
+            // the feed that stayed in the list only uses the prices submitted after the reset
+            const flr = await readPrices(feedSymbols[0]);
+            assertWeb3Equal(flr.trustedPrice, 222201);
+            assertWeb3Equal(flr.numberOfSubmits, 3);
+            // the removed feed uses both the old and the new submissions - the median is calculated from
+            // 6 prices (including the one of the removed provider), although there are only 3 providers
+            const usdc = await readPrices(feedSymbols[1]);
+            assertWeb3Equal(usdc.trustedPrice, 100101);   // median of 100000, 100001, 100002, 100200, 100201, 100202
+            assertWeb3Equal(usdc.numberOfSubmits, 6);
+        });
+
+        it("should not be able to publish prices from fast updates for a replaced feed that FtsoV2 does not support", async () => {
+            await ftsoV2Mock.setFeed(feedIds[0], 123123, feedDecimals[0]);
+            await ftsoV2Mock.setFeed(feedIds[1], 123456, feedDecimals[1]);
+            await priceStore.setUseFtsoV2FastUpdates(true, { from: governance });
+            // the replacement feed is not set on FtsoV2
+            await priceStore.updateSettings([feedIds[0], renamedFeedId], feedSymbols, feedDecimals, 50, 0, { from: governance });
+            await time.increaseTo(endOfRevealTime(1));
+            await expectRevert.custom(priceStore.publishPricesFromFastUpdates(), "FeedNotSupported", []);
+
+            // once FtsoV2 supports it, the prices can be published again
+            await ftsoV2Mock.setFeed(renamedFeedId, 300000, feedDecimals[1]);
+            await priceStore.publishPricesFromFastUpdates();
+            assertWeb3Equal((await priceStore.getPrice(feedSymbols[1]))[0], 300000);
         });
     });
 
@@ -1080,6 +1313,25 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
     async function publishPriceFeeds(feed0: PriceFeed, feed1: PriceFeed, increaseTime: boolean = true, votingRound: number = Number(feed0.votingRoundId), zeroRoot: boolean = false) {
         return await publishPriceFeedList([feed0, feed1], increaseTime, votingRound, zeroRoot);
+    }
+
+    // submits the trusted prices of a single provider for the given list of feeds
+    async function submitPrices(votingRoundId: number, provider: string, ids: string[], decimals: number[], values: BNish[]) {
+        const feeds: TrustedPriceFeed[] = ids.map((id, i) => ({ id, value: values[i], decimals: decimals[i] }));
+        return await priceStore.submitTrustedPrices(votingRoundId, feeds, { from: provider });
+    }
+
+    // reads everything the price store publicly reports about a symbol
+    async function readPrices(symbol: string) {
+        const { 0: price, 1: timestamp, 2: decimals } = await priceStore.getPrice(symbol);
+        const { 0: trustedPrice, 1: trustedTimestamp, 2: trustedDecimals, 3: numberOfSubmits } =
+            await priceStore.getPriceFromTrustedProvidersWithQuality(symbol);
+        return { price, timestamp, decimals, trustedPrice, trustedTimestamp, trustedDecimals, numberOfSubmits };
+    }
+
+    // encodes the feed id of a crypto feed (category 1), the same way as FtsoV2 does
+    function encodeFeedId(name: string) {
+        return "0x01" + Buffer.from(name).toString("hex").padEnd(40, "0");
     }
 
     function feedLeafHash(feed: PriceFeed) {
