@@ -5,7 +5,7 @@ import { FAssetContractStore } from "./contracts";
 import { currentDeployConfigDir, encodeContractNames, loadDeployAccounts, truffleContractMetadata } from './deploy-utils';
 import { verifyContract } from './verify-fasset-contracts';
 
-interface FtsoV2PriceStoreParameters {
+export interface FtsoV2PriceStoreParameters {
     contractName: string;
     firstVotingRoundStartTs: number;
     votingEpochDurationSeconds: number;
@@ -88,7 +88,7 @@ export function decodeFeedId(encodedFeedId: string): IFeedId {
     return { category, name };
 }
 
-function readFtsoV2Parameters(): FtsoV2PriceStoreParameters {
+export function readFtsoV2Parameters(): FtsoV2PriceStoreParameters {
     const paramFileName = `${currentDeployConfigDir()}/ftsov2.json`;
     const parameters = JSON.parse(readFileSync(paramFileName, { encoding: "ascii" })) as FtsoV2PriceStoreParameters;
     // check for recently added parameters
