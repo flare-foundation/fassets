@@ -64,7 +64,6 @@ contract FtsoV2PriceStore is
     error FtsoV2FastUpdatesContractNotSet();
     error UsePublishPrices();
     error UsePublishPricesFromFastUpdates();
-    error FastUpdatesFeedTooOld();
 
     /// Timestamp when the first voting epoch started, in seconds since UNIX epoch.
     uint64 public firstVotingRoundStartTs;
@@ -190,23 +189,21 @@ contract FtsoV2PriceStore is
         require(useFtsoV2FastUpdates, UsePublishPrices());
 
         bytes21[] memory feedIdsM = feedIds;
-        (uint256[] memory values, int8[] memory decimals, uint64 timestamp) =
-            ftsoV2FastUpdates.getFeedsById{ value: msg.value }(feedIdsM);
+        (int256[] memory values, int8[] memory decimals, uint64[] memory timestamps) =
+            ftsoV2FastUpdates.getCurrentFeeds{ value: msg.value }(feedIdsM);
 
         uint32 votingRoundId = _getPreviousVotingEpochId();
-        // FtsoV2 fast update prices will usually be a bit newer than votingRoundId (typically votingRoundId+1),
-        // because we want to sync votingRoundId with trusted feeds, which are from the previous round.
-        // But we can at least ensure that they are not too old (which could happen in principle).
-        require(timestamp >= _getStartTimestamp(votingRoundId), FastUpdatesFeedTooOld());
         _publishNewVotingRound(votingRoundId);
 
         for (uint256 i = 0; i < feedIdsM.length; i++) {
             bytes21 feedId = feedIdsM[i];
 
+            require(values[i] >= 0, ValueMustBeNonNegative());
+
             PriceStore storage priceStore = latestPrices[feedId];
             priceStore.votingRoundId = votingRoundId;
-            (priceStore.value, priceStore.decimals) = _rescaleToUint32(values[i], decimals[i]);
-            priceStore.fastUpdatesTimestamp = timestamp;
+            (priceStore.value, priceStore.decimals) = _rescaleToUint32(uint256(values[i]), decimals[i]);
+            priceStore.fastUpdatesTimestamp = timestamps[i];
 
             // calculate trusted prices for the same voting round
             _setTrustedPrices(priceStore, feedId, votingRoundId);
@@ -522,13 +519,6 @@ contract FtsoV2PriceStore is
      */
     function _getPreviousVotingEpochId() internal view returns(uint32) {
         return uint32((block.timestamp - firstVotingRoundStartTs) / votingEpochDurationSeconds) - 1;
-    }
-
-    /**
-     * Returns the start timestamp for the given voting epoch id.
-     */
-    function _getStartTimestamp(uint256 _votingEpochId) internal view returns(uint256) {
-        return firstVotingRoundStartTs + _votingEpochId * votingEpochDurationSeconds;
     }
 
     /**

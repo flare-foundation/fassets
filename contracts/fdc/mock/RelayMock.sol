@@ -84,14 +84,23 @@ contract RelayMock is IRelay {
         returns (uint256 _rewardEpochId) {}
 
     /**
-     * Checks the relay message for sufficient weight of signatures of the hash of the _config data.
-     * If the check is successful, the relay contract is configured with the new _config data, which
-     * in particular means that fee configurations are updated.
+     * Checks the relay message for sufficient weight of signatures for the _messageHash
+     * signed for protocol message Merkle root of the form (1, 0, 0, _messageHash), where the
+     * required weight is given by _thresholdBIPS instead of the default threshold.
+     * If the check is successful, reward epoch id of the signing policy is returned.
      * Otherwise the function reverts.
      * @param _relayMessage The relay message.
-     * @param _config The new relay configuration.
+     * @param _messageHash The hash of the message.
+     * @param _thresholdBIPS The required weight of the signatures in BIPS.
+     * @return _rewardEpochId The reward epoch id of the signing policy.
      */
-    function governanceFeeSetup(bytes calldata _relayMessage, RelayGovernanceConfig calldata _config) external {}
+    function verifyCustomSignatureWithThreshold(
+        bytes calldata _relayMessage,
+        bytes32 _messageHash,
+        uint16 _thresholdBIPS
+    )
+        external
+        returns (uint256 _rewardEpochId) {}
 
     /**
      * Finalization function for new signing policies and protocol messages.
@@ -191,6 +200,33 @@ contract RelayMock is IRelay {
      * @param _protocolId The protocol id.
      */
     function protocolFeeInWei(uint256 _protocolId) external view returns (uint256) {}
+
+    /**
+     * Returns the fee for one verification of a given protocol id, in the base units of the fee token
+     * (or in wei, when no fee token is set).
+     * @param _protocolId The protocol id.
+     */
+    function protocolFee(uint256 _protocolId) external view returns (uint256) {}
+
+    /**
+     * Returns the token in which the fees are paid; zero address when the fees are paid in native tokens.
+     */
+    function feeToken() external view returns (address) {}
+
+    /**
+     * Returns the fee configurations for all the protocols with a non-zero fee.
+     */
+    function getFeeConfigs() external view returns (FeeConfig[] memory _feeConfigs) {}
+
+    /**
+     * Returns true if the given address is exempt from paying the verification fees.
+     */
+    function feeExemptAddress(address account) external view returns (bool) {}
+
+    /**
+     * Returns the chain id of the source chain (the chain the relayed data originates from).
+     */
+    function sourceChainId() external view returns (uint256) {}
 
     /**
      * Returns the state data.

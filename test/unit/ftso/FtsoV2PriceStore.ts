@@ -1184,16 +1184,39 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             await expectRevert.custom(priceStore.publishPricesFromFastUpdates(), "SubmissionWindowNotClosed", []);
         });
 
-        it("should not publish too old prices from fast updates", async () => {
+        it("should not publish prices from fast updates when a feed value is negative", async () => {
+            // a custom feed with a signed source may report a negative value, which cannot be published
+            await enableFastUpdates(123123, -1);
+            await expectRevert.custom(publishPricesFromFastUpdates(1), "ValueMustBeNonNegative", []);
+        });
+
+        it("should publish a separate timestamp for each feed", async () => {
             await enableFastUpdates();
-            // the feeds must not be older than the start of the published voting round
-            await ftsoV2Mock.setFeedsTimestamp(startTs + votingEpochDurationSeconds - 1);
-            await time.increaseTo(endOfRevealTime(1));
-            await expectRevert.custom(priceStore.publishPricesFromFastUpdates(), "FastUpdatesFeedTooOld", []);
-            // exactly at the start of the voting round the feeds are still fresh enough
-            await ftsoV2Mock.setFeedsTimestamp(startTs + votingEpochDurationSeconds);
-            await priceStore.publishPricesFromFastUpdates();
+            // the second feed is a custom feed, which was updated in some earlier round
+            const sharedTimestamp = endOfRevealTime(1) - 10;
+            const customFeedTimestamp = startTs + votingEpochDurationSeconds;
+            await ftsoV2Mock.setFeedsTimestamp(sharedTimestamp);
+            await ftsoV2Mock.setFeedTimestamp(feedIds[1], customFeedTimestamp);
+            await publishPricesFromFastUpdates(1);
+            const { 0: price0, 1: timestamp0 } = await priceStore.getPrice(feedSymbols[0]);
+            assertWeb3Equal(price0, 123123);
+            assertWeb3Equal(timestamp0, sharedTimestamp);
+            const { 0: price1, 1: timestamp1 } = await priceStore.getPrice(feedSymbols[1]);
+            assertWeb3Equal(price1, 123456);
+            assertWeb3Equal(timestamp1, customFeedTimestamp);
+        });
+
+        it("should publish prices from fast updates even if the feeds were not updated recently", async () => {
+            // there is no staleness check - the feeds are not guaranteed to be updated every round
+            await enableFastUpdates();
+            const oldTimestamp = startTs + 1;
+            await ftsoV2Mock.setFeedsTimestamp(oldTimestamp);
+            await publishPricesFromFastUpdates(1);
             assertWeb3Equal(await priceStore.lastPublishedVotingRoundId(), 1);
+            // the old timestamp is reported, so that the users of the price can detect it
+            const { 0: price, 1: timestamp } = await priceStore.getPrice(feedSymbols[0]);
+            assertWeb3Equal(price, 123123);
+            assertWeb3Equal(timestamp, oldTimestamp);
         });
 
         it("should rescale feed values that do not fit into uint32", async () => {

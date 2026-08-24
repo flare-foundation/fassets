@@ -909,10 +909,10 @@
     "@ethersproject/properties" "^5.7.0"
     "@ethersproject/strings" "^5.7.0"
 
-"@flarenetwork/flare-periphery-contracts@0.1.51-alpha.1":
-  version "0.1.51-alpha.1"
-  resolved "https://registry.yarnpkg.com/@flarenetwork/flare-periphery-contracts/-/flare-periphery-contracts-0.1.51-alpha.1.tgz#9df8797ff753cf7e5762e1d0271bbcd93eed005b"
-  integrity sha512-vyVHNv4hezmObUXOdiSlyYCTxq9g0uJZUsCF74YwNZwYjWvfH8HrF7zoxgKZIpKXLe7Fpib87dx0LJJ/C7/krg==
+"@flarenetwork/flare-periphery-contracts@0.1.53-alpha.0":
+  version "0.1.53-alpha.0"
+  resolved "https://registry.yarnpkg.com/@flarenetwork/flare-periphery-contracts/-/flare-periphery-contracts-0.1.53-alpha.0.tgz#077421f8d9140ab3e6e5a7c54547bf7569f772c9"
+  integrity sha512-4yImnbrR4wU5XbKtnlJyjrFXAKLZ+9fMYEr4hhgwhXCp7B/aJarWURLQLdES2v4jIl5e7JiJslHggPSrjjC19g==
   dependencies:
     "@layerzerolabs/lz-evm-protocol-v2" "^3.0.0"
     "@openzeppelin/contracts" "^4.6.0"

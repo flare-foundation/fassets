@@ -41,10 +41,13 @@ interface IPricePublisher {
      * The prices for all the feeds in the `getFeedIds()` list are published in a single call, therefore
      * no proofs and no arguments are needed.
      * The prices are published for the previous voting round id (the same round as the trusted providers'
-     * prices), even though the fast updates feed values are typically a bit newer than that - the actual
-     * feed timestamp is reported as the price timestamp by `IPriceReader.getPrice`.
+     * prices), even though the feed values are typically a bit newer than that. Since the feeds are not
+     * necessarily all updated in the same round (custom feeds have their own update schedule), each feed
+     * keeps its own timestamp, which is reported as the price timestamp by `IPriceReader.getPrice`.
      * @dev Can only be used when the prices are obtained from FTSOv2 fast updates, i.e. when
      *  `useFtsoV2FastUpdates()` is `true`.
+     * @dev The fee for reading the feeds (see `FtsoV2Interface.calculateFeeByIds`) has to be paid by
+     *  the caller - the whole `msg.value` is forwarded to the FtsoV2 contract.
      */
     function publishPricesFromFastUpdates() external payable;
 

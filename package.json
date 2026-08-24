@@ -81,7 +81,7 @@
     "gas": "cat .gas-report.txt"
   },
   "dependencies": {
-    "@flarenetwork/flare-periphery-contracts": "0.1.51-alpha.1",
+    "@flarenetwork/flare-periphery-contracts": "0.1.53-alpha.0",
     "@openzeppelin/contracts": "4.9.6",
     "@openzeppelin/contracts-upgradeable": "4.9.6"
   },
