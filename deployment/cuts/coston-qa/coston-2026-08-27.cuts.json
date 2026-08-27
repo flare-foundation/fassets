@@ -1,0 +1,159 @@
+{
+    "$schema": "../diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FTestXRP"],
+    "autoDeleteMethodsNotInInterface": ["IIAssetManager"],
+    "init": {
+        "contract": "DirectMintingAndRedeemExtendedInit",
+        "method": "initialize",
+        "args": [{
+            "coreVaultDonationTag": 14,
+            "mintingTagManager": "0xC1C4996C41027c56E3D600129d736e8bce376f74",
+            "smartAccountManager": "0x432a566494a9e6E1BCd9598D95Cb444867168fEa",
+            "mintingFeeReceiver": "0x6ACB5959d4B7834E20ff9AD5B2A405780B1Af5Ac",
+            "minimumMintingFeeUBA": "100000",
+            "mintingFeeBIPS": "25",
+            "executorFeeUBA": "100000",
+            "othersCanExecuteAfterSeconds": 7200,
+            "hourlyLimitUBA": "1000000000",
+            "dailyLimitUBA": "5000000000",
+            "largeMintingThresholdUBA": "1000000000",
+            "largeMintingDelaySeconds": 3600,
+            "redeemWithTagSupported": true,
+            "minimumRedeemAmountUBA": "5000000"
+        }]
+    },
+    "facets": [
+        {
+            "contract": "DirectMintingFacet",
+            "exposedInterfaces": ["IDirectMinting"]
+        },
+        {
+            "contract": "DirectMintingSettingsFacet",
+            "exposedInterfaces": ["IDirectMintingSettings"]
+        },
+        {
+            "contract": "RedeemExtendedSettingsFacet",
+            "exposedInterfaces": ["IRedeemExtendedSettings"]
+        },
+        {
+            "contract": "CoreVaultClientFacet",
+            "exposedInterfaces": ["ICoreVaultClient"]
+        },
+        {
+            "contract": "TransferToCoreVaultFacet",
+            "exposedInterfaces": ["ICoreVaultClient"]
+        },
+        {
+            "contract": "CoreVaultClientSettingsFacet",
+            "exposedInterfaces": ["ICoreVaultClientSettings"]
+        },
+        {
+            "contract": "RedemptionTimeExtensionFacet",
+            "exposedInterfaces": ["IRedemptionTimeExtension"]
+        },
+        {
+            "contract": "AssetManagerDiamondCutFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "DiamondLoupeFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "AgentInfoFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "AvailableAgentsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "CollateralReservationsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "MintingFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "MintingDefaultsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionRequestsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionConfirmationsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionDefaultsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "LiquidationFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "ChallengesFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "UnderlyingBalanceFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "UnderlyingTimekeepingFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "AgentVaultManagementFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "AgentSettingsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "CollateralTypesFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "AgentCollateralFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "SettingsReaderFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "SettingsManagementFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "AgentVaultAndPoolSupportFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "SystemStateManagementFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "SystemInfoFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "EmergencyPauseFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "AgentPingFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "AgentAlwaysAllowedMintersFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        }
+    ]
+}

@@ -73,6 +73,12 @@
     "mustSwitchToProduction": true
   },
   {
+    "name": "testUSDX",
+    "contractName": "FakeERC20.sol",
+    "address": "0xD1139e2efD9c111272AE20445ce3110B2F58D2C6",
+    "mustSwitchToProduction": true
+  },
+  {
     "name": "FdcVerification",
     "contractName": "FdcVerification.sol",
     "address": "0x30DAB57c409E1e18c8B00dC351Bf568953D607B1"

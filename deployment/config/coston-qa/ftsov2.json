@@ -13,6 +13,7 @@
         { "feedId": "DOGE/USD", "symbol": "testDOGE", "feedDecimals": 5 },
         { "feedId": "ETH/USD", "symbol": "testETH", "feedDecimals": 3 },
         { "feedId": "USDC/USD", "symbol": "testUSDC", "feedDecimals": 5 },
-        { "feedId": "USDT/USD", "symbol": "testUSDT", "feedDecimals": 5 }
+        { "feedId": "USDT/USD", "symbol": "testUSDT", "feedDecimals": 5 },
+        { "feedId": "USDX/USD", "symbol": "testUSDX", "feedDecimals": 5 }
     ]
 }
