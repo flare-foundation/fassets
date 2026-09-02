@@ -97,7 +97,7 @@
   {
     "name": "FtsoV2PriceStoreImplementation",
     "contractName": "FtsoV2PriceStore.sol",
-    "address": "0xAc7a56ac86582f21a0C72cBc3465e6067BC77C13"
+    "address": "0xf9C161Ce6EA533479cf7350dBCD024981A4f73cD"
   },
   {
     "name": "FakePriceReader",
