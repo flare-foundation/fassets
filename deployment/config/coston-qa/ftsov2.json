@@ -1,4 +1,5 @@
 {
+    "$schema": "../ftsov2-price-store-parameters.json",
     "contractName": "FtsoV2PriceStore",
     "firstVotingRoundStartTs": 1658429955,
     "votingEpochDurationSeconds": 90,

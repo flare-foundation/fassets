@@ -1,23 +1,13 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import assert from 'node:assert';
-import { readFileSync } from 'node:fs';
 import { FAssetContractStore } from "./contracts";
 import { currentDeployConfigDir, encodeContractNames, loadDeployAccounts, truffleContractMetadata } from './deploy-utils';
+import { FtsoV2PriceStoreParameters } from './ftsov2-price-store-parameters';
+import { JsonParameterSchema } from './JsonParameterSchema';
 import { verifyContract } from './verify-fasset-contracts';
 
-export interface FtsoV2PriceStoreParameters {
-    contractName: string;
-    firstVotingRoundStartTs: number;
-    votingEpochDurationSeconds: number;
-    trustedProviders: string[];
-    trustedProvidersThreshold: number;
-    maxSpreadBIPS: number;
-    minTurnoutBIPS: number;
-    feeds: Array<{
-        feedId: string;
-        symbol: string;
-        feedDecimals: number;
-    }>;
+export interface IFeedId {
+    category: number;
+    name: string;
 }
 
 export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
@@ -43,10 +33,13 @@ export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contra
         { from: deployer });
 
     await ftsoV2PriceStore.setTrustedProviders(parameters.trustedProviders, parameters.trustedProvidersThreshold, { from: deployer });
+
+    const feeds = feedSettings(parameters);
     await ftsoV2PriceStore.updateSettings(
-        encodeFeedIds(parameters.feeds.map(feed => ({ category: 1, name: feed.feedId }))),
-        parameters.feeds.map(feed => feed.symbol),
-        parameters.feeds.map(feed => feed.feedDecimals),
+        feeds.scalingFeedIds,
+        feeds.fastUpdatesFeedIds,
+        feeds.symbols,
+        feeds.feedDecimals,
         parameters.maxSpreadBIPS,
         parameters.minTurnoutBIPS,
         { from: deployer });
@@ -58,9 +51,23 @@ export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contra
     console.log(`    deployed ${truffleContractMetadata(FtsoV2PriceStore).contractName}`);
 }
 
-export interface IFeedId {
-    category: number;
-    name: string;
+/**
+ * Splits the configured feeds into the FTSO scaling and the FTSOv2 fast updates lists and returns
+ * the arguments for `FtsoV2PriceStore.updateSettings` - the symbols and the decimals are ordered as
+ * the concatenation of the two feed id lists, which is what the contract expects.
+ */
+export function feedSettings(parameters: FtsoV2PriceStoreParameters) {
+    const scalingFeeds = parameters.feeds.filter(feed => (feed.source ?? "scaling") === "scaling");
+    const fastUpdatesFeeds = parameters.feeds.filter(feed => feed.source === "fastUpdates");
+    const encode = (feeds: FtsoV2PriceStoreParameters["feeds"]) =>
+        encodeFeedIds(feeds.map(feed => ({ category: 1, name: feed.feedId })));
+    const orderedFeeds = [...scalingFeeds, ...fastUpdatesFeeds];
+    return {
+        scalingFeedIds: encode(scalingFeeds),
+        fastUpdatesFeedIds: encode(fastUpdatesFeeds),
+        symbols: orderedFeeds.map(feed => feed.symbol),
+        feedDecimals: orderedFeeds.map(feed => feed.feedDecimals),
+    };
 }
 
 export function encodeFeedIds(feedIds: IFeedId[]): string[] {
@@ -88,11 +95,12 @@ export function decodeFeedId(encodedFeedId: string): IFeedId {
     return { category, name };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const ftsoV2PriceStoreParameters = new JsonParameterSchema<FtsoV2PriceStoreParameters>(require('../config/ftsov2-price-store-parameters.json'));
+
 export function readFtsoV2Parameters(): FtsoV2PriceStoreParameters {
     const paramFileName = `${currentDeployConfigDir()}/ftsov2.json`;
-    const parameters = JSON.parse(readFileSync(paramFileName, { encoding: "ascii" })) as FtsoV2PriceStoreParameters;
-    // check for recently added parameters
-    assert(parameters.minTurnoutBIPS != null, "Missing minTurnoutBIPS");
+    const parameters = ftsoV2PriceStoreParameters.load(paramFileName);
     return parameters;
 }
 

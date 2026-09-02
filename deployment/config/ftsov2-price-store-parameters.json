@@ -1,0 +1,80 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "additionalProperties": false,
+    "definitions": {
+        "FtsoV2Feed": {
+            "additionalProperties": false,
+            "properties": {
+                "feedDecimals": {
+                    "type": "number"
+                },
+                "feedId": {
+                    "type": "string"
+                },
+                "source": {
+                    "enum": [
+                        "fastUpdates",
+                        "scaling"
+                    ],
+                    "type": "string"
+                },
+                "symbol": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "feedDecimals",
+                "feedId",
+                "symbol"
+            ],
+            "type": "object"
+        }
+    },
+    "properties": {
+        "$schema": {
+            "type": "string"
+        },
+        "contractName": {
+            "type": "string"
+        },
+        "feeds": {
+            "items": {
+                "$ref": "#/definitions/FtsoV2Feed"
+            },
+            "type": "array"
+        },
+        "firstVotingRoundStartTs": {
+            "type": "number"
+        },
+        "maxSpreadBIPS": {
+            "type": "number"
+        },
+        "minTurnoutBIPS": {
+            "type": "number"
+        },
+        "trustedProviders": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "trustedProvidersThreshold": {
+            "type": "number"
+        },
+        "votingEpochDurationSeconds": {
+            "type": "number"
+        }
+    },
+    "required": [
+        "contractName",
+        "feeds",
+        "firstVotingRoundStartTs",
+        "maxSpreadBIPS",
+        "minTurnoutBIPS",
+        "trustedProviders",
+        "trustedProvidersThreshold",
+        "votingEpochDurationSeconds"
+    ],
+    "type": "object"
+}
+
