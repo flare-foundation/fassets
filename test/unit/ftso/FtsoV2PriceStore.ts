@@ -46,7 +46,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         relayMock = await MockContract.new();
         ftsoV2Mock = await FtsoV2Mock.new();
         await priceStore.setTrustedProviders(trustedProviders, 1, { from: governance });
-        await priceStore.updateSettings(feedIds, feedSymbols, feedDecimals, 50, 0, { from: governance });
+        await priceStore.updateSettings(feedIds, [], feedSymbols, feedDecimals, 50, 0, { from: governance });
         await contracts.addressUpdater.update(["AddressUpdater", "Relay", "FtsoV2"],
             [contracts.addressUpdater.address, relayMock.address, ftsoV2Mock.address],
             [priceStore.address],
@@ -89,7 +89,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         it("should revert if wrong number of proofs is provided", async () => {
             // update settings
             const feedIds = ["0x01464c522f55534400000000000000000000000000", "0x01555344432f555344000000000000000000000000"];
-            await priceStore.updateSettings(["0x01464c522f55534400000000000000000000000000"], ["FLR"], [6], 50, 0, { from: governance });
+            await priceStore.updateSettings(["0x01464c522f55534400000000000000000000000000"], [], ["FLR"], [6], 50, 0, { from: governance });
 
             await expectRevert.custom(publishPrices(), "WrongNumberOfProofs", []);
         });
@@ -377,19 +377,19 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
     describe("update settings", () => {
         it("should revert if not governance", async () => {
-            await expectRevert.custom(priceStore.updateSettings([], [], [], 50, 0), "OnlyGovernance", []);
+            await expectRevert.custom(priceStore.updateSettings([], [], [], [], 50, 0), "OnlyGovernance", []);
         });
 
         it("should revert if lengths mismatch", async () => {
-            await expectRevert.custom(priceStore.updateSettings([], [], [6], 50, 0, { from: governance }), "LengthMismatch", []);
+            await expectRevert.custom(priceStore.updateSettings([], [], [], [6], 50, 0, { from: governance }), "LengthMismatch", []);
         });
 
         it("should revert if max spread too big", async () => {
-            await expectRevert.custom(priceStore.updateSettings([], [], [], 10001, 0, { from: governance }), "MaxSpreadTooBig", []);
+            await expectRevert.custom(priceStore.updateSettings([], [], [], [], 10001, 0, { from: governance }), "MaxSpreadTooBig", []);
         });
 
         it("should revert if min turnout too big", async () => {
-            await expectRevert.custom(priceStore.updateSettings([], [], [], 50, 10001, { from: governance }), "MinTurnoutTooBig", []);
+            await expectRevert.custom(priceStore.updateSettings([], [], [], [], 50, 10001, { from: governance }), "MinTurnoutTooBig", []);
         });
 
         it("should delete trusted price for a symbol if changing decimals", async () => {
@@ -415,7 +415,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             assertWeb3Equal(turnout, 3);
 
             // update settings; change trusted decimals for USDC
-            await priceStore.updateSettings(feedIds, feedSymbols, [6, 4], 50, 0, { from: governance });
+            await priceStore.updateSettings(feedIds, [], feedSymbols, [6, 4], 50, 0, { from: governance });
             var { 0: price, 1: timestamp, 2: decimals, 3: turnout } = await priceStore.getPriceFromTrustedProvidersWithQuality("USDC");
             assertWeb3Equal(price, 0);
             assertWeb3Equal(timestamp, startTs + 1 * votingEpochDurationSeconds);
@@ -450,7 +450,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
             // update settings; change trusted decimals for USDC
             const newUSDCDecimals = 4;
-            await priceStore.updateSettings(feedIds, feedSymbols, [feedDecimals[0], newUSDCDecimals], 50, 0, { from: governance });
+            await priceStore.updateSettings(feedIds, [], feedSymbols, [feedDecimals[0], newUSDCDecimals], 50, 0, { from: governance });
             var { 0: price, 1: timestamp, 2: decimals } = await priceStore.getPriceFromTrustedProviders("USDC");
             assertWeb3Equal(price, 0);
             assertWeb3Equal(timestamp, startTs + 1 * votingEpochDurationSeconds);
@@ -487,7 +487,12 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
         // adds the new feed, leaving the settings of the existing feeds unchanged
         async function addNewFeed() {
-            await priceStore.updateSettings(allFeedIds, allFeedSymbols, allFeedDecimals, 50, 0, { from: governance });
+            await priceStore.updateSettings(allFeedIds, [], allFeedSymbols, allFeedDecimals, 50, 0, { from: governance });
+        }
+
+        // adds the new feed while all the feeds are read from fast updates
+        async function addNewFastUpdatesFeed() {
+            await priceStore.updateSettings([], allFeedIds, allFeedSymbols, allFeedDecimals, 50, 0, { from: governance });
         }
 
         // publishes prices for all the feeds, including the new one
@@ -497,10 +502,11 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             return await publishPriceFeedList(feeds, increaseTime, votingRoundId);
         }
 
+        // sets the feeds on the FtsoV2 mock and moves all the feeds of the price store to fast updates
         async function enableFastUpdates() {
             await ftsoV2Mock.setFeed(feedIds[0], 123123, feedDecimals[0]);
             await ftsoV2Mock.setFeed(feedIds[1], 123456, feedDecimals[1]);
-            await priceStore.setUseFtsoV2FastUpdates(true, { from: governance });
+            await priceStore.updateSettings([], feedIds, feedSymbols, feedDecimals, 50, 0, { from: governance });
         }
 
         it("should register the new feed and keep the existing ones", async () => {
@@ -591,10 +597,10 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             await enableFastUpdates();
             // the new feed must also be available on FtsoV2
             await ftsoV2Mock.setFeed(newFeedId, 500000, newFeedDecimals);
-            await addNewFeed();
+            await addNewFastUpdatesFeed();
 
             await time.increaseTo(endOfRevealTime(1));
-            await priceStore.publishPricesFromFastUpdates();
+            await priceStore.publishPrices([]);
 
             assertWeb3Equal((await priceStore.getPrice(feedSymbols[0]))[0], 123123);
             assertWeb3Equal((await priceStore.getPrice(feedSymbols[1]))[0], 123456);
@@ -606,14 +612,14 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         it("should not be able to publish from fast updates if the new feed is not supported by FtsoV2", async () => {
             await enableFastUpdates();
             // the new feed is not set on FtsoV2, so reading the feeds fails and no prices can be published at all
-            await addNewFeed();
+            await addNewFastUpdatesFeed();
             await time.increaseTo(endOfRevealTime(1));
-            await expectRevert.custom(priceStore.publishPricesFromFastUpdates(), "FeedNotSupported", []);
+            await expectRevert.custom(priceStore.publishPrices([]), "FeedNotSupported", []);
 
             // the governance can recover by removing the feed from the list again
-            await priceStore.updateSettings(feedIds, feedSymbols, feedDecimals, 50, 0, { from: governance });
+            await priceStore.updateSettings([], feedIds, feedSymbols, feedDecimals, 50, 0, { from: governance });
             expect((await priceStore.getFeedIds()).toString()).to.eq(feedIds.toString());
-            await priceStore.publishPricesFromFastUpdates();
+            await priceStore.publishPrices([]);
             assertWeb3Equal((await priceStore.getPrice(feedSymbols[0]))[0], 123123);
             // the symbol of the removed feed stays registered, it just never gets a price
             assertWeb3Equal((await priceStore.getPrice(newFeedSymbol))[0], 0);
@@ -633,7 +639,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
         // removes the second feed (USDC), leaving the settings of the first one unchanged
         async function removeSecondFeed() {
-            await priceStore.updateSettings([feedIds[0]], [feedSymbols[0]], [feedDecimals[0]], 50, 0, { from: governance });
+            await priceStore.updateSettings([feedIds[0]], [], [feedSymbols[0]], [feedDecimals[0]], 50, 0, { from: governance });
         }
 
         it("should remove a feed from the list of published feeds", async () => {
@@ -695,7 +701,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             assertWeb3Equal((await priceStore.getPrice(feedSymbols[1]))[0], 123456);
 
             // add it back with unchanged settings
-            await priceStore.updateSettings(feedIds, feedSymbols, feedDecimals, 50, 0, { from: governance });
+            await priceStore.updateSettings(feedIds, [], feedSymbols, feedDecimals, 50, 0, { from: governance });
             expect((await priceStore.getFeedIds()).toString()).to.eq(feedIds.toString());
             await publishPricesForFeeds(3, feedIds, feedDecimals, [300000, 400000]);
             assertWeb3Equal((await priceStore.getPrice(feedSymbols[0]))[0], 300000);
@@ -712,7 +718,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             // removing a feed does not delete the prices submitted for it, so they are still used
             // if the feed is added back before the round is published
             await removeSecondFeed();
-            await priceStore.updateSettings(feedIds, feedSymbols, feedDecimals, 50, 0, { from: governance });
+            await priceStore.updateSettings(feedIds, [], feedSymbols, feedDecimals, 50, 0, { from: governance });
 
             await publishPrices();
             const usdc = await readPrices(feedSymbols[1]);
@@ -727,7 +733,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             assertWeb3Equal((await priceStore.getPrice(feedSymbols[1]))[0], 123456);
 
             // replace the feed id of USDC, keeping the symbol and the decimals
-            await priceStore.updateSettings([feedIds[0], renamedFeedId], feedSymbols, feedDecimals, 50, 0, { from: governance });
+            await priceStore.updateSettings([feedIds[0], renamedFeedId], [], feedSymbols, feedDecimals, 50, 0, { from: governance });
             expect((await priceStore.getFeedIds()).toString()).to.eq([feedIds[0], renamedFeedId].toString());
             expect((await priceStore.getSymbols()).toString()).to.eq(feedSymbols.toString());
             expect(await priceStore.getFeedId(feedSymbols[1])).to.eq(renamedFeedId);
@@ -748,7 +754,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
         it("should require the prices of the replaced feed to be published in the new order", async () => {
             // replace the feed id of USDC
-            await priceStore.updateSettings([feedIds[0], renamedFeedId], feedSymbols, feedDecimals, 50, 0, { from: governance });
+            await priceStore.updateSettings([feedIds[0], renamedFeedId], [], feedSymbols, feedDecimals, 50, 0, { from: governance });
             // the old feed id is not accepted anymore
             await time.increaseTo(startTs + 2 * votingEpochDurationSeconds);   // start of voting round 2
             await expectRevert.custom(submitPrices(1, trustedProviders[0], feedIds, feedDecimals, [123455, 123455]),
@@ -764,7 +770,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         it("should replace the symbol of a feed", async () => {
             await publishPrices();
             const newSymbol = "USDC.E";
-            await priceStore.updateSettings(feedIds, [feedSymbols[0], newSymbol], feedDecimals, 50, 0, { from: governance });
+            await priceStore.updateSettings(feedIds, [], [feedSymbols[0], newSymbol], feedDecimals, 50, 0, { from: governance });
             expect((await priceStore.getSymbols()).toString()).to.eq([feedSymbols[0], newSymbol].toString());
 
             // the new symbol immediately reports the price of the feed, since the price is stored per feed id
@@ -789,7 +795,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             const usdcBefore = await readPrices(feedSymbols[1]);
 
             // swap the order of the feeds (the decimals follow their feeds)
-            await priceStore.updateSettings([feedIds[1], feedIds[0]], [feedSymbols[1], feedSymbols[0]],
+            await priceStore.updateSettings([feedIds[1], feedIds[0]], [], [feedSymbols[1], feedSymbols[0]],
                 [feedDecimals[1], feedDecimals[0]], 50, 0, { from: governance });
             // the prices are stored per feed id, so moving the feeds does not change any of them
             expect(await readPrices(feedSymbols[0])).to.deep.eq(flrBefore);
@@ -831,7 +837,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             const newProviders = [trustedProviders[0], trustedProviders[1], accounts[13]];
             await removeSecondFeed();
             await priceStore.setTrustedProviders(newProviders, 1, { from: governance });
-            await priceStore.updateSettings(feedIds, feedSymbols, feedDecimals, 50, 0, { from: governance });
+            await priceStore.updateSettings(feedIds, [], feedSymbols, feedDecimals, 50, 0, { from: governance });
             for (let i = 0; i < newProviders.length; i++) {
                 await submitPrices(1, newProviders[i], feedIds, feedDecimals, [222200 + i, 100200 + i]);
             }
@@ -852,15 +858,14 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         it("should not be able to publish prices from fast updates for a replaced feed that FtsoV2 does not support", async () => {
             await ftsoV2Mock.setFeed(feedIds[0], 123123, feedDecimals[0]);
             await ftsoV2Mock.setFeed(feedIds[1], 123456, feedDecimals[1]);
-            await priceStore.setUseFtsoV2FastUpdates(true, { from: governance });
             // the replacement feed is not set on FtsoV2
-            await priceStore.updateSettings([feedIds[0], renamedFeedId], feedSymbols, feedDecimals, 50, 0, { from: governance });
+            await priceStore.updateSettings([], [feedIds[0], renamedFeedId], feedSymbols, feedDecimals, 50, 0, { from: governance });
             await time.increaseTo(endOfRevealTime(1));
-            await expectRevert.custom(priceStore.publishPricesFromFastUpdates(), "FeedNotSupported", []);
+            await expectRevert.custom(priceStore.publishPrices([]), "FeedNotSupported", []);
 
             // once FtsoV2 supports it, the prices can be published again
             await ftsoV2Mock.setFeed(renamedFeedId, 300000, feedDecimals[1]);
-            await priceStore.publishPricesFromFastUpdates();
+            await priceStore.publishPrices([]);
             assertWeb3Equal((await priceStore.getPrice(feedSymbols[1]))[0], 300000);
         });
     });
@@ -973,7 +978,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
                 feeds1.push({ id: feedIds[i], value: 123455, decimals: newFeedDecimals[i] });
                 feeds2.push({ id: feedIds[i], value: 123456, decimals: newFeedDecimals[i] });
             }
-            await priceStore.updateSettings(feedIds, feedSymbols, newFeedDecimals, 50, 0, { from: governance });
+            await priceStore.updateSettings(feedIds, [], feedSymbols, newFeedDecimals, 50, 0, { from: governance });
             await priceStore.submitTrustedPrices(1, feeds0, { from: trustedProviders[0] });
             await priceStore.submitTrustedPrices(1, feeds1, { from: trustedProviders[1] });
 
@@ -1021,6 +1026,7 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             // update settings
             await priceStore.updateSettings(
                 ["0x01464c522f55534400000000000000000000000000", "0x01555344432f555344000000000000000000000000", "0x015452582f55534400000000000000000000000000"],
+                [],
                 ["FLR", "USDC", "XDC"],
                 [6, 7, 8],
                 50, 0,
@@ -1089,21 +1095,22 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
 
     describe("publishing prices from fast updates", () => {
 
-        // sets the feeds on the FtsoV2 mock and switches the price store to fast updates
+        // sets the feeds on the FtsoV2 mock and moves all the feeds of the price store to fast updates
         async function enableFastUpdates(value0: BNish = 123123, value1: BNish = 123456,
             decimals0: number = feedDecimals[0], decimals1: number = feedDecimals[1]
         ) {
             await ftsoV2Mock.setFeed(feedIds[0], value0, decimals0);
             await ftsoV2Mock.setFeed(feedIds[1], value1, decimals1);
-            await priceStore.setUseFtsoV2FastUpdates(true, { from: governance });
+            await priceStore.updateSettings([], feedIds, feedSymbols, feedDecimals, 50, 0, { from: governance });
         }
 
-        // increases time to the end of the submission window of `votingRound` and publishes the prices
+        // increases time to the end of the submission window of `votingRound` and publishes the prices;
+        // there are no scaling feeds, so no proofs are passed
         async function publishPricesFromFastUpdates(votingRound: number = 1, fee?: BNish) {
             await time.increaseTo(endOfRevealTime(votingRound));
             return fee != null
-                ? await priceStore.publishPricesFromFastUpdates({ value: String(fee) })
-                : await priceStore.publishPricesFromFastUpdates();
+                ? await priceStore.publishPrices([], { value: String(fee) })
+                : await priceStore.publishPrices([]);
         }
 
         async function submitTrustedPrices(votingRoundId: number, providers: string[], prices: BNish[]) {
@@ -1116,28 +1123,34 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             }
         }
 
-        it("only governance can enable fast updates", async () => {
-            await expectRevert.custom(priceStore.setUseFtsoV2FastUpdates(true, { from: accounts[15] }), "OnlyGovernance", []);
-        });
-
-        it("should not enable fast updates before the FtsoV2 contract address is set", async () => {
+        it("should not publish prices from fast updates before the FtsoV2 contract address is set", async () => {
             // create a price store that has not received the contract addresses yet
             const priceStoreProxy = await FtsoV2PriceStoreProxy.new(priceStoreImpl.address, contracts.governanceSettings.address,
                 governance, contracts.addressUpdater.address, startTs, votingEpochDurationSeconds, ftsoScalingProtocolId);
             const newPriceStore = await FtsoV2PriceStore.at(priceStoreProxy.address);
             assert.equal(await newPriceStore.ftsoV2FastUpdates(), ZERO_ADDRESS);
-            await expectRevert.custom(newPriceStore.setUseFtsoV2FastUpdates(true, { from: governance }), "FtsoV2FastUpdatesContractNotSet", []);
+            await newPriceStore.updateSettings([], feedIds, feedSymbols, feedDecimals, 50, 0, { from: governance });
+            await time.increaseTo(endOfRevealTime(1));
+            // there are no scaling feeds, so the (also unset) Relay contract is never called
+            await expectRevert.custom(newPriceStore.publishPrices([]), "FtsoV2FastUpdatesContractNotSet", []);
         });
 
-        it("should not publish prices from fast updates when they are not enabled", async () => {
-            assert.isFalse(await priceStore.useFtsoV2FastUpdates());
-            await expectRevert.custom(priceStore.publishPricesFromFastUpdates(), "UsePublishPrices", []);
-        });
-
-        it("should not publish prices with proofs when fast updates are enabled", async () => {
+        it("should require the proofs of exactly the scaling feeds", async () => {
+            // all the feeds are read from fast updates, so no proofs may be passed
             await enableFastUpdates();
-            assert.isTrue(await priceStore.useFtsoV2FastUpdates());
-            await expectRevert.custom(publishPrices(), "UsePublishPricesFromFastUpdates", []);
+            await expectRevert.custom(publishPrices(), "WrongNumberOfProofs", []);
+            // and vice versa - when all the feeds are published from scaling, the proofs are mandatory
+            await priceStore.updateSettings(feedIds, [], feedSymbols, feedDecimals, 50, 0, { from: governance });
+            await expectRevert.custom(priceStore.publishPrices([]), "WrongNumberOfProofs", []);
+        });
+
+        it("should not accept a fee when there are no fast updates feeds", async () => {
+            // the fee could not be recovered from the price store, so it must not be paid at all
+            await time.increaseTo(endOfRevealTime(1));
+            await expectRevert.custom(priceStore.publishPrices([], { value: "10" }), "NoFeeRequired", []);
+            // and none is needed once the feeds are read from fast updates
+            await enableFastUpdates();
+            await priceStore.publishPrices([]);
         });
 
         it("should publish prices from fast updates", async () => {
@@ -1175,13 +1188,13 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         it("should not publish prices from fast updates twice for the same voting round", async () => {
             await enableFastUpdates();
             await publishPricesFromFastUpdates(1);
-            await expectRevert.custom(priceStore.publishPricesFromFastUpdates(), "PricesAlreadyPublished", []);
+            await expectRevert.custom(priceStore.publishPrices([]), "PricesAlreadyPublished", []);
         });
 
         it("should not publish prices from fast updates before the submission window closes", async () => {
             await enableFastUpdates();
             await time.increaseTo(startTs + 2 * votingEpochDurationSeconds);   // start of voting round 2
-            await expectRevert.custom(priceStore.publishPricesFromFastUpdates(), "SubmissionWindowNotClosed", []);
+            await expectRevert.custom(priceStore.publishPrices([]), "SubmissionWindowNotClosed", []);
         });
 
         it("should not publish prices from fast updates when a feed value is negative", async () => {
@@ -1248,9 +1261,9 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             await ftsoV2Mock.setFeePerFeed(10);
             await time.increaseTo(endOfRevealTime(1));
             // reading the feeds fails when the fee is not paid
-            await expectRevert.custom(priceStore.publishPricesFromFastUpdates(), "FeeTooLow", []);
+            await expectRevert.custom(priceStore.publishPrices([]), "FeeTooLow", []);
             // the caller has to send the fee for all the feeds
-            await priceStore.publishPricesFromFastUpdates({ value: "20" });
+            await priceStore.publishPrices([], { value: "20" });
             assertWeb3Equal(await web3.eth.getBalance(ftsoV2Mock.address), 20);
             assertWeb3Equal(await web3.eth.getBalance(priceStore.address), 0);
         });
@@ -1264,13 +1277,104 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             assertWeb3Equal(fastPrice, 50000);
             assertWeb3Equal(fastTimestamp, feedsTimestamp);
             // switch back to FTSO scaling
-            await priceStore.setUseFtsoV2FastUpdates(false, { from: governance });
-            await expectRevert.custom(priceStore.publishPricesFromFastUpdates(), "UsePublishPrices", []);
+            await priceStore.updateSettings(feedIds, [], feedSymbols, feedDecimals, 50, 0, { from: governance });
+            expect((await priceStore.getFastUpdatesFeedIds()).length).to.eq(0);
             // the prices published with proofs report the end of the voting round as the timestamp again
             await publishPrices(true, 2, 2);
             const { 0: price, 1: timestamp } = await priceStore.getPrice(feedSymbols[0]);
             assertWeb3Equal(price, 123123);
             assertWeb3Equal(timestamp, startTs + 3 * votingEpochDurationSeconds);
+        });
+    });
+
+    describe("publishing prices from both sources", () => {
+
+        // the first feed is published from FTSO scaling, the second one from fast updates
+        async function splitFeedSources() {
+            await ftsoV2Mock.setFeed(feedIds[1], 123456, feedDecimals[1]);
+            await priceStore.updateSettings([feedIds[0]], [feedIds[1]], feedSymbols, feedDecimals, 50, 0,
+                { from: governance });
+        }
+
+        // publishes the price of the first feed with a proof and reads the second one from fast updates
+        async function publishMixedPrices(votingRound: number, value: number = 123123) {
+            const feed: PriceFeed = { votingRoundId: votingRound, id: feedIds[0], value, turnoutBIPS: 10000,
+                decimals: feedDecimals[0] };
+            return await publishPriceFeedList([feed], true, votingRound);
+        }
+
+        it("should not allow the same feed in both lists", async () => {
+            await expectRevert.custom(priceStore.updateSettings(feedIds, [feedIds[1]],
+                [...feedSymbols, feedSymbols[1]], [...feedDecimals, feedDecimals[1]], 50, 0, { from: governance }),
+                "DuplicateFeedId", []);
+        });
+
+        it("should return the scaling and the fast updates feeds separately and joined", async () => {
+            await splitFeedSources();
+            expect((await priceStore.getScalingFeedIds()).toString()).to.eq(feedIds[0]);
+            expect((await priceStore.getFastUpdatesFeedIds()).toString()).to.eq(feedIds[1]);
+            expect((await priceStore.getFeedIds()).toString()).to.eq(feedIds.toString());
+            expect((await priceStore.getSymbols()).toString()).to.eq(feedSymbols.toString());
+            const { 0: ids, 1: decimals } = await priceStore.getFeedIdsWithDecimals();
+            expect(ids.toString()).to.eq(feedIds.toString());
+            expect(decimals.toString()).to.eq(feedDecimals.toString());
+        });
+
+        it("should publish the prices from both sources in a single call", async () => {
+            await splitFeedSources();
+            const feedsTimestamp = endOfRevealTime(1) - 10;
+            await ftsoV2Mock.setFeedsTimestamp(feedsTimestamp);
+            const res = await publishMixedPrices(1);
+            // only one voting round is published
+            expect(filterEvents(res, "PricesPublished").length).to.eq(1);
+            expectEvent(res, "PricesPublished", { votingRoundId: "1" });
+            assertWeb3Equal(await priceStore.lastPublishedVotingRoundId(), 1);
+            // the scaling price is timestamped by the end of the voting round...
+            const { 0: price0, 1: timestamp0 } = await priceStore.getPrice(feedSymbols[0]);
+            assertWeb3Equal(price0, 123123);
+            assertWeb3Equal(timestamp0, startTs + 2 * votingEpochDurationSeconds);
+            // ...and the fast updates price by its own feed timestamp
+            const { 0: price1, 1: timestamp1 } = await priceStore.getPrice(feedSymbols[1]);
+            assertWeb3Equal(price1, 123456);
+            assertWeb3Equal(timestamp1, feedsTimestamp);
+        });
+
+        it("should calculate the trusted prices of both sources for the same voting round", async () => {
+            await splitFeedSources();
+            await time.increaseTo(startTs + 2 * votingEpochDurationSeconds);   // start of voting round 2
+            for (let i = 0; i < trustedProviders.length; i++) {
+                await submitPrices(1, trustedProviders[i], feedIds, feedDecimals, [123455 + i, 223455 + i]);
+            }
+            await publishMixedPrices(1);
+            const endOfRound1 = startTs + 2 * votingEpochDurationSeconds;
+            const scaling = await readPrices(feedSymbols[0]);
+            assertWeb3Equal(scaling.trustedPrice, 123456);
+            assertWeb3Equal(scaling.numberOfSubmits, 3);
+            assertWeb3Equal(scaling.trustedTimestamp, endOfRound1);
+            const fastUpdates = await readPrices(feedSymbols[1]);
+            assertWeb3Equal(fastUpdates.trustedPrice, 223456);
+            assertWeb3Equal(fastUpdates.numberOfSubmits, 3);
+            assertWeb3Equal(fastUpdates.trustedTimestamp, endOfRound1);
+        });
+
+        it("should require the trusted prices of the scaling and the fast updates feeds", async () => {
+            await splitFeedSources();
+            await time.increaseTo(startTs + 2 * votingEpochDurationSeconds);   // start of voting round 2
+            // the feeds must be submitted in the getFeedIds() order - scaling first
+            await expectRevert.custom(submitPrices(1, trustedProviders[0], [feedIds[1], feedIds[0]],
+                [feedDecimals[1], feedDecimals[0]], [1000, 2000]), "FeedIdMismatch", []);
+            await expectRevert.custom(submitPrices(1, trustedProviders[0], [feedIds[0]], [feedDecimals[0]], [1000]),
+                "AllPricesMustBeProvided", []);
+            await submitPrices(1, trustedProviders[0], feedIds, feedDecimals, [1000, 2000]);
+        });
+
+        it("should not publish the prices of the fast updates feeds for an older voting round twice", async () => {
+            await splitFeedSources();
+            await publishMixedPrices(2);
+            // the scaling proofs for round 1 are older than the last published round
+            const feed: PriceFeed = { votingRoundId: 1, id: feedIds[0], value: 123123, turnoutBIPS: 10000,
+                decimals: feedDecimals[0] };
+            await expectRevert.custom(publishPriceFeedList([feed], false, 1), "PricesAlreadyPublished", []);
         });
     });
 

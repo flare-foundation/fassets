@@ -27,38 +27,24 @@ interface IPricePublisher {
     }
 
     /**
-     * Publishes the FTSO scaling prices and calculates the median of the trusted prices.
-     * It must be called for all feeds ordered as in the `getFeedIds()` list.
-     * @param _proofs The list of FTSO scaling feeds with Merkle proofs.
-     * @dev Can only be used when the prices are obtained from FTSO scaling, i.e. when
-     *  `useFtsoV2FastUpdates()` is `false`.
+     * Publishes the prices of all the required feeds and calculates the median of the trusted prices.
+     * The prices of the `getScalingFeedIds()` feeds are provided by the caller as FTSO scaling feeds
+     * with Merkle proofs, ordered as in the `getScalingFeedIds()` list. The prices of the remaining
+     * feeds (`getFastUpdatesFeedIds()`) are read from the FTSOv2 fast updates (or custom feeds) contract
+     * by this method, so no proofs or other arguments are needed for them.
+     * All the prices are published for the same voting round id - the one the proofs are for, or the
+     * previous voting round id when there are no FTSO scaling feeds. The values read from fast updates
+     * are the current ones, so they are typically a bit newer than that voting round; since such feeds
+     * are also not necessarily all updated in the same round (custom feeds have their own update
+     * schedule), each of them keeps its own timestamp, which is reported as the price timestamp by
+     * `IPriceReader.getPrice`.
+     * @param _proofs The list of FTSO scaling feeds with Merkle proofs; empty when all the prices are
+     *  read from fast updates.
+     * @dev The fee for reading the fast update feeds (see `FtsoV2Interface.calculateFeeByIds`) has to be paid
+     *  by the caller - the whole `msg.value` is forwarded to the FtsoV2 contract and any overpayment is lost.
+     *  No payment is required (and none is accepted) when all the prices are provided from FTSO scaling.
      */
-    function publishPrices(FeedWithProof[] calldata _proofs) external;
-
-    /**
-     * Publishes the prices, read from the FTSOv2 fast updates (or custom feeds) contract, and calculates
-     * the median of the trusted prices.
-     * The prices for all the feeds in the `getFeedIds()` list are published in a single call, therefore
-     * no proofs and no arguments are needed.
-     * The prices are published for the previous voting round id (the same round as the trusted providers'
-     * prices), even though the feed values are typically a bit newer than that. Since the feeds are not
-     * necessarily all updated in the same round (custom feeds have their own update schedule), each feed
-     * keeps its own timestamp, which is reported as the price timestamp by `IPriceReader.getPrice`.
-     * @dev Can only be used when the prices are obtained from FTSOv2 fast updates, i.e. when
-     *  `useFtsoV2FastUpdates()` is `true`.
-     * @dev The fee for reading the feeds (see `FtsoV2Interface.calculateFeeByIds`) has to be paid by
-     *  the caller - the whole `msg.value` is forwarded to the FtsoV2 contract.
-     */
-    function publishPricesFromFastUpdates() external payable;
-
-    /**
-     * Indicates the source of the (non-trusted) prices, which determines the method used for publishing.
-     * @return `true` if the prices are obtained from the FTSOv2 fast updates contract - in this case
-     *  they must be published by calling `publishPricesFromFastUpdates()`;
-     *  `false` if they are obtained from FTSO scaling - in this case they must be published by
-     *  calling `publishPrices()` with Merkle proofs.
-     */
-    function useFtsoV2FastUpdates() external view returns (bool);
+    function publishPrices(FeedWithProof[] calldata _proofs) external payable;
 
     /**
      * Submits trusted prices for the voting round id.
@@ -69,20 +55,36 @@ interface IPricePublisher {
     function submitTrustedPrices(uint32 _votingRoundId, TrustedProviderFeed[] calldata _feeds) external;
 
     /**
-     * Returns the list of required feed ids.
+     * Returns the list of all the required feed ids - the `getScalingFeedIds()` list, followed by the
+     * `getFastUpdatesFeedIds()` list.
      * @return The list of feed ids.
      */
     function getFeedIds() external view returns (bytes21[] memory);
 
     /**
-     * Returns the list of required feed ids with decimals (for the trusted providers).
+     * Returns the list of the required feed ids whose prices are published from FTSO scaling,
+     * i.e. by passing Merkle proofs to `publishPrices`.
+     * @return The list of feed ids.
+     */
+    function getScalingFeedIds() external view returns (bytes21[] memory);
+
+    /**
+     * Returns the list of the required feed ids whose prices are read from the FTSOv2 fast updates
+     * (or custom feeds) contract by `publishPrices`.
+     * @return The list of feed ids.
+     */
+    function getFastUpdatesFeedIds() external view returns (bytes21[] memory);
+
+    /**
+     * Returns the list of required feed ids with decimals (for the trusted providers),
+     * ordered as in the `getFeedIds()` list.
      * @return _feedIds The list of feed ids.
      * @return _decimals The list of feed decimals.
      */
     function getFeedIdsWithDecimals() external view returns (bytes21[] memory _feedIds, int8[] memory _decimals);
 
     /**
-     * Returns the list of supported symbols.
+     * Returns the list of supported symbols, ordered as in the `getFeedIds()` list.
      * @return _symbols The list of symbols.
      */
     function getSymbols() external view returns (string[] memory _symbols);

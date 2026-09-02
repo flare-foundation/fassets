@@ -3032,10 +3032,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, agentOwner1, toBN(1));
             const info1 = await assetManager.getAgentInfo(agentVault.address);
             // reset the trusted submissions by changing feed decimals
-            const feedIds = await contracts.priceStore.getFeedIds();
+            const feedIds = await contracts.priceStore.getScalingFeedIds();
             const symbols = await contracts.priceStore.getSymbols();
             const decimals = feedIds.map(_ => 3);
-            await contracts.priceStore.updateSettings(feedIds, symbols, decimals, 50, 5000, { from: governance });
+            await contracts.priceStore.updateSettings(feedIds, [], symbols, decimals, 50, 5000, { from: governance });
             // trusted prices are reset
             const { 0: price, 3: quality } = await contracts.priceStore.getPriceFromTrustedProvidersWithQuality(vaultTokenSymbol);
             assertWeb3Equal(price, 0);

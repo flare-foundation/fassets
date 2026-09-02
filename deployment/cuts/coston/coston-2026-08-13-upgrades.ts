@@ -12,15 +12,15 @@ runDeployScript(async (deployScriptEnvironment) => {
 
     const parameters = readFtsoV2Parameters();
 
-    // update FtsoV2PriceStore settings
-    await performGovernanceCall(deployScriptEnvironment, "FtsoV2PriceStore",
-        ftsoV2PriceStore, "updateSettings",
-        [
-            encodeFeedIds(parameters.feeds.map(feed => ({ category: 1, name: feed.feedId }))),
-            parameters.feeds.map(feed => feed.symbol),
-            parameters.feeds.map(feed => feed.feedDecimals),
-            parameters.maxSpreadBIPS,
-            parameters.minTurnoutBIPS,
-        ],
-        execute);
+    // // update FtsoV2PriceStore settings
+    // await performGovernanceCall(deployScriptEnvironment, "FtsoV2PriceStore",
+    //     ftsoV2PriceStore, "updateSettings",
+    //     [
+    //         encodeFeedIds(parameters.feeds.map(feed => ({ category: 1, name: feed.feedId }))),
+    //         parameters.feeds.map(feed => feed.symbol),
+    //         parameters.feeds.map(feed => feed.feedDecimals),
+    //         parameters.maxSpreadBIPS,
+    //         parameters.minTurnoutBIPS,
+    //     ],
+    //     execute);
 });

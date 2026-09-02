@@ -6,6 +6,8 @@ import {FtsoV2PriceStore, IPricePublisher} from "../../../contracts/ftso/impleme
 import {FtsoV2PriceStoreProxy} from "../../../contracts/ftso/implementation/FtsoV2PriceStoreProxy.sol";
 import {IGovernanceSettings} from "@flarenetwork/flare-periphery-contracts/flare/IGovernanceSettings.sol";
 import {IRelay} from "@flarenetwork/flare-periphery-contracts/flare/IRelay.sol";
+import {FtsoV2Interface} from "@flarenetwork/flare-periphery-contracts/flare/FtsoV2Interface.sol";
+import {IPriceChangeEmitter} from "../../../contracts/ftso/interfaces/IPriceChangeEmitter.sol";
 
 // solhint-disable func-name-mixedcase
 contract FtsoV2PriceStoreTest is Test {
@@ -173,6 +175,118 @@ contract FtsoV2PriceStoreTest is Test {
         }
     }
 
+    // one feed from FTSO scaling and one from FTSOv2 fast updates must both be published for the
+    // same voting round, by a single call to publishPrices
+    function test_publishPricesFromBothSources() public {
+        bytes21 scalingFeedId = bytes21(keccak256("scalingFeed"));
+        bytes21 fastUpdatesFeedId = bytes21(keccak256("fastUpdatesFeed"));
+        _setMixedFeeds(scalingFeedId, fastUpdatesFeedId);
+
+        // the trusted providers submit the prices of both feeds for the previous voting round
+        vm.warp(firstVotingRoundStartTs + 10 * uint256(votingEpochDurationSeconds) + 1);
+        uint32 votingRoundId = _getPreviousVotingEpochId();
+        vm.warp(_getEndTimestamp(votingRoundId) + 1);
+        IPricePublisher.TrustedProviderFeed[] memory trustedFeeds = new IPricePublisher.TrustedProviderFeed[](2);
+        trustedFeeds[0] = IPricePublisher.TrustedProviderFeed({ id: scalingFeedId, value: 111, decimals: 5 });
+        trustedFeeds[1] = IPricePublisher.TrustedProviderFeed({ id: fastUpdatesFeedId, value: 222, decimals: 5 });
+        address trustedProvider = makeAddr("trustedProvider");
+        address[] memory trustedProviders = new address[](1);
+        trustedProviders[0] = trustedProvider;
+        vm.prank(governance);
+        ftsoV2PriceStore.setTrustedProviders(trustedProviders, 1);
+        vm.prank(trustedProvider);
+        ftsoV2PriceStore.submitTrustedPrices(votingRoundId, trustedFeeds);
+
+        // publish as soon as the submission window closes - the previous voting round id is still
+        // the same as the voting round id of the proofs
+        uint256 endTimestamp = _getEndTimestamp(votingRoundId);
+        vm.warp(endTimestamp + ftsoV2PriceStore.submitTrustedPricesWindowSeconds() + 1);
+        assertEq(_getPreviousVotingEpochId(), votingRoundId);
+
+        // the scaling feed comes with a Merkle proof - a single leaf, so the root is the leaf itself
+        IPricePublisher.FeedWithProof[] memory proofs = new IPricePublisher.FeedWithProof[](1);
+        proofs[0].body = IPricePublisher.Feed({
+            id: scalingFeedId,
+            votingRoundId: votingRoundId,
+            value: 1000,
+            decimals: 5,
+            turnoutBIPS: 10000
+        });
+        proofs[0].proof = new bytes32[](0);
+        vm.mockCall(
+            relayMock,
+            abi.encodeWithSelector(IRelay.merkleRoots.selector, ftsoProtocolId, votingRoundId),
+            abi.encode(keccak256(abi.encode(proofs[0].body)))
+        );
+
+        // the fast updates feed is read from the FtsoV2 contract
+        bytes21[] memory fastUpdatesFeedIds = new bytes21[](1);
+        fastUpdatesFeedIds[0] = fastUpdatesFeedId;
+        int256[] memory values = new int256[](1);
+        values[0] = 2000;
+        int8[] memory decimals = new int8[](1);
+        decimals[0] = 5;
+        uint64[] memory timestamps = new uint64[](1);
+        timestamps[0] = uint64(block.timestamp - 10);
+        vm.mockCall(
+            contractAddresses[2],
+            abi.encodeWithSelector(FtsoV2Interface.getCurrentFeeds.selector, fastUpdatesFeedIds),
+            abi.encode(values, decimals, timestamps)
+        );
+
+        // only a single PricesPublished event must be emitted, for the voting round of the proofs
+        vm.expectEmit(true, true, true, true, address(ftsoV2PriceStore));
+        emit IPriceChangeEmitter.PricesPublished(votingRoundId);
+        ftsoV2PriceStore.publishPrices(proofs);
+        assertEq(ftsoV2PriceStore.lastPublishedVotingRoundId(), votingRoundId);
+
+        // the scaling price is timestamped by the end of the voting round, the fast updates price by its own timestamp
+        (uint256 price, uint256 timestamp, uint256 priceDecimals) = ftsoV2PriceStore.getPrice("SCALING");
+        assertEq(price, 1000);
+        assertEq(priceDecimals, 5);
+        assertEq(timestamp, endTimestamp);
+        (price, timestamp, priceDecimals) = ftsoV2PriceStore.getPrice("FAST_UPDATES");
+        assertEq(price, 2000);
+        assertEq(priceDecimals, 5);
+        assertEq(timestamp, timestamps[0]);
+
+        // the trusted prices of both feeds are taken from the same voting round
+        (price, timestamp, priceDecimals) = ftsoV2PriceStore.getPriceFromTrustedProviders("SCALING");
+        assertEq(price, 111);
+        assertEq(timestamp, endTimestamp);
+        (price, timestamp, priceDecimals) = ftsoV2PriceStore.getPriceFromTrustedProviders("FAST_UPDATES");
+        assertEq(price, 222);
+        assertEq(timestamp, endTimestamp);
+    }
+
+    // no fee may be paid when there are no fast updates feeds - it could not be recovered
+    function test_publishPricesRevertsIfFeePaidWithoutFastUpdatesFeeds() public {
+        bytes21[] memory scalingIds = new bytes21[](0);
+        string[] memory syms = new string[](0);
+        int8[] memory dec = new int8[](0);
+        vm.prank(governance);
+        ftsoV2PriceStore.updateSettings(scalingIds, new bytes21[](0), syms, dec, 500, 0);
+
+        vm.deal(address(this), 1 ether);
+        vm.expectRevert(FtsoV2PriceStore.NoFeeRequired.selector);
+        ftsoV2PriceStore.publishPrices{ value: 1 }(new IPricePublisher.FeedWithProof[](0));
+    }
+
+    function _setMixedFeeds(bytes21 _scalingFeedId, bytes21 _fastUpdatesFeedId) internal {
+        bytes21[] memory scalingIds = new bytes21[](1);
+        scalingIds[0] = _scalingFeedId;
+        bytes21[] memory fastUpdatesIds = new bytes21[](1);
+        fastUpdatesIds[0] = _fastUpdatesFeedId;
+        string[] memory syms = new string[](2);
+        syms[0] = "SCALING";
+        syms[1] = "FAST_UPDATES";
+        int8[] memory dec = new int8[](2);
+        dec[0] = 5;
+        dec[1] = 5;
+        vm.prank(governance);
+        ftsoV2PriceStore.updateSettings(scalingIds, fastUpdatesIds, syms, dec, 500, 0);
+    }
+
     function _getEndTimestamp(uint256 _votingEpochId) internal view returns(uint256) {
         return firstVotingRoundStartTs + (_votingEpochId + 1) * votingEpochDurationSeconds;
     }
@@ -194,7 +308,7 @@ contract FtsoV2PriceStoreTest is Test {
             trustedDecimals[i] = int8(bound(decimalSeeds[i], -18, 18)); // Common decimal range
         }
         vm.prank(governance);
-        ftsoV2PriceStore.updateSettings(feedIds, symbols, trustedDecimals, 500, 0);
+        ftsoV2PriceStore.updateSettings(feedIds, new bytes21[](0), symbols, trustedDecimals, 500, 0);
     }
 
 

@@ -62,8 +62,8 @@ contract FtsoV2PriceStore is
     error SymbolNotSupported();
     error MinTurnoutTooBig();
     error FtsoV2FastUpdatesContractNotSet();
-    error UsePublishPrices();
-    error UsePublishPricesFromFastUpdates();
+    error NoFeeRequired();
+    error DuplicateFeedId();
 
     /// Timestamp when the first voting epoch started, in seconds since UNIX epoch.
     uint64 public firstVotingRoundStartTs;
@@ -74,8 +74,8 @@ contract FtsoV2PriceStore is
     /// The FTSO protocol id.
     uint8 public ftsoProtocolId;
 
-    /// The list of required feed ids to be published.
-    bytes21[] internal feedIds;
+    /// The list of feed ids whose prices are published from FTSO scaling (with Merkle proofs).
+    bytes21[] internal scalingFeedIds;
     /// Mapping from symbol to feed id - used for price lookups (backwards compatibility).
     mapping(string symbol => bytes21 feedId) internal symbolToFeedId;
     /// Mapping from feed id to symbol - used for list of supported symbols.
@@ -104,14 +104,12 @@ contract FtsoV2PriceStore is
     /// (for FTSO, not for trusted providers).
     uint16 public minTurnoutBIPS;
 
-    /// Optionally, the feeds can be retrieved from FTSOv2 fast updates instead of FTSO scaling.
-    /// When `true`, the prices must be published by `publishPricesFromFastUpdates()`,
-    /// otherwise they must be published by `publishPrices()` (with Merkle proofs).
-    bool public useFtsoV2FastUpdates;
-
     /// The FtsoV2 contract, which provides the fast updates and custom feeds.
-    /// Only used when `useFtsoV2FastUpdates` is `true`.
+    /// Only used (and required) when `fastUpdatesFeedIds` is non-empty.
     FtsoV2Interface public ftsoV2FastUpdates;
+
+    /// The list of feed ids whose prices are read from FTSOv2 fast updates (or custom feeds).
+    bytes21[] internal fastUpdatesFeedIds;
 
     event LowTurnoutForFeed(bytes21 indexed feedId, uint32 indexed votingRoundId, uint16 turnoutBIPS);
 
@@ -145,68 +143,93 @@ contract FtsoV2PriceStore is
     /**
      * @inheritdoc IPricePublisher
      */
-    function publishPrices(FeedWithProof[] calldata _proofs) external {
-        require(!useFtsoV2FastUpdates, UsePublishPricesFromFastUpdates());
-        uint32 votingRoundId = 0;
-        require(_proofs.length == feedIds.length, WrongNumberOfProofs());
+    function publishPrices(FeedWithProof[] calldata _proofs) external payable {
+        require(msg.value == 0 || fastUpdatesFeedIds.length > 0, NoFeeRequired());
+        require(_proofs.length == scalingFeedIds.length, WrongNumberOfProofs());
+        // All the prices are published for the same voting round. This way the trusted prices
+        // of all the feeds are taken from the same voting round, too.
+        uint32 votingRoundId = _proofs.length > 0 ? _proofs[0].body.votingRoundId : _getPreviousVotingEpochId();
+        _publishNewVotingRound(votingRoundId);
+
+        _publishPricesFromFtsoV2Scaling(_proofs, votingRoundId);
+        _publishPricesFromFastUpdates(votingRoundId);
+    }
+
+    /**
+     * Publishes the prices of the `getScalingFeedIds()` feeds, provided by the caller as FTSO scaling
+     * feeds with Merkle proofs, and calculates the median of the trusted prices.
+     * The price of a feed whose turnout was too low is not published, only the `LowTurnoutForFeed` event
+     * is emitted for it (its trusted price is still calculated).
+     * @param _proofs The list of FTSO scaling feeds with Merkle proofs, ordered as `scalingFeedIds`;
+     *  its length has already been validated by `publishPrices`.
+     * @param _votingRoundId The voting round id the prices are published for; it has already been validated
+     *  and marked as published by `_publishNewVotingRound`.
+     */
+    function _publishPricesFromFtsoV2Scaling(FeedWithProof[] calldata _proofs, uint32 _votingRoundId) private {
+        if (_proofs.length == 0) return;
+        // the Merkle root is the same for all the proofs, so it is only read once
+        bytes32 merkleRoot = relay.merkleRoots(ftsoProtocolId, _votingRoundId);
+
         for (uint256 i = 0; i < _proofs.length; i++) {
             FeedWithProof calldata proof = _proofs[i];
             Feed calldata feed = proof.body;
-            if (i == 0) {
-                votingRoundId = feed.votingRoundId;
-                _publishNewVotingRound(votingRoundId);
-            } else {
-                require(feed.votingRoundId == votingRoundId, VotingRoundIdMismatch());
-            }
-            bytes21 feedId = feedIds[i];
+            require(feed.votingRoundId == _votingRoundId, VotingRoundIdMismatch());
+            bytes21 feedId = scalingFeedIds[i];
             require(feed.id == feedId, FeedIdMismatch());
             require(feed.value >= 0, ValueMustBeNonNegative());
 
             bytes32 feedHash = keccak256(abi.encode(feed));
-            bytes32 merkleRoot = relay.merkleRoots(ftsoProtocolId, votingRoundId);
             require(proof.proof.verifyCalldata(merkleRoot, feedHash), MerkleProofInvalid());
 
             PriceStore storage priceStore = latestPrices[feedId];
 
             if (feed.turnoutBIPS >= minTurnoutBIPS) {
-                priceStore.votingRoundId = feed.votingRoundId;
+                priceStore.votingRoundId = _votingRoundId;
                 priceStore.value = uint32(feed.value);
                 priceStore.decimals = feed.decimals;
                 priceStore.fastUpdatesTimestamp = 0;
             } else {
-                emit LowTurnoutForFeed(feedId, feed.votingRoundId, feed.turnoutBIPS);
+                emit LowTurnoutForFeed(feedId, _votingRoundId, feed.turnoutBIPS);
             }
 
             // calculate trusted prices for the same voting round
-            _setTrustedPrices(priceStore, feedId, votingRoundId);
+            _setTrustedPrices(priceStore, feedId, _votingRoundId);
         }
     }
 
     /**
-     * @inheritdoc IPricePublisher
+     * Publishes the prices of the `getFastUpdatesFeedIds()` feeds, read from the FTSOv2 fast updates
+     * (or custom feeds) contract, and calculates the median of the trusted prices.
+     * The prices are read from the FtsoV2 contract, so no proofs are needed - they are just the current
+     * values, which are typically a bit newer than the voting round `_votingRoundId` they are published for.
+     * Since the feeds are not necessarily all updated in the same round (custom feeds have their own update
+     * schedule), each feed keeps its own timestamp, which is reported as the price timestamp by
+     * `IPriceReader.getPrice`.
+     * @param _votingRoundId The voting round id the prices are published for; it has already been validated
+     *  and marked as published by `_publishNewVotingRound`.
+     * @dev The fee for reading the feeds is paid from `msg.value` of the enclosing `publishPrices` call.
      */
-    function publishPricesFromFastUpdates() external payable {
-        require(useFtsoV2FastUpdates, UsePublishPrices());
+    function _publishPricesFromFastUpdates(uint32 _votingRoundId) private {
+        if (fastUpdatesFeedIds.length == 0) return;
 
-        bytes21[] memory feedIdsM = feedIds;
+        require(address(ftsoV2FastUpdates) != address(0), FtsoV2FastUpdatesContractNotSet());
+
+        bytes21[] memory feedIdsFU = fastUpdatesFeedIds;
         (int256[] memory values, int8[] memory decimals, uint64[] memory timestamps) =
-            ftsoV2FastUpdates.getCurrentFeeds{ value: msg.value }(feedIdsM);
+            ftsoV2FastUpdates.getCurrentFeeds{ value: msg.value }(feedIdsFU);
 
-        uint32 votingRoundId = _getPreviousVotingEpochId();
-        _publishNewVotingRound(votingRoundId);
-
-        for (uint256 i = 0; i < feedIdsM.length; i++) {
-            bytes21 feedId = feedIdsM[i];
+        for (uint256 i = 0; i < feedIdsFU.length; i++) {
+            bytes21 feedId = feedIdsFU[i];
 
             require(values[i] >= 0, ValueMustBeNonNegative());
 
             PriceStore storage priceStore = latestPrices[feedId];
-            priceStore.votingRoundId = votingRoundId;
+            priceStore.votingRoundId = _votingRoundId;
             (priceStore.value, priceStore.decimals) = _rescaleToUint32(uint256(values[i]), decimals[i]);
             priceStore.fastUpdatesTimestamp = timestamps[i];
 
             // calculate trusted prices for the same voting round
-            _setTrustedPrices(priceStore, feedId, votingRoundId);
+            _setTrustedPrices(priceStore, feedId, _votingRoundId);
         }
     }
 
@@ -274,7 +297,7 @@ contract FtsoV2PriceStore is
      */
     function submitTrustedPrices(uint32 _votingRoundId, TrustedProviderFeed[] calldata _feeds) external {
         require(trustedProvidersMap[msg.sender], OnlyTrustedProvider());
-        require(_feeds.length == feedIds.length, AllPricesMustBeProvided());
+        require(_feeds.length == _getFeedIdsLength(), AllPricesMustBeProvided());
         uint32 previousVotingEpochId = _getPreviousVotingEpochId();
         require(_votingRoundId == previousVotingEpochId, VotingRoundIdMismatch());
         // end of previous voting epoch = start of current voting epoch
@@ -287,7 +310,7 @@ contract FtsoV2PriceStore is
 
         for (uint256 i = 0; i < _feeds.length; i++) {
             TrustedProviderFeed calldata feed = _feeds[i];
-            bytes21 feedId = feedIds[i];
+            bytes21 feedId = _getFeedId(i);
             require(feed.id == feedId, FeedIdMismatch());
             require(feed.decimals == latestPrices[feedId].trustedDecimals, DecimalsMismatch());
             submittedTrustedPrices[feedId][previousVotingEpochId] =
@@ -297,14 +320,23 @@ contract FtsoV2PriceStore is
 
     /**
      * Updates the settings.
-     * @param _feedIds The list of feed ids.
-     * @param _symbols The list of symbols.
-     * @param _trustedDecimals The list of trusted decimals.
+     * The full list of the required feeds is the concatenation of `_scalingFeedIds` and `_fastUpdatesFeedIds`
+     * (in this order), so `_symbols` and `_trustedDecimals` must be ordered accordingly.
+     * A feed id must not appear in both lists.
+     * @param _scalingFeedIds The list of feed ids whose prices are published from FTSO scaling,
+     *  i.e. by passing Merkle proofs to `publishPrices`.
+     * @param _fastUpdatesFeedIds The list of feed ids whose prices are read from the FTSOv2 fast updates
+     *  (or custom feeds) contract by `publishPrices`.
+     * @param _symbols The list of symbols, one for every feed id.
+     * @param _trustedDecimals The list of trusted decimals, one for every feed id.
      * @param _maxSpreadBIPS The maximum spread between the median price and the nearby trusted prices in BIPS.
+     * @param _minTurnoutBIPS The minimum percentage of providers that have to send a price for an
+     *  FTSO scaling feed in a round for it to be published.
      * @dev Can only be called by the governance.
      */
     function updateSettings(
-        bytes21[] calldata _feedIds,
+        bytes21[] calldata _scalingFeedIds,
+        bytes21[] calldata _fastUpdatesFeedIds,
         string[] calldata _symbols,
         int8[] calldata _trustedDecimals,
         uint16 _maxSpreadBIPS,
@@ -312,14 +344,23 @@ contract FtsoV2PriceStore is
     )
         external onlyGovernance
     {
-        require(_feedIds.length == _symbols.length && _feedIds.length == _trustedDecimals.length, LengthMismatch());
+        uint256 totalFeedLength = _scalingFeedIds.length + _fastUpdatesFeedIds.length;
+        require(totalFeedLength == _symbols.length && totalFeedLength == _trustedDecimals.length, LengthMismatch());
         require(_maxSpreadBIPS <= MAX_BIPS, MaxSpreadTooBig());
         maxSpreadBIPS = _maxSpreadBIPS;
         require(_minTurnoutBIPS <= MAX_BIPS, MinTurnoutTooBig());
         minTurnoutBIPS = _minTurnoutBIPS;
-        feedIds = _feedIds;
-        for (uint256 i = 0; i < _feedIds.length; i++) {
-            bytes21 feedId = _feedIds[i];
+        // a feed id must not be in both lists, otherwise the trusted prices would be submitted for it twice
+        for (uint256 i = 0; i < _scalingFeedIds.length; i++) {
+            for (uint256 j = 0; j < _fastUpdatesFeedIds.length; j++) {
+                require(_scalingFeedIds[i] != _fastUpdatesFeedIds[j], DuplicateFeedId());
+            }
+        }
+        scalingFeedIds = _scalingFeedIds;
+        fastUpdatesFeedIds = _fastUpdatesFeedIds;
+        for (uint256 i = 0; i < totalFeedLength; i++) {
+            bytes21 feedId =
+                i < _scalingFeedIds.length ? _scalingFeedIds[i] : _fastUpdatesFeedIds[i - _scalingFeedIds.length];
             symbolToFeedId[_symbols[i]] = feedId;
             feedIdToSymbol[feedId] = _symbols[i];
             PriceStore storage latestPrice = latestPrices[feedId];
@@ -362,20 +403,6 @@ contract FtsoV2PriceStore is
         for (uint256 i = 0; i < _trustedProviders.length; i++) {
             trustedProvidersMap[_trustedProviders[i]] = true;
         }
-    }
-
-    /**
-     * Selects the source of the (non-trusted) prices - either FTSOv2 fast updates or FTSO scaling.
-     * This also determines the method that has to be used for publishing the prices -
-     * `publishPricesFromFastUpdates()` or `publishPrices()`, respectively.
-     * @param _use Whether the prices should be read from the FTSOv2 fast updates contract.
-     * @dev Can only be called by the governance.
-     */
-    function setUseFtsoV2FastUpdates(bool _use)
-        external onlyGovernance
-    {
-        require(!_use || address(ftsoV2FastUpdates) != address(0), FtsoV2FastUpdatesContractNotSet());
-        useFtsoV2FastUpdates = _use;
     }
 
     /**
@@ -445,15 +472,37 @@ contract FtsoV2PriceStore is
     /**
      * @inheritdoc IPricePublisher
      */
-    function getFeedIds() external view returns (bytes21[] memory) {
-        return feedIds;
+    function getFeedIds() public view returns (bytes21[] memory _feedIds) {
+        uint256 scalingLength = scalingFeedIds.length;
+        uint256 fastUpdatesLength = fastUpdatesFeedIds.length;
+        _feedIds = new bytes21[](scalingLength + fastUpdatesLength);
+        for (uint256 i = 0; i < scalingLength; i++) {
+            _feedIds[i] = scalingFeedIds[i];
+        }
+        for (uint256 i = 0; i < fastUpdatesLength; i++) {
+            _feedIds[i + scalingLength] = fastUpdatesFeedIds[i];
+        }
+    }
+
+    /**
+     * @inheritdoc IPricePublisher
+     */
+    function getScalingFeedIds() external view returns (bytes21[] memory) {
+        return scalingFeedIds;
+    }
+
+    /**
+     * @inheritdoc IPricePublisher
+     */
+    function getFastUpdatesFeedIds() external view returns (bytes21[] memory) {
+        return fastUpdatesFeedIds;
     }
 
     /**
      * @inheritdoc IPricePublisher
      */
     function getFeedIdsWithDecimals() external view returns (bytes21[] memory _feedIds, int8[] memory _decimals) {
-        _feedIds = feedIds;
+        _feedIds = getFeedIds();
         _decimals = new int8[](_feedIds.length);
         for (uint256 i = 0; i < _feedIds.length; i++) {
             _decimals[i] = latestPrices[_feedIds[i]].trustedDecimals;
@@ -464,9 +513,14 @@ contract FtsoV2PriceStore is
      * @inheritdoc IPricePublisher
      */
     function getSymbols() external view returns (string[] memory _symbols) {
-        _symbols = new string[](feedIds.length);
-        for (uint256 i = 0; i < feedIds.length; i++) {
-            _symbols[i] = feedIdToSymbol[feedIds[i]];
+        uint256 scalingLength = scalingFeedIds.length;
+        uint256 fastUpdatesLength = fastUpdatesFeedIds.length;
+        _symbols = new string[](scalingLength + fastUpdatesLength);
+        for (uint256 i = 0; i < scalingLength; i++) {
+            _symbols[i] = feedIdToSymbol[scalingFeedIds[i]];
+        }
+        for (uint256 i = 0; i < fastUpdatesLength; i++) {
+            _symbols[i + scalingLength] = feedIdToSymbol[fastUpdatesFeedIds[i]];
         }
     }
 
@@ -507,9 +561,9 @@ contract FtsoV2PriceStore is
         for (uint256 i = 0; i < numTrustedProviders; i++) {
             lastVotingEpochIdByProvider[trustedProviders[i]] = 0;
         }
-        uint256 numFeeds = feedIds.length;
+        uint256 numFeeds = _getFeedIdsLength();
         for (uint256 i = 0; i < numFeeds; i++) {
-            bytes21 feedId = feedIds[i];
+            bytes21 feedId = _getFeedId(i);
             delete submittedTrustedPrices[feedId][previousVotingEpochId];
         }
     }
@@ -544,6 +598,21 @@ contract FtsoV2PriceStore is
         } else {
             _priceDecimals = uint256(decimals);
         }
+    }
+
+    /**
+     * Returns the total number of the required feeds - see `getFeedIds()`.
+     */
+    function _getFeedIdsLength() private view returns (uint256) {
+        return scalingFeedIds.length + fastUpdatesFeedIds.length;
+    }
+
+    /**
+     * Returns the `_index`-th feed id in the list of all the required feeds - see `getFeedIds()`.
+     */
+    function _getFeedId(uint256 _index) private view returns (bytes21) {
+        uint256 scalingLength = scalingFeedIds.length;
+        return _index < scalingLength ? scalingFeedIds[_index] : fastUpdatesFeedIds[_index - scalingLength];
     }
 
     /**
