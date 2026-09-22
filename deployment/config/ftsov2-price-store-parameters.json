@@ -5,6 +5,9 @@
         "FtsoV2Feed": {
             "additionalProperties": false,
             "properties": {
+                "category": {
+                    "type": "number"
+                },
                 "feedDecimals": {
                     "type": "number"
                 },

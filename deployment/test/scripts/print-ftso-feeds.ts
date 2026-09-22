@@ -8,10 +8,11 @@ const CATEGORY_NAMES: Record<number, string> = {
     2: "Foreign exchange",
     3: "Commodity",
     4: "Equity",
+    33: "Custom Crypto",
 };
 
 function categoryName(category: number) {
-    return CATEGORY_NAMES[category] ?? "unknown";
+    return CATEGORY_NAMES[category] ?? `unknown:${category}`;
 }
 
 runAsyncMain(async () => {

@@ -5,6 +5,7 @@ export interface FtsoV2Feed {
     symbol: string;
     feedDecimals: number;
     source?: FtsoV2FeedSource;
+    category?: number;
 }
 
 export interface FtsoV2PriceStoreParameters {

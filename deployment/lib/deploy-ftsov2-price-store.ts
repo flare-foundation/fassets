@@ -60,7 +60,7 @@ export function feedSettings(parameters: FtsoV2PriceStoreParameters) {
     const scalingFeeds = parameters.feeds.filter(feed => (feed.source ?? "scaling") === "scaling");
     const fastUpdatesFeeds = parameters.feeds.filter(feed => feed.source === "fastUpdates");
     const encode = (feeds: FtsoV2PriceStoreParameters["feeds"]) =>
-        encodeFeedIds(feeds.map(feed => ({ category: 1, name: feed.feedId })));
+        encodeFeedIds(feeds.map(feed => ({ category: (feed.category ?? 1), name: feed.feedId })));
     const orderedFeeds = [...scalingFeeds, ...fastUpdatesFeeds];
     return {
         scalingFeedIds: encode(scalingFeeds),
