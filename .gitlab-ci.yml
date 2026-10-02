@@ -63,7 +63,7 @@ build-smart-contracts:
     - .pnpm-cache
   needs: []
   # must run on the same runner fleet as test-forge: the node_modules cache is
-  # stored per runner fleet, and test-forge (which cannot run yarn install in
+  # stored per runner fleet, and test-forge (which cannot run pnpm install in
   # the foundry image) can only pull a cache pushed on its own fleet
   tags:
   - flarenetwork-lg
