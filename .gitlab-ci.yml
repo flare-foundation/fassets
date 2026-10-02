@@ -1,140 +1,136 @@
-workflow:
-  rules:
-    - if: '$CI_OPEN_MERGE_REQUESTS != null && ($CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "webide")'
-      when: never
-    - when: always
-
 stages:
-- build
-- test
-
-include:
-- template: Jobs/SAST.latest.gitlab-ci.yml
-
-sast:
-  needs: []
+  - build
+  - test
+  - sbom
 
 default:
   tags:
-  - flarenetwork
+    - flarenetwork
+  artifacts:
+    expire_in: 3 days
 
+.rules:
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_TAG
 
-
-.test-node-sc:
-  stage: test
-  image: node:20
-  timeout: 3h
-  needs:
-  - build-smart-contracts
+.pnpm-cache:
+  variables:
+    PNPM_STORE_DIR: ".pnpm-store"
   cache:
-    policy: pull
-    when: always
     key:
       files:
-      - yarn.lock
+        - "$CI_PROJECT_DIR/pnpm-lock.yaml"
     paths:
-    - node_modules
+      - $PNPM_STORE_DIR
+      - node_modules/
+    policy: pull-push
+
+.test-node-sc:
+  image: node:24
+  stage: test
+  extends:
+    - .rules
+    - .pnpm-cache
+  timeout: 3h
+  needs:
+    - job: build-smart-contracts
+      artifacts: true
   variables:
     DEPLOYER_PRIVATE_KEY: "0xc5e8f61d1ab959b397eecc0a37a6517b8e67a0e7cf1f4bce5591f3ed80199122"
     GENESIS_GOVERNANCE_PRIVATE_KEY: "0x50777f5a3ce16445e63411bf1e865a2a11d5ca3c4cbc1de00808a52180bd8d3c"
     GOVERNANCE_PRIVATE_KEY: "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
     GOVERNANCE_PUBLIC_KEY: "0xeAD9C93b79Ae7C1591b1FB5323BD777E86e150d4"
     GOVERNANCE_EXECUTOR_PUBLIC_KEY: "0xE5904695748fe4A84b40b3fc79De2277660BD1D3"
-  dependencies:
-  - build-smart-contracts
   before_script:
-  - yarn install --frozen-lockfile
+    - corepack enable
+    - pnpm install --frozen-lockfile
 
+include:
+  - component: gitlab.com/flarenetwork/ci-components-private/lgtm@2
+  - component: gitlab.com/flarenetwork/ci-components-private/dependency-track@2
+  - component: gitlab.com/flarenetwork/ci-components-private/lint-shell@2
+  - template: Jobs/Secret-Detection.latest.gitlab-ci.yml
+  - template: Jobs/SAST.latest.gitlab-ci.yml
 
-.test-node-sc-noschedule:
-  extends: .test-node-sc
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
-      when: never
-    - when: on_success
-
-
-### Jobs
-
+sast:
+  needs: []
 
 build-smart-contracts:
+  image: node:24
   stage: build
+  extends:
+    - .rules
+    - .pnpm-cache
   needs: []
-  image: node:20
   # must run on the same runner fleet as test-forge: the node_modules cache is
   # stored per runner fleet, and test-forge (which cannot run yarn install in
   # the foundry image) can only pull a cache pushed on its own fleet
   tags:
   - flarenetwork-lg
-  cache:
-    policy: pull-push
-    when: on_success
-    key:
-      files:
-      - yarn.lock
-    paths:
-      - node_modules
-  before_script:
-  - yarn install --frozen-lockfile
   script:
-  - yarn compile
+    - corepack enable
+    - pnpm install --frozen-lockfile
+    - pnpm compile
   artifacts:
     paths:
-    - artifacts
-    - cache
-    - typechain-truffle
+      - artifacts
+      - cache
+      - typechain-truffle
     expire_in: 1 week
 
-
 test-unit:
-  extends: .test-node-sc-noschedule
+  extends:
+    - .test-node-sc
   tags:
-  - flarenetwork-md
+    - flarenetwork-md
   parallel:
     matrix:
-    - TEST_PATH:
-      - ./test/unit/assetManager/library
-      - ./test/unit/!(assetManager)
+      - TEST_PATH:
+          - ./test/unit/assetManager/library
+          - ./test/unit/!(assetManager)
   script:
-  - yarn hardhat test --network hardhat
+    - pnpm hardhat test --network hardhat
 
 test-unit-lg:
-  extends: test-unit
+  extends:
+    - .test-node-sc
   tags:
-  - flarenetwork-lg
+    - flarenetwork-lg
   parallel:
     matrix:
-    - TEST_PATH:
-      - ./test/unit/assetManager/implementation
-
+      - TEST_PATH:
+          - ./test/unit/assetManager/implementation
+  script:
+    - pnpm hardhat test --network hardhat
 
 test-contract-integration:
-  extends: .test-node-sc-noschedule
+  extends:
+    - .test-node-sc
   tags:
-  - flarenetwork-md
+    - flarenetwork-md
   script:
-  - yarn test_integration_hh
-
+    - pnpm test_integration_hh
 
 test-contract-e2e:
-  extends: .test-node-sc-noschedule
+  extends:
+    - .test-node-sc
   tags:
-  - flarenetwork-md
+    - flarenetwork-md
   script:
-  - yarn test_e2e
-
+    - pnpm test_e2e
 
 test-linter:
-  extends: .test-node-sc-noschedule
+  extends:
+    - .test-node-sc
   script:
-  - yarn lint
-  - yarn eslint
-
+    - pnpm lint
+    - pnpm eslint
 
 test-slither-check:
-  extends: .test-node-sc-noschedule
+  extends:
+    - .test-node-sc
   tags:
-  - flarenetwork-md
+    - flarenetwork-md
   before_script:
     - apt update
     - apt install -y python3-pip python3-venv
@@ -142,33 +138,54 @@ test-slither-check:
     - source .venv/bin/activate
     - pip install --upgrade pip setuptools
     - pip install slither-analyzer
-    - yarn install --frozen-lockfile
+    - corepack enable
+    - pnpm install --frozen-lockfile
   script:
     - source .venv/bin/activate
-    - yarn slither
+    - pnpm slither
+
+test-forge-node-modules:
+  image: node:24
+  stage: test
+  extends:
+    - .rules
+    - .pnpm-cache
+  needs: []
+  script:
+    - corepack enable
+    - pnpm install --frozen-lockfile
+  artifacts:
+    paths:
+      - node_modules/
+    expire_in: 1 day
 
 test-forge:
-  extends: .test-node-sc
-  tags:
-  - flarenetwork-lg
   image: ghcr.io/foundry-rs/foundry:stable
+  extends:
+    - .test-node-sc
+  tags:
+    - flarenetwork-lg
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
+  needs:
+    - job: build-smart-contracts
+      artifacts: true
+    - job: test-forge-node-modules
+      artifacts: true
   before_script:
-  - forge install --no-git
-  - forge build
+    - forge install --no-git
+    - forge build
   script:
-  - forge test --no-match-test '^test(1Func|2Func|Result)'
-
+    - forge test --no-match-test '^test(1Func|2Func|Result)'
 
 coverage:schedule:
-  extends: .test-node-sc
-  stage: test
+  extends:
+    - .test-node-sc
   tags:
-  - flarenetwork-lg
+    - flarenetwork-lg
   retry: 2
   script:
-  - yarn test-with-coverage
+    - pnpm test-with-coverage
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
   artifacts:
     when: always
@@ -181,15 +198,15 @@ coverage:schedule:
         coverage_format: cobertura
         path: coverage/cobertura-coverage.xml
   rules:
-  - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "coverage"'
-    when: on_success
-  - when: never
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "coverage"'
+      when: on_success
+    - when: never
 
 fuzzer:schedule:
-  extends: .test-node-sc
-  stage: test
+  extends:
+    - .test-node-sc
   tags:
-  - flarenetwork-lg
+    - flarenetwork-lg
   timeout: 4 hours
   parallel: 3
   variables:
@@ -198,14 +215,14 @@ fuzzer:schedule:
     CHANGE_PRICE_AT: '300,600,...'
     # CHANGE_PRICE_FACTOR: '{"default": [0.9, 1.1]}'
   script:
-  - yarn fasset_simulation
+    - pnpm fasset_simulation
   artifacts:
     paths:
-    - test_logs/fasset-simulation.log
+      - test_logs/fasset-simulation.log
     name: fasset-simulation
     when: always
     expire_in: 30 days
   rules:
-  - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "fuzzer"'
-    when: on_success
-  - when: never
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "fuzzer"'
+      when: on_success
+    - when: never

@@ -1,10 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-solfile=$1
+solfile="$1"
 barename=$(basename "$solfile" .sol)
 targetdir=docs/api
-cachedir=cache/docs
+cachedir="cache/docs"
 
 mkdir -p "$cachedir" "$targetdir"
 
@@ -12,4 +12,4 @@ mkdir -p "$cachedir" "$targetdir"
 node scripts/compiledoc.js "$solfile" "$cachedir"
 
 # Render a Markdown API reference from the extracted documentation.
-yarn ts-node scripts/parsedoc.ts "$solfile" "$cachedir/$barename.docjson" "$targetdir/$barename.md"
+pnpm ts-node scripts/parsedoc.ts "$solfile" "$cachedir/$barename.docjson" "$targetdir/$barename.md"

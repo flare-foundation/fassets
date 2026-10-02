@@ -11,3 +11,6 @@ insert_final_newline = false
 
 [deployment/deploys/*.json]
 indent_size = 2
+
+[*.{yml,yaml}]
+indent_size = 2

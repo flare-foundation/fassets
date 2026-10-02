@@ -1,10 +1,15 @@
 #!/bin/bash
 
-echo $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME
-echo $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
-changedFiles=$(git diff-tree --no-commit-id --name-only -r $CI_COMMIT_SHA 2>&1);
-echo $changedFiles
-changedFilesArr=($(echo "$changedFiles" | tr ' ' '\n'))
+echo "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME"
+echo "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+changedFiles=$(git diff-tree --no-commit-id --name-only -r "$CI_COMMIT_SHA" 2>&1);
+echo "$changedFiles"
+
+if [ -n "$changedFiles" ]; then
+    mapfile -t changedFilesArr <<< "$changedFiles"
+else
+    changedFilesArr=()
+fi
 
 for file in "${changedFilesArr[@]}"
 do

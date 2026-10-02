@@ -4,26 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-The package manager used in the project is `yarn`.
+The package manager used in the project is `pnpm`.
 
 ```bash
 # Install dependencies
-yarn --frozen-lockfile
+pnpm install --frozen-lockfile
 
 # Compile contracts (Hardhat)
-yarn compile
+pnpm compile
 
 # Run all Hardhat tests
-yarn testHH
+pnpm testHH
 
 # Run unit tests only
-yarn test_unit_hh
+pnpm test_unit_hh
 
 # Run integration tests only
-yarn test_integration_hh
+pnpm test_integration_hh
 
 # Run a specific test file
-yarn test test/unit/assetManager/someTest.ts
+pnpm test test/unit/assetManager/someTest.ts
 
 # Run forge tests (all tests in a contract)
 forge test --mc <ContractName>
@@ -32,22 +32,22 @@ forge test --mc <ContractName>
 forge test --mt <testFunctionName> -vv
 
 # Lint Solidity
-yarn lint
+pnpm lint
 
 # Run ESLint
-yarn eslint
+pnpm eslint
 
 # Run Slither static analysis
-yarn slither
+pnpm slither
 
 # Check contract sizes
-yarn size
+pnpm size
 
 # Generate coverage report
-yarn test-with-coverage
+pnpm test-with-coverage
 
 # Generate coverage report for a single test file
-yarn coverage test/unit/assetManager/someTest.ts
+pnpm coverage test/unit/assetManager/someTest.ts
 ```
 
 ## Architecture
@@ -134,7 +134,7 @@ The system uses "UBA" for the minimal unit of underlying assets and "AMG" (Asset
 
 - `test/unit/` — Hardhat/Truffle unit tests per contract module
 - `test/integration/` — Hardhat integration tests
-- `test/e2e-simulation/` — randomized long-running FAsset simulation on Hardhat (`yarn test_e2e`)
+- `test/e2e-simulation/` — randomized long-running FAsset simulation on Hardhat (`pnpm test_e2e`)
 - `test-forge/` — Foundry tests for `collateralPool`, `coreVaultManager`, `ftso`
 
 Integration tests use support classes from `lib/test-utils/actors` for simplified initialization and multi-step process invocation. See e.g `11-EmergencyPause.ts` or `12-CoreVault.ts` for examples. Attestation proofs are obtained from AttestationHelper. Never modify obtained proofs - it will just make proof invalid (it contains merkle proof of validity).
