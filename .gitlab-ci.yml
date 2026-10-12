@@ -46,7 +46,7 @@ default:
     - pnpm install --frozen-lockfile
 
 include:
-  - component: gitlab.com/flarenetwork/ci-components-private/lgtm@2
+  # - component: gitlab.com/flarenetwork/ci-components-private/lgtm@2
   - component: gitlab.com/flarenetwork/ci-components-private/dependency-track@2
   - component: gitlab.com/flarenetwork/ci-components-private/lint-shell@2
   - template: Jobs/Secret-Detection.latest.gitlab-ci.yml
