@@ -6,6 +6,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IMemoInstructionsFacet} from "@flarenetwork/flare-periphery-contracts/flare/IMemoInstructionsFacet.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {IMintingTagManager} from "../../userInterfaces/IMintingTagManager.sol";
+import {IForbiddenAddressList} from "../../userInterfaces/IForbiddenAddressList.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {IDirectMinting} from "../../userInterfaces/IDirectMinting.sol";
 import {IDirectMintingSettings} from "../../userInterfaces/IDirectMintingSettings.sol";
@@ -73,6 +74,17 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         DirectMinting.State storage state = DirectMinting.getState();
         state.smartAccountManager = IMemoInstructionsFacet(_smartAccountManager);
         emit IAssetManagerEvents.ContractChanged("smartAccountManager", _smartAccountManager);
+    }
+
+    function setForbiddenAddressList(address _forbiddenAddressList)
+        external
+        onlyGovernance
+        rateLimited
+    {
+        require(_forbiddenAddressList != address(0), AddressZero());
+        DirectMinting.State storage state = DirectMinting.getState();
+        state.forbiddenAddressList = IForbiddenAddressList(_forbiddenAddressList);
+        emit IAssetManagerEvents.ContractChanged("forbiddenAddressList", _forbiddenAddressList);
     }
 
     function setDirectMintingFeeReceiver(address _mintingFeeReceiver)
@@ -215,6 +227,14 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
     {
         DirectMinting.State storage state = DirectMinting.getState();
         return address(state.smartAccountManager);
+    }
+
+    function getForbiddenAddressList()
+        external view
+        returns (address)
+    {
+        DirectMinting.State storage state = DirectMinting.getState();
+        return address(state.forbiddenAddressList);
     }
 
     function getDirectMintingFeeReceiver()

@@ -10,7 +10,7 @@ import { executeTimelockedGovernanceCall } from "../../../lib/test-utils/contrac
 import { calcGasCost, transactionTimestamp } from "../../../lib/test-utils/eth";
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
-import { assignMintingTagManager, assignSmartAccountManagerMock } from "../../../lib/test-utils/test-settings";
+import { assignForbiddenAddressList, assignMintingTagManager, assignSmartAccountManagerMock } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Compare, assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
@@ -19,7 +19,7 @@ import { EventArgs } from "../../../lib/utils/events/common";
 import { ContractWithEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ONE, DAYS, HOURS, joinHexBytes, MAX_BIPS, MINUTES, requireNotNull, toBN, toBNExp, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
-import { CoreVaultManagerInstance, DirectMintingAndRedeemExtendedInitInstance, MintingTagManagerInstance, SmartAccountManagerMockInstance } from "../../../typechain-truffle";
+import { CoreVaultManagerInstance, DirectMintingAndRedeemExtendedInitInstance, ForbiddenAddressListInstance, MintingTagManagerInstance, SmartAccountManagerMockInstance } from "../../../typechain-truffle";
 import { DirectMintingExecuted, DirectMintingExecutedToSmartAccount } from "../../../typechain-truffle/IIAssetManager";
 import { MintedToSmartAccount } from "../../../typechain-truffle/SmartAccountManagerMock";
 
@@ -1413,6 +1413,85 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
     });
 
+    describe("Forbidden source addresses", () => {
+        let forbiddenAddressList: ForbiddenAddressListInstance;
+
+        beforeEach(async () => {
+            forbiddenAddressList = await assignForbiddenAddressList(context.assetManager);
+        });
+
+        it("should reject direct minting from a forbidden source address and allow it after removal", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            await forbiddenAddressList.addForbiddenAddresses([underlyingMinter1], { from: governance });
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, PaymentReference.directMinting(minter.address));
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenSourceAddress", []);
+            // after removal from the list, the same payment can be minted
+            await forbiddenAddressList.removeForbiddenAddresses([underlyingMinter1], { from: governance });
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
+        });
+
+        it("should not affect direct minting from other source addresses", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            await forbiddenAddressList.addForbiddenAddresses([underlyingMinter2], { from: governance });
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            const [mintingExecuted] = await minter.directMint(totalMintingAmount, {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
+        });
+
+        it("should reject direct minting by tag from a forbidden source address", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const tagPrice = await mintingTagManager.reservationFee();
+            const tagRes = await mintingTagManager.reserve({ from: minter.address, value: tagPrice });
+            const tagId = requiredEventArgs(tagRes, 'MintingTagReserved').tag;
+            await forbiddenAddressList.addForbiddenAddresses([underlyingMinter1], { from: governance });
+            await expectRevert.custom(minter.directMintRaw(context.convertLotsToUBA(3), { destinationTag: Number(tagId), executor: executorAddress1 }),
+                "ForbiddenSourceAddress", []);
+        });
+
+        it("should reject direct minting to smart accounts (with and without extra data) from a forbidden source address", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            await forbiddenAddressList.addForbiddenAddresses([underlyingMinter1], { from: governance });
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(3), null);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenSourceAddress", []);
+            await expectRevert.custom(context.assetManager.executeDirectMintingWithData(proof, "0x1234", { from: executorAddress1 }), "ForbiddenSourceAddress", []);
+        });
+
+        it("should reject large minting from a forbidden source address without delaying it", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(2000));
+            await forbiddenAddressList.addForbiddenAddresses([underlyingMinter1], { from: governance });
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(501), PaymentReference.directMinting(minter.address));
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenSourceAddress", []);
+            const delayState = await context.assetManager.directMintingDelayState(txHash);
+            assertWeb3Equal(delayState[0], DirectMintingDelayState.NotDelayed);
+        });
+
+        it("should reject delayed minting if the source address becomes forbidden during the delay", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(2000));
+            const [res, txHash, proof] = await minter.directMintRaw(context.convertLotsToUBA(501), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            const delayedEvent = requiredEventArgs(res, 'LargeDirectMintingDelayed');
+            // governance forbids the source address during the delay
+            await forbiddenAddressList.addForbiddenAddresses([underlyingMinter1], { from: governance });
+            await time.increaseTo(delayedEvent.executionAllowedAt);
+            assertWeb3Equal((await context.assetManager.directMintingDelayState(txHash))[0], DirectMintingDelayState.Released);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenSourceAddress", []);
+            // unblocking delayed mintings doesn't bypass the check either
+            await context.assetManager.unblockDirectMintingsUntil(await time.latest(), { from: governance });
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenSourceAddress", []);
+        });
+    });
+
     describe("Initialization guards", () => {
         async function initializeSettingsFacet(initializer: DirectMintingAndRedeemExtendedInitInstance) {
             await initializer.initialize(web3DeepNormalize({
@@ -1484,6 +1563,22 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         it("should not allow setting zero address as smart account manager", async () => {
             await expectRevert.custom(
                 context.assetManager.setSmartAccountManager(ZERO_ADDRESS, { from: governance }),
+                "AddressZero",
+                []
+            );
+        });
+
+        it("should allow governance to set forbidden address list", async () => {
+            assertWeb3Equal(await context.assetManager.getForbiddenAddressList(), ZERO_ADDRESS);
+            const newForbiddenAddressList = accounts[73];
+            const res = await context.assetManager.setForbiddenAddressList(newForbiddenAddressList, { from: governance });
+            expectEvent(res, "ContractChanged", { name: "forbiddenAddressList", value: newForbiddenAddressList });
+            assertWeb3Equal(await context.assetManager.getForbiddenAddressList(), newForbiddenAddressList);
+        });
+
+        it("should not allow setting zero address as forbidden address list", async () => {
+            await expectRevert.custom(
+                context.assetManager.setForbiddenAddressList(ZERO_ADDRESS, { from: governance }),
                 "AddressZero",
                 []
             );
@@ -1835,6 +1930,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // (both onlyGovernance and onlyImmediateGovernance modifiers throw OnlyGovernance error)
             await expectRevert.custom(context.assetManager.setMintingTagManager(accounts[80]), "OnlyGovernance", []);
             await expectRevert.custom(context.assetManager.setSmartAccountManager(accounts[81]), "OnlyGovernance", []);
+            await expectRevert.custom(context.assetManager.setForbiddenAddressList(accounts[83]), "OnlyGovernance", []);
             await expectRevert.custom(context.assetManager.setDirectMintingFeeReceiver(accounts[82]), "OnlyGovernance", []);
             await expectRevert.custom(context.assetManager.setDirectMintingFee(currentFeeBIPS, currentMinimumFeeUBA), "OnlyGovernance", []);
             await expectRevert.custom(context.assetManager.setDirectMintingExecutorFee(currentExecutorFeeUBA), "OnlyGovernance", []);
@@ -1865,6 +1961,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await time.increase(DAYS + 1); // avoid rate limiting
             timelocked = await executeTimelockedGovernanceCall(context.assetManager,
                 (governance) => context.assetManager.setSmartAccountManager(accounts[81], { from: governance }));
+            assert.equal(timelocked, true);
+
+            await time.increase(DAYS + 1);
+            timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+                (governance) => context.assetManager.setForbiddenAddressList(accounts[83], { from: governance }));
             assert.equal(timelocked, true);
 
             await time.increase(DAYS + 1);
@@ -1935,6 +2036,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await testRateLimited(
                 () => context.assetManager.setSmartAccountManager(accounts[70], { from: governance }),
                 () => context.assetManager.setSmartAccountManager(accounts[71], { from: governance }),
+            );
+            await testRateLimited(
+                () => context.assetManager.setForbiddenAddressList(accounts[70], { from: governance }),
+                () => context.assetManager.setForbiddenAddressList(accounts[71], { from: governance }),
             );
             await testRateLimited(
                 () => context.assetManager.setDirectMintingFeeReceiver(accounts[70], { from: governance }),

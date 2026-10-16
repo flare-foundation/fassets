@@ -22,6 +22,9 @@ interface IDirectMintingSettings {
     function setSmartAccountManager(address _smartAccountManager)
         external;
 
+    function setForbiddenAddressList(address _forbiddenAddressList)
+        external;
+
     function setDirectMintingFeeReceiver(address _mintingFeeReceiver)
         external;
 
@@ -52,6 +55,10 @@ interface IDirectMintingSettings {
         returns (address);
 
     function getSmartAccountManager()
+        external view
+        returns (address);
+
+    function getForbiddenAddressList()
         external view
         returns (address);
 

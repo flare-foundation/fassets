@@ -33,6 +33,7 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
     error AmountNotPositive();
     error PaymentIsCoreVaultDonation();
     error ForbiddenPaymentReference();
+    error ForbiddenSourceAddress();
     error DirectMintingStillDelayed(uint256 allowedAt);
     error MissingMintingTagManager();
     error MissingSmartAccountManager();
@@ -115,6 +116,10 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         require(_payment.data.responseBody.receivingAddressHash == CoreVaultClient.coreVaultUnderlyingAddressHash(),
             InvalidReceivingAddress());
         require(_payment.data.responseBody.receivedAmount > 0, AmountNotPositive());
+        // checked on every execution, so that also delayed mintings are rejected if the address is forbidden
+        // during the delay
+        require(!DirectMinting.isForbiddenSourceAddress(_payment.data.responseBody.sourceAddressHash),
+            ForbiddenSourceAddress());
         uint256 receivedAmount = uint256(_payment.data.responseBody.receivedAmount);
         bytes32 transactionId = _payment.data.requestBody.transactionId;
         // MintingTagManager and smartAccountManager need not exist at deploy time, so they are checked here

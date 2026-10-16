@@ -3,6 +3,7 @@ pragma solidity ^0.8.27;
 
 import {IMemoInstructionsFacet} from "@flarenetwork/flare-periphery-contracts/flare/IMemoInstructionsFacet.sol";
 import {IMintingTagManager} from "../../userInterfaces/IMintingTagManager.sol";
+import {IForbiddenAddressList} from "../../userInterfaces/IForbiddenAddressList.sol";
 import {MintingRateLimiter} from "./data/MintingRateLimiter.sol";
 
 
@@ -47,6 +48,8 @@ library DirectMinting {
         uint64 unblockMintingsUntilTimestamp;
         uint64 mintingsUnblockedAt;
         mapping (bytes32 transactionId => DelayedMinting) delayedMintings;
+        // optional - when not set, all source addresses are allowed
+        IForbiddenAddressList forbiddenAddressList;
     }
 
     function mintingRecipientForTag(uint256 _mintingTag)
@@ -63,6 +66,15 @@ library DirectMinting {
     {
         State storage state = getState();
         return state.mintingTagManager.allowedExecutor(_mintingTag);
+    }
+
+    function isForbiddenSourceAddress(bytes32 _sourceAddressHash)
+        internal view
+        returns (bool)
+    {
+        State storage state = getState();
+        return address(state.forbiddenAddressList) != address(0)
+            && state.forbiddenAddressList.isForbiddenHash(_sourceAddressHash);
     }
 
     bytes32 internal constant STATE_POSITION = keccak256("fasset.DirectMinting.State");

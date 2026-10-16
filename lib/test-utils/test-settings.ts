@@ -50,6 +50,8 @@ const CoreVaultManager = artifacts.require('CoreVaultManager');
 const CoreVaultManagerProxy = artifacts.require('CoreVaultManagerProxy');
 const MintingTagManager = artifacts.require('MintingTagManager');
 const MintingTagManagerProxy = artifacts.require('MintingTagManagerProxy');
+const ForbiddenAddressList = artifacts.require('ForbiddenAddressList');
+const ForbiddenAddressListProxy = artifacts.require('ForbiddenAddressListProxy');
 const SmartAccountManagerMock = artifacts.require('SmartAccountManagerMock');
 
 export interface TestSettingsCommonContracts {
@@ -328,6 +330,19 @@ export async function assignMintingTagManager(assetManager: IIAssetManagerInstan
     await waitForTimelock(assetManager.setMintingTagManager(mintingTagManager.address, { from: governance }), assetManager, governance);
     //
     return mintingTagManager;
+}
+
+export async function assignForbiddenAddressList(assetManager: IIAssetManagerInstance) {
+    const governance = await assetManager.governance();
+    // create forbidden address list
+    const governanceSettings = await assetManager.governanceSettings();
+    const forbiddenAddressListImpl = await ForbiddenAddressList.new();
+    const forbiddenAddressListProxy = await ForbiddenAddressListProxy.new(forbiddenAddressListImpl.address, governanceSettings, governance);
+    const forbiddenAddressList = await ForbiddenAddressList.at(forbiddenAddressListProxy.address);
+    // assign to asset manager
+    await waitForTimelock(assetManager.setForbiddenAddressList(forbiddenAddressList.address, { from: governance }), assetManager, governance);
+    //
+    return forbiddenAddressList;
 }
 
 export async function assignSmartAccountManagerMock(assetManager: IIAssetManagerInstance) {
