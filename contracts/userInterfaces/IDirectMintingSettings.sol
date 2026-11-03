@@ -37,7 +37,7 @@ interface IDirectMintingSettings {
      * (without timelock) add addresses at any time; only its governance removes them, with timelock. The list is
      * read with a static call, so a list that reverts stops every flow that checks it until it is replaced - and
      * the list reverts every lookup under a source it holds no string list for (`UnsupportedSourceId`): `chainId`
-     * must be a BTC, XRP or DOGE source id of the list's kind of network (a mainnet id on a Mainnet list, a `test`
+     * must be a BTC or XRP source id of the list's kind of network (a mainnet id on a Mainnet list, a `test`
      * id on a Testnet one, either on a Local one), or every flow that checks an underlying address reverts. The list
      * cannot be unset (`AddressZero`).
      * NOTE: only governance can call this function (with timelock); rate-limited.

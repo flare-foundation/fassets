@@ -378,7 +378,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // Top-ups and self-mints cross into the protocol, so their payer is checked; so is the minter of a collateral
         // reservation. The agent's own addresses - its underlying address and its owner's Flare addresses - are
         // never checked: agents are vetted by governance through the agent owner registry.
-        // The list keeps string lists only under BTC, XRP and DOGE source ids (this file's `ETH` chain would revert
+        // The list keeps string lists only under BTC and XRP source ids (this file's `ETH` chain would revert
         // `UnsupportedSourceId` on every check), so these tests run on an XRP asset manager - the agent-backed chain -
         // with real-format XRPL classic addresses for whatever they list (the only form the real list takes).
         const forbiddenSource = xrplClassicAddress("ForbiddenSource");

@@ -837,11 +837,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         console.log("victim nat diff:", victimNatAfter.sub(victimNatBefore).toString());
         assertWeb3Equal(victimNatBefore, victimNatAfter)
     });
+
     it("agent front-runs the minter with a forbidden payment to the minter's reference - cannot release before the gate, the minter mints", async () => {
         // An agent with access to a forbidden underlying address pays the minter's reference first, hoping to release
         // the reservation at once and keep the minter's clean payment. A forbidden-source release waits until the
         // payment time and confirmationByOthersAfterSeconds are over, so the minter executes their own payment first.
-        // The list keeps string lists only under BTC, XRP and DOGE source ids (this file's `ETH` chain would revert
+        // The list keeps string lists only under BTC and XRP source ids (this file's `ETH` chain would revert
         // `UnsupportedSourceId` on every check), so this runs on an XRP asset manager - the agent-backed chain - and
         // lists a real-format XRPL classic address (the only form the real list takes).
         context = await AssetContext.createTest(commonContext, testChainInfo.xrp);

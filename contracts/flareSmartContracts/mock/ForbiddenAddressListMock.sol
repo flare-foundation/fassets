@@ -2,7 +2,7 @@
 pragma solidity ^0.8.27;
 
 import {IForbiddenAddressList} from "../interfaces/IForbiddenAddressList.sol";
-import {ISourceConfig} from "../tee/ISourceConfig.sol";
+import {IExternalNetwork} from "../interfaces/IExternalNetwork.sol";
 
 
 /**
@@ -19,7 +19,7 @@ import {ISourceConfig} from "../tee/ISourceConfig.sol";
  * getters with the total and the version; the list events (not the maintainer ones); `EvmAddressZero`; the removal
  * functions with the signatures of upstream's governance interface `IIForbiddenAddressList`. Every per-source call -
  * the checks (`isForbiddenHash` included), the getters, additions and removals - reverts `UnsupportedSourceId` unless
- * the source id is `BTC`, `XRP` or `DOGE` and fits the network given to the constructor (`getNetwork`): the `test…`
+ * the source id is `BTC` or `XRP` and fits the network given to the constructor (`getNetwork`): the `test…`
  * id on Testnet, the plain one on Mainnet, either on Local. As on the real list, an asset manager whose chain the
  * list holds no string list under - an EVM chain, or a list of the other kind of network - stops at every
  * underlying-side check.
@@ -44,7 +44,7 @@ contract ForbiddenAddressListMock is IForbiddenAddressList {
         uint64 lastAddedAt;
     }
 
-    ISourceConfig.Network private immutable network;
+    IExternalNetwork.Network private immutable network;
 
     mapping(bytes32 sourceId => SourceList) private lists;
     mapping(bytes32 sourceId => mapping(bytes32 addressHash => bool)) private nonCanonical;
@@ -59,7 +59,7 @@ contract ForbiddenAddressListMock is IForbiddenAddressList {
         _;
     }
 
-    constructor(ISourceConfig.Network _network) {
+    constructor(IExternalNetwork.Network _network) {
         network = _network;
     }
 
@@ -296,7 +296,7 @@ contract ForbiddenAddressListMock is IForbiddenAddressList {
 
     function getNetwork()
         external view
-        returns (ISourceConfig.Network)
+        returns (IExternalNetwork.Network)
     {
         return network;
     }
@@ -316,8 +316,8 @@ contract ForbiddenAddressListMock is IForbiddenAddressList {
     }
 
     /**
-     * A source the list holds a string list under: `BTC`, `XRP` or `DOGE`, with the `test` prefix exactly on a Testnet
-     * list, without it on a Mainnet list, either way on a Local one (upstream's `SourceIds.fitsNetwork`).
+     * A source the list holds a string list under: `BTC` or `XRP`, with the `test` prefix exactly on a Testnet list,
+     * without it on a Mainnet list, either way on a Local one (upstream's `SourceIds.fitsNetwork`).
      */
     function _isSupported(bytes32 _sourceId)
         private view
@@ -325,9 +325,9 @@ contract ForbiddenAddressListMock is IForbiddenAddressList {
     {
         bool isTestId = bytes4(_sourceId) == "test";
         bytes32 chain = isTestId ? _sourceId << 32 : _sourceId;
-        bool fitsNetwork = network == ISourceConfig.Network.Local
-            || isTestId == (network == ISourceConfig.Network.Testnet);
-        return (chain == "BTC" || chain == "XRP" || chain == "DOGE") && fitsNetwork;
+        bool fitsNetwork = network == IExternalNetwork.Network.Local
+            || isTestId == (network == IExternalNetwork.Network.Testnet);
+        return (chain == "BTC" || chain == "XRP") && fitsNetwork;
     }
 
     function _pageEnd(uint256 _start, uint256 _count, uint256 _totalCount)

@@ -27,7 +27,7 @@ import {Globals} from "./Globals.sol";
  * The list is read with a STATICCALL (every method here is a view), so the checks open no reentrancy surface; but
  * a reverting list stops every flow that checks it, until a timelocked `setForbiddenAddressList` replaces it. That
  * includes a list that holds no string list under `chainId`: `isForbiddenHash` reverts `UnsupportedSourceId` for a
- * source that is not a BTC, XRP or DOGE id of the list's kind of network (a mainnet id on a list deployed for
+ * source that is not a BTC or XRP id of the list's kind of network (a mainnet id on a list deployed for
  * Testnet, a `test` id on one for Mainnet; a Local list takes both), so such a list refuses every underlying-side
  * check, whatever the address. The Flare-side checks, on the EVM list, do not depend on the source.
  *

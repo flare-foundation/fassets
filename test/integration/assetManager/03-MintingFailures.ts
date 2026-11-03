@@ -519,7 +519,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // unaccounted, and the collateral reservation fee and the executor fee go to the agent and the pool, as on a
         // payment default. When only the payment's source is forbidden, the release waits until the payment time and
         // `confirmationByOthersAfterSeconds` are over, so that the minter can still execute their own payment.
-        // The list keeps string lists only under BTC, XRP and DOGE source ids (this file's `ETH` chain would revert
+        // The list keeps string lists only under BTC and XRP source ids (this file's `ETH` chain would revert
         // `UnsupportedSourceId` on every check), so these tests run on an XRP asset manager - the agent-backed chain -
         // and list a real-format XRPL classic address (the only form the real list takes).
         const forbiddenPayer = xrplClassicAddress("ForbiddenPayer");

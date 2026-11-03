@@ -4,36 +4,35 @@ pragma solidity >=0.8.4 <0.9;
 // Vendored from flare-smart-contracts-v2: `contracts/userInterfaces/IForbiddenAddressList.sol`.
 // Vendored (instead of imported) until `@flarenetwork/flare-periphery-contracts` exports it. Keep in sync with
 // the source.
-// NO DEVIATION FROM THE SOURCE but the import of `ISourceConfig`: the vendored copy (`../tee/ISourceConfig.sol`),
-// trimmed to the `Network` enum this interface needs.
+// NO DEVIATION FROM THE SOURCE (its import of `IExternalNetwork` resolves to the vendored copy next to it).
 // It REPLACES FAsset's former `contracts/userInterfaces/IForbiddenAddressList.sol`, a single list of its own
 // (`isForbiddenHash(bytes32)`, paged by cursor in insertion order). The asset manager reads two of its lists
 // (`ForbiddenAddresses`, `DirectMinting.State.forbiddenAddressList`): the string list of its own chain's source
 // (`AssetManagerSettings.chainId`) for underlying addresses, and the one EVM list for Flare addresses. Only the
 // interface is vendored: the implementation is fsc-v2's, deployed by its owners; the tests deploy a mock
 // (`../mock/ForbiddenAddressListMock.sol`).
-// Last compared against the source at the owners' `csp-utxo-payments` 28fa8fcd.
+// Last compared against the source at the owners' `forbidden-address-list` 6c677639.
 
-import { ISourceConfig } from "../tee/ISourceConfig.sol";
+import { IExternalNetwork } from "./IExternalNetwork.sol";
 
 /**
  * IForbiddenAddressList interface — governed lists of addresses that value may not be accepted from or paid to
- * (sanctions screening). Any contract or verifier that must refuse such value reads them: FDC2 verifiers
- * (`IWalletDeposit.ResponseBody.hasForbiddenInputAddress`), and on-chain consumers that check an address themselves.
+ * (sanctions screening). Any contract or verifier that must refuse such value reads them: FDC2 verifiers screening
+ * the addresses of a proof, and on-chain consumers that check an address themselves.
  *
  * Two kinds of list:
  * - **One list per non-EVM source**, of address strings, named by the source's FDC source id (`BTC`, `testBTC`,
- *   `XRP`, `testXRP`, `DOGE`, …). Each has its own entries, version and last-addition time, so an addition on one
+ *   `XRP`, `testXRP`). Each has its own entries, version and last-addition time, so an addition on one
  *   source never makes a verdict about another stale. An address is identified by its standard address hash,
  *   `keccak256(bytes(address))`, the FDC's convention, so it is held in the one canonical form the FDC hashes on its
- *   chain: Bitcoin Base58 as written and Bech32 in lowercase, a classic `r…` address on XRPL (never an X-address),
- *   Dogecoin Base58 as written (`isCanonicalAddress`), refusing any other spelling on addition and on a check by
+ *   chain: Bitcoin Base58 as written and Bech32 in lowercase, a classic `r…` address on XRPL (never an X-address)
+ *   (`isCanonicalAddress`), refusing any other spelling on addition and on a check by
  *   string (`NonCanonicalAddress`), so a second spelling can neither be listed nor pass a check as clean. Checks are
  *   by hash (`isForbiddenHash`), for a hash an FDC proof reports, or by string (`isForbidden`).
- *   Like the WalletPayments diamond, the list serves one external network for the whole deployment (`getNetwork`):
- *   the source id names the chain — `BTC` / `testBTC` Bitcoin, `XRP` / `testXRP` XRPL, `DOGE` / `testDOGE` Dogecoin
- *   — and the network which of its address networks is valid (regtest on a Local deployment). A source id must name
- *   the deployment's kind of network (`SourceIds.fitsNetwork`: no `test` prefix on Mainnet, the prefix on Testnet,
+ *   The list serves one external network for the whole deployment (`getNetwork`):
+ *   the source id names the chain — `BTC` / `testBTC` Bitcoin, `XRP` / `testXRP` XRPL — and the network which of
+ *   its address networks is valid (regtest on a Local deployment). A source id must name the deployment's kind of
+ *   network (`SourceIds.fitsNetwork`: no `test` prefix on Mainnet, the prefix on Testnet,
  *   either on Local); every per-source call reverts `UnsupportedSourceId` for any other id — an EVM chain's, one the
  *   list has no rule for, one of the other network — so a consumer or verifier configured with a wrong id fails at
  *   once rather than reading an empty list as clean.
@@ -163,7 +162,7 @@ interface IForbiddenAddressList {
     /**
      * Whether `_address` is a valid address of the source's chain on the deployment's network, in the canonical form
      * the source's list holds — the only form that can match an entry: Bitcoin Base58 as written and Bech32 in
-     * lowercase (regtest on a Local deployment); XRPL a classic `r…` address; Dogecoin Base58. False for a malformed
+     * lowercase (regtest on a Local deployment); XRPL a classic `r…` address. False for a malformed
      * address; reverts `UnsupportedSourceId` for a source the list holds no string list under, so a wrong id is a
      * configuration error, not a user's.
      * @param _sourceId The source.
@@ -289,12 +288,12 @@ interface IForbiddenAddressList {
         returns (address);
 
     /**
-     * The external network this deployment's lists serve (the WalletPayments diamond's `getNetwork`): which address
-     * network a Bitcoin or Dogecoin address must be of, and which kind of source id is supported.
+     * The external network this deployment's lists serve: which address network a Bitcoin address must be of, and
+     * which kind of source id is supported.
      */
     function getNetwork()
         external view
-        returns (ISourceConfig.Network);
+        returns (IExternalNetwork.Network);
 
     /**
      * Whether the address is a maintainer, one of the addresses besides governance that may add addresses to any

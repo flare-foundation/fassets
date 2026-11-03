@@ -333,8 +333,8 @@ export async function assignMintingTagManager(assetManager: IIAssetManagerInstan
 }
 
 /**
- * `ISourceConfig.Network` from `contracts/flareSmartContracts/tee/ISourceConfig.sol`: the external network a
- * forbidden address list serves (`IForbiddenAddressList.getNetwork`).
+ * `IExternalNetwork.Network` from `contracts/flareSmartContracts/interfaces/IExternalNetwork.sol`: the external
+ * network a forbidden address list serves (`IForbiddenAddressList.getNetwork`).
  */
 export enum SourceNetwork {
     Mainnet = 0,
@@ -350,7 +350,7 @@ export enum SourceNetwork {
  * for Flare addresses. A test adds under the chain's source what it wants to forbid on the underlying chain - by
  * convention in the chain's canonical form, the only one the real list takes (a real XRPL classic address,
  * `canonical-addresses.ts`) - and forbids Flare addresses with `forbidFlareAddresses`. As on the real list, an asset
- * manager whose `chainId` is not a BTC, XRP or DOGE source id (an `ETH` test chain) reverts `UnsupportedSourceId` on
+ * manager whose `chainId` is not a BTC or XRP source id (an `ETH` test chain) reverts `UnsupportedSourceId` on
  * every underlying-side check once the list is set.
  */
 export async function assignForbiddenAddressList(assetManager: IIAssetManagerInstance) {
