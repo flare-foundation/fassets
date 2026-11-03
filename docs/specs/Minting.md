@@ -241,18 +241,6 @@ If a minting is delayed and has a specified preferred executor, the time window 
 In cases where governance unblocked the minting, the `executionAllowedAt` for a minting doesn't change automatically, increasing the exclusive window.
 However, in these cases `executionAllowedAt` can be manually reset to the time of unblocking by calling `markUnblockedDirectMintingAllowed`.
 
-### Forbidden source addresses
-Governance can forbid direct mintings from specific underlying addresses (e.g. addresses known to hold stolen or sanctioned funds) by adding them to the `ForbiddenAddressList` contract.
-Addresses are added and removed by governance with `addForbiddenAddresses` and `removeForbiddenAddresses`, without timelock, so that the list can be updated quickly.
-The asset manager uses the list set by the (timelocked) governance method `setForbiddenAddressList`; if no list is set, all source addresses are allowed.
-
-Direct minting execution (`executeDirectMinting` or `executeDirectMintingWithData`) reverts with `ForbiddenSourceAddress` if the payment's source address is on the list.
-The check is performed on every execution attempt, including the execution of delayed mintings. So when a suspicious large minting is delayed, governance can add its source address to the list during the delay and the minting can never be executed (unless the address is removed from the list again).
-Note that the underlying payment has already been made to the Core Vault, so the funds stay there; the forbidden list only prevents minting FAssets for them.
-
-Addresses are matched by their standard address hash (`keccak256` of the address string, the same hash that FDC returns as `sourceAddressHash`), so they must be added in the exact standard form.
-The list keeps the insertion order (also when addresses are removed) and can be read in pages with `getList`.
-
 ### Minting to smart accounts
 
 Direct mints that use a special $32$/$48$-byte memo data or a registered destination tag are minted directly to the minter address.

@@ -7,6 +7,7 @@ import { Liquidator } from "../../../lib/test-utils/actors/Liquidator";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
+import { xrplClassicAddress } from "../../../lib/test-utils/canonical-addresses";
 import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
 import { calculateReceivedNat } from "../../../lib/test-utils/eth";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
@@ -16,6 +17,8 @@ import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-s
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { MAX_BIPS, ZERO_ADDRESS, toBIPS, toBN, toWei } from "../../../lib/utils/helpers";
+import { assignForbiddenAddressList, forbidFlareAddresses } from "../../../lib/test-utils/test-settings";
+import { impersonateContract, stopImpersonatingContract } from "../../../lib/test-utils/contract-test-helpers";
 
 
 contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral pool operations - collateral pool operations`, accounts => {
@@ -33,8 +36,9 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
     // addresses on mock underlying chain can be any string, as long as it is unique
     const underlyingAgent1 = "Agent1";
     const underlyingAgent2 = "Agent2";
-    const underlyingMinter1 = "Minter1";
-    const underlyingMinter2 = "Minter2";
+    // real-format XRPL classic addresses, the only form the real forbidden address list takes (the mock takes any)
+    const underlyingMinter1 = xrplClassicAddress("Minter1");
+    const underlyingMinter2 = xrplClassicAddress("Minter2");
     const underlyingRedeemer1 = "Redeemer1";
     const underlyingRedeemer2 = "Redeemer2";
 
@@ -386,6 +390,112 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         await expectEvent.inTransaction(response.tx, context.assetManager, "RedemptionRequested");
         assertWeb3Equal(receivedNat, natShare);
         expectEvent(response, "CPSelfCloseExited");
+    });
+
+    describe("self close exit with forbidden addresses", () => {
+        // A self-close exit that redeems to the underlying chain crosses the bridge: the LP, whose FAssets are redeemed,
+        // must not be a forbidden Flare address (checked by the pool), nor the recipient or the underlying address
+        // (checked by the asset manager). A redemption in vault collateral crosses nothing and is not checked.
+        async function setupExit() {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
+            await agent.depositCollateralsAndMakeAvailable(toWei(1e7), toWei(1e7));
+            const crt = await minter.reserveCollateral(agent.vaultAddress, 300);
+            await minter.executeMinting(crt, await minter.performMintingPayment(crt));
+            const enterRes = await agent.collateralPool.enter({ from: minter.address, value: toWei(90000) });
+            const poolTokens = toBN(requiredEventArgs(enterRes, "CPEntered").receivedTokensWei);
+            await context.fAsset.approve(agent.collateralPool.address, 100000000000, { from: minter.address });
+            await time.deterministicIncrease(await context.assetManager.getCollateralPoolTokenTimelockSeconds());
+            const forbiddenAddressList = await assignForbiddenAddressList(context.assetManager);
+            // the exit redeems at least a lot, so it takes the redeem-to-underlying branch
+            assert.isTrue(toBN(await agent.collateralPool.fAssetRequiredForSelfCloseExit(poolTokens.divn(2))).gte(context.convertLotsToUBA(1)));
+            return { agent, minter, poolTokens, forbiddenAddressList };
+        }
+
+        it("refuses a forbidden LP's exit to the underlying chain; its exit in vault collateral works", async () => {
+            const { agent, minter, poolTokens, forbiddenAddressList } = await setupExit();
+            await forbidFlareAddresses(context.assetManager, forbiddenAddressList, [minter.address]);
+            const half = poolTokens.divn(2);
+            await expectRevert.custom(agent.collateralPool.selfCloseExit(half, false, underlyingMinter1, ZERO_ADDRESS, { from: minter.address }),
+                "ForbiddenFlareAddress", [minter.address]);
+            await expectRevert.custom(agent.collateralPool.selfCloseExitTo(half, false, redeemerAddress1, underlyingMinter1, ZERO_ADDRESS, { from: minter.address }),
+                "ForbiddenFlareAddress", [minter.address]);
+            const response = await agent.collateralPool.selfCloseExit(half, true, underlyingMinter1, ZERO_ADDRESS, { from: minter.address });
+            expectEvent(response, "CPSelfCloseExited");
+            await expectEvent.inTransaction(response.tx, context.assetManager, "RedeemedInCollateral");
+        });
+
+        it("refuses an exit to the underlying chain for a forbidden recipient; its exit in vault collateral works", async () => {
+            const { agent, minter, poolTokens, forbiddenAddressList } = await setupExit();
+            await forbidFlareAddresses(context.assetManager, forbiddenAddressList, [redeemerAddress1]);
+            const half = poolTokens.divn(2);
+            await expectRevert.custom(agent.collateralPool.selfCloseExitTo(half, false, redeemerAddress1, underlyingMinter1, ZERO_ADDRESS, { from: minter.address }),
+                "ForbiddenFlareAddress", [redeemerAddress1]);
+            const response = await agent.collateralPool.selfCloseExitTo(half, true, redeemerAddress1, underlyingMinter1, ZERO_ADDRESS, { from: minter.address });
+            expectEvent(response, "CPSelfCloseExited");
+            // the LP itself is not forbidden: its exit to the underlying chain works
+            const response2 = await agent.collateralPool.selfCloseExit(half, false, underlyingMinter1, ZERO_ADDRESS, { from: minter.address });
+            await expectEvent.inTransaction(response2.tx, context.assetManager, "RedemptionRequested");
+        });
+
+        // A pool deployed before the pool-side check, not yet upgraded, calls `redeemFromAgent` without checking anything
+        // itself; the asset manager's own check of the receiver is what protects it. Simulated by calling as the pool.
+        it("redeemFromAgent itself refuses a forbidden receiver or underlying address (pools not yet upgraded)", async () => {
+            const { agent, minter, forbiddenAddressList } = await setupExit();
+            const pool = agent.collateralPool.address;
+            const amountUBA = context.convertLotsToUBA(1);
+            // the pool holds the FAssets it redeems
+            await context.fAsset.transfer(pool, amountUBA.muln(2), { from: minter.address });
+            await forbidFlareAddresses(context.assetManager, forbiddenAddressList, [redeemerAddress1]);
+            await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, [underlyingMinter2], { from: governance });
+            await impersonateContract(pool, toWei(1), accounts[0]);
+            try {
+                await expectRevert.custom(context.assetManager.redeemFromAgent(agent.vaultAddress, redeemerAddress1, amountUBA,
+                    underlyingMinter1, ZERO_ADDRESS, { from: pool }), "ForbiddenFlareAddress", [redeemerAddress1]);
+                await expectRevert.custom(context.assetManager.redeemFromAgent(agent.vaultAddress, redeemerAddress2, amountUBA,
+                    underlyingMinter2, ZERO_ADDRESS, { from: pool }), "ForbiddenRedeemerAddress", []);
+                // a receiver and an address that are not listed are redeemed to
+                const res = await context.assetManager.redeemFromAgent(agent.vaultAddress, redeemerAddress2, amountUBA,
+                    underlyingMinter1, ZERO_ADDRESS, { from: pool });
+                const request = requiredEventArgs(res, "RedemptionRequested");
+                assertWeb3Equal(request.redeemer, redeemerAddress2);
+                assertWeb3Equal(request.paymentAddress, underlyingMinter1);
+            } finally {
+                await stopImpersonatingContract(pool);
+            }
+        });
+
+        it("refuses an exit to a forbidden underlying address (the asset manager checks it)", async () => {
+            const { agent, minter, poolTokens, forbiddenAddressList } = await setupExit();
+            await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, [underlyingMinter1], { from: governance });
+            await expectRevert.custom(agent.collateralPool.selfCloseExit(poolTokens.divn(2), false, underlyingMinter1, ZERO_ADDRESS, { from: minter.address }),
+                "ForbiddenRedeemerAddress", []);
+            const response = await agent.collateralPool.selfCloseExit(poolTokens.divn(2), false, underlyingMinter2, ZERO_ADDRESS, { from: minter.address });
+            await expectEvent.inTransaction(response.tx, context.assetManager, "RedemptionRequested");
+        });
+
+        it("refuses an exit to a non-canonical address, which the forbidden address check could not match (NonCanonicalRedeemerAddress)", async () => {
+            const { agent, minter, poolTokens, forbiddenAddressList } = await setupExit();
+            // the classic address and its X-addresses (XLS-5d), with tag 13371337 and without a tag; the real list takes
+            // only the classic address as canonical, the mock is told so
+            const classic = "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf";
+            const xAddresses = ["XVLhHMPHU98es4dbozjVtdWzVrDjtVijiy6dVhdE4mRdMDU", "XVLhHMPHU98es4dbozjVtdWzVrDjtV5fdx1mHp98tDMoQXb"];
+            await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, [classic], { from: governance });
+            await forbiddenAddressList.setNonCanonicalAddresses(context.chainInfo.chainId, xAddresses, true);
+            const fassetBefore = await context.fAsset.balanceOf(minter.address);
+            for (const xAddress of xAddresses) {
+                await expectRevert.custom(agent.collateralPool.selfCloseExit(poolTokens.divn(2), false, xAddress, ZERO_ADDRESS, { from: minter.address }),
+                    "NonCanonicalRedeemerAddress", []);
+            }
+            await expectRevert.custom(agent.collateralPool.selfCloseExit(poolTokens.divn(2), false, classic, ZERO_ADDRESS, { from: minter.address }),
+                "ForbiddenRedeemerAddress", []);
+            assertWeb3Equal(await context.fAsset.balanceOf(minter.address), fassetBefore);
+            // a classic address that is not listed exits as before
+            const response = await agent.collateralPool.selfCloseExit(poolTokens.divn(2), false, underlyingMinter2, ZERO_ADDRESS, { from: minter.address });
+            const request = requiredEventArgsFrom(response, context.assetManager, "RedemptionRequested");
+            assert.equal(request.paymentAddress, underlyingMinter2);
+            assertWeb3Equal(request.redeemer, minter.address);
+        });
     });
 
     it("self close exit test, too many tickets required to burn", async () => {

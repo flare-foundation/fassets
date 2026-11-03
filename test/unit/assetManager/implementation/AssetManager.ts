@@ -8,7 +8,8 @@ import { AssetManagerInitSettings, deployAssetManagerFacets, newAssetManager, ne
 import { MockChain, MockChainWallet } from "../../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectEvent, expectRevert, time } from "../../../../lib/test-utils/test-helpers";
-import { TestSettingsContracts, createAgentOwnerRegistry, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings, whitelistAgentOwner } from "../../../../lib/test-utils/test-settings";
+import { TestSettingsContracts, assignForbiddenAddressList, createAgentOwnerRegistry, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestSettings, whitelistAgentOwner } from "../../../../lib/test-utils/test-settings";
+import { SourceId } from "../../../../lib/underlying-chain/SourceId";
 import { getTestFile, loadFixtureCopyVars } from "../../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../../lib/test-utils/web3assertions";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
@@ -2058,6 +2059,47 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.diamondCut([], assetManagerInit.address, abiEncodeCall(assetManagerInit, (c) => c.upgradeERC165Identifiers()), { from: governance });
             // supportInterface should work as before
             await checkSupportInterfaceWorks(false);
+        });
+    });
+
+    describe("the forbidden address list", () => {
+        it("checks Flare addresses on the list's EVM list as soon as a list is set; a source's string list does not count", async () => {
+            const minter = accounts[80];
+            assert.isFalse(await assetManager.isForbiddenFlareAddress(minter));
+            const forbiddenAddressList = await assignForbiddenAddressList(assetManager);
+            assert.isFalse(await assetManager.isForbiddenFlareAddress(minter));
+            await forbiddenAddressList.addForbiddenEvmAddresses([minter], { from: governance });
+            assert.isTrue(await assetManager.isForbiddenFlareAddress(minter));
+            assert.isFalse(await assetManager.isForbiddenFlareAddress(accounts[81]));
+            // a Flare address listed as a string under a chain's source, in any spelling, is not read for the Flare side
+            // (the real list refuses it, `NonCanonicalAddress`; the mock takes any string), and an EVM chain's source id
+            // (this fixture's chain is one, `ETH`) has no string list
+            for (const sourceId of [SourceId.XRP, SourceId.BTC]) {
+                await forbiddenAddressList.addForbiddenAddresses(sourceId, [accounts[81], accounts[81].toLowerCase()], { from: governance });
+            }
+            assert.isFalse(await assetManager.isForbiddenFlareAddress(accounts[81]));
+            await expectRevert.custom(forbiddenAddressList.addForbiddenAddresses(settings.chainId, [accounts[81].toLowerCase()], { from: governance }),
+                "UnsupportedSourceId", [settings.chainId]);
+            // removed, the address is clean again
+            await forbiddenAddressList.removeForbiddenEvmAddresses([minter], { from: governance });
+            assert.isFalse(await assetManager.isForbiddenFlareAddress(minter));
+        });
+
+        it("a list that holds no string list under the asset manager's source stops every check of an underlying address", async () => {
+            // this fixture's chain is `ETH`, an EVM chain's source id: the list keeps no string list under it, so every
+            // underlying-side check reverts in the list, whatever the address; the Flare side reads only the EVM list
+            const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            const minter = accounts[80];
+            const reservationFee = await assetManager.collateralReservationFee(1);
+            await assignForbiddenAddressList(assetManager);
+            // a redemption checks the underlying address it would pay, first, so it reverts before looking for FAssets
+            await expectRevert.custom(assetManager.redeem(1, "redeemer", ZERO_ADDRESS, { from: minter }),
+                "UnsupportedSourceId", [settings.chainId]);
+            // a collateral reservation checks only the minter, on the EVM list (the agent's address is not checked)
+            await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, ZERO_ADDRESS,
+                { from: minter, value: reservationFee });
+            assert.isFalse(await assetManager.isForbiddenFlareAddress(minter));
         });
     });
 

@@ -36,6 +36,7 @@ contract AssetManagerMock {
     uint256 public assetMintingGranularityUBA = 1e9;
     uint256 public systemRedemptionFeeBIPS = 0;
     address public systemRedemptionFeeReceiver = address(0);
+    mapping(address => bool) public forbiddenFlareAddresses;
 
     constructor(IWNat _wNat) {
         wNat = _wNat;
@@ -102,6 +103,14 @@ contract AssetManagerMock {
     ) external {
         fasset.burn(msg.sender, _amountUBA);
         emit AgentRedemptionInCollateral(_redeemer, _amountUBA);
+    }
+
+    function isForbiddenFlareAddress(address _address) external view returns (bool) {
+        return forbiddenFlareAddresses[_address];
+    }
+
+    function setForbiddenFlareAddress(address _address, bool _forbidden) external {
+        forbiddenFlareAddresses[_address] = _forbidden;
     }
 
     function registerFAssetForCollateralPool(IIFAsset _fasset) external {

@@ -120,6 +120,8 @@ interface ICoreVaultClient {
      * Directly redeem from core vault by a user holding FAssets.
      * This is like ordinary redemption, but the redemption time is much longer (a day or more)
      * and there is no possibility of redemption default.
+     * NOTE: neither the redeemer nor the underlying address may be on the forbidden address list
+     * (`ForbiddenFlareAddress`, `ForbiddenRedeemerAddress`), even if the core vault manager allows the address.
      * @param _lots the number of lots, must be larger than `coreVaultMinimumRedeemLots` setting
      * @param _redeemerUnderlyingAddress the underlying address to which the assets will be redeemed;
      *      must have been added to the `allowedDestinations` list in the core vault manager by
@@ -130,6 +132,7 @@ interface ICoreVaultClient {
 
     /**
      * Confirm a donation payment made to the core vault underlying address.
+     * A donation from an address on the forbidden address list is refused (`ForbiddenSourceAddress`).
      * @param _payment FDC payment proof
      */
     function confirmCoreVaultDonation(IXRPPayment.Proof calldata _payment)

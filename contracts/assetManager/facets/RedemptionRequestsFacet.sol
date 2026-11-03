@@ -22,6 +22,7 @@ import {Liquidation} from "../library/Liquidation.sol";
 import {TransactionAttestation} from "../library/TransactionAttestation.sol";
 import {RedemptionQueue} from "../library/data/RedemptionQueue.sol";
 import {Redemption} from "../library/data/Redemption.sol";
+import {ForbiddenAddresses} from "../library/ForbiddenAddresses.sol";
 
 
 contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
@@ -57,6 +58,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
      * underlying time by obtaining fresh proof of latest underlying block and calling `updateCurrentBlock`.
      * @param _lots number of lots to redeem
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
+     *      (in its chain's canonical form - on XRP a classic address - see `NonCanonicalRedeemerAddress`)
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
      * @return _redeemedAmountUBA the actual redeemed amount; may be less than requested if there are not enough
      *      redemption tickets available or the maximum redemption ticket limit is reached
@@ -92,6 +94,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
      * @param _amountUBA amount of redeemer's FAssets that will be burned; this is NOT the amount of assets
      *      that will be received by the redeemer - the redemption fee will be subtracted
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
+     *      (a classic address - an X-address is not canonical, see `NonCanonicalRedeemerAddress`)
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
      * @param _destinationTag the destination tag that is required in the redemption payment (only for XRP;
      *      it must fit in 32 bits for now)
@@ -128,6 +131,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
      * @param _amountUBA amount of redeemer's FAssets that will be burned; this is NOT the amount of assets
      *      that will be received by the redeemer - the redemption fee will be subtracted
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
+     *      (in its chain's canonical form - on XRP a classic address - see `NonCanonicalRedeemerAddress`)
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
      * @return _redeemedAmountUBA the actual redeemed amount; may be less than requested if there are not enough
      *      redemption tickets available or the maximum redemption ticket limit is reached
@@ -156,7 +160,8 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
 
     /**
      * Create a redemption from a single agent. Used in self-close exit from the collateral pool.
-     * Note: only collateral pool can call this method.
+     * NOTE: Neither the receiver nor the receiver's underlying address may be on the forbidden address list
+     * NOTE: only collateral pool can call this method.
      */
     function redeemFromAgent(
         address _agentVault,
@@ -172,6 +177,9 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireCollateralPool(agent);
         require(_amountUBA != 0, RedemptionOfZero());
+        // check both possible destinations, before any ticket is closed: the receiver and the underlying address paid
+        ForbiddenAddresses.requireFlareAddressAllowed(_receiver);
+        ForbiddenAddresses.requireRedeemerAddressAllowed(_receiverUnderlyingAddress);
         // close redemption tickets
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
         (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, false);
@@ -425,6 +433,9 @@ contract RedemptionRequestsFacet is AssetManagerBase, ReentrancyGuard {
         private
         returns (uint256)
     {
+        // check both ends of the crossing at the start, so a refused address reverts before anything is burned
+        ForbiddenAddresses.requireFlareAddressAllowed(msg.sender);
+        ForbiddenAddresses.requireRedeemerAddressAllowed(_redeemerUnderlyingAddressString);
         uint256 maxRedeemedTickets = Globals.getSettings().maxRedeemedTickets;
         RedemptionRequests.AgentRedemptionList memory redemptionList = RedemptionRequests.AgentRedemptionList({
             length: 0,

@@ -951,6 +951,25 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assert((await getPoolCRBIPS()).gten(exitCR * MAX_BIPS))
         });
 
+        it("should refuse a self-close exit to the underlying chain by a forbidden Flare address; the exit in vault collateral works", async () => {
+            await givePoolFAssetFees(ETH(100));
+            const natToEnter = await poolFAssetFeeNatValue();
+            await collateralPool.enter({ value: natToEnter });
+            const tokens = await collateralPoolToken.balanceOf(accounts[0]);
+            await collateralPool.withdrawFees(ETH(100), { from: accounts[0] });
+            await fAsset.approve(collateralPool.address, ETH(100), { from: accounts[0] });
+            const underlyingAddress = "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2";
+            // the exiting LP, whose f-assets would be redeemed, is forbidden (the recipient is checked by the asset
+            // manager's `redeemFromAgent`, which the mock does not model)
+            await assetManager.setForbiddenFlareAddress(accounts[0], true);
+            await expectRevert.custom(collateralPool.selfCloseExit(tokens, false, underlyingAddress, ZERO_ADDRESS),
+                "ForbiddenFlareAddress", [accounts[0]]);
+            // a redemption in vault collateral crosses nothing and is not checked
+            const resp = await collateralPool.selfCloseExitTo(tokens, true, accounts[6], underlyingAddress, ZERO_ADDRESS);
+            await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemptionInCollateral");
+            await expectEvent.notEmitted.inTransaction(resp.tx, assetManager, "AgentRedemption");
+        });
+
         it("should do a self-close exit where redemption fails to be done in underlying asset as it does not exceed one lot", async () => {
             await assetManager.setLotSize(ETH(100));
             await fAsset.mint(accounts[0], ETH(100), { from: assetManager.address });

@@ -1,6 +1,6 @@
 import {
     AgentAvailable, AgentVaultCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved,
-    DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault, RedeemedInCollateral, RedemptionDefault,
+    DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault, MintingPaymentForbidden, RedeemedInCollateral, RedemptionDefault,
     RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionPoolFeeMinted, RedemptionRequested,
     RedemptionTicketCreated, RedemptionTicketDeleted, RedemptionTicketUpdated, RedemptionWithTagRequested, ReturnFromCoreVaultCancelled,
     ReturnFromCoreVaultConfirmed, ReturnFromCoreVaultRequested, SelfClose, SelfMint, SystemRedemptionFeePaid, TransferToCoreVaultDefaulted,
@@ -166,6 +166,11 @@ export class TrackedAgentState {
     }
 
     handleCollateralReservationDeleted(args: EvmEventArgs<CollateralReservationDeleted>) {
+        this.reservedUBA = this.reservedUBA.sub(toBN(args.reservedAmountUBA));
+    }
+
+    handleMintingPaymentForbidden(args: EvmEventArgs<MintingPaymentForbidden>) {
+        // the reservation is released; the received underlying stays unaccounted, so the balance is unchanged
         this.reservedUBA = this.reservedUBA.sub(toBN(args.reservedAmountUBA));
     }
 

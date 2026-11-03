@@ -16,6 +16,7 @@ import {PaymentReference} from "../library/data/PaymentReference.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
+import {ForbiddenAddresses} from "../library/ForbiddenAddresses.sol";
 
 
 contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
@@ -34,6 +35,7 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
      * When the agent tops up his underlying address, it has to be confirmed by calling this method,
      * which updates the underlying free balance value.
      * NOTE: may only be called by the agent vault owner.
+     * NOTE: A top-up from an address on the forbidden address list is refused.
      * @param _payment proof of the underlying payment; must include payment
      *      reference of the form `0x4642505266410011000...0<agents_vault_address>`
      * @param _agentVault agent vault address
@@ -55,6 +57,8 @@ contract UnderlyingBalanceFacet is AssetManagerBase, ReentrancyGuard {
             NotATopupPayment());
         require(_payment.data.responseBody.blockNumber >= agent.underlyingBlockAtCreation,
             TopupBeforeAgentCreated());
+        // a top-up from a forbidden source must not become free underlying
+        ForbiddenAddresses.requireSourceAddressAllowed(_payment.data.responseBody.sourceAddressHash);
         state.paymentConfirmations.confirmIncomingPayment(_payment);
         // update state
         uint256 amountUBA = SafeCast.toUint256(_payment.data.responseBody.receivedAmount);

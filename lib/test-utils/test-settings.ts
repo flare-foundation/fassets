@@ -6,6 +6,7 @@ import {
     CollateralPoolTokenFactoryInstance,
     ERC20MockInstance,
     FdcHubMockInstance,
+    ForbiddenAddressListMockInstance,
     FtsoV2PriceStoreMockInstance,
     GovernanceSettingsMockInstance,
     IFdcVerificationInstance,
@@ -50,8 +51,7 @@ const CoreVaultManager = artifacts.require('CoreVaultManager');
 const CoreVaultManagerProxy = artifacts.require('CoreVaultManagerProxy');
 const MintingTagManager = artifacts.require('MintingTagManager');
 const MintingTagManagerProxy = artifacts.require('MintingTagManagerProxy');
-const ForbiddenAddressList = artifacts.require('ForbiddenAddressList');
-const ForbiddenAddressListProxy = artifacts.require('ForbiddenAddressListProxy');
+const ForbiddenAddressListMock = artifacts.require('ForbiddenAddressListMock');
 const SmartAccountManagerMock = artifacts.require('SmartAccountManagerMock');
 
 export interface TestSettingsCommonContracts {
@@ -332,17 +332,51 @@ export async function assignMintingTagManager(assetManager: IIAssetManagerInstan
     return mintingTagManager;
 }
 
+/**
+ * `ISourceConfig.Network` from `contracts/flareSmartContracts/tee/ISourceConfig.sol`: the external network a
+ * forbidden address list serves (`IForbiddenAddressList.getNetwork`).
+ */
+export enum SourceNetwork {
+    Mainnet = 0,
+    Testnet = 1,
+    Local = 2,
+}
+
+/**
+ * Deploys the forbidden address list - `ForbiddenAddressListMock`, a test double for fsc-v2's `ForbiddenAddressList`
+ * (a string list per FDC source id and one EVM list; no governance, anyone adds and removes, any string is accepted,
+ * string lists under both kinds of source id, as on a `Local` deployment) - and assigns it to the asset manager. The
+ * asset manager reads the string list of its own chain's source (`chainId`) for underlying addresses and the EVM list
+ * for Flare addresses. A test adds under the chain's source what it wants to forbid on the underlying chain - by
+ * convention in the chain's canonical form, the only one the real list takes (a real XRPL classic address,
+ * `canonical-addresses.ts`) - and forbids Flare addresses with `forbidFlareAddresses`. As on the real list, an asset
+ * manager whose `chainId` is not a BTC, XRP or DOGE source id (an `ETH` test chain) reverts `UnsupportedSourceId` on
+ * every underlying-side check once the list is set.
+ */
 export async function assignForbiddenAddressList(assetManager: IIAssetManagerInstance) {
     const governance = await assetManager.governance();
     // create forbidden address list
-    const governanceSettings = await assetManager.governanceSettings();
-    const forbiddenAddressListImpl = await ForbiddenAddressList.new();
-    const forbiddenAddressListProxy = await ForbiddenAddressListProxy.new(forbiddenAddressListImpl.address, governanceSettings, governance);
-    const forbiddenAddressList = await ForbiddenAddressList.at(forbiddenAddressListProxy.address);
+    const forbiddenAddressList = await ForbiddenAddressListMock.new(SourceNetwork.Local);
     // assign to asset manager
     await waitForTimelock(assetManager.setForbiddenAddressList(forbiddenAddressList.address, { from: governance }), assetManager, governance);
     //
     return forbiddenAddressList;
+}
+
+/**
+ * Forbid Flare (EVM) addresses: add them to the list's EVM list, which covers every EVM chain.
+ */
+export async function forbidFlareAddresses(assetManager: IIAssetManagerInstance, forbiddenAddressList: ForbiddenAddressListMockInstance, addresses: string[]) {
+    const governance = await assetManager.governance();
+    await forbiddenAddressList.addForbiddenEvmAddresses(addresses, { from: governance });
+}
+
+/**
+ * Remove Flare (EVM) addresses from the list's EVM list.
+ */
+export async function unforbidFlareAddresses(assetManager: IIAssetManagerInstance, forbiddenAddressList: ForbiddenAddressListMockInstance, addresses: string[]) {
+    const governance = await assetManager.governance();
+    await forbiddenAddressList.removeForbiddenEvmAddresses(addresses, { from: governance });
 }
 
 export async function assignSmartAccountManagerMock(assetManager: IIAssetManagerInstance) {

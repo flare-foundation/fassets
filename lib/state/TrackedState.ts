@@ -220,6 +220,7 @@ export class TrackedState {
         this.assetManagerEvent('MintingExecuted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleMintingExecuted(args));
         this.assetManagerEvent('MintingPaymentDefault').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleMintingPaymentDefault(args));
         this.assetManagerEvent('CollateralReservationDeleted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleCollateralReservationDeleted(args));
+        this.assetManagerEvent('MintingPaymentForbidden').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleMintingPaymentForbidden(args));
         this.assetManagerEvent('SelfMint').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleSelfMint(args));
         // redemption and self-close
         this.assetManagerEvent('RedemptionRequested').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionRequested(args));

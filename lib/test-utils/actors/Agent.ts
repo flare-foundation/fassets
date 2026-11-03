@@ -512,6 +512,12 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'MintingPaymentDefault');
     }
 
+    async releaseMintingWithForbiddenPayment(transactionHash: string) {
+        const proof = await this.attestationProvider.provePayment(transactionHash, null, this.underlyingAddress);
+        const res = await this.assetManager.releaseMintingWithForbiddenPayment(proof, { from: this.ownerWorkAddress });
+        return requiredEventArgs(res, 'MintingPaymentForbidden');
+    }
+
     async confirmClosedMintingPayment(crt: EventArgs<CollateralReserved>, transactionHash: string) {
         const proof = await this.attestationProvider.provePayment(transactionHash, null, crt.paymentAddress);
         const res = await this.assetManager.confirmClosedMintingPayment(proof, crt.collateralReservationId, { from: this.ownerWorkAddress });

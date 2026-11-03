@@ -311,6 +311,9 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, UUPSUpgradeable, I
             if (requiredFAssets < assetManager.lotSize() || _redeemToCollateral) {
                 assetManager.redeemFromAgentInCollateral(agentVault, _recipient, requiredFAssets);
             } else {
+                // the redemption pays out on the underlying chain: the LP whose FAssets are redeemed must not be
+                // a forbidden Flare address (the asset manager checks the recipient and the underlying address)
+                require(!assetManager.isForbiddenFlareAddress(msg.sender), ForbiddenFlareAddress(msg.sender));
                 returnFunds = _executor == address(0);
                 // pass `msg.value` to `redeemFromAgent` for the executor fee if `_executor` is set
                 assetManager.redeemFromAgent{ value: returnFunds ? 0 : msg.value }(

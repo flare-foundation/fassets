@@ -72,6 +72,9 @@ interface ICollateralPool {
     error CollateralAfterExitTooLow();
     error CannotDestroyPoolWithIssuedTokens();
     error EmergencyPauseActive();
+    /// The exiting user of a self-close exit to the underlying chain is on the forbidden address list's EVM list
+    /// (`IIAssetManager.isForbiddenFlareAddress`); the asset manager reverts with the same error for the recipient.
+    error ForbiddenFlareAddress(address forbiddenAddress);
 
     /**
      * Enters the collateral pool by depositing NAT.
@@ -105,6 +108,8 @@ interface ICollateralPool {
      *  `_redeemToCollateral` value.
      * In case of self-close via redemption, the user can set executor to trigger possible default.
      * In this case, some NAT can be sent with transaction, to pay the executor's fee.
+     * A self-close via redemption to the underlying chain reverts if the user is on the forbidden address list
+     * (`ForbiddenFlareAddress`) or the underlying address is (`ForbiddenRedeemerAddress`, from the asset manager).
      * @param _tokenShare                   The amount of pool tokens to be liquidated
      * @param _redeemToCollateral           Specifies if redeemed f-assets should be exchanged to vault collateral
      *                                      by the agent
@@ -148,6 +153,9 @@ interface ICollateralPool {
      *  `_redeemToCollateral` value.
      * In case of self-close via redemption, the user can set executor to trigger possible default.
      * In this case, some NAT can be sent with transaction, to pay the executor's fee.
+     * A self-close via redemption to the underlying chain reverts if the user or the recipient is on the forbidden
+     * address list (`ForbiddenFlareAddress`) or the underlying address is (`ForbiddenRedeemerAddress`, from the
+     * asset manager).
      * @param _tokenShare                   The amount of pool tokens to be liquidated
      * @param _redeemToCollateral           Specifies if redeemed f-assets should be exchanged to vault collateral
      *                                      by the agent

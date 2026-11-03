@@ -345,6 +345,7 @@ interface IAssetManager is
      * When the agent tops up his underlying address, it has to be confirmed by calling this method,
      * which updates the underlying free balance value.
      * NOTE: may only be called by the agent vault owner.
+     * NOTE: A top-up from an address on the forbidden address list is refused.
      * @param _payment proof of the underlying payment; must include payment
      *      reference of the form `0x4642505266410011000...0<agents_vault_address>`
      * @param _agentVault agent vault address
@@ -560,6 +561,9 @@ interface IAssetManager is
      * If the minter pays the underlying amount, minter obtains f-assets.
      * The collateral reservation fee is split between the agent and the collateral pool.
      * NOTE: the owner of the agent vault must be in the AgentOwnerRegistry.
+     * NOTE: the minter must not be on the forbidden address list (`ForbiddenFlareAddress`); `executeMinting`
+     * refuses a payment from a forbidden address (see `releaseMintingWithForbiddenPayment`).
+     * The agent's addresses are not checked: agents are vetted by governance through the agent owner registry.
      * NOTE: if the underlying block isn't updated regularly, it can happen that there is not enough time for
      * the underlying payment. Therefore minters have to verify the current underlying before minting and,
      * if needed, update it by calling `updateCurrentBlock`.
@@ -604,6 +608,9 @@ interface IAssetManager is
     /**
      * After obtaining proof of underlying payment, the minter calls this method to finish the minting
      * and collect the minted f-assets.
+     * A payment from an address on the forbidden address list, or for a minter on it (on its EVM list), is
+     * refused (`ForbiddenSourceAddress`, `ForbiddenFlareAddress`); the agent can release the reservation for it
+     * with `releaseMintingWithForbiddenPayment`.
      * NOTE: may only be called by the minter (= creator of CR, the collateral reservation request),
      *   the executor appointed by the minter, or the agent owner (= owner of the agent vault in CR).
      * @param _payment proof of the underlying payment (must contain exact `value + fee` amount and correct
@@ -630,6 +637,22 @@ interface IAssetManager is
     ) external;
 
     /**
+     * When `executeMinting` refuses a minting payment because it came from an address on the forbidden address
+     * list or the minter is on it, the agent can release the reservation (the one the payment reference names)
+     * by presenting the payment proof, which must pass the payment checks of `executeMinting`. Nothing is minted
+     * and the payment stays unaccounted; the reservation is released with status FORBIDDEN and the fees go to the
+     * agent and the pool as on a payment default. When only the payment's source is forbidden, the release waits
+     * until the payment time and `confirmationByOthersAfterSeconds` have passed (`ForbiddenMintingReleaseTooEarly`),
+     * so the minter must execute their own, clean payment before then.
+     * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
+     * @param _payment proof of the underlying payment (must contain the full `value + fee` amount and the
+     *      reservation's payment reference)
+     */
+    function releaseMintingWithForbiddenPayment(
+        IPayment.Proof calldata _payment
+    ) external;
+
+    /**
      * The minter can make several mistakes in the underlying payment:
      * - the payment is too late and is already defaulted before executing
      * - the payment is too small so executeMinting reverts
@@ -638,7 +661,10 @@ interface IAssetManager is
      * confirmed and therefore the agent cannot withdraw it without triggering full liquidation (of course
      * the agent can legally withdraw it once the vault is closed).
      * This method enables the agent to confirm such payments, converting the deposited amount to agent's
-     * free underlying.
+     * free underlying. It works for a reservation closed by `executeMinting` or by a payment default; one that
+     * expired (`unstickMinting`) or was released for a forbidden payment (status FORBIDDEN) is refused, so a
+     * payment for it stays unaccounted until the vault is closed. A payment from an address on the forbidden
+     * address list is refused (`ForbiddenSourceAddress`).
      * NOTE: may only be called by the agent vault owner.
      * @param _payment proof of the underlying payment (must have correct payment reference)
      * @param _collateralReservationId collateral reservation id
@@ -671,6 +697,8 @@ interface IAssetManager is
      * Moreover, the agent doesn't have to be on the publicly available agents list to self-mint.
      * NOTE: may only be called by the agent vault owner.
      * NOTE: the caller must be a whitelisted agent.
+     * NOTE: the payment's source must not be on the forbidden address list (`ForbiddenSourceAddress`), also for
+     *   0 lots. The agent's underlying address and the caller are not checked (agents are vetted by governance).
      * @param _payment proof of the underlying payment; must contain payment reference of the form
      *      `0x4642505266410012000...0<agent_vault_address>`
      * @param _agentVault agent vault address
@@ -713,8 +741,13 @@ interface IAssetManager is
      * NOTE: if the underlying block isn't updated regularly, it can happen that there is no time for underlying
      * payment. Since the agents cannot know when the next redemption will happen, they should regularly update the
      * underlying time by obtaining fresh proof of latest underlying block and calling `updateCurrentBlock`.
+     * NOTE: neither the redeemer nor the underlying address may be on the forbidden address list
+     * (`ForbiddenFlareAddress`, `ForbiddenRedeemerAddress`), and while a list is set the underlying address must be
+     * in its chain's canonical form, by the list (`NonCanonicalRedeemerAddress`; on XRP an X-address is not);
+     * the same holds for every redeem method.
      * @param _lots number of lots to redeem
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
+     *      (in its chain's canonical form - on XRP a classic address - see `NonCanonicalRedeemerAddress`)
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
      * @return _redeemedAmountUBA the actual redeemed amount; may be less than requested if there are not enough
      *      redemption tickets available or the maximum redemption ticket limit is reached

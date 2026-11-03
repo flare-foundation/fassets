@@ -7,6 +7,7 @@ import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
 import { Approximation, assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
+import { btcRegtestAddress } from "../../../lib/test-utils/canonical-addresses";
 import { impersonateContract, stopImpersonatingContract } from "../../../lib/test-utils/contract-test-helpers";
 import { waitForTimelock } from "../../../lib/test-utils/fasset/CreateAssetManager";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
@@ -15,7 +16,8 @@ import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-s
 import { assertWeb3DeepEqual, assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, divRoundUp, MAX_BIPS, sumBN, toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
-import { ERC20MockInstance } from "../../../typechain-truffle";
+import { assignForbiddenAddressList, forbidFlareAddresses } from "../../../lib/test-utils/test-settings";
+import { ERC20MockInstance, ForbiddenAddressListMockInstance } from "../../../typechain-truffle";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests - successful minting and redeeming`, accounts => {
     const governance = accounts[10];
@@ -1077,6 +1079,57 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(poolFeesAfter.sub(poolFeesBefore), minted.poolFeeUBA);
             assertWeb3Equal(poolFeesAfter.sub(poolFeesBefore), minted.agentFeeUBA.add(minted.poolFeeUBA).muln(startBips).divn(MAX_BIPS));
             assertWeb3Equal(collateralAfter.sub(collateralBefore), crFee.muln(startBips).divn(MAX_BIPS));
+        });
+    });
+
+    describe("forbidden addresses on redemption", () => {
+        // A redemption pays out on the underlying chain, so the redeemer (whose FAssets are burned) and the underlying
+        // address paid are checked, before anything is burned. The address is looked up by the hash of the string as
+        // given, so it is listed in the form the redeemer gives; this fixture's chain is Bitcoin, so that is the
+        // canonical (lowercase Bech32) form, the only one the real list takes (a regtest address, as on a Local list).
+        const listedAddress = btcRegtestAddress("ForbiddenRedeemer");
+        let agent: Agent;
+        let redeemer: Redeemer;
+        let forbiddenAddressList: ForbiddenAddressListMockInstance;
+
+        beforeEach(async () => {
+            agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            await agent.depositCollateralLotsAndMakeAvailable(10);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            mockChain.mine(5);
+            await context.updateUnderlyingBlock();
+            const [minted] = await minter.performMinting(agent.vaultAddress, 4);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            forbiddenAddressList = await assignForbiddenAddressList(context.assetManager);
+            await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, [listedAddress], { from: governance });
+        });
+
+        it("refuses every redeem entry point for a forbidden redeemer", async () => {
+            await forbidFlareAddresses(context.assetManager, forbiddenAddressList, [redeemer.address]);
+            const amountUBA = context.convertLotsToUBA(1);
+            await expectRevert.custom(context.assetManager.redeem(1, underlyingRedeemer1, ZERO_ADDRESS, { from: redeemer.address }),
+                "ForbiddenFlareAddress", [redeemer.address]);
+            await expectRevert.custom(context.assetManager.redeemAmount(amountUBA, underlyingRedeemer1, ZERO_ADDRESS, { from: redeemer.address }),
+                "ForbiddenFlareAddress", [redeemer.address]);
+            assertWeb3Equal(await context.fAsset.balanceOf(redeemer.address), context.convertLotsToUBA(4));
+            // the FAssets can still be redeemed by someone who is not forbidden
+            await context.fAsset.transfer(redeemerAddress2, amountUBA, { from: redeemer.address });
+            const res = await context.assetManager.redeem(1, underlyingRedeemer2, ZERO_ADDRESS, { from: redeemerAddress2 });
+            requiredEventArgs(res, "RedemptionRequested");
+        });
+
+        it("refuses every redeem entry point to a forbidden underlying address", async () => {
+            const amountUBA = context.convertLotsToUBA(1);
+            await expectRevert.custom(context.assetManager.redeem(1, listedAddress, ZERO_ADDRESS, { from: redeemer.address }),
+                "ForbiddenRedeemerAddress", []);
+            await expectRevert.custom(context.assetManager.redeemAmount(amountUBA, listedAddress, ZERO_ADDRESS, { from: redeemer.address }),
+                "ForbiddenRedeemerAddress", []);
+            assertWeb3Equal(await context.fAsset.balanceOf(redeemer.address), context.convertLotsToUBA(4));
+            // an address that is not listed is paid
+            const [requests] = await redeemer.requestRedemption(1);
+            assert.equal(requests.length, 1);
+            assertWeb3Equal(requests[0].paymentAddress, underlyingRedeemer1);
         });
     });
 

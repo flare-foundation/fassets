@@ -16,7 +16,7 @@ import { ILogger } from "../../../lib/utils/logging";
 import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import { CPEntered, CPExited, CPFeeDebtChanged } from "../../../typechain-truffle/CollateralPool";
 import {
-    AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
+    AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault, MintingPaymentForbidden,
     RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionPoolFeeMinted, RedemptionRequested, RedemptionTicketCreated,
     RedemptionTicketDeleted, RedemptionTicketUpdated, RedemptionWithTagRequested, ReturnFromCoreVaultCancelled, ReturnFromCoreVaultConfirmed, ReturnFromCoreVaultRequested, SelfClose, SelfMint, SystemRedemptionFeePaid, TransferToCoreVaultDefaulted, TransferToCoreVaultStarted, TransferToCoreVaultSuccessful, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/IIAssetManager";
@@ -181,6 +181,11 @@ export class SimulationAgentState extends TrackedAgentState {
 
     override handleCollateralReservationDeleted(args: EvmEventArgs<CollateralReservationDeleted>) {
         super.handleCollateralReservationDeleted(args);
+        this.deleteCollateralReservation(args.$event, Number(args.collateralReservationId));
+    }
+
+    override handleMintingPaymentForbidden(args: EvmEventArgs<MintingPaymentForbidden>) {
+        super.handleMintingPaymentForbidden(args);
         this.deleteCollateralReservation(args.$event, Number(args.collateralReservationId));
     }
 

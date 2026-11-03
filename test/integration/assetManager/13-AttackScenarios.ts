@@ -7,10 +7,12 @@ import { Liquidator } from "../../../lib/test-utils/actors/Liquidator";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
+import { xrplClassicAddress } from "../../../lib/test-utils/canonical-addresses";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
+import { assignForbiddenAddressList } from "../../../lib/test-utils/test-settings";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { deepFormat, toBIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
@@ -834,5 +836,47 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
 
         console.log("victim nat diff:", victimNatAfter.sub(victimNatBefore).toString());
         assertWeb3Equal(victimNatBefore, victimNatAfter)
+    });
+    it("agent front-runs the minter with a forbidden payment to the minter's reference - cannot release before the gate, the minter mints", async () => {
+        // An agent with access to a forbidden underlying address pays the minter's reference first, hoping to release
+        // the reservation at once and keep the minter's clean payment. A forbidden-source release waits until the
+        // payment time and confirmationByOthersAfterSeconds are over, so the minter executes their own payment first.
+        // The list keeps string lists only under BTC, XRP and DOGE source ids (this file's `ETH` chain would revert
+        // `UnsupportedSourceId` on every check), so this runs on an XRP asset manager - the agent-backed chain - and
+        // lists a real-format XRPL classic address (the only form the real list takes).
+        context = await AssetContext.createTest(commonContext, testChainInfo.xrp);
+        mockChain = context.chain as MockChain;
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmountLots(10));
+        await agent.depositCollateralLotsAndMakeAvailable(10);
+        mockChain.mine(3);
+        await context.updateUnderlyingBlock();
+        const agentsForbiddenAddress = xrplClassicAddress("AgentsForbiddenAddress");
+        const forbiddenAddressList = await assignForbiddenAddressList(context.assetManager);
+        await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, [agentsForbiddenAddress], { from: governance });
+        // the minter reserves; the agent pays the full amount with the minter's reference from the forbidden address
+        const crt = await minter.reserveCollateral(agent.vaultAddress, 2);
+        const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+        mockChain.mint(agentsForbiddenAddress, paymentAmount);
+        const forbiddenTx = await agent.wallet.addTransaction(agentsForbiddenAddress, crt.paymentAddress, paymentAmount, crt.paymentReference);
+        const forbiddenProof = await context.attestationProvider.provePayment(forbiddenTx, null, crt.paymentAddress);
+        // executeMinting refuses it, and the agent's release waits for the gate
+        await expectRevert.custom(context.assetManager.executeMinting(forbiddenProof, crt.collateralReservationId, { from: agent.ownerWorkAddress }),
+            "ForbiddenSourceAddress", []);
+        await expectRevert.custom(context.assetManager.releaseMintingWithForbiddenPayment(forbiddenProof, { from: agent.ownerWorkAddress }),
+            "ForbiddenMintingReleaseTooEarly", []);
+        // the minter pays and mints, within the payment time
+        const txHash = await minter.performMintingPayment(crt);
+        const minted = await minter.executeMinting(crt, txHash);
+        assertWeb3Equal(minted.mintedAmountUBA, crt.valueUBA);
+        assertWeb3Equal(await context.fAsset.balanceOf(minter.address), crt.valueUBA);
+        // later, the forbidden payment can neither release the closed reservation nor become free underlying
+        const margin = Number(context.settings.confirmationByOthersAfterSeconds);
+        context.skipToExpiration(crt.lastUnderlyingBlock, toBN(crt.lastUnderlyingTimestamp).addn(margin));
+        await context.updateUnderlyingBlock();
+        await expectRevert.custom(context.assetManager.releaseMintingWithForbiddenPayment(forbiddenProof, { from: agent.ownerWorkAddress }),
+            "InvalidCrtId", []);
+        await expectRevert.custom(context.assetManager.confirmClosedMintingPayment(forbiddenProof, crt.collateralReservationId, { from: agent.ownerWorkAddress }),
+            "ForbiddenSourceAddress", []);
     });
 });

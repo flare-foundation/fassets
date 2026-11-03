@@ -13,6 +13,7 @@ import { EventArgs } from "../../../lib/utils/events/common";
 import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { RedemptionWithTagRequested } from "../../../typechain-truffle/IIAssetManager";
+import { assignForbiddenAddressList, forbidFlareAddresses } from "../../../lib/test-utils/test-settings";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests`, accounts => {
     const governance = accounts[10];
@@ -28,6 +29,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
     const underlyingMinter2 = "Minter2";
     const underlyingRedeemer1 = "Redeemer1";
     const underlyingRedeemer2 = "Redeemer2";
+    // a valid XRPL classic address and its X-addresses (XLS-5d): mainnet with tag 13371337, mainnet without a tag,
+    // testnet with tag 13
+    const CLASSIC = "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf";
+    const X_TAG_13371337_MAIN = "XVLhHMPHU98es4dbozjVtdWzVrDjtVijiy6dVhdE4mRdMDU";
+    const X_NO_TAG_MAIN = "XVLhHMPHU98es4dbozjVtdWzVrDjtV5fdx1mHp98tDMoQXb";
+    const X_TAG_13_TEST = "TVE26TYGhfLC7tQDno7G8dGtxSkYQnTNrgQwkM2tPvGzJRR";
 
     let commonContext: CommonContext;
     let context: AssetContext;
@@ -1035,6 +1042,134 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
                 "RedeemWithTagNotSupported",
                 []
             );
+        });
+    });
+
+    describe("Forbidden addresses", () => {
+        // The redeemer and the underlying address are checked on every redeem entry point, before anything is burned.
+        async function setup() {
+            const { minter, minted } = await setupAgentAndMint(3);
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            const forbiddenAddressList = await assignForbiddenAddressList(context.assetManager);
+            return { redeemer, forbiddenAddressList, amountUBA: context.convertLotsToUBA(1) };
+        }
+
+        it("redeemWithTag refuses a forbidden redeemer", async () => {
+            const { redeemer, forbiddenAddressList, amountUBA } = await setup();
+            await forbidFlareAddresses(context.assetManager, forbiddenAddressList, [redeemer.address]);
+            await expectRevert.custom(context.assetManager.redeemWithTag(amountUBA, underlyingRedeemer1, ZERO_ADDRESS, 42, { from: redeemer.address }),
+                "ForbiddenFlareAddress", [redeemer.address]);
+            assertWeb3Equal(await context.fAsset.balanceOf(redeemer.address), context.convertLotsToUBA(3));
+        });
+
+        it("redeemWithTag refuses a forbidden address, and an X-address whose classic address is forbidden", async () => {
+            const { redeemer, forbiddenAddressList, amountUBA } = await setup();
+            await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, [CLASSIC], { from: governance });
+            await forbiddenAddressList.setNonCanonicalAddresses(context.chainInfo.chainId, [X_TAG_13371337_MAIN], true);
+            await expectRevert.custom(context.assetManager.redeemWithTag(amountUBA, CLASSIC, ZERO_ADDRESS, 42, { from: redeemer.address }),
+                "ForbiddenRedeemerAddress", []);
+            // the X-address hashes differently from the listed classic address, so it is refused as not canonical
+            await expectRevert.custom(context.assetManager.redeemWithTag(amountUBA, X_TAG_13371337_MAIN, ZERO_ADDRESS, 13371337, { from: redeemer.address }),
+                "NonCanonicalRedeemerAddress", []);
+            assertWeb3Equal(await context.fAsset.balanceOf(redeemer.address), context.convertLotsToUBA(3));
+            // an address that is not listed is paid
+            const res = await context.assetManager.redeemWithTag(amountUBA, underlyingRedeemer1, ZERO_ADDRESS, 42, { from: redeemer.address });
+            assertWeb3Equal(requiredEventArgs(res, "RedemptionWithTagRequested").paymentAddress, underlyingRedeemer1);
+        });
+    });
+
+    describe("Non-canonical addresses", () => {
+        // While a forbidden address list is set, the redeemer's address must be in its chain's canonical form by the list
+        // (`isCanonicalAddress`): `redeem`, `redeemAmount` and `redeemWithTag` refuse any other (`NonCanonicalRedeemerAddress`),
+        // because every check on the address - the forbidden address list, the agent's own address, the FDC address
+        // validity proof - hashes the string as given and knows only the canonical form. The mock list takes every string
+        // as canonical, so the tests mark what the real list refuses: on XRPL an X-address (XLS-5d), and the empty string.
+        // Without a list nothing is checked.
+        async function assignListRefusingXAddresses(ctx: AssetContext = context) {
+            const forbiddenAddressList = await assignForbiddenAddressList(ctx.assetManager);
+            await forbiddenAddressList.setNonCanonicalAddresses(ctx.chainInfo.chainId, [X_TAG_13371337_MAIN, X_NO_TAG_MAIN, X_TAG_13_TEST, ""], true);
+            return forbiddenAddressList;
+        }
+
+        it("redeemWithTag refuses an X-address, even one carrying the requested tag, and nothing is burned", async () => {
+            const { minter } = await setupAgentAndMint(3);
+            await assignListRefusingXAddresses();
+            const amount = context.convertLotsToUBA(1);
+            const fassetBefore = await context.fAsset.balanceOf(minter.address);
+            const cases: [string, number][] = [
+                [X_TAG_13371337_MAIN, 13371337],    // the requested tag
+                [X_TAG_13371337_MAIN, 42],          // another tag
+                [X_NO_TAG_MAIN, 42],                // no tag
+                [X_TAG_13_TEST, 13],                // the testnet prefix
+            ];
+            for (const [xAddress, tag] of cases) {
+                await expectRevert.custom(context.assetManager.redeemWithTag(amount, xAddress, ZERO_ADDRESS, tag,
+                    { from: minter.address }), "NonCanonicalRedeemerAddress", []);
+            }
+            assertWeb3Equal(await context.fAsset.balanceOf(minter.address), fassetBefore);
+        });
+
+        it("redeem and redeemAmount refuse an X-address, with or without a tag; a classic address is redeemed to", async () => {
+            const { minter } = await setupAgentAndMint(3);
+            await assignListRefusingXAddresses();
+            for (const xAddress of [X_TAG_13371337_MAIN, X_NO_TAG_MAIN, X_TAG_13_TEST]) {
+                await expectRevert.custom(context.assetManager.redeem(1, xAddress, ZERO_ADDRESS, { from: minter.address }),
+                    "NonCanonicalRedeemerAddress", []);
+                await expectRevert.custom(context.assetManager.redeemAmount(context.convertLotsToUBA(1), xAddress, ZERO_ADDRESS,
+                    { from: minter.address }), "NonCanonicalRedeemerAddress", []);
+            }
+            assertWeb3Equal(await context.fAsset.balanceOf(minter.address), context.convertLotsToUBA(3));
+            const res = await context.assetManager.redeem(1, CLASSIC, ZERO_ADDRESS, { from: minter.address });
+            assert.equal(requiredEventArgs(res, "RedemptionRequested").paymentAddress, CLASSIC);
+        });
+
+        // SECURITY. The check that refuses the agent's own address (`CannotRedeemToAgentsAddress`) hashes the address
+        // string as given, so it knows only the classic form; an X-address of the agent's address would slip past it.
+        it("the X-address of the agent's own address is refused; the classic form hits CannotRedeemToAgentsAddress", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, CLASSIC);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(30));
+            await agent.depositCollateralLotsAndMakeAvailable(20);
+            await minter.performMinting(agent.vaultAddress, 10);
+            await assignListRefusingXAddresses();
+            const amount = context.convertLotsToUBA(5);
+            const fassetBefore = await context.fAsset.balanceOf(minter.address);
+            await expectRevert.custom(context.assetManager.redeem(5, X_TAG_13371337_MAIN, ZERO_ADDRESS, { from: minter.address }),
+                "NonCanonicalRedeemerAddress", []);
+            await expectRevert.custom(context.assetManager.redeemAmount(amount, X_NO_TAG_MAIN, ZERO_ADDRESS, { from: minter.address }),
+                "NonCanonicalRedeemerAddress", []);
+            await expectRevert.custom(context.assetManager.redeemWithTag(amount, X_TAG_13371337_MAIN, ZERO_ADDRESS, 13371337,
+                { from: minter.address }), "NonCanonicalRedeemerAddress", []);
+            await expectRevert.custom(context.assetManager.redeem(5, CLASSIC, ZERO_ADDRESS, { from: minter.address }),
+                "CannotRedeemToAgentsAddress", []);
+            assertWeb3Equal(await context.fAsset.balanceOf(minter.address), fassetBefore);
+        });
+
+        it("an empty address is refused by every redeem method, also on a chain without destination tags", async () => {
+            const { minter } = await setupAgentAndMint(3);
+            await assignListRefusingXAddresses();
+            const amount = context.convertLotsToUBA(1);
+            await expectRevert.custom(context.assetManager.redeem(1, "", ZERO_ADDRESS, { from: minter.address }),
+                "NonCanonicalRedeemerAddress", []);
+            await expectRevert.custom(context.assetManager.redeemAmount(amount, "", ZERO_ADDRESS, { from: minter.address }),
+                "NonCanonicalRedeemerAddress", []);
+            await expectRevert.custom(context.assetManager.redeemWithTag(amount, "", ZERO_ADDRESS, 13,
+                { from: minter.address }), "NonCanonicalRedeemerAddress", []);
+            assertWeb3Equal(await context.fAsset.balanceOf(minter.address), context.convertLotsToUBA(3));
+            // the check does not depend on destination tags, and it runs before the redemption looks for tickets
+            const btcContext = await AssetContext.createTest(commonContext, testChainInfo.btc);
+            assert.isFalse(await btcContext.assetManager.redeemWithTagSupported());
+            await assignListRefusingXAddresses(btcContext);
+            await expectRevert.custom(btcContext.assetManager.redeem(1, "", ZERO_ADDRESS, { from: redeemerAddress1 }),
+                "NonCanonicalRedeemerAddress", []);
+        });
+
+        it("without a list nothing is checked: an X-address and the empty address are redeemed to as given", async () => {
+            const { minter } = await setupAgentAndMint(3);
+            const res1 = await context.assetManager.redeem(1, X_NO_TAG_MAIN, ZERO_ADDRESS, { from: minter.address });
+            assert.equal(requiredEventArgs(res1, "RedemptionRequested").paymentAddress, X_NO_TAG_MAIN);
+            const res2 = await context.assetManager.redeem(1, "", ZERO_ADDRESS, { from: minter.address });
+            assert.equal(requiredEventArgs(res2, "RedemptionRequested").paymentAddress, "");
         });
     });
 });
