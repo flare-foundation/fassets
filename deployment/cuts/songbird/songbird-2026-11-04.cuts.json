@@ -1,0 +1,11 @@
+{
+    "$schema": "../diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FXRP"],
+    "autoDeleteMethodsNotInInterface": ["IIAssetManager"],
+    "facets": [
+        {
+            "contract": "RedemptionRequestsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        }
+    ]
+}
