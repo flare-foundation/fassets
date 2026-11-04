@@ -1646,6 +1646,21 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 "InvalidUnderlyingAddress", []);
         });
 
+        it("should revert redeeming to XRP zero address", async () => {
+            // define redeemer and its underlying address
+            const redeemer = accounts[83];
+            const underlyingRedeemer = "rrrrrrrrrrrrrrrrrrrrrhoLvTp";   // XRP account id 0
+            // create available agentVault and mint f-assets
+            const agentVault = await createAvailableAgent(agentOwner1, underlyingAgent1);
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
+            // redemption request
+            await expectRevert.custom(assetManager.redeem(1, underlyingRedeemer, ZERO_ADDRESS, { from: redeemer }),
+                "InvalidUnderlyingAddress", []);
+            // only the exact zero address is rejected - e.g. XRP account id 1 is accepted
+            const res = await assetManager.redeem(1, "rrrrrrrrrrrrrrrrrrrrBZbvji", ZERO_ADDRESS, { from: redeemer });
+            expectEvent(res, "RedemptionRequested");
+        });
+
         it("should finish non-defaulted redemption payment", async () => {
             // define redeemer and its underlying address
             const redeemer = accounts[83];

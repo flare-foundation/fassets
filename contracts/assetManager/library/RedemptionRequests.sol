@@ -57,6 +57,8 @@ library RedemptionRequests {
         uint64 destinationTag;
     }
 
+    bytes32 constant XRP_ZERO_ADDRESS_HASH = keccak256(bytes("rrrrrrrrrrrrrrrrrrrrrhoLvTp"));
+
     function createRedemptionRequest(
         CreateRedemptionRequestArgs memory _args
     )
@@ -70,6 +72,7 @@ library RedemptionRequests {
         require(bytes(_args.redeemerUnderlyingAddressString).length < 128, UnderlyingAddressTooLong());
         _validateAddressCharacters(_args.redeemerUnderlyingAddressString);
         bytes32 underlyingAddressHash = keccak256(bytes(_args.redeemerUnderlyingAddressString));
+        require(underlyingAddressHash != XRP_ZERO_ADDRESS_HASH, InvalidUnderlyingAddress());
         // both addresses must be normalized (agent's address is checked at vault creation,
         // and if redeemer address isn't normalized, the agent can trigger rejectInvalidRedemption),
         // so this comparison guarantees the redemption is not to the agent's address
