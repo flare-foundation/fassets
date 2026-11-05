@@ -57,7 +57,7 @@ library RedemptionRequests {
         uint64 destinationTag;
     }
 
-    bytes32 constant XRP_ZERO_ADDRESS_HASH = keccak256(bytes("rrrrrrrrrrrrrrrrrrrrrhoLvTp"));
+    bytes32 private constant XRP_ZERO_ADDRESS_HASH = keccak256(bytes("rrrrrrrrrrrrrrrrrrrrrhoLvTp"));
 
     function createRedemptionRequest(
         CreateRedemptionRequestArgs memory _args
