@@ -5,12 +5,13 @@ import "@nomiclabs/hardhat-web3";
 import fs from "fs/promises";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
-import { task } from "hardhat/config";
+import { task, types } from "hardhat/config";
 import path from "path";
 import 'solidity-coverage';
 import { deployAssetManager, deployAssetManagerController, deployCoreVaultManager, redeployFacet, switchAllToProductionMode } from "./deployment/lib/deploy-asset-manager";
 import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory, verifyAgentOwnerRegistry, verifyAgentVaultFactory, verifyCollateralPoolFactory, verifyCollateralPoolTokenFactory } from "./deployment/lib/deploy-asset-manager-dependencies";
 import { deployCuts } from "./deployment/lib/deploy-cuts";
+import { Nonce } from "./deployment/lib/governance-transaction";
 import { deployPriceReaderV2, verifyFtsoV2PriceStore } from "./deployment/lib/deploy-ftsov2-price-store";
 import { deployMintingTagManager, verifyMintingTagManager } from "./deployment/lib/deploy-minting-tag-manager";
 import { currentDeployConfigDir, loadCurrentDeployContracts } from "./deployment/lib/deploy-utils";
@@ -203,13 +204,24 @@ task("switch-to-production", "Switch all deployed files to production mode.")
 task("diamond-cut", "Create diamond cut defined by JSON file.")
     .addPositionalParam("json", "Diamond cut JSON definition file")
     .addFlag("execute", "Execute diamond cut; if not set, just print calldata. Execute is automatically disabled in production mode.")
-    .setAction(async ({ json, execute }: {
+    .addOptionalParam("nonce", "Governance multisig nonce. If set, the cut is not executed, but a governance transaction JSON is written (one per diamond, with consecutive nonces).", undefined, types.int)
+    .addOptionalParam("description", "Short description for the governance transaction JSON (requires --nonce).")
+    .setAction(async ({ json, execute, nonce, description }: {
         json: string,
-        execute: boolean
+        execute: boolean,
+        nonce?: number,
+        description?: string,
     }, hre) => {
+        if (nonce != null && execute) {
+            throw new Error("Cannot use both --execute and --nonce");
+        }
+        if (description != null && nonce == null) {
+            throw new Error("Parameter --description requires --nonce");
+        }
+        const executeOption = nonce != null ? Nonce(nonce) : execute;
         const contracts = loadCurrentDeployContracts(true);
         await hre.run("compile");
-        await deployCuts(hre, contracts, json, { execute: execute, verbose: true });
+        await deployCuts(hre, contracts, json, { execute: executeOption, verbose: true, description });
     });
 
 

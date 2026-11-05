@@ -6,11 +6,17 @@ import { ContractStore } from "./contracts";
 import { deployFacet } from "./deploy-asset-manager-facets";
 import { ZERO_ADDRESS, abiEncodeCall, loadDeployAccounts, waitFinalize } from "./deploy-utils";
 import { contractMetadata } from "../../lib/utils/helpers";
+import { ExecuteOption, GovernanceNonce, readGovernanceTimelock, writeGovernanceTransaction } from "./governance-transaction";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const diamondCutJsonSchema = new JsonParameterSchema<DiamondCutJson>(require('../cuts/diamond-cuts.schema.json'));
 
-export type DiamondCutsOptions = { execute?: boolean, verbose?: boolean };
+/**
+ * execute: `true` - execute cuts (unless in production mode); `false` - just print the cut data;
+ *   nonce counter - print the cut data and write a governance transaction JSON per diamond (with consecutive nonces).
+ * description: short description for governance transaction JSON.
+ */
+export type DiamondCutsOptions = { execute?: ExecuteOption, verbose?: boolean, description?: string };
 export type SingleDiamondCuts = DiamondCutJson & { diamond: string };
 
 export async function deployCuts(hre: HardhatRuntimeEnvironment, contracts: ContractStore, cutsJSonFile: string, options: DiamondCutsOptions) {
@@ -42,7 +48,7 @@ export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contra
     const IDiamondCut = artifacts.require("AssetManagerDiamondCutFacet");
     const diamondCutInstance = await IDiamondCut.at(diamondAddress);
     const productionMode = await diamondCutInstance.productionMode();
-    const executeCuts = options.execute && !productionMode;
+    const executeCuts = options.execute === true && !productionMode;
     if (options.verbose || !executeCuts) {
         console.log(`------------------------------- ${cuts.diamond} ---------------------------------`);
         console.log(`CUTS:`, diamondCuts);
@@ -61,7 +67,25 @@ export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contra
         console.log(params[0].name, JSON.stringify(resultToTuple(web3.eth.abi.decodeParameter(params[0], web3.eth.abi.encodeParameter(params[0], diamondCuts)))));
         console.log(params[1].name, initAddress);
         console.log(params[2].name, initCalldata);
+        if (options.execute instanceof GovernanceNonce) {
+            await writeGovernanceTransaction(hre, contracts, options.execute, {
+                contractName: cuts.diamond,
+                instance: diamondCutInstance,
+                method: "diamondCut",
+                args: [diamondCuts, initAddress, initCalldata],
+                description: options.description,
+                timelockSeconds: await diamondCutTimelock(hre, diamondAddress),
+            });
+        }
     }
+}
+
+async function diamondCutTimelock(hre: HardhatRuntimeEnvironment, diamondAddress: string) {
+    // diamondCut has modifier onlyGovernanceWithTimelockAtLeast(diamondCutMinTimelockSeconds)
+    const assetManager = await (hre.artifacts as Truffle.Artifacts).require("IIAssetManager").at(diamondAddress);
+    const settings = await assetManager.getSettings();
+    const minTimelock = Number(settings.diamondCutMinTimelockSeconds);
+    return Math.max(await readGovernanceTimelock(hre, diamondAddress), minTimelock);
 }
 
 function printSelectorList(prompt: string, selectors: DiamondSelectors, contracts: ContractStore) {
