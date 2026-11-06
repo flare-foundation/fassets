@@ -112,12 +112,12 @@
   {
     "name": "CollateralPoolProxyImplementation",
     "contractName": "CollateralPool.sol",
-    "address": "0xD8B643B2Bc787156efdc4A746133c26dc978c199"
+    "address": "0xB823A16f84ce93AB0cEA4043Bb878bf96E3b5e64"
   },
   {
     "name": "CollateralPoolFactory",
     "contractName": "CollateralPoolFactory.sol",
-    "address": "0x53b90F1444469899FCD3920Ff2a9224C7676b2a6"
+    "address": "0x7bf356088a6A4A772eD8cfBD57f5742dE0C7fd68"
   },
   {
     "name": "CollateralPoolTokenProxyImplementation",
@@ -182,32 +182,32 @@
   {
     "name": "CollateralReservationsFacet",
     "contractName": "CollateralReservationsFacet.sol",
-    "address": "0x2a6afDFa31cED081D8FEab3FF846588DF6A63a19"
+    "address": "0xd69Bdd8Bf4ade361A2f744dfFF1fb8d42baA9DB8"
   },
   {
     "name": "MintingFacet",
     "contractName": "MintingFacet.sol",
-    "address": "0xB73dd9C0a3896e3762dAec35fB66A97FB9A29058"
+    "address": "0x0EB1De6c6618bE151a204A1f0A8Ce5548B6d1CfE"
   },
   {
     "name": "MintingDefaultsFacet",
     "contractName": "MintingDefaultsFacet.sol",
-    "address": "0x665D68Fd892a1310216c9661D91f8E72b539de5a"
+    "address": "0x84C9Db06affc87A0859e1aC2793890230Ea88C60"
   },
   {
     "name": "RedemptionRequestsFacet",
     "contractName": "RedemptionRequestsFacet.sol",
-    "address": "0xbC779749C5c5369E63b1d66DCaed62a30C5Bbd7b"
+    "address": "0x362c21C5224B758D5bfe5d94c1E163B592b3305E"
   },
   {
     "name": "RedemptionConfirmationsFacet",
     "contractName": "RedemptionConfirmationsFacet.sol",
-    "address": "0x2A7617840adAB061926b7cAcedfB17466A6E25d1"
+    "address": "0x9aCDF042DbDed4da8330c4290C5a28A80271885d"
   },
   {
     "name": "RedemptionDefaultsFacet",
     "contractName": "RedemptionDefaultsFacet.sol",
-    "address": "0x67Db8dc8929000426E0F659b4a43f00D05E7DC6e"
+    "address": "0xd66dA6648AC58fc524d883019b6453AAB9961104"
   },
   {
     "name": "LiquidationFacet",
@@ -222,7 +222,7 @@
   {
     "name": "UnderlyingBalanceFacet",
     "contractName": "UnderlyingBalanceFacet.sol",
-    "address": "0xAc66936ABb32902c89B1cc88A1CF58bA27E5d06B"
+    "address": "0x86C8c20D44C62f0f95d09d11e919E8F273A9624E"
   },
   {
     "name": "UnderlyingTimekeepingFacet",
@@ -262,7 +262,7 @@
   {
     "name": "AgentVaultAndPoolSupportFacet",
     "contractName": "AgentVaultAndPoolSupportFacet.sol",
-    "address": "0xb585dd1f4520E7808199805006702A9b5A0f4A4e"
+    "address": "0x0029DeD0F93601791369B94012a2D9f390d71613"
   },
   {
     "name": "SystemStateManagementFacet",
@@ -272,7 +272,7 @@
   {
     "name": "SystemInfoFacet",
     "contractName": "SystemInfoFacet.sol",
-    "address": "0xD9db97aef11AD9A37f36b7E47158A7585a13C1F6"
+    "address": "0x00E1Ad06C1302923501D53B471CaF691D882d1cc"
   },
   {
     "name": "EmergencyPauseFacet",
@@ -302,7 +302,7 @@
   {
     "name": "CoreVaultClientFacet",
     "contractName": "CoreVaultClientFacet.sol",
-    "address": "0xcFc4C90e76FCb4E4e55392cD2929bF5354CD650D"
+    "address": "0xa32E69B72a3bE98a4b313DE2a5e257f6077EBE57"
   },
   {
     "name": "CoreVaultClientSettingsFacet",
@@ -312,17 +312,17 @@
   {
     "name": "DirectMintingFacet",
     "contractName": "DirectMintingFacet.sol",
-    "address": "0x4aFaEda2AC4442cD10Ac601622Eee0dF5DF78eeF"
+    "address": "0x320F663A186350E9448B567d72a2B25aE33f8098"
   },
   {
     "name": "DirectMintingSettingsFacet",
     "contractName": "DirectMintingSettingsFacet.sol",
-    "address": "0xB97e478700b5f9E24fA41Fd69c5A7668862f215A"
+    "address": "0xeE8663523B703F0FEEB6C1d6955083d0F7A287A0"
   },
   {
     "name": "RedeemExtendedSettingsFacet",
     "contractName": "RedeemExtendedSettingsFacet.sol",
-    "address": "0xeb11e35d84311ccf256dc209BbAE9eEE2A91f35B"
+    "address": "0xd5b0c74052ad1168dA2B2C2C53932bC8804C743B"
   },
   {
     "name": "DirectMintingAndRedeemExtendedInit",
@@ -353,5 +353,10 @@
     "name": "TransferToCoreVaultFacet",
     "contractName": "TransferToCoreVaultFacet.sol",
     "address": "0x2d51be965081Fd46F6C2dd6930cd883dc78Aa3E9"
+  },
+  {
+    "name": "ForbiddenAddressesInit",
+    "contractName": "ForbiddenAddressesInit.sol",
+    "address": "0x615f17d7379011bf90C7F686be48cEb741aDce97"
   }
 ]
