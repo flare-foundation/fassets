@@ -1,0 +1,60 @@
+{
+    "$schema": "../diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FTestXRP"],
+    "autoDeleteMethodsNotInInterface": ["IIAssetManager"],
+    "facets": [
+        {
+            "contract": "DirectMintingFacet",
+            "exposedInterfaces": ["IDirectMinting"]
+        },
+        {
+            "contract": "DirectMintingSettingsFacet",
+            "exposedInterfaces": ["IDirectMintingSettings"]
+        },
+        {
+            "contract": "CoreVaultClientFacet",
+            "exposedInterfaces": ["ICoreVaultClient"]
+        },
+        {
+            "contract": "CollateralReservationsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "MintingFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "MintingDefaultsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionRequestsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionConfirmationsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "RedemptionDefaultsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "UnderlyingBalanceFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "AgentVaultAndPoolSupportFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "SystemInfoFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        }
+    ],
+    "init": {
+        "contract": "ForbiddenAddressesInit",
+        "method": "initialize",
+        "args": ["0x8EE3B38A1733daBE2d9840b2E26A89038af08D0d"]
+    }
+}
