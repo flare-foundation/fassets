@@ -109,10 +109,10 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
      * minted: the payment is marked used but not added to the agent's underlying balance, the reservation is
      * released with status FORBIDDEN, and the collateral reservation fee and the executor fee go to the agent and
      * the pool as on a payment default.
-     * When only the payment's source is forbidden, the release waits until the payment time and
-     * `confirmationByOthersAfterSeconds` have passed (`ForbiddenMintingReleaseTooEarly`), since the agent could
-     * pay the minter's reference from a forbidden address itself: until then the minter can still execute their
-     * own, clean payment. A forbidden minter's reservation is released at once.
+     * The release waits until the payment time and `confirmationByOthersAfterSeconds` have passed
+     * (`ForbiddenMintingReleaseTooEarly`), since the agent could pay the minter's reference from a forbidden
+     * address itself: until then the minter can still execute their own, clean payment. The same wait applies
+     * when the minter is forbidden.
      * NOTE: may only be called by the agent vault owner.
      * @param _payment proof of the underlying payment (must contain the full `value + fee` amount and the
      *      reservation's payment reference)
@@ -136,21 +136,17 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         Agents.requireAgentVaultOwner(agent);
         _requireValidMintingPayment(agent, crt, crtId, _payment);
         // only a payment that `executeMinting` refuses: from a forbidden source or for a forbidden minter
-        bool minterForbidden = ForbiddenAddresses.isForbiddenFlare(crt.minter);
-        require(minterForbidden
+        require(ForbiddenAddresses.isForbiddenFlare(crt.minter)
             || ForbiddenAddresses.isForbiddenUnderlying(_payment.data.responseBody.sourceAddressHash),
             MintingPaymentNotForbidden());
         AssetManagerState.State storage state = AssetManagerState.get();
-        // Only the payment's source is forbidden: wait until the payment time is over, plus the margin others get
-        // to confirm, so that a forbidden payment to the minter's reference - which the agent could make itself -
-        // cannot release the reservation while the minter can still execute their clean payment in time.
-        // A forbidden minter can mint nothing anyway.
-        if (!minterForbidden) {
-            require(state.currentUnderlyingBlock > crt.lastUnderlyingBlock &&
-                state.currentUnderlyingBlockTimestamp >
-                    crt.lastUnderlyingTimestamp + Globals.getSettings().confirmationByOthersAfterSeconds,
-                ForbiddenMintingReleaseTooEarly());
-        }
+        // Wait until the payment time is over, plus the margin others get to confirm, so that a forbidden payment
+        // to the minter's reference - which the agent could make itself - cannot release the reservation while the
+        // minter can still execute their clean payment in time. The same gate applies to a forbidden minter.
+        require(state.currentUnderlyingBlock > crt.lastUnderlyingBlock &&
+            state.currentUnderlyingBlockTimestamp >
+                crt.lastUnderlyingTimestamp + Globals.getSettings().confirmationByOthersAfterSeconds,
+            ForbiddenMintingReleaseTooEarly());
         // mark payment used; the received underlying stays unaccounted (not added to the agent's balance),
         // even after the address is delisted
         state.paymentConfirmations.confirmIncomingPayment(_payment);

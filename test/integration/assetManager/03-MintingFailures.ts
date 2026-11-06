@@ -517,8 +517,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         // can then release the reservation with `releaseMintingWithForbiddenPayment`, presenting a genuine, full payment proof, not
         // older than the reservation: nothing is minted, the reservation is released (status FORBIDDEN), the payment is spent but left
         // unaccounted, and the collateral reservation fee and the executor fee go to the agent and the pool, as on a
-        // payment default. When only the payment's source is forbidden, the release waits until the payment time and
-        // `confirmationByOthersAfterSeconds` are over, so that the minter can still execute their own payment.
+        // payment default. The release waits until the payment time and `confirmationByOthersAfterSeconds` are over,
+        // so that the minter can still execute their own payment; the same wait applies to a forbidden minter.
         // The list keeps string lists only under BTC and XRP source ids (this file's `ETH` chain would revert
         // `UnsupportedSourceId` on every check), so these tests run on an XRP asset manager - the agent-backed chain -
         // and list a real-format XRPL classic address (the only form the real list takes).
@@ -693,7 +693,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             requiredEventArgs(await release(txHash), "MintingPaymentForbidden");
         });
 
-        it("a forbidden minter's payment is refused whoever executes it; the agent releases at once, and the executor fee goes to the agent and the pool too", async () => {
+        it("a forbidden minter's payment is refused whoever executes it; the agent releases after the gate, and the executor fee goes to the agent and the pool too", async () => {
             const lots = 2;
             const executorFee = toWei(1);
             const crFee = await minter.getCollateralReservationFee(lots);
@@ -706,9 +706,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             }
             // only the agent vault owner releases, not the executor
             await expectRevert.custom(release(txHash, executorAddress), "OnlyAgentVaultOwner", []);
+            // the release waits for the gate, although the minter is forbidden
+            await expectRevert.custom(release(txHash), "ForbiddenMintingReleaseTooEarly", []);
+            await skipPastReleaseGate(crt);
             const before = await fees();
             const executorBefore = await context.wNat.balanceOf(executorAddress);
-            // no gate: nothing the minter does can mint
             const released = await agent.releaseMintingWithForbiddenPayment(txHash);
             assertWeb3Equal(released.minter, minter.address);
             assertWeb3Equal(released.receivedAmountUBA, crt.valueUBA.add(crt.feeUBA));
@@ -720,12 +722,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             assertWeb3Equal(await crtStatus(crt), CollateralReservationStatus.FORBIDDEN);
         });
 
-        it("a forbidden minter paying from a forbidden source is refused as a forbidden minter; the agent releases at once", async () => {
+        it("a forbidden minter paying from a forbidden source is refused as a forbidden minter; the agent releases after the gate", async () => {
             const crt = await minter.reserveCollateral(agent.vaultAddress, 2);
             await forbidFlareAddresses(context.assetManager, forbiddenAddressList, [minter.address]);
             const txHash = await payFrom(forbiddenPayer, crt);
             await expectRevert.custom(executeMinting(crt, txHash, minter.address), "ForbiddenFlareAddress", [minter.address]);
-            // no gate, although the source is forbidden too
+            await expectRevert.custom(release(txHash), "ForbiddenMintingReleaseTooEarly", []);
+            await skipPastReleaseGate(crt);
             const released = await agent.releaseMintingWithForbiddenPayment(txHash);
             assertWeb3Equal(released.collateralReservationId, crt.collateralReservationId);
             assertWeb3Equal(await crtStatus(crt), CollateralReservationStatus.FORBIDDEN);

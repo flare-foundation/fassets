@@ -641,9 +641,9 @@ interface IAssetManager is
      * list or the minter is on it, the agent can release the reservation (the one the payment reference names)
      * by presenting the payment proof, which must pass the payment checks of `executeMinting`. Nothing is minted
      * and the payment stays unaccounted; the reservation is released with status FORBIDDEN and the fees go to the
-     * agent and the pool as on a payment default. When only the payment's source is forbidden, the release waits
-     * until the payment time and `confirmationByOthersAfterSeconds` have passed (`ForbiddenMintingReleaseTooEarly`),
-     * so the minter must execute their own, clean payment before then.
+     * agent and the pool as on a payment default. The release waits until the payment time and
+     * `confirmationByOthersAfterSeconds` have passed (`ForbiddenMintingReleaseTooEarly`), also when the minter is
+     * forbidden, so the minter must execute their own, clean payment before then.
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
      * @param _payment proof of the underlying payment (must contain the full `value + fee` amount and the
      *      reservation's payment reference)
