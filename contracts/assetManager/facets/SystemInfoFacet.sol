@@ -176,6 +176,8 @@ contract SystemInfoFacet is AssetManagerBase {
             return CollateralReservationInfo.Status.SUCCESSFUL;
         } else if (_status == CollateralReservation.Status.DEFAULTED) {
             return CollateralReservationInfo.Status.DEFAULTED;
+        } else if (_status == CollateralReservation.Status.FORBIDDEN) {
+            return CollateralReservationInfo.Status.FORBIDDEN;
         } else {
             assert(_status == CollateralReservation.Status.EXPIRED);
             return CollateralReservationInfo.Status.EXPIRED;

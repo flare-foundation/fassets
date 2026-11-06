@@ -1,3 +1,4 @@
+import { encodeAttestationName } from "@flarenetwork/js-flare-common";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { Agent } from "../../../lib/test-utils/actors/Agent";
 import { AssetContext } from "../../../lib/test-utils/actors/AssetContext";
@@ -6,20 +7,22 @@ import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { MockCoreVaultBot } from "../../../lib/test-utils/actors/MockCoreVaultBot";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
+import { xrplClassicAddress } from "../../../lib/test-utils/canonical-addresses";
 import { executeTimelockedGovernanceCall } from "../../../lib/test-utils/contract-test-helpers";
 import { calcGasCost, transactionTimestamp } from "../../../lib/test-utils/eth";
 import { MockChain, MockChainWallet } from "../../../lib/test-utils/fasset/MockChain";
 import { expectEvent, expectRevert, time } from "../../../lib/test-utils/test-helpers";
-import { assignMintingTagManager, assignSmartAccountManagerMock } from "../../../lib/test-utils/test-settings";
+import { assignForbiddenAddressList, assignMintingTagManager, assignSmartAccountManagerMock, forbidFlareAddresses, unforbidFlareAddresses } from "../../../lib/test-utils/test-settings";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Compare, assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
 import { TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
+import { SourceId } from "../../../lib/underlying-chain/SourceId";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { ContractWithEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ONE, DAYS, HOURS, joinHexBytes, MAX_BIPS, MINUTES, requireNotNull, toBN, toBNExp, ZERO_ADDRESS } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
-import { CoreVaultManagerInstance, DirectMintingAndRedeemExtendedInitInstance, MintingTagManagerInstance, SmartAccountManagerMockInstance } from "../../../typechain-truffle";
+import { CoreVaultManagerInstance, DirectMintingAndRedeemExtendedInitInstance, ForbiddenAddressListMockInstance, MintingTagManagerInstance, SmartAccountManagerMockInstance } from "../../../typechain-truffle";
 import { DirectMintingExecuted, DirectMintingExecutedToSmartAccount } from "../../../typechain-truffle/IIAssetManager";
 import { MintedToSmartAccount } from "../../../typechain-truffle/SmartAccountManagerMock";
 
@@ -51,12 +54,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
     const triggeringAccount = accounts[5];
     const tagManagerFeeReceiver = accounts[11];
     const mintingFeeReceiver = accounts[12];
-    // addresses on mock underlying chain can be any string, as long as it is unique
+    // addresses on mock underlying chain can be any string, as long as it is unique; the minters' are real-format XRPL
+    // classic addresses, the only form the real forbidden address list takes (the tests' mock takes any string)
     const underlyingAgent1 = "Agent1";
     const underlyingAgent2 = "Agent2";
     const underlyingAgent3 = "Agent3";
-    const underlyingMinter1 = "Minter1";
-    const underlyingMinter2 = "Minter2";
+    const underlyingMinter1 = xrplClassicAddress("Minter1");
+    const underlyingMinter2 = xrplClassicAddress("Minter2");
     const underlyingMinter3 = "Minter3";
     const underlyingRedeemer1 = "Redeemer1";
     const underlyingRedeemer2 = "Redeemer2";
@@ -1413,6 +1417,281 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         });
     });
 
+    describe("Forbidden source addresses", () => {
+        let forbiddenAddressList: ForbiddenAddressListMockInstance;
+
+        beforeEach(async () => {
+            forbiddenAddressList = await assignForbiddenAddressList(context.assetManager);
+        });
+
+        it("should reject direct minting from a forbidden source address and allow it after removal", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, [underlyingMinter1], { from: governance });
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, PaymentReference.directMinting(minter.address));
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenSourceAddress", []);
+            // after removal from the list, the same payment can be minted
+            await forbiddenAddressList.removeForbiddenAddresses(context.chainInfo.chainId, [underlyingMinter1], { from: governance });
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            const mintingExecuted = requiredEventArgs(res, 'DirectMintingExecuted');
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
+        });
+
+        it("only the list of the asset manager's own source counts: an address listed under another source does not block it", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // the list keeps one list per FDC source id; the asset manager reads its own chain's (`chainId`)
+            const otherSource = SourceId.testXRP;
+            assert.notEqual(otherSource, context.chainInfo.chainId);
+            await forbiddenAddressList.addForbiddenAddresses(otherSource, [underlyingMinter1], { from: governance });
+            assert.isTrue(await forbiddenAddressList.isForbidden(otherSource, underlyingMinter1));
+            assert.isFalse(await forbiddenAddressList.isForbidden(context.chainInfo.chainId, underlyingMinter1));
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            const [mintingExecuted] = await minter.directMint(totalMintingAmount, {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
+            // the same address listed under the asset manager's source: the next payment from it is refused
+            await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, [underlyingMinter1], { from: governance });
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, PaymentReference.directMinting(minter.address));
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenSourceAddress", []);
+            // removed from the asset manager's source again (still listed under the other one), it mints
+            await forbiddenAddressList.removeForbiddenAddresses(context.chainInfo.chainId, [underlyingMinter1], { from: governance });
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            await verifyDirectMintingResult(requiredEventArgs(res, 'DirectMintingExecuted'), minter.address, executorAddress1, totalMintingAmount);
+        });
+
+        it("the source is the asset manager's chainId: a testXRP asset manager reads the testXRP list, not the XRP one", async () => {
+            // every other test here runs on an `XRP` manager, so they would not catch a hard-coded source id
+            const testnetContext = await AssetContext.createTest(commonContext, { ...testChainInfo.xrp, chainId: SourceId.testXRP }, {
+                testSettings: { directMintingFeeReceiver: mintingFeeReceiver }
+            });
+            assertWeb3Equal((await testnetContext.assetManager.getSettings()).chainId, SourceId.testXRP);
+            await testnetContext.assignCoreVaultManager({
+                underlyingAddress: coreVaultUnderlyingAddress,
+                custodianAddress: coreVaultCustodianAddress,
+                triggeringAccounts: [triggeringAccount],
+            });
+            await assignMintingTagManager(testnetContext.assetManager, { fee: toBN(100), feeReceiver: tagManagerFeeReceiver });
+            await assignSmartAccountManagerMock(testnetContext.assetManager);
+            const testnetList = await assignForbiddenAddressList(testnetContext.assetManager);
+            const minter = await Minter.createTest(testnetContext, minterAddress1, underlyingMinter1, testnetContext.convertLotsToUBA(200));
+            const paymentReference = PaymentReference.directMinting(minter.address);
+            const totalMintingAmount = testnetContext.convertLotsToUBA(3);
+            // listed under `XRP` only: not forbidden on the testXRP manager, it mints
+            await testnetList.addForbiddenAddresses(SourceId.XRP, [underlyingMinter1], { from: governance });
+            const txHash1 = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, paymentReference);
+            const proof1 = await testnetContext.attestationProvider.proveXRPPayment(txHash1, null);
+            const res = await testnetContext.assetManager.executeDirectMinting(proof1, { from: executorAddress1 });
+            assertWeb3Equal(requiredEventArgs(res, 'DirectMintingExecuted').targetAddress, minter.address);
+            // listed under `testXRP` too: the next payment from it is refused
+            await testnetList.addForbiddenAddresses(SourceId.testXRP, [underlyingMinter1], { from: governance });
+            const txHash2 = await minter.performPayment(coreVaultUnderlyingAddress, totalMintingAmount, paymentReference);
+            const proof2 = await testnetContext.attestationProvider.proveXRPPayment(txHash2, null);
+            await expectRevert.custom(testnetContext.assetManager.executeDirectMinting(proof2, { from: executorAddress1 }), "ForbiddenSourceAddress", []);
+        });
+
+        it("should not affect direct minting from other source addresses", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, [underlyingMinter2], { from: governance });
+            const totalMintingAmount = context.convertLotsToUBA(3);
+            const [mintingExecuted] = await minter.directMint(totalMintingAmount, {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, totalMintingAmount);
+        });
+
+        it("should reject direct minting by tag from a forbidden source address", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const tagPrice = await mintingTagManager.reservationFee();
+            const tagRes = await mintingTagManager.reserve({ from: minter.address, value: tagPrice });
+            const tagId = requiredEventArgs(tagRes, 'MintingTagReserved').tag;
+            await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, [underlyingMinter1], { from: governance });
+            await expectRevert.custom(minter.directMintRaw(context.convertLotsToUBA(3), { destinationTag: Number(tagId), executor: executorAddress1 }),
+                "ForbiddenSourceAddress", []);
+        });
+
+        it("should reject direct minting to smart accounts (with and without extra data) from a forbidden source address", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, [underlyingMinter1], { from: governance });
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(3), null);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenSourceAddress", []);
+            await expectRevert.custom(context.assetManager.executeDirectMintingWithData(proof, "0x1234", { from: executorAddress1 }), "ForbiddenSourceAddress", []);
+        });
+
+        it("should reject large minting from a forbidden source address without delaying it", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(2000));
+            await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, [underlyingMinter1], { from: governance });
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(501), PaymentReference.directMinting(minter.address));
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenSourceAddress", []);
+            const delayState = await context.assetManager.directMintingDelayState(txHash);
+            assertWeb3Equal(delayState[0], DirectMintingDelayState.NotDelayed);
+        });
+
+        it("should reject delayed minting if the source address becomes forbidden during the delay", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(2000));
+            const [res, txHash, proof] = await minter.directMintRaw(context.convertLotsToUBA(501), {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            const delayedEvent = requiredEventArgs(res, 'LargeDirectMintingDelayed');
+            // governance forbids the source address during the delay
+            await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, [underlyingMinter1], { from: governance });
+            await time.increaseTo(delayedEvent.executionAllowedAt);
+            assertWeb3Equal((await context.assetManager.directMintingDelayState(txHash))[0], DirectMintingDelayState.Released);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenSourceAddress", []);
+            // unblocking delayed mintings doesn't bypass the check either
+            await context.assetManager.unblockDirectMintingsUntil(await time.latest(), { from: governance });
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenSourceAddress", []);
+        });
+    });
+
+    describe("Forbidden Flare addresses", () => {
+        // The Flare side of the crossing: the executor (whose fee is minted in FAssets, or paid by the smart account
+        // manager) and the recipient are checked against the list's EVM list, on every execution, before anything is
+        // reserved or delayed. A minting to a smart account has no recipient here (the smart account manager decides
+        // the account), so only its executor is checked.
+        let forbiddenAddressList: ForbiddenAddressListMockInstance;
+
+        beforeEach(async () => {
+            forbiddenAddressList = await assignForbiddenAddressList(context.assetManager);
+        });
+
+        async function forbidFlare(...addresses: string[]) {
+            await forbidFlareAddresses(context.assetManager, forbiddenAddressList, addresses);
+        }
+
+        it("rejects a direct minting to a forbidden recipient - by reference, by extended reference or by tag", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            const recipient = minterAddress2;
+            const tagPrice = await mintingTagManager.reservationFee();
+            const tagId = requiredEventArgs(await mintingTagManager.reserve({ from: minter.address, value: tagPrice }), 'MintingTagReserved').tag;
+            await mintingTagManager.setMintingRecipient(tagId, recipient, { from: minter.address });
+            await forbidFlare(recipient);
+            // listed by `address`: there is one value, whatever the spelling
+            assert.isTrue(await forbiddenAddressList.isForbiddenEvmAddress(recipient.toLowerCase()));
+            assert.notEqual(recipient, recipient.toLowerCase());
+            const amount = context.convertLotsToUBA(3);
+            await expectRevert.custom(minter.directMintRaw(amount, { memoData: PaymentReference.directMinting(recipient), executor: executorAddress1 }),
+                "ForbiddenFlareAddress", [recipient]);
+            await expectRevert.custom(minter.directMintRaw(amount, { memoData: PaymentReference.directMintingEx(recipient, executorAddress1), executor: executorAddress1 }),
+                "ForbiddenFlareAddress", [recipient]);
+            await expectRevert.custom(minter.directMintRaw(amount, { destinationTag: Number(tagId), executor: executorAddress1 }),
+                "ForbiddenFlareAddress", [recipient]);
+            assertWeb3Equal(await context.fAsset.totalSupply(), 0);
+            // the same payer mints to a recipient that is not forbidden
+            const [mintingExecuted] = await minter.directMint(amount, { memoData: PaymentReference.directMinting(minter.address), executor: executorAddress1 });
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, amount);
+        });
+
+        it("rejects a direct minting executed by a forbidden executor; another executor mints it", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            await forbidFlare(executorAddress1);
+            const amount = context.convertLotsToUBA(3);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, amount, PaymentReference.directMinting(minter.address));
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenFlareAddress", [executorAddress1]);
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress2 });
+            await verifyDirectMintingResult(requiredEventArgs(res, 'DirectMintingExecuted'), minter.address, executorAddress2, amount);
+        });
+
+        it("rejects a large minting to a forbidden recipient without delaying it", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(2000));
+            await forbidFlare(minter.address);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(501), PaymentReference.directMinting(minter.address));
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenFlareAddress", [minter.address]);
+            assertWeb3Equal((await context.assetManager.directMintingDelayState(txHash))[0], DirectMintingDelayState.NotDelayed);
+            // nothing was reserved: with the minting cap at exactly the amount, a clean large minting is still delayed
+            await context.assetManagerController.setMintingCapAmg([context.assetManager.address], context.convertLotsToAMG(501), { from: governance });
+            const [res2] = await minter.directMintRaw(context.convertLotsToUBA(501), {
+                memoData: PaymentReference.directMinting(minterAddress2),
+                executor: executorAddress1
+            });
+            expectEvent(res2, 'LargeDirectMintingDelayed');
+        });
+
+        it("rejects a delayed minting whose recipient becomes forbidden during the delay, unblocked or not, until it is removed", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(2000));
+            const amount = context.convertLotsToUBA(501);
+            const [res, txHash, proof] = await minter.directMintRaw(amount, {
+                memoData: PaymentReference.directMinting(minter.address),
+                executor: executorAddress1
+            });
+            const delayedEvent = requiredEventArgs(res, 'LargeDirectMintingDelayed');
+            await forbidFlare(minter.address);
+            await time.increaseTo(delayedEvent.executionAllowedAt);
+            assertWeb3Equal((await context.assetManager.directMintingDelayState(txHash))[0], DirectMintingDelayState.Released);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenFlareAddress", [minter.address]);
+            await context.assetManager.unblockDirectMintingsUntil(await time.latest(), { from: governance });
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }), "ForbiddenFlareAddress", [minter.address]);
+            // stuck while listed: it keeps its minting capacity reservation (there is no way to release it but to execute
+            // the minting) - with the minting cap at exactly the delayed amount, no other minting fits
+            await context.assetManagerController.setMintingCapAmg([context.assetManager.address], context.convertLotsToAMG(501), { from: governance });
+            const otherTxHash = await minter.performPayment(coreVaultUnderlyingAddress, context.convertLotsToUBA(1), PaymentReference.directMinting(minterAddress2));
+            const otherProof = await context.attestationProvider.proveXRPPayment(otherTxHash, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(otherProof, { from: executorAddress1 }), "MintingCapExceeded", []);
+            // once the recipient is removed from the list, it mints
+            await unforbidFlareAddresses(context.assetManager, forbiddenAddressList, [minter.address]);
+            const res2 = await context.assetManager.executeDirectMinting(proof, { from: executorAddress1 });
+            await verifyDirectMintingResult(requiredEventArgs(res2, 'DirectMintingExecuted'), minter.address, executorAddress1, amount);
+        });
+
+        it("rejects a direct minting to a smart account executed by a forbidden executor, with and without data; another executor mints it", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            await forbidFlare(executorAddress1);
+            const amount = context.convertLotsToUBA(3);
+            const txHash = await minter.performPayment(coreVaultUnderlyingAddress, amount, null);
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.executeDirectMinting(proof, { from: executorAddress1 }),
+                "ForbiddenFlareAddress", [executorAddress1]);
+            await expectRevert.custom(context.assetManager.executeDirectMintingWithData(proof, "0x1234", { from: executorAddress1 }),
+                "ForbiddenFlareAddress", [executorAddress1]);
+            assertWeb3Equal(await context.fAsset.totalSupply(), 0);
+            const res = await context.assetManager.executeDirectMinting(proof, { from: executorAddress2 });
+            assertWeb3Equal(requiredEventArgs(res, 'DirectMintingExecutedToSmartAccount').executor, executorAddress2);
+        });
+
+        it("only the EVM list counts: a Flare address listed as a string under the chain's source is not refused; an EVM chain's source has no string list", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            // the real list refuses an EVM address as a string (`NonCanonicalAddress`); the mock takes it, and the asset
+            // manager still reads only the EVM list for a Flare address
+            await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, [minter.address, minter.address.toLowerCase()], { from: governance });
+            assert.isFalse(await context.assetManager.isForbiddenFlareAddress(minter.address));
+            const flrSourceId = encodeAttestationName("FLR");
+            await expectRevert.custom(forbiddenAddressList.addForbiddenAddresses(flrSourceId, [minter.address.toLowerCase()], { from: governance }),
+                "UnsupportedSourceId", [flrSourceId]);
+            const amount = context.convertLotsToUBA(3);
+            const [mintingExecuted] = await minter.directMint(amount, { memoData: PaymentReference.directMinting(minter.address), executor: executorAddress1 });
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, amount);
+            // on the EVM list, the same recipient is refused
+            await forbidFlare(minter.address);
+            await expectRevert.custom(minter.directMintRaw(amount, { memoData: PaymentReference.directMinting(minter.address), executor: executorAddress1 }),
+                "ForbiddenFlareAddress", [minter.address]);
+        });
+    });
+
+    describe("Forbidden Flare addresses - no list", () => {
+        it("nothing is checked while no list is set; once one is, its EVM list is read, with no further setting", async () => {
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(200));
+            assert.isFalse(await context.assetManager.isForbiddenFlareAddress(minter.address));
+            const amount = context.convertLotsToUBA(3);
+            const [mintingExecuted] = await minter.directMint(amount, { memoData: PaymentReference.directMinting(minter.address), executor: executorAddress1 });
+            await verifyDirectMintingResult(mintingExecuted, minter.address, executorAddress1, amount);
+            // the list is set, and the executor is on its EVM list: the Flare side is checked at once
+            const forbiddenAddressList = await assignForbiddenAddressList(context.assetManager);
+            await forbidFlareAddresses(context.assetManager, forbiddenAddressList, [executorAddress1]);
+            assert.isTrue(await context.assetManager.isForbiddenFlareAddress(executorAddress1));
+            await expectRevert.custom(minter.directMintRaw(amount, { memoData: PaymentReference.directMinting(minter.address), executor: executorAddress1 }),
+                "ForbiddenFlareAddress", [executorAddress1]);
+        });
+    });
+
     describe("Initialization guards", () => {
         async function initializeSettingsFacet(initializer: DirectMintingAndRedeemExtendedInitInstance) {
             await initializer.initialize(web3DeepNormalize({
@@ -1484,6 +1763,22 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
         it("should not allow setting zero address as smart account manager", async () => {
             await expectRevert.custom(
                 context.assetManager.setSmartAccountManager(ZERO_ADDRESS, { from: governance }),
+                "AddressZero",
+                []
+            );
+        });
+
+        it("should allow governance to set forbidden address list", async () => {
+            assertWeb3Equal(await context.assetManager.getForbiddenAddressList(), ZERO_ADDRESS);
+            const newForbiddenAddressList = accounts[73];
+            const res = await context.assetManager.setForbiddenAddressList(newForbiddenAddressList, { from: governance });
+            expectEvent(res, "ContractChanged", { name: "forbiddenAddressList", value: newForbiddenAddressList });
+            assertWeb3Equal(await context.assetManager.getForbiddenAddressList(), newForbiddenAddressList);
+        });
+
+        it("should not allow setting zero address as forbidden address list", async () => {
+            await expectRevert.custom(
+                context.assetManager.setForbiddenAddressList(ZERO_ADDRESS, { from: governance }),
                 "AddressZero",
                 []
             );
@@ -1835,6 +2130,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             // (both onlyGovernance and onlyImmediateGovernance modifiers throw OnlyGovernance error)
             await expectRevert.custom(context.assetManager.setMintingTagManager(accounts[80]), "OnlyGovernance", []);
             await expectRevert.custom(context.assetManager.setSmartAccountManager(accounts[81]), "OnlyGovernance", []);
+            await expectRevert.custom(context.assetManager.setForbiddenAddressList(accounts[83]), "OnlyGovernance", []);
             await expectRevert.custom(context.assetManager.setDirectMintingFeeReceiver(accounts[82]), "OnlyGovernance", []);
             await expectRevert.custom(context.assetManager.setDirectMintingFee(currentFeeBIPS, currentMinimumFeeUBA), "OnlyGovernance", []);
             await expectRevert.custom(context.assetManager.setDirectMintingExecutorFee(currentExecutorFeeUBA), "OnlyGovernance", []);
@@ -1865,6 +2161,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await time.increase(DAYS + 1); // avoid rate limiting
             timelocked = await executeTimelockedGovernanceCall(context.assetManager,
                 (governance) => context.assetManager.setSmartAccountManager(accounts[81], { from: governance }));
+            assert.equal(timelocked, true);
+
+            await time.increase(DAYS + 1);
+            timelocked = await executeTimelockedGovernanceCall(context.assetManager,
+                (governance) => context.assetManager.setForbiddenAddressList(accounts[83], { from: governance }));
             assert.equal(timelocked, true);
 
             await time.increase(DAYS + 1);
@@ -1935,6 +2236,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await testRateLimited(
                 () => context.assetManager.setSmartAccountManager(accounts[70], { from: governance }),
                 () => context.assetManager.setSmartAccountManager(accounts[71], { from: governance }),
+            );
+            await testRateLimited(
+                () => context.assetManager.setForbiddenAddressList(accounts[70], { from: governance }),
+                () => context.assetManager.setForbiddenAddressList(accounts[71], { from: governance }),
             );
             await testRateLimited(
                 () => context.assetManager.setDirectMintingFeeReceiver(accounts[70], { from: governance }),

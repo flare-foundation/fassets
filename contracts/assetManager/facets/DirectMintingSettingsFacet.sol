@@ -6,6 +6,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IMemoInstructionsFacet} from "@flarenetwork/flare-periphery-contracts/flare/IMemoInstructionsFacet.sol";
 import {AssetManagerBase} from "./AssetManagerBase.sol";
 import {IMintingTagManager} from "../../userInterfaces/IMintingTagManager.sol";
+import {IForbiddenAddressList} from "../../flareSmartContracts/interfaces/IForbiddenAddressList.sol";
 import {IAssetManagerEvents} from "../../userInterfaces/IAssetManagerEvents.sol";
 import {IDirectMinting} from "../../userInterfaces/IDirectMinting.sol";
 import {IDirectMintingSettings} from "../../userInterfaces/IDirectMintingSettings.sol";
@@ -73,6 +74,17 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
         DirectMinting.State storage state = DirectMinting.getState();
         state.smartAccountManager = IMemoInstructionsFacet(_smartAccountManager);
         emit IAssetManagerEvents.ContractChanged("smartAccountManager", _smartAccountManager);
+    }
+
+    function setForbiddenAddressList(IForbiddenAddressList _forbiddenAddressList)
+        external
+        onlyGovernance
+        rateLimited
+    {
+        require(address(_forbiddenAddressList) != address(0), AddressZero());
+        DirectMinting.State storage state = DirectMinting.getState();
+        state.forbiddenAddressList = _forbiddenAddressList;
+        emit IAssetManagerEvents.ContractChanged("forbiddenAddressList", address(_forbiddenAddressList));
     }
 
     function setDirectMintingFeeReceiver(address _mintingFeeReceiver)
@@ -215,6 +227,14 @@ contract DirectMintingSettingsFacet is AssetManagerBase, GovernedProxyImplementa
     {
         DirectMinting.State storage state = DirectMinting.getState();
         return address(state.smartAccountManager);
+    }
+
+    function getForbiddenAddressList()
+        external view
+        returns (IForbiddenAddressList)
+    {
+        DirectMinting.State storage state = DirectMinting.getState();
+        return state.forbiddenAddressList;
     }
 
     function getDirectMintingFeeReceiver()

@@ -45,7 +45,10 @@ export enum CollateralReservationStatus {
     ACTIVE,         // the minting process hasn't finished yet
     SUCCESSFUL,     // the payment has been confirmed and the FAssets minted
     DEFAULTED,      // the payment has defaulted and the agent received the collateral reservation fee
-    EXPIRED         // the confirmation time has expired and the agent called unstickMinting
+    EXPIRED,        // the confirmation time has expired and the agent called unstickMinting
+    FORBIDDEN       // the payment came from a forbidden underlying address or the minter is a forbidden Flare address:
+                    // the agent released the reservation (releaseMintingWithForbiddenPayment), nothing was minted and
+                    // the payment was left unaccounted
 }
 
 export enum RedemptionRequestStatus {

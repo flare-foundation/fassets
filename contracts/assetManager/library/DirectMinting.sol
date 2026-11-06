@@ -3,6 +3,7 @@ pragma solidity ^0.8.27;
 
 import {IMemoInstructionsFacet} from "@flarenetwork/flare-periphery-contracts/flare/IMemoInstructionsFacet.sol";
 import {IMintingTagManager} from "../../userInterfaces/IMintingTagManager.sol";
+import {IForbiddenAddressList} from "../../flareSmartContracts/interfaces/IForbiddenAddressList.sol";
 import {MintingRateLimiter} from "./data/MintingRateLimiter.sol";
 
 
@@ -47,6 +48,8 @@ library DirectMinting {
         uint64 unblockMintingsUntilTimestamp;
         uint64 mintingsUnblockedAt;
         mapping (bytes32 transactionId => DelayedMinting) delayedMintings;
+        // optional - when not set, all addresses are allowed
+        IForbiddenAddressList forbiddenAddressList;
     }
 
     function mintingRecipientForTag(uint256 _mintingTag)

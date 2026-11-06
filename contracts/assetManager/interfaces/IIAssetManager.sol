@@ -139,6 +139,7 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsMan
 
     /**
      * Create a redemption from a single agent. Used in self-close exit from the collateral pool.
+     * NOTE: Neither the receiver nor the receiver's underlying address may be on the forbidden address list
      * NOTE: only collateral pool can call this method.
      */
     function redeemFromAgent(
@@ -264,4 +265,14 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsMan
     function getWorkAddress(address _managementAddress)
         external view
         returns (address);
+
+    /**
+     * True if `_address` is on the forbidden address list's EVM list (`IForbiddenAddressList.isForbiddenEvmAddress`);
+     * false while no list is set.
+     * Used internally by collateral pool: on a self-close exit that redeems to the underlying chain, the exiting
+     * LP (whose FAssets are redeemed) and the recipient must not be forbidden.
+     */
+    function isForbiddenFlareAddress(address _address)
+        external view
+        returns (bool);
 }

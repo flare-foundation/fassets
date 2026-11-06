@@ -6,12 +6,17 @@ import { CommonContext } from "../../../lib/test-utils/actors/CommonContext";
 import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
+import { xrplClassicAddress } from "../../../lib/test-utils/canonical-addresses";
 import { MockChain } from "../../../lib/test-utils/fasset/MockChain";
 import { MockFlareDataConnectorClient } from "../../../lib/test-utils/fasset/MockFlareDataConnectorClient";
 import { ether, expectRevert, time } from "../../../lib/test-utils/test-helpers";
 import { getTestFile, loadFixtureCopyVars } from "../../../lib/test-utils/test-suite-helpers";
 import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
-import { DAYS, MAX_BIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { assignForbiddenAddressList, forbidFlareAddresses } from "../../../lib/test-utils/test-settings";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
+import { requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { BNish, DAYS, MAX_BIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { ForbiddenAddressListMockInstance } from "../../../typechain-truffle";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests - agent deposits and withdrawals`, accounts => {
     const governance = accounts[10];
@@ -367,6 +372,107 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert.custom(agent.makeAvailable(), "InvalidAgentVaultAddress", []);
             // cannot enter pool after destroy
             await expectRevert.custom(agent.collateralPool.enter({ from: accounts[0], value: ether(2) }), "InvalidAgentVaultAddress", []);
+        });
+    });
+    describe("forbidden addresses", () => {
+        // Top-ups and self-mints cross into the protocol, so their payer is checked; so is the minter of a collateral
+        // reservation. The agent's own addresses - its underlying address and its owner's Flare addresses - are
+        // never checked: agents are vetted by governance through the agent owner registry.
+        // The list keeps string lists only under BTC and XRP source ids (this file's `ETH` chain would revert
+        // `UnsupportedSourceId` on every check), so these tests run on an XRP asset manager - the agent-backed chain -
+        // with real-format XRPL classic addresses for whatever they list (the only form the real list takes).
+        const forbiddenSource = xrplClassicAddress("ForbiddenSource");
+        const cleanSource = xrplClassicAddress("CleanSource");
+        const agentAddress1 = xrplClassicAddress("Agent1");
+        const agentAddress2 = xrplClassicAddress("Agent2");
+        let forbiddenAddressList: ForbiddenAddressListMockInstance;
+
+        beforeEach(async () => {
+            context = await AssetContext.createTest(commonContext, testChainInfo.xrp);
+            mockChain = context.chain as MockChain;
+            forbiddenAddressList = await assignForbiddenAddressList(context.assetManager);
+            await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, [forbiddenSource], { from: governance });
+        });
+
+        async function forbidUnderlying(...addresses: string[]) {
+            await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, addresses, { from: governance });
+        }
+
+        /** A self-mint payment of `lots` (plus the pool fee) from `source`, and its proof. */
+        async function selfMintPayment(agent: Agent, lots: number, source: string, amount?: BNish) {
+            const valueUBA = context.convertLotsToUBA(lots);
+            const poolFeeUBA = valueUBA.mul(toBN(agent.settings.feeBIPS)).divn(MAX_BIPS).mul(toBN(agent.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
+            const depositUBA = toBN(amount ?? valueUBA.add(poolFeeUBA));
+            mockChain.mint(source, depositUBA);
+            const txHash = await agent.wallet.addTransaction(source, agent.underlyingAddress, depositUBA, PaymentReference.selfMint(agent.vaultAddress));
+            return await context.attestationProvider.provePayment(txHash, null, agent.underlyingAddress);
+        }
+
+        it("creates an agent vault for a listed underlying address and owner - the agent's addresses are not checked", async () => {
+            await forbidUnderlying(agentAddress2);
+            await forbidFlareAddresses(context.assetManager, forbiddenAddressList,
+                [Agent.getManagementAddress(agentOwner2), Agent.getWorkAddress(agentOwner2)]);
+            const agent = await Agent.createTest(context, agentOwner2, agentAddress2);
+            assert.equal(agent.underlyingAddress, agentAddress2);
+        });
+
+        it("refuses a top-up from a forbidden source; a clean one is confirmed", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, agentAddress1);
+            mockChain.mine(2);
+            const forbiddenTx = await agent.performTopupPayment(1000, true, forbiddenSource);
+            await expectRevert.custom(agent.confirmTopupPayment(forbiddenTx), "ForbiddenSourceAddress", []);
+            const cleanTx = await agent.performTopupPayment(1000, true, cleanSource);
+            await agent.confirmTopupPayment(cleanTx);
+            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: 1000, actualUnderlyingBalance: 2000 });
+        });
+
+        it("refuses a self-mint from a forbidden source, also of zero lots", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, agentAddress1);
+            await agent.depositCollateralLotsAndMakeAvailable(10);
+            mockChain.mine(2);
+            await context.updateUnderlyingBlock();
+            const proof = await selfMintPayment(agent, 2, forbiddenSource);
+            await expectRevert.custom(context.assetManager.selfMint(proof, agent.vaultAddress, 2, { from: agent.ownerWorkAddress }),
+                "ForbiddenSourceAddress", []);
+            // zero lots would turn the payment into free underlying
+            await expectRevert.custom(context.assetManager.selfMint(proof, agent.vaultAddress, 0, { from: agent.ownerWorkAddress }),
+                "ForbiddenSourceAddress", []);
+            // a clean payment self-mints
+            const res = await context.assetManager.selfMint(await selfMintPayment(agent, 2, cleanSource), agent.vaultAddress, 2,
+                { from: agent.ownerWorkAddress });
+            assertWeb3Equal(requiredEventArgs(res, "SelfMint").mintedAmountUBA, context.convertLotsToUBA(2));
+        });
+
+        it("self-mints to a listed agent address by a listed owner - the agent's addresses are not checked", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, agentAddress1);
+            await agent.depositCollateralLotsAndMakeAvailable(10);
+            mockChain.mine(2);
+            await context.updateUnderlyingBlock();
+            // the agent's underlying address and the owner, who receives the minted FAssets, are listed after the vault was created
+            await forbidUnderlying(agentAddress1);
+            await forbidFlareAddresses(context.assetManager, forbiddenAddressList, [agent.ownerWorkAddress, agent.ownerManagementAddress]);
+            const res = await context.assetManager.selfMint(await selfMintPayment(agent, 2, cleanSource), agent.vaultAddress, 2,
+                { from: agent.ownerWorkAddress });
+            assertWeb3Equal(requiredEventArgs(res, "SelfMint").mintedAmountUBA, context.convertLotsToUBA(2));
+        });
+
+        it("refuses a collateral reservation by a forbidden minter, not one against a listed agent address", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, agentAddress1);
+            await agent.depositCollateralLotsAndMakeAvailable(10);
+            const minter1 = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.convertLotsToUBA(10));
+            const minter2 = await Minter.createTest(context, minterAddress2, underlyingMinter2, context.convertLotsToUBA(10));
+            await context.updateUnderlyingBlock();
+            await forbidFlareAddresses(context.assetManager, forbiddenAddressList, [minter1.address]);
+            await expectRevert.custom(minter1.reserveCollateral(agent.vaultAddress, 1), "ForbiddenFlareAddress", [minter1.address]);
+            // another minter reserves
+            await minter2.reserveCollateral(agent.vaultAddress, 1);
+            // the agent's underlying address and owner are listed: reservations against the agent and their minting go on
+            await forbidUnderlying(agentAddress1);
+            await forbidFlareAddresses(context.assetManager, forbiddenAddressList, [agent.ownerWorkAddress, agent.ownerManagementAddress]);
+            const crt = await minter2.reserveCollateral(agent.vaultAddress, 1);
+            const txHash = await minter2.performMintingPayment(crt);
+            const minted = await minter2.executeMinting(crt, txHash);
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(1));
         });
     });
 });

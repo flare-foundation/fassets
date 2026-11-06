@@ -11,6 +11,7 @@ import {IWNat} from "../../flareSmartContracts/interfaces/IWNat.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
 import {CollateralType} from "../../userInterfaces/data/CollateralType.sol";
 import {CollateralTypes} from "../library/CollateralTypes.sol";
+import {ForbiddenAddresses} from "../library/ForbiddenAddresses.sol";
 
 
 contract AgentVaultAndPoolSupportFacet is AssetManagerBase {
@@ -73,6 +74,17 @@ contract AgentVaultAndPoolSupportFacet is AssetManagerBase {
         returns (address)
     {
         return Globals.getAgentOwnerRegistry().getWorkAddress(_managementAddress);
+    }
+
+    /**
+     * Whether `_address` is on the forbidden address list's EVM list (`isForbiddenEvmAddress`); false while no
+     * list is set. Used by the collateral pool on a self-close exit.
+     */
+    function isForbiddenFlareAddress(address _address)
+        external view
+        returns (bool)
+    {
+        return ForbiddenAddresses.isForbiddenFlare(_address);
     }
 
     /**

@@ -8,6 +8,7 @@ import { Minter } from "../../../lib/test-utils/actors/Minter";
 import { MockCoreVaultBot } from "../../../lib/test-utils/actors/MockCoreVaultBot";
 import { Redeemer } from "../../../lib/test-utils/actors/Redeemer";
 import { testChainInfo } from "../../../lib/test-utils/actors/TestChainInfo";
+import { xrplClassicAddress } from "../../../lib/test-utils/canonical-addresses";
 import { assertApproximatelyEqual } from "../../../lib/test-utils/approximation";
 import { executeTimelockedGovernanceCall } from "../../../lib/test-utils/contract-test-helpers";
 import { newAssetManager } from "../../../lib/test-utils/fasset/CreateAssetManager";
@@ -18,6 +19,7 @@ import { assertWeb3Equal } from "../../../lib/test-utils/web3assertions";
 import { requiredEventArgsFrom } from "../../../lib/test-utils/Web3EventDecoder";
 import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BNish, DAYS, deepFormat, HOURS, MAX_BIPS, requireNotNull, toBN, toWei, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { assignForbiddenAddressList, forbidFlareAddresses } from "../../../lib/test-utils/test-settings";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integration tests - core vault`, accounts => {
     const governance = accounts[10];
@@ -825,6 +827,39 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             await expectRevert.custom(context.assetManager.redeemFromCoreVault(11, redeemer.underlyingAddress, { from: redeemer.address }),
                 "InsufficientFunds", []);
         });
+
+        it("refuses a direct redemption from core vault by a forbidden redeemer or to a forbidden underlying address", async () => {
+            // real-format XRPL classic addresses, the only form the real forbidden address list takes (the mock takes any)
+            const forbiddenUnderlying = xrplClassicAddress("ForbiddenRedeemer");
+            const cleanUnderlying = xrplClassicAddress("CleanRedeemer");
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1000000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, cleanUnderlying);
+            await donateToCoreVault(minter.underlyingAddress, 1e6);
+            await agent.depositCollateralLotsAndMakeAvailable(100);
+            const [minted] = await minter.performMinting(agent.vaultAddress, 20);
+            await minter.transferFAsset(redeemer.address, minted.mintedAmountUBA);
+            await agent.transferToCoreVault(context.lotSize().muln(20));
+            await coreVaultManager.addAllowedDestinationAddresses([forbiddenUnderlying, cleanUnderlying], { from: governance });
+            const forbiddenAddressList = await assignForbiddenAddressList(context.assetManager);
+            // the underlying address is forbidden (even though the core vault manager allows it)
+            await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, [forbiddenUnderlying], { from: governance });
+            await expectRevert.custom(context.assetManager.redeemFromCoreVault(10, forbiddenUnderlying, { from: redeemer.address }),
+                "ForbiddenRedeemerAddress", []);
+            // an address that is not canonical by the list (on XRPL an X-address; the mock is told so) is refused too
+            const xAddress = "XVLhHMPHU98es4dbozjVtdWzVrDjtV5fdx1mHp98tDMoQXb";
+            await forbiddenAddressList.setNonCanonicalAddresses(context.chainInfo.chainId, [xAddress], true);
+            await expectRevert.custom(context.assetManager.redeemFromCoreVault(10, xAddress, { from: redeemer.address }),
+                "NonCanonicalRedeemerAddress", []);
+            // another address is paid
+            requiredEventArgs(await context.assetManager.redeemFromCoreVault(10, cleanUnderlying, { from: redeemer.address }),
+                "CoreVaultRedemptionRequested");
+            // the redeemer is forbidden
+            await forbidFlareAddresses(context.assetManager, forbiddenAddressList, [redeemer.address]);
+            await expectRevert.custom(context.assetManager.redeemFromCoreVault(10, cleanUnderlying, { from: redeemer.address }),
+                "ForbiddenFlareAddress", [redeemer.address]);
+            assertWeb3Equal(await context.fAsset.balanceOf(redeemer.address), minted.mintedAmountUBA.sub(context.convertLotsToUBA(10)));
+        });
     });
 
     describe("core vault settings", () => {
@@ -1315,7 +1350,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
     });
 
     describe("core vault donation validations", () => {
-        const donorAddress = "DonorUnderlying";
+        // a real-format XRPL classic address, the only form the real forbidden address list takes (the mock takes any)
+        const donorAddress = xrplClassicAddress("DonorUnderlying");
 
         beforeEach(async () => {
             mockChain.mint(donorAddress, 10e6);
@@ -1359,6 +1395,23 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager integratio
             const txHash = await wallet.addTransaction(donorAddress, coreVaultUnderlyingAddress, 0, null, { destinationTag: coreVaultDonationTag });
             const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
             await expectRevert.custom(context.assetManager.confirmCoreVaultDonation(proof), "AmountNotPositive", []);
+        });
+
+        it("should revert if the donor is a forbidden address; a donation from another address is credited", async () => {
+            const forbiddenAddressList = await assignForbiddenAddressList(context.assetManager);
+            await forbiddenAddressList.addForbiddenAddresses(context.chainInfo.chainId, [donorAddress], { from: governance });
+            const wallet = new MockChainWallet(mockChain);
+            const coreVaultDonationTag = Number(context.initSettings.coreVaultDonationTag);
+            const availableBefore = toBN(await coreVaultManager.availableFunds());
+            const txHash = await wallet.addTransaction(donorAddress, coreVaultUnderlyingAddress, 1e6, null, { destinationTag: coreVaultDonationTag });
+            const proof = await context.attestationProvider.proveXRPPayment(txHash, null);
+            await expectRevert.custom(context.assetManager.confirmCoreVaultDonation(proof), "ForbiddenSourceAddress", []);
+            assertWeb3Equal(await coreVaultManager.availableFunds(), availableBefore);
+            mockChain.mint("OtherDonor", 1e6);
+            const txHash2 = await wallet.addTransaction("OtherDonor", coreVaultUnderlyingAddress, 1e6, null, { destinationTag: coreVaultDonationTag });
+            expectEvent(await context.assetManager.confirmCoreVaultDonation(await context.attestationProvider.proveXRPPayment(txHash2, null)),
+                "CoreVaultFundsAdded");
+            assertWeb3Equal(toBN(await coreVaultManager.availableFunds()).sub(availableBefore), 1e6);
         });
 
         it("should not allow the same payment to be used as both CV transfer redemption and core vault donation", async () => {

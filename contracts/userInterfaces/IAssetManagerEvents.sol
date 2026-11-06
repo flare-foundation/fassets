@@ -155,6 +155,21 @@ interface IAssetManagerEvents {
         uint256 reservedAmountUBA);
 
     /**
+     * The agent released a collateral reservation (`releaseMintingWithForbiddenPayment`) whose minting payment
+     * came from a forbidden underlying address or whose minter is a forbidden Flare address, so nothing was minted:
+     * the payment is spent but left unaccounted (it is not added to the agent's underlying balance), the reserved
+     * collateral was released and the collateral reservation fee and the executor fee were paid to the agent and
+     * the pool, as on a payment default.
+     */
+    event MintingPaymentForbidden(
+        address indexed agentVault,
+        address indexed minter,
+        uint256 indexed collateralReservationId,
+        bytes32 transactionId,
+        uint256 receivedAmountUBA,
+        uint256 reservedAmountUBA);
+
+    /**
      * Both minter and agent failed to present any proof within attestation time window, so
      * the agent called `unstickMinting` to release reserved collateral.
      */

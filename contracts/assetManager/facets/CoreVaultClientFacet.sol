@@ -26,6 +26,7 @@ import {AgentPayout} from "../library/AgentPayout.sol";
 import {SafeMath64} from "../../utils/library/SafeMath64.sol";
 import {TransactionAttestation} from "../library/TransactionAttestation.sol";
 import {Globals} from "../library/Globals.sol";
+import {ForbiddenAddresses} from "../library/ForbiddenAddresses.sol";
 
 
 contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard {
@@ -185,6 +186,8 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard {
      * Directly redeem from core vault by a user holding FAssets.
      * This is like ordinary redemption, but the redemption time is much longer (a day or more)
      * and there is no possibility of redemption.
+     * NOTE: neither the redeemer nor the underlying address may be on the forbidden address list
+     * (`ForbiddenFlareAddress`, `ForbiddenRedeemerAddress`).
      * @param _lots the number of lots, must be larger than `coreVaultMinimumRedeemLots` setting
      * @param _redeemerUnderlyingAddress the underlying address to which the assets will be redeemed;
      *      must have been added to the `allowedDestinations` list in the core vault manager by
@@ -205,6 +208,9 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard {
         uint256 availableLots = CoreVaultClient.coreVaultAmountLots();
         uint256 minimumRedeemLots = Math.min(state.minimumRedeemLots, availableLots);
         require(_lots >= minimumRedeemLots, RequestedAmountTooSmall());
+        // both ends of the crossing: the redeemer and the underlying address paid
+        ForbiddenAddresses.requireFlareAddressAllowed(msg.sender);
+        ForbiddenAddresses.requireRedeemerAddressAllowed(_redeemerUnderlyingAddress);
         // burn the senders fassets
         uint256 redeemedUBA = Conversion.convertLotsToUBA(_lots);
         Redemptions.burnFAssets(msg.sender, redeemedUBA);
@@ -223,6 +229,7 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard {
 
     /**
      * Confirm a donation payment made to the core vault underlying address.
+     * A donation from a forbidden underlying address is refused (`ForbiddenSourceAddress`).
      * @param _payment FDC payment proof
      */
     function confirmCoreVaultDonation(
@@ -242,6 +249,8 @@ contract CoreVaultClientFacet is AssetManagerBase, ReentrancyGuard {
             NotACoreVaultDonation());
         require(!_payment.data.responseBody.hasMemoData, MemoDataNotAllowed());
         require(_payment.data.responseBody.receivedAmount > 0, AmountNotPositive());
+        // the core vault must not accept value from a forbidden source
+        ForbiddenAddresses.requireSourceAddressAllowed(_payment.data.responseBody.sourceAddressHash);
         // mark payment used
         AssetManagerState.get().paymentConfirmations.confirmIncomingPayment(_payment);
         // update core vault accounting

@@ -53,9 +53,12 @@ interface IRedeemExtended {
      * In such a case the `RedemptionAmountIncomplete` event will be emitted, indicating remaining amount.
      * Agent receives redemption request id and instructions for underlying payment in
      * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
+     * NOTE: neither the redeemer nor the underlying address may be on the forbidden address list
+     * (`ForbiddenFlareAddress`, `ForbiddenRedeemerAddress`).
      * @param _amountUBA amount of redeemer's FAssets that will be burned; this is NOT the amount of assets
      *      that will be received by the redeemer - the redemption fee will be subtracted
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
+     *      (in its chain's canonical form - on XRP a classic address - see `NonCanonicalRedeemerAddress`)
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
      * @return _redeemedAmountUBA the actual redeemed amount; may be less than requested if there are not enough
      *      redemption tickets available or the maximum redemption ticket limit is reached
@@ -80,9 +83,12 @@ interface IRedeemExtended {
      * NOTE: if the underlying block isn't updated regularly, it can happen that there is no time for underlying
      * payment. Since the agents cannot know when the next redemption will happen, they should regularly update the
      * underlying time by obtaining fresh proof of latest underlying block and calling `updateCurrentBlock`.
+     * NOTE: neither the redeemer nor the underlying address may be on the forbidden address list
+     * (`ForbiddenFlareAddress`, `ForbiddenRedeemerAddress`).
      * @param _amountUBA amount of redeemer's FAssets that will be burned; this is NOT the amount of assets
      *      that will be received by the redeemer - the redemption fee will be subtracted
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
+     *      (a classic address - an X-address is not canonical, see `NonCanonicalRedeemerAddress`)
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
      * @param _destinationTag the destination tag that is required in the redemption payment (only for XRP;
      *      it must fit in 32 bits for now)

@@ -14,6 +14,7 @@ import {Conversion} from "../library/Conversion.sol";
 import {AssetManagerState} from "../library/data/AssetManagerState.sol";
 import {PaymentReference} from "../library/data/PaymentReference.sol";
 import {DirectMinting} from "../library/DirectMinting.sol";
+import {ForbiddenAddresses} from "../library/ForbiddenAddresses.sol";
 import {CoreVaultClient} from "../library/CoreVaultClient.sol";
 import {Minting} from "../library/Minting.sol";
 import {PaymentConfirmations} from "../library/data/PaymentConfirmations.sol";
@@ -115,6 +116,9 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         require(_payment.data.responseBody.receivingAddressHash == CoreVaultClient.coreVaultUnderlyingAddressHash(),
             InvalidReceivingAddress());
         require(_payment.data.responseBody.receivedAmount > 0, AmountNotPositive());
+        // checked on every execution, so that also delayed mintings are rejected if the address is forbidden
+        // during the delay (the list of this asset manager's source, see `ForbiddenAddresses.isForbiddenUnderlying`)
+        ForbiddenAddresses.requireSourceAddressAllowed(_payment.data.responseBody.sourceAddressHash);
         uint256 receivedAmount = uint256(_payment.data.responseBody.receivedAmount);
         bytes32 transactionId = _payment.data.requestBody.transactionId;
         // MintingTagManager and smartAccountManager need not exist at deploy time, so they are checked here
@@ -124,6 +128,12 @@ contract DirectMintingFacet is AssetManagerBase, ReentrancyGuard, IDirectMinting
         require(address(state.smartAccountManager) != address(0), MissingSmartAccountManager());
         _validateTagAndMemoData(_payment);
         DirectMinting.MintingTarget memory target = _getMintingTarget(_payment);
+        // the executor and the recipient must not be forbidden - checked before delay check, so it's always blocked
+        // a minting to a smart account has no recipient here (checked in smart account manager)
+        ForbiddenAddresses.requireFlareAddressAllowed(msg.sender);
+        if (!target.mintToSmartAccount) {
+            ForbiddenAddresses.requireFlareAddressAllowed(target.recipient);
+        }
         require(target.allowedExecutor == address(0) || target.allowedExecutor == msg.sender
             || _othersCanExecute(_payment), InvalidExecutor());
         // check that payment was not confirmed before minting cap reservation and possible delay

@@ -19,6 +19,7 @@ import {CollateralReservation} from "../library/data/CollateralReservation.sol";
 import {PaymentReference} from "../library/data/PaymentReference.sol";
 import {Globals} from "../library/Globals.sol";
 import {AssetManagerSettings} from "../../userInterfaces/data/AssetManagerSettings.sol";
+import {ForbiddenAddresses} from "../library/ForbiddenAddresses.sol";
 
 contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
     using SafePct for uint256;
@@ -45,6 +46,9 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
      * If the minter pays the underlying amount, minter obtains f-assets.
      * The collateral reservation fee is split between the agent and the collateral pool.
      * NOTE: the owner of the agent vault must be in the AgentOwnerRegistry.
+     * NOTE: the minter must not be on the forbidden address list (`ForbiddenFlareAddress`); `executeMinting`
+     * refuses a payment from a forbidden underlying address (see `releaseMintingWithForbiddenPayment`).
+     * The agent's addresses are not checked: agents are vetted by governance through the agent owner registry.
      * NOTE: if the underlying block isn't updated regularly, it can happen that there is not enough time for
      * the underlying payment. Therefore minters have to verify the current underlying before minting and,
      * if needed, update it by calling `updateCurrentBlock`.
@@ -69,6 +73,8 @@ contract CollateralReservationsFacet is AssetManagerBase, ReentrancyGuard {
         returns (uint256 _collateralReservationId)
     {
         Agent.State storage agent = Agent.get(_agentVault);
+        // the minter crosses the bridge; the agent's addresses are not checked (agents are vetted by governance)
+        ForbiddenAddresses.requireFlareAddressAllowed(msg.sender);
         Agents.requireWhitelistedAgentVaultOwner(agent);
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         AssetManagerState.State storage state = AssetManagerState.get();
