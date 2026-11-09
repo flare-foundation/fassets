@@ -55,6 +55,6 @@
     "init": {
         "contract": "ForbiddenAddressesInit",
         "method": "initialize",
-        "args": ["<ForbiddenAddressList address>"]
+        "args": ["0x365Ee5735B275Ccf7de2921F2582c35b3881a94F"]
     }
 }
